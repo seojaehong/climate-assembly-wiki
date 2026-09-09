@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -66,12 +67,65 @@ class AttendanceRosterParserTest(unittest.TestCase):
 
         self.assertTrue(sql.startswith("begin;"))
         self.assertTrue(sql.rstrip().endswith("commit;"))
-        self.assertIn("join upserted_members m on m.official_id = r.official_id", sql)
+        self.assertIn(
+            "join upserted_members m on m.org_id = ts.org_id and m.official_id = r.official_id",
+            sql,
+        )
         self.assertIn(f"roster_count <> {EXPECTED_TOTAL}", sql)
         self.assertIn("1분과 1조", sql)
         # 개정 명단에서 빠진 사람의 배정을 내리지 않으면 hq_teams 인원·정족수가 부풀어 오른다.
         self.assertIn("update climate_vote.team_assignment ta", sql)
         self.assertIn("set active = false", sql)
+        self.assertIn("insert into climate_vote.assembly_member (org_id, official_id", sql)
+        self.assertIn("on conflict (org_id, official_id) where org_id is not null", sql)
+        self.assertIn("insert into climate_vote.team_assignment (session_id, team_id, member_id, active, org_id)", sql)
+        self.assertIn("insert into climate_vote.attendance (assignment_id, base_status, org_id)", sql)
+
+    def test_attendance_filter_excludes_only_explicit_absence(self) -> None:
+        module = load_module()
+        rows = [
+            module.RosterRow("1", "참석자", "1분과 1조", "참석"),
+            module.RosterRow("2", "지각자", "1분과 1조", "참석 (지각 10:10)"),
+            module.RosterRow("3", "공란자", "1분과 1조", ""),
+            module.RosterRow("4", "미참석자", "1분과 1조", "미참석"),
+            module.RosterRow("5", "결석자", "1분과 1조", "결석"),
+        ]
+
+        filtered = module.attending_rows(rows)
+
+        self.assertEqual([row.official_id for row in filtered], ["1", "2", "3"])
+
+    def test_approved_official_ids_can_be_excluded_exactly(self) -> None:
+        module = load_module()
+        rows = [
+            module.RosterRow("1", "참석자1", "1분과 1조", "참석"),
+            module.RosterRow("2", "참석자2", "1분과 1조", "참석"),
+            module.RosterRow("3", "참석자3", "1분과 1조", "참석"),
+        ]
+
+        filtered = module.exclude_rows_by_official_id(rows, ["2"])
+
+        self.assertEqual([row.official_id for row in filtered], ["1", "3"])
+
+    def test_unknown_or_duplicate_excluded_ids_are_rejected(self) -> None:
+        module = load_module()
+        rows = [module.RosterRow("1", "참석자", "1분과 1조", "참석")]
+
+        with self.assertRaisesRegex(ValueError, "not found"):
+            module.exclude_rows_by_official_id(rows, ["2"])
+        with self.assertRaisesRegex(ValueError, "duplicate"):
+            module.exclude_rows_by_official_id(rows, ["1", "1"])
+
+    def test_excluded_id_file_requires_one_unique_id_per_line(self) -> None:
+        module = load_module()
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "excluded.txt"
+            path.write_text("1001\n1002\n", encoding="utf-8")
+            self.assertEqual(module.read_excluded_official_ids(path), ["1001", "1002"])
+
+            path.write_text("1001,1002\n", encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "one ID per line"):
+                module.read_excluded_official_ids(path)
 
     def test_dropped_members_are_gone(self) -> None:
         """2.0에서 빠진 드롭 3인이 남아 있으면 정족수가 틀어진다."""

@@ -41,9 +41,14 @@ describe('workshop topic synchronization', () => {
     class FakeHtmlElement {
       readonly tagName = 'TEXTAREA';
       readonly isContentEditable = false;
+      viewportTop = 120;
 
       closest(selector: string): FakeHtmlElement | null {
         return selector === '[data-workshop-editor-topic]' ? this : null;
+      }
+
+      getBoundingClientRect(): DOMRect {
+        return { top: this.viewportTop } as DOMRect;
       }
     }
     class FakeHtmlInputElement extends FakeHtmlElement {
@@ -71,6 +76,7 @@ describe('workshop topic synchronization', () => {
       }),
     };
     scrollTo.mockImplementation((x, y) => {
+      active.viewportTop -= y - fakeWindow.scrollY;
       fakeWindow.scrollX = x;
       fakeWindow.scrollY = y;
     });
@@ -80,19 +86,22 @@ describe('workshop topic synchronization', () => {
     vi.stubGlobal('window', fakeWindow);
 
     const restoration = preserveEditorScrollAfterTopicInsertion();
-    fakeWindow.scrollY = 249;
+    active.viewportTop = 129;
     restoration.restoreAfterCommit();
-    expect(scrollTo).toHaveBeenLastCalledWith(8, 240);
+    expect(scrollTo).toHaveBeenLastCalledWith(8, 249);
+    expect(active.viewportTop).toBe(120);
 
-    // commit 뒤 다음 frame에 생긴 scroll anchoring도 원래 위치로 되돌린다.
-    fakeWindow.scrollY = 247;
-    frames.shift()?.(16);
-    expect(scrollTo).toHaveBeenLastCalledWith(8, 240);
+    // CI처럼 commit 뒤 0.5초를 넘겨 반복되는 scroll anchoring도 원래 위치로 되돌린다.
+    for (let frame = 1; frame <= 60; frame += 1) {
+      active.viewportTop += 1;
+      frames.shift()?.(frame * 16);
+    }
+    expect(active.viewportTop).toBe(120);
 
     listeners.get('wheel')?.({} as Event);
-    fakeWindow.scrollY = 260;
+    active.viewportTop = 140;
     restoration.restoreAfterCommit();
-    expect(fakeWindow.scrollY).toBe(260);
+    expect(active.viewportTop).toBe(140);
   });
 
   it('uses 5/10/20/30 second retry backoff and caps there', () => {

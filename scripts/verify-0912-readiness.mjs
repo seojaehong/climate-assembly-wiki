@@ -33,10 +33,10 @@ export const REQUIRED_0912_PLAN_STAGE_IDS = Object.freeze([
   'duplicate-share',
 ]);
 
-const CANONICAL_PLAN_CONTRACT_ID = '0912-13-adr-final-v1';
-const CANONICAL_PLAN_SOURCE_FILE = '0. 기후시민회의 제6-7차 회의 추진계획안-ADR수정.hwpx';
-const CANONICAL_PLAN_SOURCE_SHA256 = '00952e23145bb41953abd2da6414656ed502204b4a9758f1e8e6de3ae6099c67';
-const CANONICAL_PLAN_TEXT_SHA256 = 'e35ca9de8778ef8a797f40c47c827f0d7f7b0d20a00665240a62eff789188591';
+const CANONICAL_PLAN_CONTRACT_ID = '0912-13-adr-final-v2';
+const CANONICAL_PLAN_SOURCE_FILE = '0. 기후시민회의 제6-7차 회의 추진계획안_취합.hwpx';
+const CANONICAL_PLAN_SOURCE_SHA256 = '2f372ffb93f354a338244be6b40ac2dc608c0c85d6358e589bb506ef64ccd1f2';
+const CANONICAL_PLAN_TEXT_SHA256 = 'fb77b8f7f8e4d1b51aacfe2bb9d3b095bcefab00c0fb2a6ab8d4f8a42b221e43';
 const REQUIRED_0912_PM_DECISION_IDS = Object.freeze([
   'recommendation-count',
   'day1-share-audience',
@@ -55,6 +55,16 @@ const REQUIRED_0912_FROZEN_ARTIFACTS = Object.freeze([
   Object.freeze({
     path: 'supabase/verify/20260902_s20_open_0912_topics.sql',
     sha256: '929628337b2e0cabbebe350d6996076e33e234885a2783eff788ec228289d166',
+  }),
+]);
+const REQUIRED_0912_REPLACEMENT_ARTIFACTS = Object.freeze([
+  Object.freeze({
+    path: 'supabase/migrations/20260908_s21_correct_0912_topics.sql',
+    sha256: '6ff132c7cd1de9b0769ca193329610397027b25485419cfe2d0b5f471059ef36',
+  }),
+  Object.freeze({
+    path: 'supabase/verify/20260908_s21_correct_0912_topics.sql',
+    sha256: 'a3775fd51c949f941ff975e8fee26321a3f6d63542de461c41c432e7d188a03b',
   }),
 ]);
 
@@ -336,7 +346,7 @@ export function verify0912Readiness({
       || contract.source?.extractedTextSha256 !== CANONICAL_PLAN_TEXT_SHA256) {
       throw new Error('정본 HWPX 식별자·해시 또는 계획 계약 버전이 다릅니다.');
     }
-    if (contract.participantCount !== 162 || contract.artifactState !== '조별 권고안 초안') {
+    if (contract.participantCount !== 147 || contract.artifactState !== '조별 권고안 초안') {
       throw new Error('정본 참가자 수 또는 산출물 상태가 다릅니다.');
     }
     const expectedDays = [
@@ -383,19 +393,31 @@ export function verify0912Readiness({
       throw new Error('PM 결정 gate 8건의 ID 또는 상태가 올바르지 않습니다.');
     }
     if (contract.digitalRecordMode?.workingMode !== 'physical-card-primary-digital-mirror'
-      || contract.releaseGuard?.productionTopicActivationBlocked !== true
-      || contract.releaseGuard?.databaseChangeApplied !== false
+      || contract.releaseGuard?.productionTopicActivationBlocked !== false
+      || contract.releaseGuard?.databaseChangeApplied !== true
       || contract.releaseGuard?.explicitApprovalRequired !== true) {
-      throw new Error('PM 확인 전 디지털 미러·운영 DB 개통 차단 경계가 열렸습니다.');
+      throw new Error('디지털 미러 원칙 또는 승인된 주제 교정의 운영 DB 상태가 올바르지 않습니다.');
     }
     const frozenArtifacts = contract.releaseGuard?.frozenArtifacts ?? [];
     if (JSON.stringify(frozenArtifacts) !== JSON.stringify(REQUIRED_0912_FROZEN_ARTIFACTS)) {
       throw new Error('차단할 기존 s20 파일 경로·해시 집합이 정본과 다릅니다.');
     }
     for (const artifact of frozenArtifacts) {
-      const actualSha256 = createHash('sha256').update(readSourceText(artifact.path), 'utf8').digest('hex');
+      const sourceText = readSourceText(artifact.path).replace(/\r\n/g, '\n');
+      const actualSha256 = createHash('sha256').update(sourceText, 'utf8').digest('hex');
       if (actualSha256 !== artifact.sha256) {
         throw new Error(`차단된 기존 s20 파일이 승인 없이 변경됐습니다: ${artifact.path}`);
+      }
+    }
+    const replacementArtifacts = contract.releaseGuard?.approvedReplacementArtifacts ?? [];
+    if (JSON.stringify(replacementArtifacts) !== JSON.stringify(REQUIRED_0912_REPLACEMENT_ARTIFACTS)) {
+      throw new Error('8단계 교정 migration·verifier 경로 또는 해시가 정본과 다릅니다.');
+    }
+    for (const artifact of replacementArtifacts) {
+      const sourceText = readSourceText(artifact.path).replace(/\r\n/g, '\n');
+      const actualSha256 = createHash('sha256').update(sourceText, 'utf8').digest('hex');
+      if (actualSha256 !== artifact.sha256) {
+        throw new Error(`8단계 교정 파일이 승인본과 다릅니다: ${artifact.path}`);
       }
     }
     for (const path of [
@@ -410,26 +432,26 @@ export function verify0912Readiness({
     }
     inspectRequiredText(readSourceText, 'automation/workshop-schedule.yml', [
       planContractPath,
-      'participant_count: 162',
+      'participant_count: 147',
       'artifact_state: 조별 권고안 초안',
     ]);
     inspectRequiredText(readSourceText, 'content/ko/session/2026-09-12-deliberation-workshop-a.md', [
       CANONICAL_PLAN_CONTRACT_ID,
-      '숙의참여단 162명',
+      '숙의참여단 147명',
       stages[0].title,
       stages[3].title,
     ]);
     inspectRequiredText(readSourceText, 'content/ko/session/2026-09-13-deliberation-workshop-b.md', [
       CANONICAL_PLAN_CONTRACT_ID,
-      '숙의참여단 162명',
+      '숙의참여단 147명',
       stages[4].title,
-      '중복 유형',
+      stages[7].title,
     ]);
     inspectRequiredText(readSourceText, 'docs/operations/0912-13-runbook.md', [
       CANONICAL_PLAN_CONTRACT_ID,
       CANONICAL_PLAN_SOURCE_SHA256,
       '현장 카드 정본·디지털 미러',
-      'PM 결정 8건',
+      '147명과 5명 차이',
       '적용 금지·동결',
       ...stages.map((stage) => stage.title),
     ]);
@@ -439,7 +461,9 @@ export function verify0912Readiness({
       stageCount: stages.length,
       pendingPmDecisionCount,
       productionTopicActivationBlocked: contract.releaseGuard.productionTopicActivationBlocked,
+      databaseChangeApplied: contract.releaseGuard.databaseChangeApplied,
       frozenArtifactCount: frozenArtifacts.length,
+      replacementArtifactCount: replacementArtifacts.length,
     };
   });
 
@@ -853,7 +877,7 @@ export function verify0912Readiness({
       'P3 design provisioning',
       'P4 audit log',
       'post-P4 legacy negative 재검증',
-      'P1 → seed/s20 → P1a → P2 → P1b/P1c → P2a → P3 → P4',
+      'P1 → seed/s21 → P1a → P2 → P1b/P1c → P2a → P3 → P4',
       'P1보다 앞서 실행하면 안 된다',
       'mod_proxy_vote_v3',
       'platform_ballot_results_v2',

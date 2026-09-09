@@ -14,6 +14,9 @@ const DEFAULT_PATH = '/ko/moderator/canvas/';
 const DEFAULT_LIVE_PATH = '/ko/moderator/live/';
 const DEFAULT_REVIEW_PATH = '/ko/moderator/ontology-review/';
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+const SYNTHETIC_READ_ONLY_RPC_PATHS = new Set([
+  '/rest/v1/rpc/platform_canvas_round_current_v2',
+]);
 const EXPECTED_READ_PATHS = ['/rest/v1/session', '/rest/v1/agenda', '/rest/v1/agenda_link'];
 const EXPECTED_PLATFORM_PATHS = [
   '/ko/moderator/live/',
@@ -92,6 +95,11 @@ const TRANSCRIPT_REVIEW_FIXTURE_SHA256 = createHash('sha256')
 const REVIEW_AUTH_EMAIL = 'synthetic-review@example.invalid';
 const REVIEW_AUTH_USER_ID = '00000000-0000-4000-8000-000000000091';
 const REVIEW_AUTH_REVIEWER_ID = `auth-user:${REVIEW_AUTH_USER_ID}`;
+
+/** Keeps PostgREST read RPCs inside the synthetic fixture instead of misclassifying them as writes. */
+export function isSyntheticReadOnlyRpcRequest(method, url) {
+  return method === 'POST' && SYNTHETIC_READ_ONLY_RPC_PATHS.has(new URL(url).pathname);
+}
 
 function syntheticWavBuffer(durationMs = 1_000, sampleRate = 8_000) {
   const sampleCount = Math.round((durationMs / 1_000) * sampleRate);
@@ -373,6 +381,7 @@ export async function verifyCanvasBrowser({
   });
   const page = await context.newPage();
   const writeRequests = [];
+  const syntheticReadOnlyRpcRequests = [];
   let canvasAuthRequestCount = 0;
   let reviewAuthRequestCount = 0;
   let reviewLogoutRequestCount = 0;
@@ -405,6 +414,11 @@ export async function verifyCanvasBrowser({
     if (request.method() === 'POST' && request.url().includes('/auth/v1/logout')) {
       reviewLogoutRequestCount += 1;
       await route.fulfill({ status: 204, body: '' });
+      return;
+    }
+    if (isSyntheticReadOnlyRpcRequest(request.method(), request.url())) {
+      syntheticReadOnlyRpcRequests.push({ method: request.method(), url: request.url() });
+      await route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
       return;
     }
     if (!WRITE_METHODS.has(request.method())) {
@@ -1150,7 +1164,9 @@ export async function verifyCanvasBrowser({
     if (!reviewSessionIsolationVerified) {
       throw new Error('Ontology review local state survived the authenticated session boundary');
     }
-    if (writeRequests.length > 0) throw new Error('Ontology review verification attempted a blocked write request');
+    if (writeRequests.length > 0) {
+      throw new Error(`Ontology review verification attempted a blocked write request: ${JSON.stringify(writeRequests)}`);
+    }
     if (browserErrors.length > 0) throw new Error('Ontology review verification observed a browser page error');
     await reviewPage.close();
 
@@ -1248,6 +1264,7 @@ export async function verifyCanvasBrowser({
         agendaNodeCount: nodeCount,
         unauthenticatedNodeDraggable: draggable,
         blockedWriteRequestCount: writeRequests.length,
+        syntheticReadOnlyRpcRequestCount: syntheticReadOnlyRpcRequests.length,
         browserPageErrorCount: browserErrors.length,
         supabaseReadResponses: readResponses,
       },

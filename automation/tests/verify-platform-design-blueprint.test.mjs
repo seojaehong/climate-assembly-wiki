@@ -179,11 +179,14 @@ describe('design blueprint browser CI contract', () => {
     expect(verifier).toContain('importedEditInvalidated');
     expect(verifier).toContain('importedDraftClearedOnReload');
     expect(verifier).toContain('localDraftClearedOnReload');
-    expect(verifier).toContain("getByLabel('HQ 인증 토큰').count() === 0");
+    expect(verifier).toContain("getByText('previous-user-sensitive-token', { exact: false }).count() === 0");
+    expect(verifier).toContain("sessionStorage.getItem('climate_vote_hq_attendance_token') === 'previous-user-sensitive-token'");
     expect(verifier).toContain("getByLabel('공개 결과 제목').count() === 0");
     expect(verifier).toContain("sessionStorage.getItem('climate_vote_hq_attendance_token') === null");
     expect(verifier).toContain("sessionStorage.getItem('climate_vote_hq_gate_actor') === null");
     expect(verifier).toContain("sessionStorage.getItem('climate_vote_platform_org_context') === null");
+    expect(verifier).toContain("path === '/rest/v1/rpc/workshop_hq_logout_v2'");
+    expect(verifier).toContain('hqLogoutRequests.length !== 1');
     expect(verifier).toContain("pathname.replace(/\\/+$/, '') === '/platform'");
     expect(verifier).toContain('logoutRequests.length !== 1');
     expect(verifier).toContain('schemaVersion: 13');

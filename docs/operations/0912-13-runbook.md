@@ -21,10 +21,13 @@
 
 ### 정본 계획과 디지털 기록 경계
 
-- 운영 내용의 정본은 `0. 기후시민회의 제6-7차 회의 추진계획안-ADR수정.hwpx`이며 SHA-256은 `00952e23145bb41953abd2da6414656ed502204b4a9758f1e8e6de3ae6099c67`이다.
-- 기계 판독 계약은 `docs/operations/0912-13-plan-contract.json`의 `0912-13-adr-final-v1`이다. 참가자 수는 162명이고 행사 산출물은 확정 의결안이 아닌 `조별 권고안 초안`이다.
+- 운영 내용의 정본은 `0. 기후시민회의 제6-7차 회의 추진계획안_취합.hwpx`이며 SHA-256은 `2f372ffb93f354a338244be6b40ac2dc608c0c85d6358e589bb506ef64ccd1f2`이다.
+- 기계 판독 계약은 `docs/operations/0912-13-plan-contract.json`의 `0912-13-adr-final-v2`다. 계획안 참석 인원은 147명이고 행사 산출물은 확정 의결안이 아닌 `조별 권고안 초안`이다.
 - PM 확인 전 작업 기준은 `현장 카드 정본·디지털 미러`다. 둘이 다르면 현장 카드를 보존하고 디지털 값을 자동 덮어쓰지 않으며, 기록 담당이 차이를 인계한다.
-- 기존 `supabase/migrations/20260902_s20_open_0912_topics.sql`과 대응 verifier는 과거 6개 주제를 담고 있으므로 **적용 금지·동결** 상태다. PM 결정 8건과 승인된 교정 SQL이 준비되고 사용자가 DB 변경을 별도 승인하기 전에는 실행하지 않는다.
+- 기존 `supabase/migrations/20260902_s20_open_0912_topics.sql`과 대응 verifier는 과거 6개 주제를 담고 있으므로 **적용 금지·동결** 상태다. 교정본은 `supabase/migrations/20260908_s21_correct_0912_topics.sql`과 대응 verifier이며, 8단계 계획 계약·15개 조·8/29 보존을 일회용 PostgreSQL에서 검증했다. 승인된 운영 DB에도 새 8단계 문구를 적용하고 재조회했다.
+- 새 참석현황 명부는 숙의 181명 중 152명을 참석으로 표시해 계획안의 147명과 5명 차이가 있다. 최종 9/12 배정은 이 차이를 확인한 뒤 적용한다.
+- 147명으로 확정될 경우 한글 원본을 편집하지 않는다. 승인된 제외 대상 공식 ID 5개를 저장소 밖 UTF-8 파일에 한 줄씩 두고 `scripts/import-attendance-roster.py --attendance-only --exclude-official-ids-file <비공개-ID파일> --expected-count 147`로 검증·SQL 생성한다. 중복 ID, 명부에 없는 ID, 최종 인원 불일치는 모두 SQL 생성 전에 실패한다. 152명 전원이 정본으로 확정되면 제외 파일 없이 `--attendance-only --expected-count 152`를 사용한다.
+- 예전 초안의 `5개 원칙`, `반대 의견`, `중복 유형 A·B·C·D`는 새 정본에 없으므로 현장 입력 항목으로 사용하지 않는다.
 
 | 순서 | 공식 시각 | 디지털 미러 체크포인트 |
 |---:|---|---|
@@ -33,9 +36,9 @@
 | 3 | 9/12 16:15 | 권고별 기대효과 |
 | 4 | 9/12 17:00 | 권고문 한 문장 |
 | 5 | 9/13 09:10 | 세부 정책제안 |
-| 6 | 9/13 13:00 | 정책제안 정리·일정·대표 제목·기타 의견 |
-| 7 | 9/13 14:30 | 5개 원칙 확인·기타 의견·반대 의견 |
-| 8 | 9/13 15:45 | 중복 유형·대표 제목·제8차 이관 메모 |
+| 6 | 9/13 13:00 | 정책제안 정리·이행 일정 |
+| 7 | 9/13 14:30 | 조별 권고안 공유·점검·기타 의견 |
+| 8 | 9/13 15:45 | 중복 묶음 확인·대표 제목·분과 초안 |
 
 ### 3개 분리 Ed25519 키와 trust policy
 
@@ -138,7 +141,7 @@ HQ 변경은 `요청자 → 조작자 → 확인자` 순서로 읽어 확인한�
 - [ ] 승인 기준 branch와 작업 branch의 보안 diff를 검토하고 `evaluation/0912-13-security-diff-review.md`에 위험 경계·검증 결과·미실행 외부 게이트를 기록한다.
 - [ ] 필드 리허설 JSON의 `safety.liveNetworkRequestCount`와 `safety.liveDatabaseMutationCount`가 모두 `0`이고 `networkContract.escapedExternalRequestCount`가 `0`, `capabilityValuesLeakedToDraftQueueOrEvidence`가 실제 scan 결과 `false`다. workshop access token의 session 저장은 `networkContract.workshopSessionPersisted: true`로 따로 확인한다. `/mod`·`/hq`는 외부 CDN 글꼴 없이 시스템 한글 글꼴로 정상 표시돼야 한다.
 - [ ] `/mod`, `/hq` 자동 접근성 감사 결과와 수동 보조기술 평가의 미실행·실패 항목을 상황 책임자가 확인한다.
-- [ ] 162명의 확정 분과·조 명단과 테이블 번호를 별도 정본과 맞춘다. 현재 코드의 15개 조 구조와 임시 8월 roster 복사본은 PM 승인 명단을 대신하거나 개통 근거로 사용하지 않는다.
+- [ ] 추진계획안 147명과 참석현황 명부 152명의 차이를 확인하고, 확정된 9/12 분과·조 명단과 테이블 번호를 별도 정본과 맞춘다. 현재 코드의 15개 조 구조만으로 개통 근거를 삼지 않는다.
 - [ ] 합성 fixture에서 세 번째 기기 거부, 두 기기 동시 편집 충돌, 토큰 폐기 후 재사용 거부의 **화면 처리**를 재현한다. 같은 항목의 권한·수명·동시성·폐기 계약은 격리 PostgreSQL 검증에서도 각각 통과해야 하며 fixture 결과로 대체하지 않는다.
 - [ ] `scripts/verify-0912-postgres.sh`가 CLI 생성 seed SQL의 정상 15개 조 생성과 partial tenancy 불일치의 fail-closed를 일회용 PostgreSQL 16에서 통과하고, `seedCliCapabilityValuesLogged`가 `0`인지 확인한다.
 - [ ] 운영 DB에는 쓰지 않는 읽기 전용 `pg_proc`/ACL inventory를 뽑아 P2a verifier의 identity-argument allowlist와 대조한다. 승인 목록 밖의 `climate_vote` 실행 가능 routine이나 `public.cv_set_active(text)`가 하나라도 있으면 cutover를 중단한다. 과거 inventory는 참고일 뿐 당일 조회를 대신하지 않는다.
@@ -197,10 +200,10 @@ HQ 변경은 `요청자 → 조작자 → 확인자` 순서로 읽어 확인한�
 
 | 순서 | 정본 파일·명령 | 기대 결과와 승인 gate |
 |---|---|---|
-| 1. 명단 확정 | `scripts/session-rosters.mjs` | `0912-deliberation`의 개인정보 없는 조 구조를 162명 PM 승인 명단의 이름·분과·ordinal과 대조한다. 현재 15개 조 구조는 잠정값이며 불일치하면 개통하지 않는다. |
+| 1. 명단 확정 | `scripts/session-rosters.mjs` | `0912-deliberation`의 개인정보 없는 조 구조를 최종 승인 명단의 이름·분과·ordinal과 대조한다. 추진계획안 147명과 참석현황 152명의 차이가 해소되지 않으면 개통하지 않는다. |
 | 2. P1 tenancy — 미적용 시 별도 운영 승인 | `supabase/migrations/platform_p1_tenancy.sql` | migration 이력과 정본 checksum을 확인한다. 이미 적용됐으면 건너뛰고, 미적용이면 사용자 승인 뒤 먼저 적용한다. seed와 s20은 `org_id`·`assembly_id`를 쓰므로 P1보다 앞서 실행하면 안 된다. |
 | 3. 세션·조 비밀 SQL packet 생성·적용 | 새 세션: `node scripts/seed-0829-teams.mjs --print-seed-sql`<br>기존 세션: `node scripts/seed-0829-teams.mjs --print-sync-sql` | P1 확인 뒤 실행한다. 두 명령은 `crypto.randomInt` 기반의 서로 다른 6자리 코드 15개가 포함된 원자 트랜잭션을 stdout으로 만든다. 새 세션에만 seed, 이미 있는 세션·조에는 sync를 쓰며 stdout은 화면에 표시하지 말고 승인된 비밀 scratch 파일로 즉시 리디렉션한다. 별도 승인 후 **세션 1개·active 팀 15개**와 session의 `org_id`·`assembly_id`·`held_on`, 모든 team의 동일 `org_id`를 확인한다. sync가 기존 session 조직·assembly·행사일 또는 team 조직 불일치를 발견하면 fail-closed로 중단하고 SQL을 적용하지 않는다. 인자 없는 실행은 종료코드 `2`로 끝나며 direct live-write 경로는 완전히 비활성화되어 있다. |
-| 4. 단계 생성 — **현재 차단** | `supabase/migrations/20260902_s20_open_0912_topics.sql` | 이 파일은 과거 6개 주제이므로 실행하지 않는다. PM 결정 8건을 반영한 교정 migration·verifier를 새로 승인하고 사용자가 DB 변경을 명시 승인한 뒤에만, 계획 계약의 8개 단계와 정확히 일치하는지 검증한다. |
+| 4. 8단계 교정 적용 | `supabase/migrations/20260908_s21_correct_0912_topics.sql` | 과거 6개 주제 s20은 실행하지 않는다. 교정본은 기존 제출물이 과거 문구에 연결돼 있거나 예상 밖 ordinal이 있으면 fail-closed로 중단한다. 적용 뒤 대응 verifier로 8개 단계·15개 조·8/29 기준 보존을 확인한다. |
 | 5. P1a additive 적용 — **운영 승인 gate 1** | `supabase/migrations/platform_p1a_0912_event_access.sql` | P1→seed→s20 선행 상태와 checksum을 확인하고 사용자가 P1a를 명시적으로 승인한 뒤 적용한다. 새 token/exchange RPC를 만들되 아직 anon/auth에 실행 권한을 주지 않고, HQ rotate/status와 staff RPC만 먼저 노출한다. legacy 권한도 이 단계에서는 끊지 않는다. HQ/team bootstrap과 기존 token 사용은 조직·공론화·세션이 모두 `active`이고 세션의 비어 있지 않은 hard expiry가 미래일 때만 허용된다. 대상은 정확한 `0912-deliberation`이며 임의 최신 세션이나 36시간 기본값으로 대체하지 않는다. 토큰 만료가 **2026-09-13 22:00 KST**인지 확인한다. |
 | 6. P1a 행동 검증 | `supabase/verify/platform_p1a_0912_event_access.sql` | 두 기기·OCC·proxy vote v3 멱등성·HQ CAS·닫힌 꼭지의 조 재오픈 거부·코드 회전·개별 로그아웃·비밀번호 변경 시 운영자 전 기기 토큰 폐기·감사 불변식과 P1a 공개 권한 경계를 확인한다. CI/로컬 리허설은 `scripts/verify-0912-postgres.sh`로 disposable PostgreSQL만 사용한다. |
 | 7. 예측 코드 선교체 | `workshop_hq_rotate_join_codes(p_token, p_session_slug, p_confirmation, p_idempotency_key)` | P1a 검증 뒤 maintenance 진입을 확인하고 `ROTATE 0912-deliberation`과 새 UUID 멱등키로 1회 실행한다. 같은 조작의 재시도에만 같은 UUID를 쓴다. 새 6자리 코드는 봉인된 오프라인 전달표로 옮기되 P2a 검증 전에는 배포하지 않고, 평문을 로그·보고서에 남기지 않는다. |
@@ -215,7 +218,9 @@ HQ 변경은 `요청자 → 조작자 → 확인자` 순서로 읽어 확인한�
 
 P4 전후 snapshot은 서로 다른 쿼리를 쓰지 않는다. 승인된 운영 연결에서 같은 commit의 `platform_audit_history_snapshot.sql`을 적용 직전에 한 번 실행해 원출력과 UTC 시각을 보관하고, 승인된 P4 적용과 `platform_audit_post_apply.sql` 성공 직후 같은 파일을 다시 실행한다. `attendance.rowCount`·`attendance.sha256`·`workshop.rowCount`·`workshop.sha256` 네 값이 모두 같아야 `p4-legacy-history-preserved`를 `pass`로 기록한다. post-apply 출력의 `historyStableDuringVerification`은 읽기 전용 검증 자체가 이력을 바꾸지 않았다는 뜻일 뿐, 적용 전후 보존 증거를 대신하지 않는다. snapshot 원출력에는 행 본문 대신 건수와 digest만 남지만, 승인 ID·환경 ID·두 실행 시각과 함께 접근 통제된 운영 증거 위치에 보관한다.
 
-순서가 어긋났거나 기대 건수가 다르면 즉시 중단한다. 검증된 핵심 migration 순서는 `P1 → seed/s20 → P1a → P2 → P1b/P1c → P2a → P3 → P4`다. 여기서 `s20`은 기존 파일이 아니라 향후 승인될 교정 migration을 뜻한다. 현장 절차는 `session-rosters 정본 확인(읽기) → P1 적용 이력·checksum 확인 및 미적용 시 승인·적용 → atomic seed/sync SQL 별도 승인·적용 → s20 별도 승인·적용 → P1a 승인·검증 → 4인자 HQ rotate 선교체 → P2 및 P1b/P1c 승인·검증 → maintenance token/staff client 배포 → P2a 별도 승인·원자 cutover → positive/legacy negative 검증 → P3 별도 승인·검증 → P4 별도 승인·검증 → post-P4 legacy negative 재검증 → 최종 상태` 순서를 바꾸지 않는다. 앞선 승인은 뒤 단계 승인을 포함하지 않으며, 사용자의 명시적 운영 승인 전에 어느 DB 단계도 적용하거나 코드를 교체하지 않는다.
+순서가 어긋났거나 기대 건수가 다르면 즉시 중단한다. 검증된 핵심 migration 순서는 `P1 → seed/s21 → P1a → P2 → P1b/P1c → P2a → P3 → P4`다. 여기서 `s21`은 8단계 교정본이며 기존 6단계 s20은 계속 동결한다. 현장 절차는 `session-rosters 정본 확인(읽기) → P1 적용 이력·checksum 확인 및 미적용 시 승인·적용 → atomic seed/sync SQL 별도 승인·적용 → s21 별도 승인·적용 → P1a 승인·검증 → 4인자 HQ rotate 선교체 → P2 및 P1b/P1c 승인·검증 → maintenance token/staff client 배포 → P2a 별도 승인·원자 cutover → positive/legacy negative 검증 → P3 별도 승인·검증 → P4 별도 승인·검증 → post-P4 legacy negative 재검증 → 최종 상태` 순서를 바꾸지 않는다. 앞선 승인은 뒤 단계 승인을 포함하지 않으며, 사용자의 명시적 운영 승인 전에 어느 DB 단계도 적용하거나 코드를 교체하지 않는다.
+
+구형 검증 기록에 남은 `P1 → seed/s20 → P1a → P2 → P1b/P1c → P2a → P3 → P4`는 과거 6단계 파일을 식별하는 동결 표식일 뿐 실행 순서가 아니다. 운영 실행은 바로 위의 `seed/s21` 순서만 따른다.
 
 `--dry-run`은 코드 칸을 `******`로 가려 구조만 보여 준다. 반면 `--print-seed-sql`과 `--print-sync-sql`의 출력 전체는 접속코드가 든 **비밀 SQL packet**이다. 이 packet을 일반 terminal 출력, shell transcript, CI log, Git, `evaluation/` 증거에 남기지 않는다. 승인된 비밀 scratch에서 검토·적용한 뒤 조직의 비밀 폐기 절차를 따른다.
 
@@ -236,7 +241,7 @@ P4 전후 snapshot은 서로 다른 쿼리를 쓰지 않는다. 승인된 운영
 2. 자동 snapshot은 9월 13일 09:00까지 이어가되 행사 토큰과 브라우저 세션을 임의 폐기하지 않는다. 야간 인계는 행사 전체 종료로 처리하지 않는다.
 3. 9월 13일 08:30에 백업 가용성, 열린 단계, 조별 카드와 디지털 사본의 차이를 읽기 전용으로 확인한다. 차이가 있으면 현장 카드를 보존하고 상황 책임자에게 보고한다.
 4. 09:10 세부 정책제안 단계 개방 전 두 사람이 계획 계약과 현재 단계를 다시 확인한다.
-5. 17:00에는 미완성 초안을 지우거나 확정 처리하지 않고 제8차 이관 메모와 함께 보존한 뒤 종료·백업·복원 절차로 이동한다.
+5. 17:00에는 조별 권고안 카드와 분과 권고안 초안 목록을 묶음 순서·조 번호 순서로 보존한 뒤 종료·백업·복원 절차로 이동한다.
 
 ### Canvas 익명 의견조사 운영 제한
 

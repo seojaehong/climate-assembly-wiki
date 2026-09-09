@@ -312,6 +312,14 @@ function TopicSection({
    * 요청이 영영 안 끝나면 불리언 자물쇠는 박힌 채 남아 큐가 영원히 멈춘다.
    */
   const attemptingSinceRef = useRef<number | null>(null);
+  /**
+   * 탭을 다시 열 때 복원한 큐만 즉시 깨우기 위한 요청 ID.
+   *
+   * 새 탭은 이미 온라인이어도 `online` 이벤트를 받지 않는다. 그렇다고 같은 탭에서 막
+   * 실패한 요청까지 즉시 재전송하면 백오프를 무시하므로, 저장소에서 복원한 요청 한 건만
+   * 표시했다가 워커가 한 번 소비한다.
+   */
+  const restoredQueueRequestIdRef = useRef<string | null>(null);
   const finalizeDialogRef = useRef<HTMLDivElement>(null);
   const finalizeTriggerRef = useRef<HTMLButtonElement>(null);
   const finalizeTitleId = useId();
@@ -895,6 +903,7 @@ function TopicSection({
     const raw = draftStore.getItem(qKey);
     const restored = readQueue(raw);
     if (raw && !restored) draftStore.removeItem(qKey);
+    restoredQueueRequestIdRef.current = restored?.requestId ?? null;
     setQueued(restored);
   }, [qKey]);
 
@@ -905,7 +914,17 @@ function TopicSection({
    * 충돌 중에는 돌지 않는다 — 조가 고르기 전에는 보낼 것이 없다.
    */
   useEffect(() => {
-    if (fixtureMode || !loaded || !queued || conflict) return;
+    // 큐와 화면 데이터는 세션 토큰보다 먼저 복원될 수 있다. 토큰이 아직 없을 때
+    // 복원 표식을 소비하면 `attempt`가 아무 요청도 보내지 못한 채 돌아가고, 새 탭은
+    // `online` 이벤트도 받지 않아 다음 백오프까지 멈춘다. 접근 토큰까지 준비된 뒤 깨운다.
+    if (fixtureMode || !access || !loaded || !queued || conflict) return;
+    const restoredRequestId = restoredQueueRequestIdRef.current;
+    if (restoredRequestId === queued.requestId) {
+      // 탭이 닫힌 동안 온라인으로 돌아오면 이벤트가 없으므로, 마운트가 곧 새 연결 신호다.
+      // 먼저 소비해 렌더 재실행이 같은 요청을 겹쳐 보내지 않게 한다.
+      restoredQueueRequestIdRef.current = null;
+      void attempt(queued, true);
+    }
     const timer = setTimeout(
       () => void attempt(queued, false),
       Math.max(0, queued.nextAttemptAtMs - Date.now()),
@@ -916,7 +935,7 @@ function TopicSection({
       clearTimeout(timer);
       window.removeEventListener('online', onOnline);
     };
-  }, [fixtureMode, loaded, queued, conflict, attempt]);
+  }, [fixtureMode, access, loaded, queued, conflict, attempt]);
 
   /**
    * 다시 열기 — 본부 승인 없이 조가 직접 푼다. 기록은 남는다(actor_scope='team').

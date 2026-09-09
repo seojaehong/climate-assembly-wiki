@@ -308,8 +308,8 @@
       "ordinal": 6,
       "planStageId": "policy-package",
       "block": "pm",
-      "prompt": "정책제안 정리·일정·대표 제목·기타 의견",
-      "guidance": "2026-09-13 13:00 · 정책제안, 추진 일정, 대표 제목과 기타 의견을 하나의 초안 묶음으로 정리한다.",
+      "prompt": "정책제안 정리·이행 일정",
+      "guidance": "2026-09-13 13:00 · 정책제안 순서를 정리하고 단기·중기·장기 이행 일정을 표시해 조별 권고안 초안을 준비한다.",
       "status": "draft",
       "deadlineAt": null
     },
@@ -318,8 +318,8 @@
       "ordinal": 7,
       "planStageId": "docent-principles",
       "block": "pm",
-      "prompt": "5개 원칙 확인·기타 의견·반대 의견",
-      "guidance": "2026-09-13 14:30 · 도슨트 방식의 4회 검토 후 5개 원칙과 기타·반대 의견을 기록한다.",
+      "prompt": "조별 권고안 공유·점검·기타 의견",
+      "guidance": "2026-09-13 14:30 · 게시물을 4회 순회하며 보완점과 중복 표시를 확인하고 기타 의견을 반영해 조 최종안을 확정한다.",
       "status": "draft",
       "deadlineAt": null
     },
@@ -328,8 +328,8 @@
       "ordinal": 8,
       "planStageId": "duplicate-share",
       "block": "pm",
-      "prompt": "중복 유형·대표 제목·제8차 이관 메모",
-      "guidance": "2026-09-13 15:45 · 중복 유형 A·B·C·D, 대표 제목과 미완성 초안의 제8차 이관 메모를 남긴다.",
+      "prompt": "중복 묶음 확인·대표 제목·분과 초안",
+      "guidance": "2026-09-13 15:45 · 표시된 중복 묶음의 통합 여부와 대표 제목을 협의해 분과 권고안 초안 목록을 정리한다.",
       "status": "draft",
       "deadlineAt": null
     }

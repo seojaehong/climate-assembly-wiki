@@ -939,6 +939,15 @@ try {
         return window.scrollY;
       });
       await page.screenshot({ path: `${SHOTS}/rehearsal-1b-before.png` });
+      // Chromium screenshot capture can trigger a late font/layout anchor on slower CI runners.
+      // Re-establish and measure the user's position immediately before the server inserts topic 2,
+      // so this step attributes only insertion-induced movement to the application.
+      const scrollBeforeInsertion = await page.evaluate(async (targetScroll) => {
+        window.scrollTo({ top: targetScroll, behavior: 'instant' });
+        await new Promise((resolveFrame) => requestAnimationFrame(() => requestAnimationFrame(resolveFrame)));
+        return window.scrollY;
+      }, scrollBefore);
+      const editorTopBeforeInsertion = await firstBox.evaluate((element) => element.getBoundingClientRect().top);
 
       server.topics = [
         ...server.topics,
@@ -953,22 +962,24 @@ try {
       const alert = page.locator('[data-testid="workshop-new-topic-alert"]');
       await alert.waitFor({ state: 'visible', timeout: 5_000 });
       const afterValues = await values(page, 1);
-      const contextState = await firstBox.evaluate((element, expectedScroll) => ({
-        expectedScroll,
+      const contextState = await firstBox.evaluate((element, expected) => ({
+        expectedScroll: expected.scrollY,
         focused: document.activeElement === element,
         scrollY: window.scrollY,
-        scrollDelta: Math.abs(window.scrollY - expectedScroll),
-      }), scrollBefore);
+        scrollDelta: Math.abs(window.scrollY - expected.scrollY),
+        editorTop: element.getBoundingClientRect().top,
+        editorTopDelta: Math.abs(element.getBoundingClientRect().top - expected.editorTop),
+      }), { scrollY: scrollBeforeInsertion, editorTop: editorTopBeforeInsertion });
       await page.screenshot({ path: `${SHOTS}/rehearsal-1b-after.png` });
       must(JSON.stringify(afterValues) === JSON.stringify(beforeValues), '꼭지① 입력값이 바뀌었다');
       must(contextState.focused, '새 꼭지가 열리며 기존 입력 포커스가 이동했다');
       must(
-        contextState.scrollDelta <= 2,
-        `스크롤이 ${contextState.expectedScroll}px→${contextState.scrollY}px (${contextState.scrollDelta}px) 이동했다`,
+        contextState.editorTopDelta <= 2,
+        `편집 위치가 화면에서 ${editorTopBeforeInsertion}px→${contextState.editorTop}px (${contextState.editorTopDelta}px) 이동했다`,
       );
       const alertText = (await alert.innerText()).replace(/\s+/g, ' ').trim();
       must(alertText.includes('새 꼭지'), `새 꼭지 알림이 "${alertText}"다`);
-      return `꼭지 1→2개 · 입력 ${afterValues.length}줄 유지 · 포커스 유지 · 스크롤 변화 ${contextState.scrollDelta}px · "${alertText}"`;
+      return `꼭지 1→2개 · 입력 ${afterValues.length}줄 유지 · 포커스 유지 · 화면상 편집 위치 변화 ${contextState.editorTopDelta}px · 스크롤 보정 ${contextState.scrollDelta}px · "${alertText}"`;
     },
   );
 
@@ -1041,6 +1052,9 @@ try {
   //   도달하지 않는다** — 재접속한 탭은 큐를 들고 온라인이지만 `online` 이벤트를 못 받은
   //   상태다. 조각 검증(verify-queue-resend)이 재던 것은 「큐를 얹은 그 페이지가 online
   //   이벤트를 받는」 경로뿐이라, 여기서 재는 것은 **한 번도 안 재 본 이어 붙인 경로**다.
+  // 재접속 직후 900ms 안정화 대기 중 큐가 이미 전송될 수 있으므로, 저장 호출 기준점은
+  // 새 탭을 열기 전에 잡는다. 단계 5에서 잡으면 빠른 정상 전송을 실패로 오판한다.
+  const saveBeforeReconnect = calls.submission_save;
   await step(
     4,
     '탭 종료 → 재접속',
@@ -1073,7 +1087,6 @@ try {
     '온라인 복귀 — 큐 자동 재전송',
     '재접속한 탭이 스스로 큐를 비우고 배지가 「저장됨」으로 돌아온다',
     async () => {
-      const beforeSave = calls.submission_save;
       let secs;
       try {
         secs = await waitUntil(page, async () => (await readKey(page, QUEUE1)) === null, 25_000, '큐가 안 비었다');
@@ -1096,7 +1109,7 @@ try {
         );
         throw new Error(`${e.message} — 마운트 시 큐 워커가 안 돌았다(진단: online 이벤트 ${recovered ? '뒤엔 전송됨' : '뒤에도 미전송'})`);
       }
-      must(calls.submission_save > beforeSave, 'submission_save 가 안 나갔다');
+      must(calls.submission_save > saveBeforeReconnect, 'submission_save 가 안 나갔다');
       const failedRequest = saveRequests.at(-2);
       const retriedRequest = saveRequests.at(-1);
       must(Boolean(failedRequest && retriedRequest), '저장 요청 이력을 두 번 관찰하지 못했다');

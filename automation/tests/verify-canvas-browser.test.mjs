@@ -3,7 +3,7 @@ import { once } from 'node:events';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
-import { verifyCanvasBrowser } from '../verify-canvas-browser.mjs';
+import { isSyntheticReadOnlyRpcRequest, verifyCanvasBrowser } from '../verify-canvas-browser.mjs';
 
 const servers = [];
 const authReviewerId = 'auth-user:00000000-0000-4000-8000-000000000091';
@@ -13,6 +13,31 @@ const transcriptFixtureSha256 = createHash('sha256')
 
 afterEach(async () => {
   await Promise.all(servers.splice(0).map((server) => new Promise((resolve) => server.close(resolve))));
+});
+
+describe('synthetic browser read-only RPC boundary', () => {
+  it('allows only the exact current-round read RPC POST path', () => {
+    expect(isSyntheticReadOnlyRpcRequest(
+      'POST',
+      'https://example.supabase.co/rest/v1/rpc/platform_canvas_round_current_v2',
+    )).toBe(true);
+    expect(isSyntheticReadOnlyRpcRequest(
+      'POST',
+      'https://example.supabase.co/rest/v1/rpc/platform_canvas_round_current_v2?select=*',
+    )).toBe(true);
+    expect(isSyntheticReadOnlyRpcRequest(
+      'GET',
+      'https://example.supabase.co/rest/v1/rpc/platform_canvas_round_current_v2',
+    )).toBe(false);
+    expect(isSyntheticReadOnlyRpcRequest(
+      'POST',
+      'https://example.supabase.co/rest/v1/rpc/platform_canvas_round_create_v2',
+    )).toBe(false);
+    expect(isSyntheticReadOnlyRpcRequest(
+      'POST',
+      'https://example.supabase.co/rest/v1/rpc/platform_canvas_round_current_v2_extra',
+    )).toBe(false);
+  });
 });
 
 async function fixtureServer({
@@ -805,6 +830,7 @@ describe('verifyCanvasBrowser', () => {
     expect(report.checks.canvasAuthRetryAvailable).toBe(true);
     expect(report.checks.canvasAuthRequestCount).toBe(1);
     expect(report.checks.blockedWriteRequestCount).toBe(0);
+    expect(report.checks.syntheticReadOnlyRpcRequestCount).toBe(0);
     expect(report.checks.canvasHydrated).toBe(true);
     expect(report.checks.canvasWorkbenchUsable).toBe(true);
     expect(report.checks.canvasWorkbenchSize).toEqual({ width: 1440, height: 800 });

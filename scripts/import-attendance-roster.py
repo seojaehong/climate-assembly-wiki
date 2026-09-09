@@ -43,6 +43,7 @@ class RosterRow:
     official_id: str
     name: str
     team_name: str
+    attendance_status: str
 
 
 def _local_name(tag: str) -> str:
@@ -104,15 +105,66 @@ def parse_roster(path: Path, expected_hash: str = EXPECTED_SOURCE_HASH) -> list[
             team = _team_name(cells[0])
             if team and len(cells) >= 6:
                 current_team = team
-                official_id, name = cells[1], cells[2]
+                official_id, name, attendance_status = cells[1], cells[2], cells[5]
             elif current_team and len(cells) >= 5 and cells[0].strip().isdigit():
-                official_id, name = cells[0], cells[1]
+                official_id, name, attendance_status = cells[0], cells[1], cells[4]
             else:
                 continue
-            rows.append(RosterRow(official_id=official_id.strip(), name=name.strip(), team_name=current_team))
+            rows.append(
+                RosterRow(
+                    official_id=official_id.strip(),
+                    name=name.strip(),
+                    team_name=current_team,
+                    attendance_status=attendance_status.strip(),
+                )
+            )
 
     validate_roster(rows)
     return rows
+
+
+def attending_rows(rows: Iterable[RosterRow]) -> list[RosterRow]:
+    """Return rows not explicitly marked absent in the canonical attendance sheet."""
+    absent_markers = ("미참석", "결석")
+    return [
+        row
+        for row in rows
+        if not any(marker in row.attendance_status for marker in absent_markers)
+    ]
+
+
+def read_excluded_official_ids(path: Path) -> list[str]:
+    """Read one official ID per UTF-8 line without accepting ambiguous CSV input."""
+    excluded_ids = [
+        line.strip()
+        for line in path.read_text(encoding="utf-8-sig").splitlines()
+        if line.strip()
+    ]
+    if not excluded_ids:
+        raise ValueError("excluded official ID file is empty")
+    if any("," in official_id or "\t" in official_id for official_id in excluded_ids):
+        raise ValueError("excluded official ID file must contain one ID per line")
+    if len(set(excluded_ids)) != len(excluded_ids):
+        raise ValueError("duplicate excluded official ID")
+    return excluded_ids
+
+
+def exclude_rows_by_official_id(
+    rows: Iterable[RosterRow], excluded_ids: Iterable[str]
+) -> list[RosterRow]:
+    """Exclude an explicitly approved ID set and reject unknown or duplicate IDs."""
+    selected_rows = list(rows)
+    requested = list(excluded_ids)
+    if len(set(requested)) != len(requested):
+        raise ValueError("duplicate excluded official ID")
+    available = {row.official_id for row in selected_rows}
+    unknown = sorted(set(requested) - available)
+    if unknown:
+        raise ValueError(
+            f"excluded official ID not found in selected roster: {', '.join(unknown)}"
+        )
+    excluded = set(requested)
+    return [row for row in selected_rows if row.official_id not in excluded]
 
 
 def group_counts(rows: Iterable[RosterRow]) -> dict[str, int]:
@@ -151,9 +203,11 @@ def build_seed_sql(rows: list[RosterRow], session_slug: str, source_hash: str) -
 do $preflight$
 declare
   target_session_id uuid;
+  target_org_id uuid;
 begin
-  select id into target_session_id from climate_vote.session where slug = {slug};
-  if target_session_id is null then
+  select id, org_id into target_session_id, target_org_id
+  from climate_vote.session where slug = {slug};
+  if target_session_id is null or target_org_id is null then
     raise exception 'session not found: %', {slug};
   end if;
   -- 다른 source_hash가 이미 있어도 막지 않는다. 명단은 개정되며(7/4 → 8/29 1.0 → 2.0)
@@ -165,22 +219,25 @@ $preflight$;
 with source_rows(official_id, name, team_name) as (
   values
 {values}
+), target_session as (
+  select id, org_id from climate_vote.session where slug = {slug}
 ), upserted_members as (
-  insert into climate_vote.assembly_member (official_id, name, active, source_hash)
-  select official_id, name, true, {source} from source_rows
-  on conflict (official_id) do update
+  insert into climate_vote.assembly_member (org_id, official_id, name, active, source_hash)
+  select s.org_id, r.official_id, r.name, true, {source}
+  from source_rows r cross join target_session s
+  on conflict (org_id, official_id) where org_id is not null do update
     set name = excluded.name, active = true, source_hash = excluded.source_hash,
         updated_at = now()
-  returning id, official_id
+  returning id, org_id, official_id
 )
-insert into climate_vote.team_assignment (session_id, team_id, member_id, active)
-select s.id, t.id, m.id, true
+insert into climate_vote.team_assignment (session_id, team_id, member_id, active, org_id)
+select ts.id, t.id, m.id, true, ts.org_id
 from source_rows r
-join upserted_members m on m.official_id = r.official_id
-join climate_vote.session s on s.slug = {slug}
-join climate_vote.team t on t.session_id = s.id and t.name = r.team_name
+join target_session ts on true
+join upserted_members m on m.org_id = ts.org_id and m.official_id = r.official_id
+join climate_vote.team t on t.session_id = ts.id and t.name = r.team_name
 on conflict (session_id, member_id) do update
-  set team_id = excluded.team_id, active = true, updated_at = now();
+  set team_id = excluded.team_id, active = true, org_id = excluded.org_id, updated_at = now();
 
 -- 개정 명단에서 빠진 사람(드롭·교체)의 배정을 내린다.
 -- 그대로 두면 hq_teams 인원과 정족수 산정이 실제보다 커진다.
@@ -197,18 +254,18 @@ update climate_vote.team_assignment ta
         and m.official_id in ({official_ids})
    );
 
-insert into climate_vote.attendance (assignment_id, base_status)
-select ta.id, 'unconfirmed'
+insert into climate_vote.attendance (assignment_id, base_status, org_id)
+select ta.id, 'unconfirmed', ta.org_id
 from climate_vote.team_assignment ta
 join climate_vote.session s on s.id = ta.session_id
 where s.slug = {slug} and ta.active
 on conflict (assignment_id) do nothing;
 
 insert into climate_vote.attendance_audit_log
-  (session_id, action, before_value, after_value, actor_scope, actor_label)
+  (session_id, action, before_value, after_value, actor_scope, actor_label, org_id)
 select s.id, 'roster.import', null,
   jsonb_build_object('source_hash',{source},'member_count',{total},'team_count',{team_count}),
-  'import', '고정 HWPX 명단 가져오기'
+  'import', '고정 HWPX 명단 가져오기', s.org_id
 from climate_vote.session s
 where s.slug={slug}
   and not exists (
@@ -224,7 +281,9 @@ declare
   attendance_count integer;
 begin
   select count(*) into roster_count
-  from climate_vote.assembly_member where source_hash = {source};
+  from climate_vote.assembly_member m
+  join climate_vote.session s on s.org_id = m.org_id
+  where s.slug = {slug} and m.source_hash = {source};
   select count(*) into assignment_count
   from climate_vote.team_assignment ta
   join climate_vote.session s on s.id = ta.session_id
@@ -244,12 +303,21 @@ $verify$;
 commit;"""
 
 
-def build_report(rows: list[RosterRow], path: Path, source_hash: str) -> dict[str, object]:
+def build_report(
+    rows: list[RosterRow],
+    path: Path,
+    source_hash: str,
+    *,
+    source_item_count: int | None = None,
+    expected_total: int = EXPECTED_TOTAL,
+    attendance_only: bool = False,
+) -> dict[str, object]:
     return {
         "source_file": path.name,
         "source_sha256": source_hash,
         "item_count": len(rows),
-        "expected_total": EXPECTED_TOTAL,
+        "expected_total": expected_total,
+        "source_item_count": source_item_count if source_item_count is not None else len(rows),
         "team_count": len(group_counts(rows)),
         "group_counts": group_counts(rows),
         "blank_id_count": sum(not row.official_id for row in rows),
@@ -258,6 +326,7 @@ def build_report(rows: list[RosterRow], path: Path, source_hash: str) -> dict[st
         "duplicate_name_count": len(rows) - len({row.name for row in rows}),
         "excluded_planning_and_advisory": True,
         "historical_notes_imported": False,
+        "attendance_only": attendance_only,
         "status": "verified",
     }
 
@@ -269,6 +338,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--session-slug", default="0829-deliberation")
     parser.add_argument("--report", type=Path, default=Path("evaluation/report.json"))
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument("--attendance-only", action="store_true")
+    parser.add_argument(
+        "--exclude-official-ids-file",
+        type=Path,
+        help="UTF-8 text file containing one approved official ID per line",
+    )
+    parser.add_argument("--expected-count", type=int)
     parser.add_argument("--print-sql", action="store_true")
     parser.add_argument("--sql-output", type=Path)
     return parser.parse_args()
@@ -278,10 +354,26 @@ def main() -> int:
     args = parse_args()
     if not args.dry_run and not args.print_sql and args.sql_output is None:
         raise ValueError("choose --dry-run, --print-sql, or --sql-output")
-    rows = parse_roster(args.file, args.expected_hash)
+    source_rows = parse_roster(args.file, args.expected_hash)
+    rows = attending_rows(source_rows) if args.attendance_only else source_rows
+    if args.exclude_official_ids_file is not None:
+        rows = exclude_rows_by_official_id(
+            rows,
+            read_excluded_official_ids(args.exclude_official_ids_file),
+        )
+    expected_count = args.expected_count if args.expected_count is not None else EXPECTED_TOTAL
+    if len(rows) != expected_count:
+        raise ValueError(f"expected {expected_count} selected roster rows, got {len(rows)}")
     source_hash = _source_hash(args.file)
     if args.dry_run:
-        report = build_report(rows, args.file, source_hash)
+        report = build_report(
+            rows,
+            args.file,
+            source_hash,
+            source_item_count=len(source_rows),
+            expected_total=expected_count,
+            attendance_only=args.attendance_only,
+        )
         args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(json.dumps(report, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
         print(f"verified {len(rows)} members across {len(group_counts(rows))} teams")
