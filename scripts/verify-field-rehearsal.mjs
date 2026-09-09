@@ -939,6 +939,14 @@ try {
         return window.scrollY;
       });
       await page.screenshot({ path: `${SHOTS}/rehearsal-1b-before.png` });
+      // Chromium screenshot capture can trigger a late font/layout anchor on slower CI runners.
+      // Re-establish and measure the user's position immediately before the server inserts topic 2,
+      // so this step attributes only insertion-induced movement to the application.
+      const scrollBeforeInsertion = await page.evaluate(async (targetScroll) => {
+        window.scrollTo({ top: targetScroll, behavior: 'instant' });
+        await new Promise((resolveFrame) => requestAnimationFrame(() => requestAnimationFrame(resolveFrame)));
+        return window.scrollY;
+      }, scrollBefore);
 
       server.topics = [
         ...server.topics,
@@ -958,7 +966,7 @@ try {
         focused: document.activeElement === element,
         scrollY: window.scrollY,
         scrollDelta: Math.abs(window.scrollY - expectedScroll),
-      }), scrollBefore);
+      }), scrollBeforeInsertion);
       await page.screenshot({ path: `${SHOTS}/rehearsal-1b-after.png` });
       must(JSON.stringify(afterValues) === JSON.stringify(beforeValues), '꼭지① 입력값이 바뀌었다');
       must(contextState.focused, '새 꼭지가 열리며 기존 입력 포커스가 이동했다');
