@@ -16,7 +16,7 @@ import { ClientRouter } from 'astro:transitions';
 import SiteHeader from '../components/SiteHeader.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 import SearchModal from '../components/SearchModal.astro';
-import { SITE_LOCALE_CODES, isSiteLocale, localeDirection, localeOgTag, replaceLocalePrefix, siteShellCopy } from '../lib/site-locales';
+import { SITE_LOCALE_CODES, isSiteLocale, localeDirection, localeOgTag, replaceLocalePrefix, siteShellCopy, type SiteLocale } from '../lib/site-locales';
 import '../styles/global.css';
 
 // ---------------------------------------------------------------------------
@@ -108,7 +108,7 @@ interface HreflangLink {
   url: string;
 }
 
-const hreflangLinks: HreflangLink[] = alternateLangs.filter(isSiteLocale).map((altLang) => {
+const hreflangLinks: HreflangLink[] = alternateLangs.filter(isSiteLocale).map((altLang: SiteLocale) => {
   const sourcePath = canonicalPath ?? Astro.url.pathname;
   const altPath = replaceLocalePrefix(sourcePath, altLang);
   const altUrl = `${SITE_URL}${altPath.endsWith('/') ? altPath : altPath + '/'}`;
