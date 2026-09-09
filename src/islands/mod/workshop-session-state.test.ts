@@ -84,9 +84,11 @@ describe('workshop topic synchronization', () => {
     restoration.restoreAfterCommit();
     expect(scrollTo).toHaveBeenLastCalledWith(8, 240);
 
-    // commit 뒤 다음 frame에 생긴 scroll anchoring도 원래 위치로 되돌린다.
-    fakeWindow.scrollY = 247;
-    frames.shift()?.(16);
+    // CI처럼 commit 뒤 0.5초를 넘겨 반복되는 scroll anchoring도 원래 위치로 되돌린다.
+    for (let frame = 1; frame <= 60; frame += 1) {
+      fakeWindow.scrollY = 240 + frame;
+      frames.shift()?.(frame * 16);
+    }
     expect(scrollTo).toHaveBeenLastCalledWith(8, 240);
 
     listeners.get('wheel')?.({} as Event);
