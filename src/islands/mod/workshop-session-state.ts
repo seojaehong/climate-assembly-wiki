@@ -64,7 +64,10 @@ export function addedTopics(previousIds: readonly string[] | null, next: readonl
 const ORDINAL_MARKS = ['①', '②', '③', '④', '⑤', '⑥'];
 
 const TEXT_INPUT_TYPES = new Set(['text', 'search', 'email', 'url', 'tel', 'password', 'number']);
-export const EDITOR_SCROLL_SETTLE_FRAMES = 6;
+// CI와 저사양 현장 기기에서는 새 꼭지 알림의 폰트·줄바꿈이 초기 commit보다 늦게
+// 확정될 수 있다. 약 0.5초 동안만 위치를 지키고, 실제 사용자 스크롤은 아래 intent
+// listeners가 즉시 취소한다.
+export const EDITOR_SCROLL_SETTLE_FRAMES = 30;
 
 export type EditorScrollRestoration = {
   /** React가 신규 꼭지를 DOM에 반영한 직후, paint 전에 호출한다. */
