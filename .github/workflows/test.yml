@@ -341,8 +341,13 @@ jobs:
             cat "$a4_post_apply_log"
             exit 1
           fi
-          if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
-            -c "begin; create or replace function climate_vote.platform_sha256_hex(p_value text) returns text language sql immutable strict set search_path = pg_catalog, extensions as 'select repeat(''0'', 64)';" \
+          # Negative fixtures run in disposable database clones. The verifier now starts a
+          # read-only transaction, so the old "mutate and verify in one open transaction"
+          # pattern would fail before reaching the intended contract assertion.
+          docker exec "$container" createdb -U postgres --template=verify verify_a4_bad_checksum
+          docker exec "$container" psql -U postgres -d verify_a4_bad_checksum -v ON_ERROR_STOP=1 \
+            -c "create or replace function climate_vote.platform_sha256_hex(p_value text) returns text language sql immutable strict set search_path = pg_catalog, extensions as 'select repeat(''0'', 64)';" >/dev/null
+          if docker exec "$container" psql -U postgres -d verify_a4_bad_checksum -v ON_ERROR_STOP=1 \
             -f /tmp/design_provisioning_post_apply.sql \
             >"$RUNNER_TEMP/a4-altered-checksum-helper.log" 2>&1; then
             echo "Altered A4 checksum helper unexpectedly passed verification" >&2
@@ -350,8 +355,6 @@ jobs:
           fi
           grep -q "checksum helper contract is unsafe" \
             "$RUNNER_TEMP/a4-altered-checksum-helper.log"
-          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
-            -f /tmp/design_provisioning_post_apply.sql >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
             "alter function climate_vote.design_provision(jsonb,bytea) set session_replication_role = replica;"
           if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
@@ -365,8 +368,12 @@ jobs:
             "alter function climate_vote.design_provision(jsonb,bytea) reset session_replication_role;"
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
             -f /tmp/design_provisioning_post_apply.sql >/dev/null
-          if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
-            -c "begin; create role a4_untrusted_owner login; grant usage, create on schema climate_vote to a4_untrusted_owner; alter function climate_vote.design_provision(jsonb,bytea,jsonb) owner to a4_untrusted_owner;" \
+          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
+            -c "create role a4_untrusted_owner login;" >/dev/null
+          docker exec "$container" createdb -U postgres --template=verify verify_a4_bad_function_owner
+          docker exec "$container" psql -U postgres -d verify_a4_bad_function_owner -v ON_ERROR_STOP=1 \
+            -c "grant usage, create on schema climate_vote to a4_untrusted_owner; alter function climate_vote.design_provision(jsonb,bytea,jsonb) owner to a4_untrusted_owner;" >/dev/null
+          if docker exec "$container" psql -U postgres -d verify_a4_bad_function_owner -v ON_ERROR_STOP=1 \
             -f /tmp/design_provisioning_post_apply.sql \
             >"$RUNNER_TEMP/a4-untrusted-function-owner.log" 2>&1; then
             echo "Untrusted A4 function owner unexpectedly passed verification" >&2
@@ -374,10 +381,10 @@ jobs:
           fi
           grep -q "owner contract is unsafe" \
             "$RUNNER_TEMP/a4-untrusted-function-owner.log"
-          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
-            -f /tmp/design_provisioning_post_apply.sql >/dev/null
-          if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
-            -c "begin; create role a4_untrusted_owner login; grant usage, create on schema climate_vote to a4_untrusted_owner; alter table climate_vote.design_provisioning_operation owner to a4_untrusted_owner; alter function climate_vote.platform_json_canonical(jsonb) owner to a4_untrusted_owner; alter function climate_vote.platform_sha256_hex(text) owner to a4_untrusted_owner; alter function climate_vote.platform_design_join_code() owner to a4_untrusted_owner; alter function climate_vote.platform_design_authorization_revision() owner to a4_untrusted_owner; alter function climate_vote.design_provision(jsonb,bytea) owner to a4_untrusted_owner; alter function climate_vote.design_provision(jsonb,bytea,jsonb) owner to a4_untrusted_owner; alter function climate_vote.design_provisioning_status(jsonb) owner to a4_untrusted_owner; alter function climate_vote.design_provisioning_status(jsonb,jsonb) owner to a4_untrusted_owner;" \
+          docker exec "$container" createdb -U postgres --template=verify verify_a4_bad_unified_owner
+          docker exec "$container" psql -U postgres -d verify_a4_bad_unified_owner -v ON_ERROR_STOP=1 \
+            -c "grant usage, create on schema climate_vote to a4_untrusted_owner; alter table climate_vote.design_provisioning_operation owner to a4_untrusted_owner; alter function climate_vote.platform_json_canonical(jsonb) owner to a4_untrusted_owner; alter function climate_vote.platform_sha256_hex(text) owner to a4_untrusted_owner; alter function climate_vote.platform_design_join_code() owner to a4_untrusted_owner; alter function climate_vote.platform_design_authorization_revision() owner to a4_untrusted_owner; alter function climate_vote.design_provision(jsonb,bytea) owner to a4_untrusted_owner; alter function climate_vote.design_provision(jsonb,bytea,jsonb) owner to a4_untrusted_owner; alter function climate_vote.design_provisioning_status(jsonb) owner to a4_untrusted_owner; alter function climate_vote.design_provisioning_status(jsonb,jsonb) owner to a4_untrusted_owner;" >/dev/null
+          if docker exec "$container" psql -U postgres -d verify_a4_bad_unified_owner -v ON_ERROR_STOP=1 \
             -f /tmp/design_provisioning_post_apply.sql \
             >"$RUNNER_TEMP/a4-untrusted-unified-owner.log" 2>&1; then
             echo "Untrusted A4 unified owner unexpectedly passed verification" >&2
@@ -385,8 +392,6 @@ jobs:
           fi
           grep -q "owner contract is unsafe" \
             "$RUNNER_TEMP/a4-untrusted-unified-owner.log"
-          docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
-            -f /tmp/design_provisioning_post_apply.sql >/dev/null
           docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 -c \
             "create table climate_vote.a4_constraint_shadow_fixture(capacity integer); alter table climate_vote.team drop constraint platform_team_capacity_positive; alter table climate_vote.a4_constraint_shadow_fixture add constraint platform_team_capacity_positive check (capacity > 0);" >/dev/null
           if docker exec "$container" psql -U postgres -d verify -v ON_ERROR_STOP=1 \
