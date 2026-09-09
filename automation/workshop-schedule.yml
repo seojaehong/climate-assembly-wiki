@@ -23,7 +23,7 @@ workshops:
     program_start_kst: "11:00"
     deliberation_start_kst: "13:45"
     program_end_kst: "20:00"
-    participant_count: 162
+    participant_count: 147
     artifact_state: 조별 권고안 초안
     plan_contract: docs/operations/0912-13-plan-contract.json
     snapshot_until_kst: "2026-09-13T09:00:00+09:00"
@@ -35,7 +35,7 @@ workshops:
     program_start_kst: "08:00"
     deliberation_start_kst: "09:00"
     program_end_kst: "17:00"
-    participant_count: 162
+    participant_count: 147
     artifact_state: 조별 권고안 초안
     plan_contract: docs/operations/0912-13-plan-contract.json
     supabase_round_id: 7  # ★ 행사 전 실제 round_id 확인 필요

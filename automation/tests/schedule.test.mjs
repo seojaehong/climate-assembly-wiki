@@ -119,14 +119,14 @@ test('binds the Gyeongju automation windows to the canonical plan metadata', asy
 
   expect(firstDay).toMatchObject({
     plan_contract: 'docs/operations/0912-13-plan-contract.json',
-    participant_count: 162,
+    participant_count: 147,
     program_start_kst: '11:00',
     program_end_kst: '20:00',
     artifact_state: '조별 권고안 초안',
   });
   expect(secondDay).toMatchObject({
     plan_contract: 'docs/operations/0912-13-plan-contract.json',
-    participant_count: 162,
+    participant_count: 147,
     program_start_kst: '08:00',
     deliberation_start_kst: '09:00',
     program_end_kst: '17:00',

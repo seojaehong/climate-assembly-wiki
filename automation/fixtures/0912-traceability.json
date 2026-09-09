@@ -4,7 +4,7 @@
   "requirements": [
     {
       "id": "PLAN-CANONICAL-ALIGNMENT",
-      "statement": "ADR 수정 HWPX의 해시, 162명, 8개 진행 단계, 조별 권고안 초안 상태를 화면·공개 일정·리허설·런북에 동일하게 반영하고 PM 결정과 DB 적용은 승인 gate가 닫힌 상태로 유지한다.",
+      "statement": "최신 취합 HWPX의 해시, 계획안 147명, 8개 진행 단계, 조별 권고안 초안 상태를 화면·공개 일정·리허설·런북에 동일하게 반영하고 참석현황 152명과의 차이는 별도 명단 gate로 유지한다.",
       "implementationFiles": [
         "docs/operations/0912-13-plan-contract.json",
         "src/islands/mod/mod-tabs.ts",

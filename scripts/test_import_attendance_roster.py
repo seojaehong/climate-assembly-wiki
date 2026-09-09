@@ -66,12 +66,33 @@ class AttendanceRosterParserTest(unittest.TestCase):
 
         self.assertTrue(sql.startswith("begin;"))
         self.assertTrue(sql.rstrip().endswith("commit;"))
-        self.assertIn("join upserted_members m on m.official_id = r.official_id", sql)
+        self.assertIn(
+            "join upserted_members m on m.org_id = ts.org_id and m.official_id = r.official_id",
+            sql,
+        )
         self.assertIn(f"roster_count <> {EXPECTED_TOTAL}", sql)
         self.assertIn("1분과 1조", sql)
         # 개정 명단에서 빠진 사람의 배정을 내리지 않으면 hq_teams 인원·정족수가 부풀어 오른다.
         self.assertIn("update climate_vote.team_assignment ta", sql)
         self.assertIn("set active = false", sql)
+        self.assertIn("insert into climate_vote.assembly_member (org_id, official_id", sql)
+        self.assertIn("on conflict (org_id, official_id) where org_id is not null", sql)
+        self.assertIn("insert into climate_vote.team_assignment (session_id, team_id, member_id, active, org_id)", sql)
+        self.assertIn("insert into climate_vote.attendance (assignment_id, base_status, org_id)", sql)
+
+    def test_attendance_filter_excludes_only_explicit_absence(self) -> None:
+        module = load_module()
+        rows = [
+            module.RosterRow("1", "참석자", "1분과 1조", "참석"),
+            module.RosterRow("2", "지각자", "1분과 1조", "참석 (지각 10:10)"),
+            module.RosterRow("3", "공란자", "1분과 1조", ""),
+            module.RosterRow("4", "미참석자", "1분과 1조", "미참석"),
+            module.RosterRow("5", "결석자", "1분과 1조", "결석"),
+        ]
+
+        filtered = module.attending_rows(rows)
+
+        self.assertEqual([row.official_id for row in filtered], ["1", "2", "3"])
 
     def test_dropped_members_are_gone(self) -> None:
         """2.0에서 빠진 드롭 3인이 남아 있으면 정족수가 틀어진다."""
