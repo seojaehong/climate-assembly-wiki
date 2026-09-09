@@ -1041,6 +1041,9 @@ try {
   //   도달하지 않는다** — 재접속한 탭은 큐를 들고 온라인이지만 `online` 이벤트를 못 받은
   //   상태다. 조각 검증(verify-queue-resend)이 재던 것은 「큐를 얹은 그 페이지가 online
   //   이벤트를 받는」 경로뿐이라, 여기서 재는 것은 **한 번도 안 재 본 이어 붙인 경로**다.
+  // 재접속 직후 900ms 안정화 대기 중 큐가 이미 전송될 수 있으므로, 저장 호출 기준점은
+  // 새 탭을 열기 전에 잡는다. 단계 5에서 잡으면 빠른 정상 전송을 실패로 오판한다.
+  const saveBeforeReconnect = calls.submission_save;
   await step(
     4,
     '탭 종료 → 재접속',
@@ -1073,7 +1076,6 @@ try {
     '온라인 복귀 — 큐 자동 재전송',
     '재접속한 탭이 스스로 큐를 비우고 배지가 「저장됨」으로 돌아온다',
     async () => {
-      const beforeSave = calls.submission_save;
       let secs;
       try {
         secs = await waitUntil(page, async () => (await readKey(page, QUEUE1)) === null, 25_000, '큐가 안 비었다');
@@ -1096,7 +1098,7 @@ try {
         );
         throw new Error(`${e.message} — 마운트 시 큐 워커가 안 돌았다(진단: online 이벤트 ${recovered ? '뒤엔 전송됨' : '뒤에도 미전송'})`);
       }
-      must(calls.submission_save > beforeSave, 'submission_save 가 안 나갔다');
+      must(calls.submission_save > saveBeforeReconnect, 'submission_save 가 안 나갔다');
       const failedRequest = saveRequests.at(-2);
       const retriedRequest = saveRequests.at(-1);
       must(Boolean(failedRequest && retriedRequest), '저장 요청 이력을 두 번 관찰하지 못했다');

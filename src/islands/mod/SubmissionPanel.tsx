@@ -914,7 +914,10 @@ function TopicSection({
    * 충돌 중에는 돌지 않는다 — 조가 고르기 전에는 보낼 것이 없다.
    */
   useEffect(() => {
-    if (fixtureMode || !loaded || !queued || conflict) return;
+    // 큐와 화면 데이터는 세션 토큰보다 먼저 복원될 수 있다. 토큰이 아직 없을 때
+    // 복원 표식을 소비하면 `attempt`가 아무 요청도 보내지 못한 채 돌아가고, 새 탭은
+    // `online` 이벤트도 받지 않아 다음 백오프까지 멈춘다. 접근 토큰까지 준비된 뒤 깨운다.
+    if (fixtureMode || !access || !loaded || !queued || conflict) return;
     const restoredRequestId = restoredQueueRequestIdRef.current;
     if (restoredRequestId === queued.requestId) {
       // 탭이 닫힌 동안 온라인으로 돌아오면 이벤트가 없으므로, 마운트가 곧 새 연결 신호다.
@@ -932,7 +935,7 @@ function TopicSection({
       clearTimeout(timer);
       window.removeEventListener('online', onOnline);
     };
-  }, [fixtureMode, loaded, queued, conflict, attempt]);
+  }, [fixtureMode, access, loaded, queued, conflict, attempt]);
 
   /**
    * 다시 열기 — 본부 승인 없이 조가 직접 푼다. 기록은 남는다(actor_scope='team').
