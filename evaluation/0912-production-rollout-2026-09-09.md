@@ -57,6 +57,11 @@
 - 자동화 Vitest: 603/603 통과
 - 정적 추적성 요구사항: 15/15 통과
 - Astro check: 오류 0건
+- PR #33 GitHub test 2개, PostgreSQL 순서 검증 2개, 현장 브라우저 검증 2개, 접근성 audit: 모두 통과
+- Cloudflare Pages preview: 통과
+- 별도 Workers Builds 중복 연동: 기존과 동일하게 실패 표시이며 Pages 배포 결과와 분리해 추적
+
+적용 커밋은 `e890a38`이며 `codex/0912-readiness-hardening` 브랜치와 PR #33에 push했다.
 
 서버/Claude가 추가한 교정파일 무결성 검사를 보존하면서 `scripts/verify-0912-readiness.mjs`의 정본 계약·출처 해시·147명·운영 주제 적용 상태를 v2로 갱신했다.
 
