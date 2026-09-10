@@ -534,12 +534,15 @@ function TopicSection({
   // 미저장 내용을 보관함에 넣어 둔다. 저장해서 서버와 같아지면 지운다
   // (낡은 초안이 남아 다음에 되살아나면 그게 더 위험하다).
   useEffect(() => {
-    if (loaded == null) return;
+    // A successful save clears the draft before its server read-back. Keep the
+    // pre-save render from recreating that draft while the accepted baseline is
+    // still being committed; the effect reruns when saving returns to false.
+    if (loaded == null || saving) return;
     // ★ 딛고 선 서버 updated_at 을 함께 넣는다 — 재전송 큐(US-004·005)가
     //   「내가 읽은 뒤에 남이 저장했는가」를 이 값으로 판정한다.
     if (dirty) draftStore.setItem(draftKey, writeDraft(rows, editBaseUpdatedAt, Date.now(), editBaseVersion));
     else draftStore.removeItem(draftKey);
-  }, [rows, dirty, loaded, draftKey, editBaseUpdatedAt, editBaseVersion]);
+  }, [rows, dirty, loaded, draftKey, editBaseUpdatedAt, editBaseVersion, saving]);
 
   // 마감 배너(탭 바깥)가 볼 수 있게 미저장 사실을 위로 올린다.
   // ★ 「저장 안 함」과 「재전송 대기」를 **같은 사실**로 묶는다 — 둘 다 서버에 아직

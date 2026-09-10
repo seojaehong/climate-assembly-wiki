@@ -30,6 +30,9 @@ const pagefindIntegrations = nodeMajor >= 23
   : [(await import('astro-pagefind')).default()];
 
 export default defineConfig({
+  // Keep Astro's mutable content cache inside this checkout as well. The
+  // default node_modules/.astro path is shared by our Windows worktrees.
+  cacheDir: '.astro/content-cache',
   // MAJOR 6 fix: set to canonical domain so Astro.site is used in citation URLs.
   // Switch to https://climate-assembly.org once DNS is confirmed.
   // Until then, keep pages.dev so canonical/OG/sitemap remain consistent.
@@ -57,6 +60,10 @@ export default defineConfig({
     },
   }), ...pagefindIntegrations, react()],
   vite: {
+    // Worktrees share node_modules through a Windows junction. Keeping Vite's
+    // mutable cache there lets simultaneous checks race on deps_temp -> deps.
+    // The ignored per-worktree Astro directory gives every checkout its own cache.
+    cacheDir: '.astro/vite-cache',
     plugins: [tailwindcss(), yaml()],
     define: {
       __DEPLOY_REVISION__: JSON.stringify(deployRevision),
