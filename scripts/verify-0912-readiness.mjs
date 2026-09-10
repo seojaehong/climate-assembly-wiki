@@ -33,10 +33,10 @@ export const REQUIRED_0912_PLAN_STAGE_IDS = Object.freeze([
   'duplicate-share',
 ]);
 
-const CANONICAL_PLAN_CONTRACT_ID = '0912-13-adr-final-v2';
-const CANONICAL_PLAN_SOURCE_FILE = '0. 기후시민회의 제6-7차 회의 추진계획안_취합.hwpx';
-const CANONICAL_PLAN_SOURCE_SHA256 = '2f372ffb93f354a338244be6b40ac2dc608c0c85d6358e589bb506ef64ccd1f2';
-const CANONICAL_PLAN_TEXT_SHA256 = 'fb77b8f7f8e4d1b51aacfe2bb9d3b095bcefab00c0fb2a6ab8d4f8a42b221e43';
+const CANONICAL_PLAN_CONTRACT_ID = '0912-13-adr-final-v3';
+const CANONICAL_PLAN_SOURCE_FILE = '0. 기후시민회의 제6-7차 회의 추진계획안_취합_ADR수정.hwpx';
+const CANONICAL_PLAN_SOURCE_SHA256 = '9cff7cf7e8e7520290f35abb4d31b3854ed0905f2f1fe21557b089f96c451608';
+const CANONICAL_PLAN_TEXT_SHA256 = '051caca0ad41869d935095f25c467da97ae696bfceca6c048645eabd3a5e78c9';
 const REQUIRED_0912_PM_DECISION_IDS = Object.freeze([
   'recommendation-count',
   'day1-share-audience',
@@ -56,8 +56,6 @@ const REQUIRED_0912_FROZEN_ARTIFACTS = Object.freeze([
     path: 'supabase/verify/20260902_s20_open_0912_topics.sql',
     sha256: '929628337b2e0cabbebe350d6996076e33e234885a2783eff788ec228289d166',
   }),
-]);
-const REQUIRED_0912_REPLACEMENT_ARTIFACTS = Object.freeze([
   Object.freeze({
     path: 'supabase/migrations/20260908_s21_correct_0912_topics.sql',
     sha256: '6ff132c7cd1de9b0769ca193329610397027b25485419cfe2d0b5f471059ef36',
@@ -65,6 +63,16 @@ const REQUIRED_0912_REPLACEMENT_ARTIFACTS = Object.freeze([
   Object.freeze({
     path: 'supabase/verify/20260908_s21_correct_0912_topics.sql',
     sha256: 'a3775fd51c949f941ff975e8fee26321a3f6d63542de461c41c432e7d188a03b',
+  }),
+]);
+const REQUIRED_0912_REPLACEMENT_ARTIFACTS = Object.freeze([
+  Object.freeze({
+    path: 'supabase/migrations/20260910_s22_align_0912_final_plan.sql',
+    sha256: '1377891470b3534686296a536358e3932c0541422b3026b56bdaa33e04dd7bde',
+  }),
+  Object.freeze({
+    path: 'supabase/verify/20260910_s22_align_0912_final_plan.sql',
+    sha256: '80b2f59017acfb81a7494a6538809821b6c03ca2f7b2c33174741efd1b89480a',
   }),
 ]);
 
@@ -393,8 +401,8 @@ export function verify0912Readiness({
       throw new Error('PM 결정 gate 8건의 ID 또는 상태가 올바르지 않습니다.');
     }
     if (contract.digitalRecordMode?.workingMode !== 'physical-card-primary-digital-mirror'
-      || contract.releaseGuard?.productionTopicActivationBlocked !== false
-      || contract.releaseGuard?.databaseChangeApplied !== true
+      || contract.releaseGuard?.productionTopicActivationBlocked !== true
+      || contract.releaseGuard?.databaseChangeApplied !== false
       || contract.releaseGuard?.explicitApprovalRequired !== true) {
       throw new Error('디지털 미러 원칙 또는 승인된 주제 교정의 운영 DB 상태가 올바르지 않습니다.');
     }
@@ -451,7 +459,7 @@ export function verify0912Readiness({
       CANONICAL_PLAN_CONTRACT_ID,
       CANONICAL_PLAN_SOURCE_SHA256,
       '현장 카드 정본·디지털 미러',
-      '147명과 5명 차이',
+      '147명·150명·156명',
       '적용 금지·동결',
       ...stages.map((stage) => stage.title),
     ]);

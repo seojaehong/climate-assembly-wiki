@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib.util
+import os
 import sys
 import tempfile
 import unittest
@@ -8,9 +9,14 @@ from pathlib import Path
 
 SCRIPT_PATH = Path(__file__).with_name("import-attendance-roster.py")
 # 정본은 8/29 참석명단 2.0. 7/4 명단(174명)이 아니라 이쪽이 당일 출석부의 근거다.
-SOURCE_PATH = Path(__file__).resolve().parents[2] / "00_입력자료" / "20260829 시민참여단 참석명단_2.0.hwpx"
+PROJECT_DATA_ROOT = Path(
+    os.environ.get("CLIMATE_ASSEMBLY_PROJECT_ROOT", str(Path(__file__).resolve().parents[2]))
+)
+SOURCE_PATH = PROJECT_DATA_ROOT / "00_입력자료" / "20260829 시민참여단 참석명단_2.0.hwpx"
 EXPECTED_HASH = "7AB0A88092A28D70BD77D695B33C9E9F067F91BF155829534438F3BDEC5080DF"
 EXPECTED_TOTAL = 181
+FINAL_0912_SOURCE_PATH = PROJECT_DATA_ROOT / "00_입력자료" / "20260912 시민참여단 참석명단_모더레이터용.hwpx"
+FINAL_0912_EXPECTED_HASH = "549E9BB9770F05CBD1B99B6C13A1D5F959E24FC7BE612D699A4F7FF5C5758C4B"
 
 
 def load_module() -> object:
@@ -24,6 +30,18 @@ def load_module() -> object:
 
 
 class AttendanceRosterParserTest(unittest.TestCase):
+    def test_final_0912_hwpx_roster(self) -> None:
+        module = load_module()
+        rows = module.parse_roster(FINAL_0912_SOURCE_PATH, FINAL_0912_EXPECTED_HASH)
+        selected = module.attending_rows(rows)
+
+        self.assertEqual(len(rows), 182)
+        self.assertEqual(len(selected), 156)
+        self.assertEqual(len(module.group_counts(rows)), 15)
+        self.assertEqual(module.group_counts(rows)["3분과 5조"], 13)
+        self.assertEqual(len({row.official_id for row in rows}), 182)
+        self.assertEqual(len({row.name for row in rows}), 182)
+
     def test_fixed_hwpx_roster(self) -> None:
         module = load_module()
         rows = module.parse_roster(SOURCE_PATH, EXPECTED_HASH)

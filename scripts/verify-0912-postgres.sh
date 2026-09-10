@@ -42,6 +42,7 @@ fi
 # release evidence additionally refuses any dirty target before Docker starts.
 target_files=(
   "supabase/migrations/20260908_s21_correct_0912_topics.sql"
+  "supabase/migrations/20260910_s22_align_0912_final_plan.sql"
   "supabase/migrations/platform_p1a_0912_event_access.sql"
   "supabase/migrations/platform_p2a_0912_token_only_activation.sql"
   "supabase/rollbacks/platform_p1_BEFORE.sql"
@@ -49,6 +50,7 @@ target_files=(
   "supabase/rollbacks/platform_p2a_0912_token_only_activation_BEFORE.sql"
   "supabase/verify/platform_p1a_0912_event_access.sql"
   "supabase/verify/20260908_s21_correct_0912_topics.sql"
+  "supabase/verify/20260910_s22_align_0912_final_plan.sql"
   "supabase/verify/platform_p2a_0912_token_only_activation.sql"
   "supabase/verify/platform_p2a_0912_token_only_activation_rollback.sql"
   "supabase/verify/design_provisioning_post_apply.sql"
@@ -186,6 +188,8 @@ docker cp supabase/rollbacks/platform_p1a_0912_event_access_BEFORE.sql \
 docker cp supabase/verify/00_prelude.sql "${container}:/tmp/00_prelude.sql"
 docker cp supabase/verify/20260908_s21_correct_0912_topics.sql \
   "${container}:/tmp/20260908_s21_correct_0912_topics.verify.sql"
+docker cp supabase/verify/20260910_s22_align_0912_final_plan.sql \
+  "${container}:/tmp/20260910_s22_align_0912_final_plan.verify.sql"
 docker cp supabase/verify/driver_pass1.sql "${container}:/tmp/driver_pass1.sql"
 docker cp supabase/verify/platform_p1a_0912_event_access.sql \
   "${container}:/tmp/platform_p1a_0912_event_access.verify.sql"
@@ -737,6 +741,10 @@ docker exec "$container" psql -U postgres -d verify \
   -v ON_ERROR_STOP=1 -f /tmp/20260908_s21_correct_0912_topics.sql >/dev/null
 docker exec "$container" psql -U postgres -d verify \
   -v ON_ERROR_STOP=1 -f /tmp/20260908_s21_correct_0912_topics.verify.sql >/dev/null
+docker exec "$container" psql -U postgres -d verify \
+  -v ON_ERROR_STOP=1 -f /tmp/20260910_s22_align_0912_final_plan.sql >/dev/null
+docker exec "$container" psql -U postgres -d verify \
+  -v ON_ERROR_STOP=1 -f /tmp/20260910_s22_align_0912_final_plan.verify.sql >/dev/null
 
 seed_success="$(docker exec "$container" psql -U postgres -d verify -Atq -v ON_ERROR_STOP=1 -c \
   "select case when

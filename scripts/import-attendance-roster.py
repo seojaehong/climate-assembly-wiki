@@ -12,11 +12,10 @@ from pathlib import Path
 from typing import Iterable
 from xml.etree import ElementTree
 
-# 정본 = 「20260829 시민참여단 참석명단_2.0.hwpx」(2026-08-27 수신).
-# 직전 정본은 7/4 명단(7D486447…)이었고 8/29 2.0에서 숙의 명부가 174→181명으로 바뀌었다
-# (드롭 3명 제외 + 신규 11명 편입, 3분과 4조 이명례의 연번 160→143 정정 포함).
-EXPECTED_SOURCE_HASH = "7AB0A88092A28D70BD77D695B33C9E9F067F91BF155829534438F3BDEC5080DF"
-EXPECTED_GROUP_COUNTS = {
+LEGACY_SOURCE_HASH = "7AB0A88092A28D70BD77D695B33C9E9F067F91BF155829534438F3BDEC5080DF"
+FINAL_0912_SOURCE_HASH = "549E9BB9770F05CBD1B99B6C13A1D5F959E24FC7BE612D699A4F7FF5C5758C4B"
+
+LEGACY_GROUP_COUNTS = {
     "1분과 1조": 12,
     "1분과 2조": 12,
     "1분과 3조": 13,
@@ -33,9 +32,20 @@ EXPECTED_GROUP_COUNTS = {
     "3분과 4조": 13,
     "3분과 5조": 12,
 }
+FINAL_0912_GROUP_COUNTS = {
+    **LEGACY_GROUP_COUNTS,
+    "3분과 5조": 13,
+}
+
+# CLI 기본값은 새 9/12 모더레이터용 명부다. 이전 8/29 정본도 해시별 계약으로 계속 읽을 수 있다.
+EXPECTED_SOURCE_HASH = FINAL_0912_SOURCE_HASH
+EXPECTED_GROUP_COUNTS_BY_HASH = {
+    LEGACY_SOURCE_HASH: LEGACY_GROUP_COUNTS,
+    FINAL_0912_SOURCE_HASH: FINAL_0912_GROUP_COUNTS,
+}
 
 # 명부 총원은 조별 인원의 합으로 둔다 — 숫자를 두 곳에 적어두면 한쪽만 고쳐진다.
-EXPECTED_TOTAL = sum(EXPECTED_GROUP_COUNTS.values())
+EXPECTED_TOTAL = sum(FINAL_0912_GROUP_COUNTS.values())
 
 
 @dataclass(frozen=True)
@@ -84,8 +94,12 @@ def _source_hash(path: Path) -> str:
 
 def parse_roster(path: Path, expected_hash: str = EXPECTED_SOURCE_HASH) -> list[RosterRow]:
     actual_hash = _source_hash(path)
-    if actual_hash != expected_hash.upper():
-        raise ValueError(f"source hash mismatch: expected {expected_hash.upper()}, got {actual_hash}")
+    normalized_expected_hash = expected_hash.upper()
+    if actual_hash != normalized_expected_hash:
+        raise ValueError(f"source hash mismatch: expected {normalized_expected_hash}, got {actual_hash}")
+    expected_group_counts = EXPECTED_GROUP_COUNTS_BY_HASH.get(normalized_expected_hash)
+    if expected_group_counts is None:
+        raise ValueError(f"unsupported roster source hash: {normalized_expected_hash}")
 
     with zipfile.ZipFile(path) as package:
         section = ElementTree.fromstring(package.read("Contents/section0.xml"))
@@ -119,7 +133,7 @@ def parse_roster(path: Path, expected_hash: str = EXPECTED_SOURCE_HASH) -> list[
                 )
             )
 
-    validate_roster(rows)
+    validate_roster(rows, expected_group_counts)
     return rows
 
 
@@ -171,10 +185,11 @@ def group_counts(rows: Iterable[RosterRow]) -> dict[str, int]:
     return dict(Counter(row.team_name for row in rows))
 
 
-def validate_roster(rows: list[RosterRow]) -> None:
-    if len(rows) != EXPECTED_TOTAL:
-        raise ValueError(f"expected {EXPECTED_TOTAL} roster rows, got {len(rows)}")
-    if group_counts(rows) != EXPECTED_GROUP_COUNTS:
+def validate_roster(rows: list[RosterRow], expected_group_counts: dict[str, int]) -> None:
+    expected_total = sum(expected_group_counts.values())
+    if len(rows) != expected_total:
+        raise ValueError(f"expected {expected_total} roster rows, got {len(rows)}")
+    if group_counts(rows) != expected_group_counts:
         raise ValueError(f"group counts mismatch: {group_counts(rows)}")
     if any(not row.official_id or not row.name for row in rows):
         raise ValueError("blank official_id or name")

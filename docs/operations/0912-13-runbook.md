@@ -21,24 +21,24 @@
 
 ### 정본 계획과 디지털 기록 경계
 
-- 운영 내용의 정본은 `0. 기후시민회의 제6-7차 회의 추진계획안_취합.hwpx`이며 SHA-256은 `2f372ffb93f354a338244be6b40ac2dc608c0c85d6358e589bb506ef64ccd1f2`이다.
-- 기계 판독 계약은 `docs/operations/0912-13-plan-contract.json`의 `0912-13-adr-final-v2`다. 계획안 참석 인원은 147명이고 행사 산출물은 확정 의결안이 아닌 `조별 권고안 초안`이다.
+- 운영 내용의 정본은 `0. 기후시민회의 제6-7차 회의 추진계획안_취합_ADR수정.hwpx`이며 SHA-256은 `9cff7cf7e8e7520290f35abb4d31b3854ed0905f2f1fe21557b089f96c451608`이다.
+- 기계 판독 계약은 `docs/operations/0912-13-plan-contract.json`의 `0912-13-adr-final-v3`다. 계획안 참석 인원은 147명이고 행사 산출물은 확정 의결안이 아닌 `조별 권고안 초안`이다.
 - PM 확인 전 작업 기준은 `현장 카드 정본·디지털 미러`다. 둘이 다르면 현장 카드를 보존하고 디지털 값을 자동 덮어쓰지 않으며, 기록 담당이 차이를 인계한다.
-- 기존 `supabase/migrations/20260902_s20_open_0912_topics.sql`과 대응 verifier는 과거 6개 주제를 담고 있으므로 **적용 금지·동결** 상태다. 교정본은 `supabase/migrations/20260908_s21_correct_0912_topics.sql`과 대응 verifier이며, 8단계 계획 계약·15개 조·8/29 보존을 일회용 PostgreSQL에서 검증했다. 승인된 운영 DB에도 새 8단계 문구를 적용하고 재조회했다.
-- 새 참석현황 명부는 숙의 181명 중 152명을 참석으로 표시해 계획안의 147명과 5명 차이가 있다. 최종 9/12 배정은 이 차이를 확인한 뒤 적용한다.
-- 147명으로 확정될 경우 한글 원본을 편집하지 않는다. 승인된 제외 대상 공식 ID 5개를 저장소 밖 UTF-8 파일에 한 줄씩 두고 `scripts/import-attendance-roster.py --attendance-only --exclude-official-ids-file <비공개-ID파일> --expected-count 147`로 검증·SQL 생성한다. 중복 ID, 명부에 없는 ID, 최종 인원 불일치는 모두 SQL 생성 전에 실패한다. 152명 전원이 정본으로 확정되면 제외 파일 없이 `--attendance-only --expected-count 152`를 사용한다.
-- 예전 초안의 `5개 원칙`, `반대 의견`, `중복 유형 A·B·C·D`는 새 정본에 없으므로 현장 입력 항목으로 사용하지 않는다.
+- 기존 s20과 s21 주제 파일은 **적용 금지·동결** 상태다. 9월 10일 정본 대응본은 `supabase/migrations/20260910_s22_align_0912_final_plan.sql`과 verifier이며, 승인·적용·재조회 전에는 주제 개통을 완료로 보지 않는다.
+- 새 명부의 `147명·150명·156명` 차이를 해소해야 한다. 숙의 182개 행 중 명시적 미참석 26개를 제외하면 156명이고 조 제목의 인원 합계는 150명이다. 조 제목 합계에서 하루 불참 표기 3명을 제외하면 계획안의 147명과 일치하지만, 조 제목보다 실제 참석 행이 6명 많은 이유와 날짜별 출석부 적재 기준을 확인한 뒤 적용한다.
+- 156개 참석 행 전체가 현장 출석부 정본으로 확정되면 `scripts/import-attendance-roster.py --attendance-only --expected-count 156`으로 검증·SQL 생성한다. 다른 인원으로 확정될 경우 한글 원본을 편집하지 않고 승인된 제외 대상 공식 ID를 저장소 밖 UTF-8 파일에 한 줄씩 둔 뒤 `--exclude-official-ids-file`과 확정 인원 `--expected-count`를 함께 사용한다. 중복 ID, 명부에 없는 ID, 최종 인원 불일치는 모두 SQL 생성 전에 실패한다.
+- 새 정본은 `5원칙 판단 질문`, 수용·불수용과 기타 의견, 중복 표시를 사용하지만 `중복 유형 A·B·C·D`는 사용하지 않는다.
 
 | 순서 | 공식 시각 | 디지털 미러 체크포인트 |
 |---:|---|---|
-| 1 | 9/12 13:45 | 숙의 주제·범주 확인 및 보완안 |
-| 2 | 9/12 14:45 | 권고별 배경·문제점 |
-| 3 | 9/12 16:15 | 권고별 기대효과 |
-| 4 | 9/12 17:00 | 권고문 한 문장 |
-| 5 | 9/13 09:10 | 세부 정책제안 |
-| 6 | 9/13 13:00 | 정책제안 정리·이행 일정 |
-| 7 | 9/13 14:30 | 조별 권고안 공유·점검·기타 의견 |
-| 8 | 9/13 15:45 | 중복 묶음 확인·대표 제목·분과 초안 |
+| 1 | 9/12 13:45 | 5차 논의 확인 및 주요 범주 점검 |
+| 2 | 9/12 14:45 | 조별 배경·문제인식 작성 |
+| 3 | 9/12 16:15 | 조별 기대효과 작성 |
+| 4 | 9/12 17:00 | 권고 내용 초안 검토 ① 권고제목 |
+| 5 | 9/13 09:10 | 권고 내용 초안 토론 ② |
+| 6 | 9/13 13:00 | 권고 내용 정리 및 이행 일정 |
+| 7 | 9/13 14:00 | 조별 권고안 공유 및 점검 |
+| 8 | 9/13 15:15 | 분과 권고안 통합 및 분과 초안 토론 |
 
 ### 3개 분리 Ed25519 키와 trust policy
 
@@ -203,7 +203,7 @@ HQ 변경은 `요청자 → 조작자 → 확인자` 순서로 읽어 확인한�
 | 1. 명단 확정 | `scripts/session-rosters.mjs` | `0912-deliberation`의 개인정보 없는 조 구조를 최종 승인 명단의 이름·분과·ordinal과 대조한다. 추진계획안 147명과 참석현황 152명의 차이가 해소되지 않으면 개통하지 않는다. |
 | 2. P1 tenancy — 미적용 시 별도 운영 승인 | `supabase/migrations/platform_p1_tenancy.sql` | migration 이력과 정본 checksum을 확인한다. 이미 적용됐으면 건너뛰고, 미적용이면 사용자 승인 뒤 먼저 적용한다. seed와 s20은 `org_id`·`assembly_id`를 쓰므로 P1보다 앞서 실행하면 안 된다. |
 | 3. 세션·조 비밀 SQL packet 생성·적용 | 새 세션: `node scripts/seed-0829-teams.mjs --print-seed-sql`<br>기존 세션: `node scripts/seed-0829-teams.mjs --print-sync-sql` | P1 확인 뒤 실행한다. 두 명령은 `crypto.randomInt` 기반의 서로 다른 6자리 코드 15개가 포함된 원자 트랜잭션을 stdout으로 만든다. 새 세션에만 seed, 이미 있는 세션·조에는 sync를 쓰며 stdout은 화면에 표시하지 말고 승인된 비밀 scratch 파일로 즉시 리디렉션한다. 별도 승인 후 **세션 1개·active 팀 15개**와 session의 `org_id`·`assembly_id`·`held_on`, 모든 team의 동일 `org_id`를 확인한다. sync가 기존 session 조직·assembly·행사일 또는 team 조직 불일치를 발견하면 fail-closed로 중단하고 SQL을 적용하지 않는다. 인자 없는 실행은 종료코드 `2`로 끝나며 direct live-write 경로는 완전히 비활성화되어 있다. |
-| 4. 8단계 교정 적용 | `supabase/migrations/20260908_s21_correct_0912_topics.sql` | 과거 6개 주제 s20은 실행하지 않는다. 교정본은 기존 제출물이 과거 문구에 연결돼 있거나 예상 밖 ordinal이 있으면 fail-closed로 중단한다. 적용 뒤 대응 verifier로 8개 단계·15개 조·8/29 기준 보존을 확인한다. |
+| 4. 최종 8단계 교정 적용 | `supabase/migrations/20260910_s22_align_0912_final_plan.sql` | s20·s21은 실행하지 않는다. 최종 교정본은 기존 제출물이 과거 문구에 연결돼 있거나 예상 밖 ordinal이 있으면 fail-closed로 중단한다. 적용 뒤 대응 verifier로 8개 단계·15개 조·8/29 기준 보존을 확인한다. |
 | 5. P1a additive 적용 — **운영 승인 gate 1** | `supabase/migrations/platform_p1a_0912_event_access.sql` | P1→seed→s20 선행 상태와 checksum을 확인하고 사용자가 P1a를 명시적으로 승인한 뒤 적용한다. 새 token/exchange RPC를 만들되 아직 anon/auth에 실행 권한을 주지 않고, HQ rotate/status와 staff RPC만 먼저 노출한다. legacy 권한도 이 단계에서는 끊지 않는다. HQ/team bootstrap과 기존 token 사용은 조직·공론화·세션이 모두 `active`이고 세션의 비어 있지 않은 hard expiry가 미래일 때만 허용된다. 대상은 정확한 `0912-deliberation`이며 임의 최신 세션이나 36시간 기본값으로 대체하지 않는다. 토큰 만료가 **2026-09-13 22:00 KST**인지 확인한다. |
 | 6. P1a 행동 검증 | `supabase/verify/platform_p1a_0912_event_access.sql` | 두 기기·OCC·proxy vote v3 멱등성·HQ CAS·닫힌 꼭지의 조 재오픈 거부·코드 회전·개별 로그아웃·비밀번호 변경 시 운영자 전 기기 토큰 폐기·감사 불변식과 P1a 공개 권한 경계를 확인한다. CI/로컬 리허설은 `scripts/verify-0912-postgres.sh`로 disposable PostgreSQL만 사용한다. |
 | 7. 예측 코드 선교체 | `workshop_hq_rotate_join_codes(p_token, p_session_slug, p_confirmation, p_idempotency_key)` | P1a 검증 뒤 maintenance 진입을 확인하고 `ROTATE 0912-deliberation`과 새 UUID 멱등키로 1회 실행한다. 같은 조작의 재시도에만 같은 UUID를 쓴다. 새 6자리 코드는 봉인된 오프라인 전달표로 옮기되 P2a 검증 전에는 배포하지 않고, 평문을 로그·보고서에 남기지 않는다. |

@@ -28,11 +28,11 @@ describe('9/12 readiness traceability verifier', () => {
     expect(REQUIRED_0912_REQUIREMENTS).toContain('PLAN-CANONICAL-ALIGNMENT');
     expect(report.checks.find((check) => check.id === 'canonical-plan-contract')?.evidence)
       .toMatchObject({
-        contractId: '0912-13-adr-final-v2',
+        contractId: '0912-13-adr-final-v3',
         canonicalSource: true,
         stageCount: REQUIRED_0912_PLAN_STAGE_IDS.length,
-        productionTopicActivationBlocked: false,
-        databaseChangeApplied: true,
+        productionTopicActivationBlocked: true,
+        databaseChangeApplied: false,
       });
   });
 

@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "contractId": "0912-13-adr-final-v2",
-  "status": "canonical-with-roster-reconciliation-pending",
+  "contractId": "0912-13-adr-final-v3",
+  "status": "canonical-with-roster-interpretation-pending",
   "source": {
     "canonical": true,
-    "fileName": "0. 기후시민회의 제6-7차 회의 추진계획안_취합.hwpx",
-    "sha256": "2f372ffb93f354a338244be6b40ac2dc608c0c85d6358e589bb506ef64ccd1f2",
-    "extractedTextSha256": "fb77b8f7f8e4d1b51aacfe2bb9d3b095bcefab00c0fb2a6ab8d4f8a42b221e43"
+    "fileName": "0. 기후시민회의 제6-7차 회의 추진계획안_취합_ADR수정.hwpx",
+    "sha256": "9cff7cf7e8e7520290f35abb4d31b3854ed0905f2f1fe21557b089f96c451608",
+    "extractedTextSha256": "051caca0ad41869d935095f25c467da97ae696bfceca6c048645eabd3a5e78c9"
   },
   "participantCount": 147,
   "artifactState": "조별 권고안 초안",
@@ -36,8 +36,8 @@
       "day": "2026-09-12",
       "startKst": "13:45",
       "endKst": "14:30",
-      "title": "숙의 주제·범주 확인 및 보완안",
-      "guidance": "제5차 회의 결과를 바탕으로 범주를 확인하고 보완할 내용을 기록한다."
+      "title": "5차 논의 확인 및 주요 범주 점검",
+      "guidance": "운영팀 통합 범주를 출발점으로 우리 조의 5차 원문을 재점검하고 빠진 것, 다르게 묶을 것, 새 범주를 보완한다."
     },
     {
       "id": "background-problem",
@@ -45,8 +45,8 @@
       "day": "2026-09-12",
       "startKst": "14:45",
       "endKst": "15:45",
-      "title": "권고별 배경·문제점",
-      "guidance": "범주별 배경과 해결해야 할 문제점을 출처 표현을 보존해 정리한다."
+      "title": "조별 배경·문제인식 작성",
+      "guidance": "우리 조 범주를 확정한 뒤 현재 문제점과 근거 데이터를 5차 참여자 원문에 맞춰 정리한다."
     },
     {
       "id": "expected-effect",
@@ -54,8 +54,8 @@
       "day": "2026-09-12",
       "startKst": "16:15",
       "endKst": "17:00",
-      "title": "권고별 기대효과",
-      "guidance": "권고가 시행될 때 기대하는 변화를 기록한다."
+      "title": "조별 기대효과 작성",
+      "guidance": "예상 감축 효과와 사회적 편익을 확인 가능한 상태로 쓰고 배경·문제인식과의 정합성을 확인한다."
     },
     {
       "id": "recommendation-statement",
@@ -63,8 +63,8 @@
       "day": "2026-09-12",
       "startKst": "17:00",
       "endKst": "18:00",
-      "title": "권고문 한 문장",
-      "guidance": "범주별 권고 내용을 한 문장 초안으로 작성한다."
+      "title": "권고 내용 초안 검토 ① 권고제목",
+      "guidance": "권고안마다 무엇을 권고할지 한 문장 초안을 만들고 파킹한 정책 아이디어를 재료로 사용한다."
     },
     {
       "id": "detailed-policy",
@@ -72,60 +72,60 @@
       "day": "2026-09-13",
       "startKst": "09:10",
       "endKst": "12:00",
-      "title": "세부 정책제안",
-      "guidance": "09:10~10:30과 10:45~12:00 두 구간에 걸쳐 권고별 세부 정책제안을 작성한다."
+      "title": "권고 내용 초안 토론 ②",
+      "guidance": "전날 쓴 요구사항 문장을 확인하고 09:10~10:30과 10:45~12:00 두 구간에 걸쳐 구체적인 정책 제안을 도출한다."
     },
     {
       "id": "policy-package",
       "ordinal": 6,
       "day": "2026-09-13",
       "startKst": "13:00",
-      "endKst": "14:15",
-      "title": "정책제안 정리·이행 일정",
-      "guidance": "정책제안의 순서를 정리하고 단기·중기·장기 이행 일정을 표시해 조별 권고안 초안을 준비한다."
+      "endKst": "14:00",
+      "title": "권고 내용 정리 및 이행 일정",
+      "guidance": "정책 제안의 순서를 정리하고 단기·중기·장기 이행 일정을 표시한 뒤 배경·문제인식 및 기대효과와의 정합성을 확인한다."
     },
     {
       "id": "docent-principles",
       "ordinal": 7,
       "day": "2026-09-13",
-      "startKst": "14:30",
-      "endKst": "15:30",
-      "title": "조별 권고안 공유·점검·기타 의견",
-      "guidance": "게시물을 4회 순회하며 보완점과 중복 표시를 확인하고, 수용·불수용 및 기타 의견을 반영해 조 최종안을 확정한다."
+      "startKst": "14:00",
+      "endKst": "15:00",
+      "title": "조별 권고안 공유 및 점검",
+      "guidance": "게시물을 4회 순회하며 보완점과 중복을 표시하고 수용·불수용 및 기타 의견을 반영해 조 최종안을 확정한다."
     },
     {
       "id": "duplicate-share",
       "ordinal": 8,
       "day": "2026-09-13",
-      "startKst": "15:45",
-      "endKst": "16:45",
-      "title": "중복 묶음 확인·대표 제목·분과 초안",
-      "guidance": "표시된 중복 집계대로 묶음을 확인하고 통합 여부와 대표 제목을 협의해 분과 권고안 초안 목록을 정리한다."
+      "startKst": "15:15",
+      "endKst": "16:15",
+      "title": "분과 권고안 통합 및 분과 초안 토론",
+      "guidance": "중복 집계표의 묶음을 확인하고 당사자 조가 통합 여부와 대표 제목을 협의해 분과 권고안 초안 목록을 정리한다."
     }
   ],
   "pmDecisions": [
     { "id": "recommendation-count", "status": "pending", "question": "조별 권고 수와 복수 권고 작성 시 시간 배분을 확정한다." },
     { "id": "day1-share-audience", "status": "pending", "question": "9월 12일 19시 공유의 청중·장소·발표자료 작성 주체와 분과 간 공개 범위를 확정한다." },
-    { "id": "removed-procedures", "status": "pending", "question": "이해관계자 발언·질의응답·질문게시판 후속 답변 절차의 삭제 여부를 확정한다." },
+    { "id": "removed-procedures", "status": "confirmed", "question": "9월 12일 19시 분과 내 조별 공유와 이해관계자 토론을 운영한다." },
     { "id": "duplicate-abcd", "status": "confirmed", "question": "새 정본에 없는 중복 유형 A·B·C·D는 사용하지 않고, 표시된 중복 묶음을 분과 전체와 당사자 조가 확인한다." },
     { "id": "no-vote-round8", "status": "pending", "question": "이번 회차의 무표결 원칙과 제8차 이관·개인 투표 경계를 확정한다." },
     { "id": "record-source-of-truth", "status": "pending", "question": "현장 카드와 디지털 기록의 정본·충돌 처리 규칙을 확정한다." },
-    { "id": "roster-staffing", "status": "pending", "question": "추진계획안 147명과 참석현황 명부 152명의 차이 및 최종 9/12 분과·조 배치를 확정한다." },
+    { "id": "roster-staffing", "status": "pending", "question": "계획안 147명, 명부 조 제목 합계 150명, 미참석 제외 행 156명 중 현장 출석부에 적재할 기준과 조별 6명 차이를 확정한다." },
     { "id": "schedule-artifact-conflicts", "status": "pending", "question": "본문 시간·장소 충돌과 명찰 일정표 이미지의 교체 여부를 확정한다." }
   ],
   "releaseGuard": {
-    "productionTopicActivationBlocked": false,
-    "databaseChangeApplied": true,
+    "productionTopicActivationBlocked": true,
+    "databaseChangeApplied": false,
     "explicitApprovalRequired": true,
-    "blockedReason": "운영 DB의 8개 주제 문구는 새 정본과 일치하도록 적용·검증됐다. 명부 배정과 P1c 권한 활성화는 별도 gate로 남는다.",
+    "blockedReason": "9월 10일 수신 정본의 9월 13일 후반 시각과 단계명이 운영 DB의 기존 s21 문구와 달라 s22 적용·재검증 전까지 개통하지 않는다.",
     "approvedReplacementArtifacts": [
       {
-        "path": "supabase/migrations/20260908_s21_correct_0912_topics.sql",
-        "sha256": "6ff132c7cd1de9b0769ca193329610397027b25485419cfe2d0b5f471059ef36"
+        "path": "supabase/migrations/20260910_s22_align_0912_final_plan.sql",
+        "sha256": "1377891470b3534686296a536358e3932c0541422b3026b56bdaa33e04dd7bde"
       },
       {
-        "path": "supabase/verify/20260908_s21_correct_0912_topics.sql",
-        "sha256": "a3775fd51c949f941ff975e8fee26321a3f6d63542de461c41c432e7d188a03b"
+        "path": "supabase/verify/20260910_s22_align_0912_final_plan.sql",
+        "sha256": "80b2f59017acfb81a7494a6538809821b6c03ca2f7b2c33174741efd1b89480a"
       }
     ],
     "frozenArtifacts": [
@@ -136,6 +136,14 @@
       {
         "path": "supabase/verify/20260902_s20_open_0912_topics.sql",
         "sha256": "929628337b2e0cabbebe350d6996076e33e234885a2783eff788ec228289d166"
+      },
+      {
+        "path": "supabase/migrations/20260908_s21_correct_0912_topics.sql",
+        "sha256": "6ff132c7cd1de9b0769ca193329610397027b25485419cfe2d0b5f471059ef36"
+      },
+      {
+        "path": "supabase/verify/20260908_s21_correct_0912_topics.sql",
+        "sha256": "a3775fd51c949f941ff975e8fee26321a3f6d63542de461c41c432e7d188a03b"
       }
     ],
     "forbiddenLegacyParticipantCopy": [
