@@ -63,7 +63,7 @@ describe('9/12 UI-fixture RPC emulator subset', () => {
       approvalGates: [
         'p1-tenancy',
         'secure-session-team-seed',
-        's20-draft-topics',
+        's22-final-topics',
         'p1a-additive',
         'p2-analysis-org-selection',
         'p2a-token-only-cutover',
@@ -74,7 +74,7 @@ describe('9/12 UI-fixture RPC emulator subset', () => {
         'session-roster-review',
         'p1-tenancy',
         'secure-session-team-seed',
-        's20-draft-topics',
+        's22-final-topics',
         'p1a-additive-and-verify',
         'hq-rotate-join-codes',
         'p2-analysis',

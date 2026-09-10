@@ -46,7 +46,7 @@ export const CANONICAL_0912_GATE_IDS = Object.freeze([
   'roster-canonical-review',
   'p1-tenancy-production-approval',
   'secure-seed-sync-production-approval',
-  's20-topics-production-approval',
+  's22-topics-production-approval',
   'p1a-additive-production-approval',
   'p1a-production-verification',
   'named-hq-operators-ready',
@@ -76,7 +76,7 @@ export const CANONICAL_0912_ROLLOUT_IDS = Object.freeze([
   'session-roster-review',
   'p1-tenancy',
   'secure-session-team-seed',
-  's20-draft-topics',
+  's22-final-topics',
   'p1a-additive-and-verify',
   'hq-rotate-join-codes',
   'p2-analysis',
@@ -101,9 +101,9 @@ export const CANONICAL_0912_APPROVAL_SCOPES = Object.freeze([
     gateIds: Object.freeze(['secure-seed-sync-production-approval']),
   }),
   Object.freeze({
-    scope: 's20-topics',
-    rolloutStepIds: Object.freeze(['s20-draft-topics']),
-    gateIds: Object.freeze(['s20-topics-production-approval']),
+    scope: 's22-topics',
+    rolloutStepIds: Object.freeze(['s22-final-topics']),
+    gateIds: Object.freeze(['s22-topics-production-approval']),
   }),
   Object.freeze({
     scope: 'p1a-additive',
@@ -369,7 +369,7 @@ const PRODUCTION_ENVIRONMENT_CONTROL_NAMES = new Set([
 const APPROVAL_GATE_BEFORE_ROLLOUT = Object.freeze([
   Object.freeze(['p1-tenancy-production-approval', 'p1-tenancy']),
   Object.freeze(['secure-seed-sync-production-approval', 'secure-session-team-seed']),
-  Object.freeze(['s20-topics-production-approval', 's20-draft-topics']),
+  Object.freeze(['s22-topics-production-approval', 's22-final-topics']),
   Object.freeze(['p1a-additive-production-approval', 'p1a-additive-and-verify']),
   Object.freeze(['hq-join-code-pre-rotation', 'hq-rotate-join-codes']),
   Object.freeze(['p2-p1b-p1c-production-approval', 'p2-analysis']),
@@ -400,14 +400,14 @@ const APPROVAL_PREREQUISITES = Object.freeze([
     afterRolloutIds: Object.freeze(['p1-tenancy']),
   }),
   Object.freeze({
-    approvalId: 'approval-s20-topics',
+    approvalId: 'approval-s22-topics',
     afterGateIds: Object.freeze([]),
     afterRolloutIds: Object.freeze(['secure-session-team-seed']),
   }),
   Object.freeze({
     approvalId: 'approval-p1a-additive',
     afterGateIds: Object.freeze([]),
-    afterRolloutIds: Object.freeze(['s20-draft-topics']),
+    afterRolloutIds: Object.freeze(['s22-final-topics']),
   }),
   Object.freeze({
     approvalId: 'approval-join-code-pre-rotation',
@@ -618,8 +618,8 @@ const SPECIAL_ROLLOUT_MEASUREMENTS = Object.freeze({
   'secure-session-team-seed': Object.freeze({
     name: 'rollout_active_team_count', expected: 15, observed: 15, unit: 'teams',
   }),
-  's20-draft-topics': Object.freeze({
-    name: 'rollout_draft_topic_count', expected: 6, observed: 6, unit: 'topics',
+  's22-final-topics': Object.freeze({
+    name: 'rollout_final_topic_count', expected: 8, observed: 8, unit: 'topics',
   }),
   'hq-rotate-join-codes': Object.freeze({
     name: 'rollout_rotated_team_count', expected: 15, observed: 15, unit: 'teams',
@@ -638,8 +638,8 @@ const SPECIAL_ROLLOUT_MEASUREMENTS = Object.freeze({
   }),
   'post-p4-legacy-negative-and-final-status': Object.freeze({
     name: 'rollout_final_status_tuple',
-    expected: '1-session/15-teams/6-topics',
-    observed: '1-session/15-teams/6-topics',
+    expected: '1-session/15-teams/8-topics',
+    observed: '1-session/15-teams/8-topics',
     unit: 'state',
   }),
 });

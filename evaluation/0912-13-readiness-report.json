@@ -72,7 +72,7 @@
       "evidence": null
     },
     {
-      "id": "s20-topics-production-approval",
+      "id": "s22-topics-production-approval",
       "status": "not_run",
       "evidence": null
     },
@@ -212,7 +212,7 @@
         "evidence": null
       },
       {
-        "id": "s20-draft-topics",
+        "id": "s22-final-topics",
         "status": "not_run",
         "evidence": null
       },
