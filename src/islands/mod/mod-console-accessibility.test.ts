@@ -395,6 +395,13 @@ describe('/mod opaque session and OCC wiring', () => {
     expect(submissionSource).toContain('readOnly={!editorWritable}');
   });
 
+  it('does not recreate an accepted draft during the save read-back', () => {
+    expect(submissionSource).toContain('if (loaded == null || saving) return;');
+    expect(submissionSource).toContain(
+      '[rows, dirty, loaded, draftKey, editBaseUpdatedAt, editBaseVersion, saving]',
+    );
+  });
+
   it('reuses one proxy-vote request id until the server confirms the intent', () => {
     expect(consoleSource).toContain('const requestIdRef = useRef<string | null>(null)');
     expect(consoleSource).toContain('const requestId = requestIdRef.current ?? crypto.randomUUID()');

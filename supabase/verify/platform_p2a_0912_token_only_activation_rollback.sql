@@ -241,6 +241,12 @@ begin
        or has_function_privilege('authenticated','public.cv_set_active(text)','execute')) then
     raise exception 'rollback reopened retired public round activation RPC';
   end if;
+  if to_regprocedure('climate_vote.set_active(text)') is not null
+     and (has_function_privilege('public','climate_vote.set_active(text)','execute')
+       or has_function_privilege('anon','climate_vote.set_active(text)','execute')
+       or has_function_privilege('authenticated','climate_vote.set_active(text)','execute')) then
+    raise exception 'rollback reopened retired climate_vote round activation RPC';
+  end if;
   if exists(
     select 1 from pg_proc p join pg_namespace n on n.oid=p.pronamespace
      where n.nspname='climate_vote' and p.prokind in ('f','p')

@@ -285,6 +285,12 @@ begin
        or has_function_privilege('authenticated','public.cv_set_active(text)','execute')) then
     raise exception 'retired public round activation RPC survived cutover';
   end if;
+  if to_regprocedure('climate_vote.set_active(text)') is not null
+     and (has_function_privilege('public','climate_vote.set_active(text)','execute')
+       or has_function_privilege('anon','climate_vote.set_active(text)','execute')
+       or has_function_privilege('authenticated','climate_vote.set_active(text)','execute')) then
+    raise exception 'retired climate_vote round activation RPC survived cutover';
+  end if;
 end $acl$;
 
 -- Fail closed over the complete PostgREST routine surface, not only a list of

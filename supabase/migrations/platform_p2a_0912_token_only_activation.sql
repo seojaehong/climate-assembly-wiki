@@ -85,13 +85,17 @@ grant execute on function
   climate_vote.cv_archive_round(text,text,text)
 to service_role;
 
--- A retired admin page historically called this unscoped SECURITY DEFINER
--- routine from the public schema. It is optional in reconstructed installs, but
--- if present it must stay closed across activation and emergency rollback.
+-- Retired admin pages historically called unscoped SECURITY DEFINER routines
+-- from either the public or climate_vote schema. They are optional in
+-- reconstructed installs, but if present they must stay closed across
+-- activation and emergency rollback.
 do $optional_public_admin$
 begin
   if to_regprocedure('public.cv_set_active(text)') is not null then
     execute 'revoke execute on function public.cv_set_active(text) from public, anon, authenticated';
+  end if;
+  if to_regprocedure('climate_vote.set_active(text)') is not null then
+    execute 'revoke execute on function climate_vote.set_active(text) from public, anon, authenticated';
   end if;
 end $optional_public_admin$;
 

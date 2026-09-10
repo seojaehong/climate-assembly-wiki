@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-11T00:21:33.6500043+09:00",
+  "sessionSlug": "0912-deliberation",
+  "status": "ready_for_deploy",
+  "sourceCommitBeforeRelease": "a8b64032f241f72eb14095ceee9755478686945d",
+  "production": {
+    "sessionCount": 1,
+    "teamCount": 15,
+    "topicCount": 8,
+    "openTopicCount": 1,
+    "memberCount": 156,
+    "assignmentCount": 156,
+    "attendanceCount": 156,
+    "activeOperatorCount": 8
+  },
+  "databaseActivation": {
+    "membershipPreflight": "pass",
+    "s17Verifier": {
+      "checkCount": 7,
+      "failureCount": 0
+    },
+    "s19Verifier": {
+      "checkCount": 6,
+      "failureCount": 0
+    },
+    "p2aAclAudit": {
+      "status": "pass",
+      "verifiedThroughLine": 428,
+      "disposableFixtureSectionRunInProduction": false,
+      "legacySetActiveRevoked": true
+    },
+    "appliedScriptSha256": {
+      "membership": "3D994AF132F626FDB711EBB8FC610E742224FEB345E8CFAC266B9F70BBAC5576",
+      "operatorCredentialCorrection": "9AD8FB3DA638E4A4222C7FBA696C30B963EE8E5EDEACCBC2229FD2178DDE9F69",
+      "legacySetActiveHotfix": "F491808D46CFE391A8450FEBFCDE485FE241C1BD61E1B2C938D651FF5AC1837B"
+    }
+  },
+  "joinCodeRotation": {
+    "teamCount": 15,
+    "failureCount": 0,
+    "privateArtifactSha256": "D5757DBA34D8F6B0B03C4163317AF3C9D45C83BC58967C36D96A01D83FCAFEF5",
+    "secretValuesIncluded": false
+  },
+  "liveApiVerification": {
+    "joinCodeExchangeSuccessCount": 15,
+    "sessionReadSuccessCount": 15,
+    "topicReadSuccessCount": 15,
+    "logoutSuccessCount": 15,
+    "legacyRpcRejectedCount": 3,
+    "postLogoutReuseRejected": true
+  },
+  "browserVerification": {
+    "hqLogin": "pass",
+    "moderatorLogin": "pass",
+    "saveReadBack": "pass",
+    "reloadDraftState": "fix_pending_deploy",
+    "syntheticSubmissionRemoved": true
+  },
+  "localVerification": {
+    "astroCheck": {
+      "errors": 0,
+      "warnings": 0,
+      "hints": 58
+    },
+    "targetedTests": {
+      "fileCount": 6,
+      "testCount": 238,
+      "failureCount": 0
+    },
+    "fullTests": {
+      "passedFileCount": 123,
+      "passedTestCount": 2200,
+      "failedFileCount": 1,
+      "knownUnrelatedFailure": "scripts/decision-vote-console.test.mjs: Vitest import SyntaxError"
+    },
+    "staticReadiness": {
+      "requirementCount": 15,
+      "failureCount": 0
+    },
+    "build": {
+      "pageCount": 9493,
+      "status": "pass"
+    }
+  },
+  "remaining": [
+    "merge and deploy the save-read-back fix",
+    "repeat the moderator save and reload flow on the deployed revision",
+    "record the final deployment revision"
+  ]
+}
