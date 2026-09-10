@@ -6,7 +6,7 @@ session_type: discussion
 order: 7
 agendas_discussed: []
 license: CC-BY-SA-4.0
-last_updated: 2026-09-09
+last_updated: 2026-09-10
 draft: true
 ---
 
@@ -17,8 +17,8 @@ draft: true
 ## 참여 구성
 
 - 대상: 숙의참여단 147명
-- 진행: 09:10 세부 정책제안 → 13:00 정책제안·이행 일정 → 14:30 조별 권고안 순회·점검 → 15:45 중복 묶음 확인·대표 제목·분과 초안
-- 계획 계약: `0912-13-adr-final-v2` (`docs/operations/0912-13-plan-contract.json`)
+- 진행: 09:10 `권고 내용 초안 토론 ②` → 13:00 권고 내용·이행 일정 → 14:00 조별 권고안 순회·점검 → 15:15 `분과 권고안 통합 및 분과 초안 토론`
+- 계획 계약: `0912-13-adr-final-v3` (`docs/operations/0912-13-plan-contract.json`)
 
 ## 산출물
 
