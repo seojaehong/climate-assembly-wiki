@@ -2,8 +2,9 @@
   "schemaVersion": 1,
   "generatedAt": "2026-09-11T00:21:33.6500043+09:00",
   "sessionSlug": "0912-deliberation",
-  "status": "ready_for_deploy",
+  "status": "operational",
   "sourceCommitBeforeRelease": "a8b64032f241f72eb14095ceee9755478686945d",
+  "releasedCommit": "f591b3d70a0c3388c2965ce9eef746c9ff915238",
   "production": {
     "sessionCount": 1,
     "teamCount": 15,
@@ -54,8 +55,15 @@
     "hqLogin": "pass",
     "moderatorLogin": "pass",
     "saveReadBack": "pass",
-    "reloadDraftState": "fix_pending_deploy",
-    "syntheticSubmissionRemoved": true
+    "reloadDraftState": "pass",
+    "postReloadUnsavedCount": 0,
+    "postReloadConflictCount": 0,
+    "syntheticSubmissionCleanup": {
+      "beforeItemCount": 1,
+      "afterItemCount": 0,
+      "resultingVersion": 5
+    },
+    "verificationSessionsLoggedOut": true
   },
   "localVerification": {
     "astroCheck": {
@@ -81,11 +89,15 @@
     "build": {
       "pageCount": 9493,
       "status": "pass"
+    },
+    "githubChecks": {
+      "test": "pass",
+      "accessibilityAudit": "pass",
+      "postgresCutover": "pass",
+      "syntheticFieldFlow": "pass",
+      "cloudflarePages": "pass",
+      "nonProductionWorkersIntegration": "known_immediate_failure"
     }
   },
-  "remaining": [
-    "merge and deploy the save-read-back fix",
-    "repeat the moderator save and reload flow on the deployed revision",
-    "record the final deployment revision"
-  ]
+  "remaining": []
 }
