@@ -123,7 +123,7 @@ const MAX_PUBLIC_KEY_FILE_BYTES = 64 * 1024;
 const MAX_BACKUP_ARCHIVE_BYTES = 128 * 1024 * 1024;
 const REQUIREMENT_SIGNED_DEPENDENCIES = Object.freeze({
   'PLAN-CANONICAL-ALIGNMENT': Object.freeze({
-    gates: Object.freeze(['traceability-report', 's20-topics-production-approval', 'roster-canonical-review']),
+    gates: Object.freeze(['traceability-report', 's22-topics-production-approval', 'roster-canonical-review']),
     controls: Object.freeze([]),
   }),
   'AUTH-2DEVICE': Object.freeze({

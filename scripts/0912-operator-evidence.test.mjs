@@ -102,7 +102,7 @@ const GATE_MEASUREMENTS = {
 const ROLLOUT_MEASUREMENTS = {
   'session-roster-review': ['rollout_approved_roster_team_count', 15, 15, 'teams'],
   'secure-session-team-seed': ['rollout_active_team_count', 15, 15, 'teams'],
-  's20-draft-topics': ['rollout_draft_topic_count', 6, 6, 'topics'],
+  's22-final-topics': ['rollout_final_topic_count', 8, 8, 'topics'],
   'hq-rotate-join-codes': ['rollout_rotated_team_count', 15, 15, 'teams'],
   'maintenance-deploy-token-staff-client': [
     'rollout_deployed_revision', TARGET_REVISION, TARGET_REVISION, 'git-commit',
@@ -116,8 +116,8 @@ const ROLLOUT_MEASUREMENTS = {
   'p4-audit-log': ['rollout_p4_apply_and_audit_verified', true, true, 'boolean'],
   'post-p4-legacy-negative-and-final-status': [
     'rollout_final_status_tuple',
-    '1-session/15-teams/6-topics',
-    '1-session/15-teams/6-topics',
+    '1-session/15-teams/8-topics',
+    '1-session/15-teams/8-topics',
     'state',
   ],
 };

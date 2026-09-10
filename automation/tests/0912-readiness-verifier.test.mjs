@@ -175,7 +175,7 @@ describe('9/12 readiness traceability verifier', () => {
     expect(REQUIRED_0912_APPROVAL_GATES).toEqual([
       'p1-tenancy',
       'secure-session-team-seed',
-      's20-draft-topics',
+      's22-final-topics',
       'p1a-additive',
       'p2-analysis-org-selection',
       'p2a-token-only-cutover',

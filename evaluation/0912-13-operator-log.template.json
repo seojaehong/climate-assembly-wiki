@@ -90,7 +90,7 @@
       "sha256": null
     },
     {
-      "path": "evaluation/0912-operator/gates/11-s20-topics-production-approval.json",
+      "path": "evaluation/0912-operator/gates/11-s22-topics-production-approval.json",
       "sha256": null
     },
     {
@@ -246,7 +246,7 @@
       "sha256": null
     },
     {
-      "path": "evaluation/0912-operator/rollout/3-s20-draft-topics.json",
+      "path": "evaluation/0912-operator/rollout/3-s22-final-topics.json",
       "sha256": null
     },
     {
@@ -334,8 +334,8 @@
       ]
     },
     {
-      "id": "approval-s20-topics",
-      "scope": "s20-topics",
+      "id": "approval-s22-topics",
+      "scope": "s22-topics",
       "status": "pending",
       "approvedAt": null,
       "approver": {
@@ -347,10 +347,10 @@
       "sourceCommit": null,
       "targetRevision": null,
       "rolloutStepIds": [
-        "s20-draft-topics"
+        "s22-final-topics"
       ],
       "gateIds": [
-        "s20-topics-production-approval"
+        "s22-topics-production-approval"
       ]
     },
     {
@@ -793,14 +793,14 @@
       }
     },
     {
-      "id": "s20-topics-production-approval",
+      "id": "s22-topics-production-approval",
       "status": "not_run",
       "executedAt": null,
       "evidence": {
         "type": null,
-        "reference": "evaluation/0912-operator/gates/11-s20-topics-production-approval.json",
+        "reference": "evaluation/0912-operator/gates/11-s22-topics-production-approval.json",
         "measurement": {
-          "name": "gate_s20_topics_production_approval_result",
+          "name": "gate_s22_topics_production_approval_result",
           "expected": "pass",
           "observed": null,
           "unit": "result"
@@ -1389,15 +1389,15 @@
       }
     },
     {
-      "id": "s20-draft-topics",
+      "id": "s22-final-topics",
       "status": "not_run",
       "executedAt": null,
       "evidence": {
         "type": null,
-        "reference": "evaluation/0912-operator/rollout/3-s20-draft-topics.json",
+        "reference": "evaluation/0912-operator/rollout/3-s22-final-topics.json",
         "measurement": {
-          "name": "rollout_draft_topic_count",
-          "expected": 6,
+          "name": "rollout_final_topic_count",
+          "expected": 8,
           "observed": null,
           "unit": "topics"
         },
@@ -1405,7 +1405,7 @@
           "mode": "approved-db-rollout",
           "connectionCount": null,
           "mutationCount": null,
-          "approvalId": "approval-s20-topics",
+          "approvalId": "approval-s22-topics",
           "environmentId": null
         }
       }
@@ -1617,7 +1617,7 @@
         "reference": "evaluation/0912-operator/rollout/13-post-p4-legacy-negative-and-final-status.json",
         "measurement": {
           "name": "rollout_final_status_tuple",
-          "expected": "1-session/15-teams/6-topics",
+          "expected": "1-session/15-teams/8-topics",
           "observed": null,
           "unit": "state"
         },
