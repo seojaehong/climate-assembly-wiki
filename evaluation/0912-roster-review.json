@@ -10,6 +10,25 @@
   "plan_participant_count": 147,
   "header_count_total": 150,
   "header_to_selected_row_delta": 6,
+  "previous_roster_comparison": {
+    "source_file": "20260829 시민참여단 참석현황(기획15 숙의152)_ADR_최종.hwpx",
+    "source_sha256": "2D255879E72983798AA9C23B86F1F8F43A62F6AFC4876E2C8266FC6681B18C35",
+    "previous_selected_count": 152,
+    "retained_selected_count": 141,
+    "previous_absent_now_selected_count": 14,
+    "previous_selected_now_absent_count": 11,
+    "new_row_selected_count": 1,
+    "removed_row_count": 0,
+    "team_move_count": 0
+  },
+  "header_overage_reconciliation": {
+    "overage_row_count": 6,
+    "previously_selected_count": 5,
+    "previously_absent_now_selected_count": 1,
+    "new_row_count": 0,
+    "all_overage_rows_marked_attending": true,
+    "interpretation": "header_counts_not_updated_after_row_level_attendance_changes"
+  },
   "team_count": 15,
   "group_counts": {
     "1분과 1조": 10,
@@ -52,6 +71,8 @@
   "excluded_planning_and_advisory": true,
   "historical_notes_imported": false,
   "attendance_only": true,
+  "recommended_operational_count": 156,
+  "recommendation_basis": "latest_roster_attendance_rows",
   "operational_import_approved": false,
-  "status": "verified_with_reconciliation_pending"
+  "status": "verified_recommend_156_pending_operational_approval"
 }

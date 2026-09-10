@@ -1,0 +1,35 @@
+{
+  "checked_at": "2026-09-10T12:05:36.839Z",
+  "session_slug": "0912-deliberation",
+  "status": "not_ready",
+  "database_mutation_executed": false,
+  "evidence_complete": true,
+  "read_consistency": "single_statement",
+  "access_method": "security_definer_count_only_rpc",
+  "summary": {
+    "active_organization_count": 1,
+    "active_membership_count": 0,
+    "required_table_count": 12,
+    "missing_table_count": 0,
+    "missing_hierarchy_evidence_count": 0,
+    "hierarchy_mismatch_count": 0,
+    "total_null_org_count": 0,
+    "organizations_without_admin_count": 1,
+    "organizations_without_hq_count": 1,
+    "multi_organization_user_count": 0,
+    "unavailable_membership_organization_count": 0,
+    "unavailable_auth_user_count": 0,
+    "unbound_active_hq_session_count": 0
+  },
+  "blockers": [
+    {
+      "code": "organization_without_admin",
+      "count": 1
+    },
+    {
+      "code": "organization_without_hq",
+      "count": 1
+    }
+  ],
+  "requires_immediate_recheck_before_activation": true
+}
