@@ -53,3 +53,7 @@
 /g/*
   X-Robots-Tag: noindex, nofollow
   Cache-Control: no-store
+
+/qr/*
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store

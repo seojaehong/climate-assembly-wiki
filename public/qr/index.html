@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>강의안 받기 · 기후시민회의</title>
+<style>
+*{box-sizing:border-box}
+:root{--ink:#12283c;--teal:#00727c;--line:#d3e0e8;--muted:#5d7488;--warn:#b3261e}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:#eef3f6;color:var(--ink);
+ font:17px/1.65 "Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;
+ word-break:keep-all;display:grid;place-items:center;min-height:100vh;padding:20px}
+.box{width:100%;max-width:440px;background:#fff;border:1px solid var(--line);
+ border-radius:18px;padding:30px 24px 26px;box-shadow:0 16px 44px rgba(18,40,60,.12)}
+.mark{font-size:38px;line-height:1;text-align:center;margin-bottom:12px}
+h1{margin:0 0 6px;font-size:24px;font-weight:800;letter-spacing:-.02em;text-align:center}
+.sub{margin:0 0 4px;text-align:center;font-size:15px;color:var(--muted)}
+.doc{margin:14px 0 20px;padding:12px 14px;background:#f2f8fa;border-radius:10px;
+ font-size:14.5px;color:#33495e;text-align:center;line-height:1.5}
+.doc b{color:var(--ink)}
+label{display:block;font-size:14.5px;font-weight:700;margin-bottom:6px}
+input[type=email]{width:100%;padding:14px 15px;border:2px solid var(--line);
+ border-radius:12px;font:inherit;font-size:17px;color:var(--ink)}
+input[type=email]:focus{outline:0;border-color:var(--teal)}
+.agree{display:flex;gap:9px;align-items:flex-start;margin:16px 0 4px;
+ font-size:14px;color:#33495e;line-height:1.5}
+.agree input{width:20px;height:20px;margin-top:1px;flex:0 0 auto;accent-color:var(--teal)}
+details{margin:8px 0 0;font-size:13.5px;color:var(--muted)}
+details summary{cursor:pointer;color:var(--teal);font-weight:700}
+details p{margin:7px 0 0;line-height:1.55}
+button{width:100%;margin-top:18px;padding:15px;border:0;border-radius:12px;
+ background:var(--ink);color:#fff;font:inherit;font-size:18px;font-weight:800;cursor:pointer}
+button:disabled{opacity:.5;cursor:progress}
+.msg{min-height:24px;margin-top:12px;text-align:center;font-size:15px;font-weight:700}
+.msg.bad{color:var(--warn)}
+.msg.good{color:#0b6b3a}
+.done{display:none;text-align:center}
+body.done .form{display:none}
+body.done .done{display:block}
+.done .big{font-size:44px;line-height:1;margin-bottom:10px}
+.done h2{margin:0 0 8px;font-size:21px;font-weight:800}
+.done p{margin:0;color:var(--muted);font-size:15px;line-height:1.6}
+footer{margin-top:18px;padding-top:14px;border-top:1px solid var(--line);
+ font-size:12.5px;color:#8fa6b5;text-align:center;line-height:1.6}
+</style>
+</head>
+<body>
+<div class="box">
+  <div class="form">
+    <div class="mark">📩</div>
+    <h1>강의안 받기</h1>
+    <p class="sub">2026 기후시민회의 제6·7차 분과토론</p>
+    <div class="doc">
+      <b>기업 온실가스 감축 촉진 방안의 모색</b><br>
+      김성진 · 한국환경연구원(KEI) 탄소중립에너지연구실
+    </div>
+
+    <label for="email">이메일 주소</label>
+    <input id="email" type="email" inputmode="email" autocomplete="email"
+           spellcheck="false" placeholder="name@example.com">
+
+    <label class="agree">
+      <input id="agree" type="checkbox">
+      <span>강의안을 받기 위해 이메일 주소를 수집하는 데 동의합니다.</span>
+    </label>
+
+    <details>
+      <summary>수집 항목과 보관 기간</summary>
+      <p>수집 항목은 이메일 주소 하나입니다. 강의안을 보내 드리는 데에만 쓰고
+         <b>발송 후 30일 안에 지웁니다.</b> 다른 안내에 쓰지 않습니다.
+         동의하지 않으셔도 되며, 그때는 현장에서 직접 말씀해 주세요.</p>
+    </details>
+
+    <button id="go" type="button">강의안 보내 주세요</button>
+    <div id="msg" class="msg" role="status" aria-live="polite"></div>
+  </div>
+
+  <div class="done">
+    <div class="big">✅</div>
+    <h2>받았습니다</h2>
+    <p>잠시 뒤 메일함으로 강의안이 갑니다.<br>
+       안 오면 <b>스팸함</b>을 한 번 봐 주세요.</p>
+  </div>
+
+  <footer>2026 기후시민회의 · 한국갈등해결센터</footer>
+</div>
+
+<script>
+const URL_BASE = 'https://pleyuknjnprsckssxvrh.supabase.co/rest/v1/lecture_request';
+const KEY = 'sb_publishable_OVwo9zs5i6xl5iFykM6zJQ_GWFcf5zn';
+const email = document.getElementById('email');
+const agree = document.getElementById('agree');
+const go = document.getElementById('go');
+const msg = document.getElementById('msg');
+
+const looksLikeEmail = (v) => /^[^@\s]+@[^@\s]+\.[a-z]{2,}$/i.test(v);
+
+function say(text, good) {
+  msg.textContent = text;
+  msg.className = 'msg' + (good ? ' good' : text ? ' bad' : '');
+}
+
+async function submit() {
+  const value = email.value.trim();
+  if (!looksLikeEmail(value)) { say('이메일 주소를 다시 확인해 주세요.'); email.focus(); return; }
+  if (!agree.checked) { say('동의에 체크해 주세요.'); return; }
+  go.disabled = true; say('');
+  try {
+    const res = await fetch(URL_BASE, {
+      method: 'POST',
+      headers: {
+        'apikey': KEY,
+        'Authorization': 'Bearer ' + KEY,
+        'Content-Type': 'application/json',
+        // 표가 climate_vote 스키마에 있다. 이 헤더가 없으면 PostgREST 가 public 을
+        // 뒤져 404(PGRST205) 를 낸다 — 2026-09-12 실화면에서 걸렸다.
+        'Content-Profile': 'climate_vote',
+        // resolution=ignore-duplicates 는 쓰지 않는다 — ON CONFLICT 가 SELECT 권한을
+        // 요구해 42501 로 막힌다(2026-09-12 실측). 중복은 409 로 받아 같은 화면을 보여준다.
+        'Prefer': 'return=minimal',
+      },
+      body: JSON.stringify({ email: value, consent: true, source: 'qr' }),
+    });
+    // 같은 주소를 다시 넣어도 「이미 신청됨」으로 똑같이 답한다. 남의 주소 확인에 쓰이지 않게.
+    if (res.ok || res.status === 409) { document.body.classList.add('done'); return; }
+    say('잠시 뒤 다시 눌러 주세요. 계속 안 되면 진행요원에게 말씀해 주세요.');
+  } catch (err) {
+    say('연결이 끊겼습니다. 잠시 뒤 다시 눌러 주세요.');
+  } finally {
+    go.disabled = false;
+  }
+}
+
+go.addEventListener('click', submit);
+email.addEventListener('keydown', (e) => { if (e.key === 'Enter') submit(); });
+</script>
+</body>
+</html>
