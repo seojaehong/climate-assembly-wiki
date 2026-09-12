@@ -22,11 +22,33 @@ import {
   isWorkflowStageConflictMessage,
   recommendationProgressBlockMessage,
   recommendationSaveLabel,
+  recommendationExpectedEffect,
   similarAgendaTitles,
   statusCounts,
   subgroupSortKey,
   withoutRecordKey,
 } from './agenda-progress-logic';
+
+describe('evening expected-effect draft compatibility', () => {
+  const draft = { title: '주제', problemRecognition: '문제입니다.', recommendationContent: '' };
+  it('preserves the server effect when restoring an older draft', () => {
+    expect(recommendationExpectedEffect(draft, '기존 문장')).toBe('기존 문장');
+  });
+  it('saves a new sentence independently of recommendation content', () => {
+    expect(recommendationExpectedEffect({ ...draft, expectedEffect: ' 변화합니다. ' }, null)).toBe('변화합니다.');
+    expect(hasRecommendationContent({ ...draft, expectedEffect: '변화합니다.' })).toBe(false);
+  });
+  it('distinguishes an intentional blank from a legacy missing field', () => {
+    expect(recommendationExpectedEffect({ ...draft, expectedEffect: '' }, '기존 문장')).toBeNull();
+  });
+  it('restores the expected-effect sentence from serialized pending forms', () => {
+    const state = { ...emptyAgendaBoardPendingState('1분과'), recommendationForm: {
+      open: true, agendaId: 'agenda-1', teamId: 'team-1',
+      draft: { ...draft, expectedEffect: '누구나 안전한 생활을 누릴 수 있습니다.' },
+    } };
+    expect(parseAgendaBoardPendingState(JSON.stringify(state), '1분과').recommendationForm).toEqual(state.recommendationForm);
+  });
+});
 
 describe('agenda progress status', () => {
   it('follows the five visible steps', () => {

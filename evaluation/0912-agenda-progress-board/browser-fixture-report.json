@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-12T03:53:41.003Z",
+  "generatedAt": "2026-09-12T09:19:21.312Z",
   "status": "pass",
-  "baseUrl": "http://127.0.0.1:4323",
+  "baseUrl": "http://127.0.0.1:4333",
   "checks": [
     {
       "name": "hq-agenda-count-1분과",
@@ -70,6 +70,16 @@
       "detail": "각 분과 전체화면 송출이 실제로 열려야 합니다."
     },
     {
+      "name": "evening-speaking-guide",
+      "passed": true,
+      "detail": "1분과 저녁 발표 주제가 정확해야 합니다."
+    },
+    {
+      "name": "evening-projector-no-recommendation-content",
+      "passed": true,
+      "detail": "1분과 송출은 기대효과까지만 표시합니다."
+    },
+    {
       "name": "hq-projector-open-2분과",
       "passed": true,
       "detail": "각 분과 전체화면 송출이 실제로 열려야 합니다."
@@ -98,6 +108,16 @@
       "name": "hq-status-filter-clear",
       "passed": true,
       "detail": "전체 보기로 상태 필터를 해제해야 합니다."
+    },
+    {
+      "name": "unchanged-effect-editor-2분과",
+      "passed": true,
+      "detail": "다른 분과 기대효과 입력은 활성화하지 않습니다."
+    },
+    {
+      "name": "unchanged-effect-editor-3분과",
+      "passed": true,
+      "detail": "다른 분과 기대효과 입력은 활성화하지 않습니다."
     },
     {
       "name": "hq-add-fields",
@@ -148,6 +168,16 @@
       "name": "team-transition-drafting",
       "passed": true,
       "detail": "drafting 단계로 전환되어야 합니다."
+    },
+    {
+      "name": "evening-effect-save-echo",
+      "passed": true,
+      "detail": "저장 후 서버 역할 fixture에서 기대효과가 되읽혀야 합니다."
+    },
+    {
+      "name": "evening-save-without-final-content",
+      "passed": true,
+      "detail": "권고 내용이 없어도 발표 초안을 저장할 수 있습니다."
     },
     {
       "name": "team-current-step-team_confirmed",

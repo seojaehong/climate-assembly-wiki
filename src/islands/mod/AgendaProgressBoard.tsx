@@ -39,6 +39,7 @@ import {
   recommendationMatchesSearch,
   recommendationProgressBlockMessage,
   recommendationSaveLabel,
+  recommendationExpectedEffect,
   similarAgendaTitles,
   statusCounts,
   subgroupSortKey,
@@ -96,7 +97,7 @@ function displayAgendaOrdinal(agendas: AgendaBoardItem[], agenda: AgendaBoardIte
 
 // The first-division presentation follows the facilitator's confirmed speaking order.
 // The numbers refer to topic ordinals, not team numbers.
-const FIRST_DIVISION_PRESENTATION_ORDER = [1, 6, 3, 4, 8, 7] as const;
+const FIRST_DIVISION_PRESENTATION_ORDER = [6, 3, 4, 8, 7, 5] as const;
 
 function presentationRank(
   agenda: AgendaBoardItem,
@@ -145,6 +146,7 @@ function readLocalDraft(key: string): RecommendationDraft | null {
       title: candidate.title,
       problemRecognition: candidate.problemRecognition,
       recommendationContent: candidate.recommendationContent,
+      ...(typeof candidate.expectedEffect === 'string' ? { expectedEffect: candidate.expectedEffect } : {}),
     };
   } catch (error) {
     console.warn('[recommendation board] local draft read failed', error);
@@ -248,15 +250,18 @@ function RecommendationFields({
   value,
   disabled,
   prefix,
+  subgroup,
   onChange,
 }: {
   value: RecommendationDraft;
   disabled?: boolean;
   prefix: string;
+  subgroup: string;
   onChange: (next: RecommendationDraft) => void;
 }) {
   return (
     <div className="grid gap-4">
+      {subgroup === '1분과' ? <p className="rounded-xl bg-[#EAF8FA] p-3 text-[15px] font-bold text-[#135C73]">9/12 저녁 발표: 주제명 → 문제·배경 → 기대효과를 완성된 문장으로 정리하고 초안 저장하세요. 조의 논의 뜻을 유지하며, 권고 내용은 오늘 발표 필수가 아닙니다. 아래 조 확인·최종 제출은 이후 권고안 완성 절차입니다.</p> : null}
       <label className="text-[14px] font-extrabold text-[#334E5C]">
         권고안 제목 <span className="text-[#B91C1C]">초안 저장 필수</span>
         <input
@@ -280,8 +285,16 @@ function RecommendationFields({
           className="mt-2 w-full rounded-xl border border-[#C4D8E4] p-4 text-[16px] leading-relaxed disabled:bg-[#F1F5F9]"
         />
       </label>
+      {subgroup === '1분과' ? <label className="text-[14px] font-extrabold text-[#334E5C]">
+        기대효과 · 완성된 문장
+        <textarea aria-label={`${prefix} 기대효과`} rows={4} maxLength={8000}
+          value={value.expectedEffect ?? ''} disabled={disabled}
+          onChange={(event) => onChange({ ...value, expectedEffect: event.target.value })}
+          placeholder="이 주제가 실현되면 어떤 상태가 되는지 문장으로 적어 주세요."
+          className="mt-2 w-full rounded-xl border border-[#C4D8E4] p-4 text-[16px] leading-relaxed disabled:bg-[#F1F5F9]" />
+      </label> : null}
       <label className="text-[14px] font-extrabold text-[#334E5C]">
-        권고 내용 <span className="text-[#B91C1C]">조 확인 전 필수</span>
+        권고 내용 <span className="text-[#B91C1C]">{subgroup === '1분과' ? '오늘 발표 선택 · 최종 조 확인 전 필수' : '조 확인 전 필수'}</span>
         <textarea
           aria-label={`${prefix} 권고 내용`}
           rows={5}
@@ -331,7 +344,7 @@ function ProjectorView({ item, displayOrdinal, onClose }: { item: AgendaBoardIte
                 <div className="mt-4 space-y-3 text-[20px] leading-[1.55]">
                   <div><p className="font-black text-[#137586]">배경·문제 인식</p><p className="whitespace-pre-wrap font-semibold">{recommendation.problemRecognition || '작성 중'}</p></div>
                   <div><p className="font-black text-[#137586]">기대효과</p><p className="whitespace-pre-wrap font-semibold">{recommendation.expectedEffect || '아직 입력되지 않았습니다.'}</p></div>
-                  <div><p className="font-black text-[#137586]">권고 내용</p><p className="whitespace-pre-wrap font-semibold">{recommendation.recommendationContent || '작성 중'}</p></div>
+                  {item.subgroup !== '1분과' ? <div><p className="font-black text-[#137586]">권고 내용</p><p className="whitespace-pre-wrap font-semibold">{recommendation.recommendationContent || '작성 중'}</p></div> : null}
                 </div>
               </article>
             ))}
@@ -379,7 +392,11 @@ function DivisionProjectorView({
           <p className="text-[22px] font-extrabold text-[#137586]">9/12–13 시민참여단 워크숍</p>
           <h2 className="mt-2 text-[38px] font-black leading-tight sm:text-[54px]">{division} 권고안 진행상황</h2>
           <p className="mt-2 text-[20px] font-bold text-[#5A6B73]">주제 {agendas.length}개 · 권고안 {recommendationCount}건 · {page + 1}/{pageCount}쪽</p>
-          {division === '1분과' ? <p className="mt-2 text-[18px] font-black text-[#137586]">발표 순서: 주제 1 → 6 → 3 → 4 → 8 → 7 · 이후 나머지 주제</p> : null}
+          {division === '1분과' ? <div className="mt-2 space-y-2 text-[18px] font-black text-[#137586]">
+            <p>9/12 저녁 공유: 1조 6번 + 새 주제 1개 · 2조 3번 + 새 주제 1개 · 3조 4번 + 새 주제 1개 · 4조 8번 + 새 주제 1개 · 5조 7번·5번</p>
+            <p>19:20–19:40 조 내 공유·발표자 선정 · 19:40–19:50 조별 2분 공유 · 19:50–20:00 내일 안내·폐회</p>
+            <p>주제명 → 문제·배경 문장 → 기대효과 문장 읽기 · 두 주제를 합쳐 조별 2분</p>
+          </div> : null}
         </div>
         <div className="flex shrink-0 flex-wrap justify-end gap-2">
           <button type="button" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={page === 0} className="min-h-12 rounded-xl border-2 border-[#1F4E79] bg-white px-4 text-[17px] font-extrabold text-[#1F4E79] disabled:cursor-not-allowed disabled:opacity-40">이전</button>
@@ -415,7 +432,7 @@ function DivisionProjectorView({
                     <div className="mt-3 space-y-2 text-[16px] leading-relaxed">
                       <div><p className="font-black text-[#137586]">배경·문제 인식</p><p className="whitespace-pre-wrap font-semibold">{recommendation.problemRecognition || '작성 중'}</p></div>
                       <div><p className="font-black text-[#137586]">기대효과</p><p className="whitespace-pre-wrap font-semibold">{recommendation.expectedEffect || '아직 입력되지 않았습니다.'}</p></div>
-                      <div><p className="font-black text-[#137586]">권고 내용</p><p className="whitespace-pre-wrap font-semibold">{recommendation.recommendationContent || '권고 내용 작성 중'}</p></div>
+                      {division !== '1분과' ? <div><p className="font-black text-[#137586]">권고 내용</p><p className="whitespace-pre-wrap font-semibold">{recommendation.recommendationContent || '권고 내용 작성 중'}</p></div> : null}
                     </div>
                   </article>
                 ))}
@@ -795,12 +812,12 @@ export default function AgendaProgressBoard({
       agendaId: agenda.id,
       teamId: recommendationTeamId,
       draft: newRecommendation,
-      expectedEffect: null,
+      expectedEffect: recommendationExpectedEffect(newRecommendation, null),
       topicId,
     };
     const saved = await runMutation(key, mutationPayloadFingerprint(snapshot), (requestId) => createRecommendation({
       token: token ?? '', agendaId: agenda.id, teamId: recommendationTeamId,
-      draft: newRecommendation, topicId, requestId,
+      draft: newRecommendation, expectedEffect: recommendationExpectedEffect(newRecommendation, null), topicId, requestId,
     }));
     if (saved) {
       setNewRecommendation({ ...EMPTY_RECOMMENDATION_DRAFT });
@@ -815,6 +832,7 @@ export default function AgendaProgressBoard({
       title: recommendation.title,
       problemRecognition: recommendation.problemRecognition,
       recommendationContent: recommendation.recommendationContent,
+      expectedEffect: recommendation.expectedEffect ?? '',
     }
   );
 
@@ -838,7 +856,7 @@ export default function AgendaProgressBoard({
       const nextStatus = nextAgendaStatus(
         recommendation.status,
         'save',
-        hasRecommendationContent(draft),
+        Boolean(draft.title.trim()),
       );
       if (!nextStatus) {
         setMessage('현재 단계에서는 초안을 저장할 수 없습니다.');
@@ -883,13 +901,13 @@ export default function AgendaProgressBoard({
     const snapshot = {
       recommendationId: recommendation.id,
       draft,
-      expectedEffect: recommendation.expectedEffect,
+      expectedEffect: recommendationExpectedEffect(draft, recommendation.expectedEffect),
       expectedVersion,
       topicId,
     };
     const saved = await runMutation(key, mutationPayloadFingerprint(snapshot), (requestId) => reviseRecommendation({
       token: token ?? '', recommendationId: recommendation.id, draft,
-      expectedEffect: recommendation.expectedEffect,
+      expectedEffect: recommendationExpectedEffect(draft, recommendation.expectedEffect),
       expectedVersion,
       topicId,
       requestId,
@@ -1013,7 +1031,7 @@ export default function AgendaProgressBoard({
           </div>
           <div className="mt-4 rounded-xl bg-[#EAF8FA] px-4 py-3 text-[14px] font-bold leading-relaxed text-[#135C73]">
             {mode === 'team'
-              ? `① 위 주제 목록에서 배정된 주제를 선택합니다. ② ‘+ 권고안 추가’를 누릅니다. ③ 제목·배경 및 문제 인식·권고 내용을 입력한 뒤 ‘새 권고안 저장’을 누릅니다. 오늘은 이 세 항목만 작성합니다. 미전송 기기 초안 ${unsentCount}건.`
+              ? `① 위 주제 목록에서 배정된 주제를 선택합니다. ② ‘+ 권고안 추가’를 누릅니다. ③ ${subgroup === '1분과' ? '9/12 저녁 발표는 주제명·문제와 배경·기대효과를 완성된 문장으로 입력하고 초안 저장합니다. 권고 내용과 최종 제출은 이후 절차입니다.' : '제목·배경 및 문제 인식·권고 내용을 입력한 뒤 ‘새 권고안 저장’을 누릅니다. 오늘은 이 세 항목만 작성합니다.'} 미전송 기기 초안 ${unsentCount}건.`
               : '진행상태는 주제가 아니라 각 조의 권고안별로 집계됩니다. 권고안은 삭제하지 않고 이력을 남깁니다.'}
           </div>
           {payload && !topicWritesEnabled ? (
@@ -1237,7 +1255,7 @@ export default function AgendaProgressBoard({
                         </select>
                       </label>
                     ) : <p className="mt-3 text-[14px] font-bold text-[#137586]">로그인한 조의 권고안으로 저장됩니다.</p>}
-                    <div className="mt-4"><RecommendationFields value={newRecommendation} disabled={!topicWritesEnabled || recommendationCreatePending} prefix="새 권고안" onChange={setNewRecommendation} /></div>
+                    <div className="mt-4"><RecommendationFields subgroup={agenda.subgroup} value={newRecommendation} disabled={!topicWritesEnabled || recommendationCreatePending} prefix="새 권고안" onChange={setNewRecommendation} /></div>
                     <div className="mt-4 flex justify-end">
                       <button type="button" disabled={!topicWritesEnabled || busyKey === recommendationCreateKey} onClick={() => void submitRecommendation(agenda)} className="min-h-12 rounded-xl bg-[#1F4E79] px-6 font-extrabold text-white disabled:opacity-50">{recommendationCreatePending ? '같은 내용으로 다시 확인' : '새 권고안 저장'}</button>
                     </div>
@@ -1298,9 +1316,9 @@ export default function AgendaProgressBoard({
                             <span className="ml-auto text-[13px] font-bold text-[#64748B]">서버 갱신 {formatUpdatedAt(recommendation.updatedAt)} · 수정이력 {recommendation.revisionCount}건{dirty[recommendation.id] ? ' · 기기 초안 미전송' : ''}</span>
                           </div>
                           <div className="mt-4">
-                            <RecommendationFields value={draft} disabled={!baseEditable || hasPendingMutation} prefix={`${recommendation.authorTeamName} 권고안 ${recommendation.sortOrder}`} onChange={(next) => updateDraft(recommendation, next)} />
+                            <RecommendationFields subgroup={agenda.subgroup} value={{ ...draft, expectedEffect: draft.expectedEffect ?? recommendation.expectedEffect ?? '' }} disabled={!baseEditable || hasPendingMutation} prefix={`${recommendation.authorTeamName} 권고안 ${recommendation.sortOrder}`} onChange={(next) => updateDraft(recommendation, next)} />
                           </div>
-                          {recommendation.expectedEffect ? (
+                          {agenda.subgroup !== '1분과' && recommendation.expectedEffect ? (
                             <details className="mt-4 rounded-xl border border-[#DCE7EE] bg-[#F8FAFC] p-3">
                               <summary className="cursor-pointer text-[14px] font-extrabold text-[#475569]">기존 기대효과 보기 · 지금은 입력하지 않음</summary>
                               <p className="mt-2 whitespace-pre-wrap text-[14px] leading-relaxed text-[#475569]">{recommendation.expectedEffect}</p>

@@ -56,6 +56,11 @@ try {
   for (const division of ['1분과', '2분과', '3분과']) {
     await hq.getByRole('button', { name: `${division} 현황 송출` }).click();
     record(`hq-projector-open-${division}`, await hq.getByRole('heading', { name: `${division} 권고안 진행상황` }).isVisible(), '각 분과 전체화면 송출이 실제로 열려야 합니다.');
+    if (division === '1분과') {
+      record('evening-speaking-guide', await hq.getByText(/1조 6번 \+ 새 주제 1개/).isVisible(), '1분과 저녁 발표 주제가 정확해야 합니다.');
+      await hq.getByRole('button', { name: '다음', exact: true }).click();
+      record('evening-projector-no-recommendation-content', await hq.getByRole('dialog').getByText('권고 내용', { exact: true }).count() === 0, '1분과 송출은 기대효과까지만 표시합니다.');
+    }
     await hq.getByRole('button', { name: '운영 화면으로', exact: true }).click();
   }
   const hqSummary = hq.getByLabel('권고안 진행건수 요약');
@@ -72,6 +77,12 @@ try {
   await waitingFilter.click();
   await hq.getByRole('button', { name: '전체 보기 · 상태 필터 해제' }).click();
   record('hq-status-filter-clear', await hq.getByLabel('권고안 상태 필터').inputValue() === 'all', '전체 보기로 상태 필터를 해제해야 합니다.');
+  for (const division of ['2분과', '3분과']) {
+    const card = hq.locator(`article[data-agenda-subgroup="${division}"]`).first();
+    const expand = card.getByRole('button', { name: '권고안 펼치기', exact: true });
+    if (await expand.count()) await expand.click();
+    record(`unchanged-effect-editor-${division}`, await card.getByRole('textbox', { name: /기대효과$/ }).count() === 0, '다른 분과 기대효과 입력은 활성화하지 않습니다.');
+  }
   await hq.getByRole('button', { name: '+ 새 주제 추가' }).click();
   await hq.getByLabel('새 주제 제목').fill('현장 추가 주제 예시');
   await hq.getByLabel('새 주제 연결 시민 원문').fill('시민이 말한 원문을 그대로 연결하는 입력 예시입니다.');
@@ -100,8 +111,17 @@ try {
   record('team-transition-waiting', await transitionCard.getAttribute('data-recommendation-status') === 'waiting', '권고안은 대기에서 시작해야 합니다.');
   await transitionCard.getByRole('button', { name: '논의 시작', exact: true }).click();
   await waitForTransition('discussing');
+  const effectField = transitionCard.getByRole('textbox', { name: /기대효과$/ });
+  await effectField.fill('시민 누구나 가까운 곳에서 안전하게 쉴 수 있습니다.');
+  const contentField = transitionCard.getByRole('textbox', { name: /권고 내용$/ });
+  const originalContent = await contentField.inputValue();
+  await contentField.fill('');
   await transitionCard.getByRole('button', { name: '초안 작성 완료', exact: true }).click();
   await waitForTransition('drafting');
+  record('evening-effect-save-echo', await effectField.inputValue() === '시민 누구나 가까운 곳에서 안전하게 쉴 수 있습니다.', '저장 후 서버 역할 fixture에서 기대효과가 되읽혀야 합니다.');
+  record('evening-save-without-final-content', await contentField.inputValue() === '', '권고 내용이 없어도 발표 초안을 저장할 수 있습니다.');
+  await contentField.fill(originalContent);
+  await transitionCard.getByRole('button', { name: '초안 저장', exact: true }).click();
   await transitionCard.getByRole('button', { name: '조 확인 완료', exact: true }).click();
   await waitForTransition('team_confirmed');
   await transitionCard.getByRole('button', { name: '최종 제출', exact: true }).click();
@@ -110,6 +130,7 @@ try {
   await team.getByRole('button', { name: '+ 권고안 추가' }).click();
   await team.getByLabel('새 권고안 권고안 제목').fill('생활권 기후안전망 강화');
   await team.getByLabel('새 권고안 배경·문제 인식').fill('폭염 취약계층의 쉼터 접근성이 지역마다 다릅니다.');
+  await team.getByLabel('새 권고안 기대효과').fill('폭염에도 안전한 생활을 누릴 수 있습니다.');
   await team.getByLabel('새 권고안 권고 내용').fill('생활권별 쉼터 운영시간과 이동 지원을 함께 제공합니다.');
   record('team-active-fields', await team.getByLabel('새 권고안 권고 내용').isVisible(), '오늘 작성할 세 입력칸이 모두 보여야 합니다.');
   record('inactive-fields-hidden', await team.getByText('이행 일정', { exact: true }).count() === 0, '이행 일정 이후 필드는 현재 입력 화면에 나오면 안 됩니다.');

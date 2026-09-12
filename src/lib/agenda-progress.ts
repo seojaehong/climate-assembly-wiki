@@ -46,7 +46,7 @@ export type RecommendationProgress = {
   actorLabel: string | null;
 };
 
-export type AgendaRecommendation = RecommendationDraft & {
+export type AgendaRecommendation = Omit<RecommendationDraft, 'expectedEffect'> & {
   id: string;
   authorTeamId: string;
   authorTeamName: string;

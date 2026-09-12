@@ -69,7 +69,16 @@ export type RecommendationDraft = {
   title: string;
   problemRecognition: string;
   recommendationContent: string;
+  // Missing on drafts saved before the evening-presentation editor existed.
+  expectedEffect?: string;
 };
+
+export function recommendationExpectedEffect(
+  draft: RecommendationDraft,
+  serverValue: string | null,
+): string | null {
+  return draft.expectedEffect === undefined ? serverValue : draft.expectedEffect.trim() || null;
+}
 
 export type PendingAgendaForm = {
   open: boolean;
@@ -131,7 +140,8 @@ function isRecommendationDraft(value: unknown): value is RecommendationDraft {
   const candidate = value as Record<string, unknown>;
   return typeof candidate.title === 'string'
     && typeof candidate.problemRecognition === 'string'
-    && typeof candidate.recommendationContent === 'string';
+    && typeof candidate.recommendationContent === 'string'
+    && (candidate.expectedEffect === undefined || typeof candidate.expectedEffect === 'string');
 }
 
 export function parseAgendaBoardPendingState(
