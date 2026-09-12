@@ -6,6 +6,7 @@ import {
   fetchAgendaBoard,
   reviseRecommendation,
   setAgendaAssignment,
+  updateAgenda,
   writeRecommendationProgress,
   type AgendaAssignment,
   type AgendaBoardItem,
@@ -415,6 +416,9 @@ export default function AgendaProgressBoard({
   const [newAgendaTitle, setNewAgendaTitle] = useState(restoredPending.agendaForm.title);
   const [newAgendaSource, setNewAgendaSource] = useState(restoredPending.agendaForm.sourceUtterance);
   const [newAgendaSubgroup, setNewAgendaSubgroup] = useState(restoredPending.agendaForm.subgroup);
+  const [editingAgendaId, setEditingAgendaId] = useState<string | null>(null);
+  const [editingAgendaTitle, setEditingAgendaTitle] = useState('');
+  const [editingAgendaSource, setEditingAgendaSource] = useState('');
   const [recommendationFormOpen, setRecommendationFormOpen] = useState(restoredPending.recommendationForm?.open ?? false);
   const [recommendationFormAgendaId, setRecommendationFormAgendaId] = useState<string | null>(restoredPending.recommendationForm?.agendaId ?? null);
   const [recommendationTeamId, setRecommendationTeamId] = useState(restoredPending.recommendationForm?.teamId ?? teamId ?? '');
@@ -654,6 +658,35 @@ export default function AgendaProgressBoard({
       setNewAgendaTitle('');
       setNewAgendaSource('');
       setAgendaFormOpen(false);
+    }
+  };
+
+  const startAgendaEdit = (agenda: AgendaBoardItem) => {
+    setEditingAgendaId(agenda.id);
+    setEditingAgendaTitle(agenda.title);
+    setEditingAgendaSource(agenda.sourceUtterances[0] ?? '');
+  };
+
+  const submitAgendaEdit = async (agenda: AgendaBoardItem) => {
+    if (!topicWritesEnabled) {
+      setMessage('현재 작업단계를 하나로 확정할 수 없어 주제를 수정할 수 없습니다.');
+      return;
+    }
+    const title = editingAgendaTitle.trim();
+    const sourceUtterance = editingAgendaSource.trim();
+    if (!title || !sourceUtterance) {
+      setMessage('주제 제목과 연결 시민 원문을 모두 입력해 주세요.');
+      return;
+    }
+    const snapshot = { agendaId: agenda.id, title, sourceUtterance };
+    const key = `agenda:update:${agenda.id}`;
+    const saved = await runMutation(key, mutationPayloadFingerprint(snapshot), (requestId) => updateAgenda({
+      token: token ?? '', agendaId: agenda.id, title, sourceUtterance, requestId,
+    }));
+    if (saved) {
+      setEditingAgendaId(null);
+      setEditingAgendaTitle('');
+      setEditingAgendaSource('');
     }
   };
 
@@ -1079,10 +1112,30 @@ export default function AgendaProgressBoard({
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {mode === 'hq' ? <button type="button" aria-expanded={agendaExpanded} onClick={() => setExpanded((current) => ({ ...current, [agenda.id]: !agendaExpanded }))} className="min-h-11 rounded-xl border border-[#1F4E79] px-4 text-[14px] font-extrabold text-[#1F4E79]">권고안 {agendaExpanded ? '접기' : '펼치기'}</button> : null}
+                    {mode === 'hq' && !agenda.archived ? <button type="button" disabled={!topicWritesEnabled || busyKey === `agenda:update:${agenda.id}`} onClick={() => startAgendaEdit(agenda)} className="min-h-11 rounded-xl border border-[#137586] bg-white px-4 text-[14px] font-extrabold text-[#137586] disabled:opacity-40">주제 수정</button> : null}
                     {!agenda.archived ? <button type="button" disabled={!topicWritesEnabled || anyRecommendationCreatePending} onClick={() => openRecommendationForm(agenda)} className="min-h-11 rounded-xl bg-[#137586] px-4 text-[14px] font-extrabold text-white disabled:opacity-40">+ 권고안 추가</button> : null}
                     {mode === 'hq' ? <button type="button" onClick={() => setProjectingAgendaId(agenda.id)} className="min-h-11 rounded-xl bg-[#087986] px-4 text-[14px] font-extrabold text-white">이 주제 송출</button> : null}
                   </div>
                 </div>
+
+                {mode === 'hq' && editingAgendaId === agenda.id ? (
+                  <section className="mt-4 rounded-2xl border-2 border-[#137586] bg-[#F8FCFD] p-4" aria-label={`${agenda.title} 주제 수정`}>
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <h4 className="text-[19px] font-black text-[#1F4E79]">주제 수정</h4>
+                      <button type="button" disabled={busyKey === `agenda:update:${agenda.id}`} onClick={() => setEditingAgendaId(null)} className="min-h-11 rounded-lg border border-[#C4D8E4] bg-white px-3 font-bold disabled:opacity-40">닫기</button>
+                    </div>
+                    <label className="mt-4 block text-[14px] font-extrabold text-[#334E5C]">주제 제목
+                      <input aria-label="수정할 주제 제목" disabled={!topicWritesEnabled || busyKey === `agenda:update:${agenda.id}`} value={editingAgendaTitle} onChange={(event) => setEditingAgendaTitle(event.target.value)} maxLength={300} className="mt-1 min-h-12 w-full rounded-xl border border-[#C4D8E4] px-3 text-[16px] disabled:bg-[#F1F5F9]" />
+                    </label>
+                    <label className="mt-3 block text-[14px] font-extrabold text-[#334E5C]">연결 시민 원문
+                      <textarea aria-label="수정할 주제 연결 시민 원문" disabled={!topicWritesEnabled || busyKey === `agenda:update:${agenda.id}`} value={editingAgendaSource} onChange={(event) => setEditingAgendaSource(event.target.value)} maxLength={2000} rows={4} className="mt-1 w-full rounded-xl border border-[#C4D8E4] p-3 text-[16px] leading-relaxed disabled:bg-[#F1F5F9]" />
+                    </label>
+                    <p className="mt-2 text-[13px] font-bold text-[#5A6B73]">기존 조 배정과 권고안은 유지되며, 수정 이력은 서버에 남습니다.</p>
+                    <div className="mt-4 flex justify-end">
+                      <button type="button" disabled={!topicWritesEnabled || busyKey === `agenda:update:${agenda.id}`} onClick={() => void submitAgendaEdit(agenda)} className="min-h-12 rounded-xl bg-[#1F4E79] px-6 font-extrabold text-white disabled:opacity-50">{busyKey === `agenda:update:${agenda.id}` ? '저장 중…' : '수정 저장'}</button>
+                    </div>
+                  </section>
+                ) : null}
 
                 {mode === 'hq' && !agenda.archived ? (
                   <div className="mt-4 border-t border-[#E2E8F0] pt-4">
