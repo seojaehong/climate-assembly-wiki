@@ -138,6 +138,20 @@ export async function createAgenda(input: {
   }, '새 의제를 추가하지 못했습니다.');
 }
 
+export async function updateAgenda(input: {
+  token: string; agendaId: string; title: string; sourceUtterance: string;
+  requestId: string; sessionSlug?: string;
+}): Promise<void> {
+  return mutation('agenda_update_v2', {
+    p_token: input.token,
+    p_session_slug: input.sessionSlug ?? AGENDA_SESSION_SLUG,
+    p_agenda_id: input.agendaId,
+    p_title: input.title,
+    p_source_utterance: input.sourceUtterance,
+    p_request_id: input.requestId,
+  }, '주제 수정을 저장하지 못했습니다.');
+}
+
 export async function archiveAgenda(input: {
   token: string; agendaId: string; reason: string; requestId: string; sessionSlug?: string;
 }): Promise<void> {
