@@ -1,0 +1,27 @@
+{
+  "startedAt": "2026-09-12T10:01:21.617Z",
+  "status": "fail",
+  "mode": "live-read-and-intercepted-write",
+  "checks": [],
+  "liveTeams": [],
+  "blockedRpc": [],
+  "interceptedWrites": 0,
+  "productionContentWrites": 0,
+  "rpcResponses": [
+    {
+      "rpc": "mod_exchange_join_code",
+      "status": 200
+    }
+  ],
+  "failure": "Browser step failed after start",
+  "diagnostic": "locator.click: Timeout 25000ms exceeded. Call log:",
+  "visibleLabels": [
+    "조 접속코드를 입력하세요",
+    "다시 입장"
+  ],
+  "alerts": [
+    "⛔접속코드를 확인하거나 다른 기기의 접속을 종료한 뒤 다시 시도해 주세요."
+  ],
+  "loggedOut": 0,
+  "finishedAt": "2026-09-12T10:01:52.002Z"
+}
