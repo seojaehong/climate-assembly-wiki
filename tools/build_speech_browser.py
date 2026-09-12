@@ -482,7 +482,7 @@ def render_page(rows: list[dict], canon: dict, lock: dict) -> str:
    maxlength="24" aria-label="암호" placeholder="····">
   <button id="go" type="button">열기</button>
   <div id="msg" class="msg" role="status" aria-live="polite"></div>
-  <p class="help"><a href="guide.html">처음이신가요? 사용법 보기</a></p>
+  <p class="help"><a href="guide">처음이신가요? 사용법 보기</a></p>
  </div>
 </div>
 
@@ -493,7 +493,7 @@ def render_page(rows: list[dict], canon: dict, lock: dict) -> str:
    <b>시민 발언 전체</b>
    <span>제5차 분과토론 · 최종 보고서 정본 {len(rows):,}건</span>
   </div>
-  <a class="guide" href="guide.html">사용법</a>
+  <a class="guide" href="guide">사용법</a>
   <div class="search">
    <span class="glass">🔍</span>
    <input id="q" type="search" autocomplete="off" spellcheck="false"
