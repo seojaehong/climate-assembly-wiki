@@ -49,3 +49,7 @@
 /lecture/*
   X-Robots-Tag: noindex, nofollow
   Cache-Control: no-cache
+
+/g/*
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-store
