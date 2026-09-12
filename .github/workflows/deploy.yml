@@ -35,7 +35,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=climate-assembly-wiki --branch=main --skip-caching
+          command: pages deploy dist --project-name=climate-assembly-wiki --skip-caching
 
       - name: Verify custom-domain ResultView asset
         env:
