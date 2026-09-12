@@ -17,15 +17,18 @@ const team: AgendaTeam = {
 };
 
 const fixture: AgendaBoardPayload = {
+  version: 3,
   sessionSlug: '0912-deliberation',
   scope: 'team',
   teamId: team.id,
+  teamSubgroup: team.subgroup,
   activeStage: {
     id: '00000000-0000-4000-8000-000000000003',
     ordinal: 3,
     prompt: '의제별 조별 숙의 및 공유문안 작성',
     status: 'open',
   },
+  stageIntegrity: { openStageCount: 1, writable: true },
   stages: Array.from({ length: 8 }, (_, index) => ({
     id: `00000000-0000-4000-8000-00000000000${index + 1}`,
     ordinal: index + 1,
@@ -35,16 +38,47 @@ const fixture: AgendaBoardPayload = {
   teams: [team],
   agendas: AGENDA_CATALOG_0912.slice(0, 2).map((agenda, index) => ({
     ...agenda,
-    suggestedTeamNumbers: [...agenda.suggestedTeamNumbers],
+    archived: false,
+    createdAt: '2026-09-12T05:00:00.000Z',
     sourceUtterances: [...agenda.sourceUtterances],
     assignments: [{
       teamId: team.id,
       teamName: team.name,
-      status: index === 0 ? 'waiting' as const : 'drafting' as const,
-      publicDraft: index === 0 ? null : '우리 조의 현장 검증용 공유문안입니다.',
-      feedback: null,
-      updatedAt: '2026-09-12T05:30:00.000Z',
+      assignedAt: '2026-09-12T05:10:00.000Z',
     }],
+    recommendations: index === 0 ? [{
+      id: `20000000-0000-4000-8000-00000000000${index + 1}`,
+      authorTeamId: team.id,
+      authorTeamName: team.name,
+      sortOrder: 1,
+      title: '생활권 대중교통 연결 강화',
+      problemRecognition: '대중교통이 부족한 지역은 이동 선택지가 제한됩니다.',
+      recommendationContent: '수요응답형 교통과 주요 환승 거점을 연결하고 운영 정보를 공개합니다.',
+      expectedEffect: '지역에 관계없이 기본 이동권을 누릴 수 있습니다.',
+      status: 'drafting' as const,
+      feedback: '실행 주체를 조금 더 분명히 적어 주세요.',
+      updatedAt: '2026-09-12T05:30:00.000Z',
+      archived: false,
+      revisionVersion: 2,
+      revisionCount: 2,
+      progressCount: 3,
+    }, {
+      id: `30000000-0000-4000-8000-00000000000${index + 1}`,
+      authorTeamId: team.id,
+      authorTeamName: team.name,
+      sortOrder: 2,
+      title: '교통 취약계층 지원',
+      problemRecognition: '고령자와 장애인의 이동비용 부담이 큽니다.',
+      recommendationContent: '교통비와 동행 이동 지원을 생활권 단위로 제공합니다.',
+      expectedEffect: null,
+      status: 'waiting' as const,
+      feedback: null,
+      updatedAt: '2026-09-12T05:35:00.000Z',
+      archived: false,
+      revisionVersion: 1,
+      revisionCount: 1,
+      progressCount: 0,
+    }] : [],
   })),
 };
 ---
@@ -60,7 +94,7 @@ const fixture: AgendaBoardPayload = {
   </style>
 </head><body>
   <div style="background:#6e2020;color:#fff;text-align:center;padding:8px;font-weight:700;">
-    검증용 fixture · 운영 DB 요청 없음 · 기록모더레이터 1개 조 범위
+    검증용 fixture · 운영 DB 요청 없음 · 기록모더레이터 배정 의제와 복수 권고안 작성
   </div>
   <AgendaProgressBoard
     mode="team"

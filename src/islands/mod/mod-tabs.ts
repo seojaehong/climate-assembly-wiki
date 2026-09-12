@@ -1,8 +1,8 @@
 /**
  * 조 콘솔 상단 탭 정의 — 순수 로직. React·DOM 의존이 없어 vitest로 그대로 검증한다.
  *
- * 조별 산출물이 현장 콘솔의 기본 과업이다. 여러 패널을 한 화면에 세로로 늘어놓으면
- * 메인인 산출물이 스크롤 아래로 밀리므로, 산출물을 첫 탭으로 세우고 나머지를 뒤에 둔다.
+ * 9/12–13에는 의제별 권고안 기록이 현장 콘솔의 기본 과업이다. 여러 패널을 한 화면에
+ * 세로로 늘어놓지 않고 진행상황판을 첫 탭으로 세워 기록 흐름을 바로 시작한다.
  */
 
 export type ModTabId = 'progress' | 'submission' | 'attendance' | 'vote' | 'timer';
@@ -16,11 +16,11 @@ export type ModTab = {
 };
 
 /**
- * submission이 맨 앞이고 기본값이다.
+ * progress가 맨 앞이고 기본값이다.
  * 순서를 바꾸면 조가 여는 첫 화면이 바뀐다 — 회차 운영과 함께 판단할 것.
  */
 export const MOD_TABS: readonly ModTab[] = [
-  { id: 'progress', label: '의제 진행', hint: '우리 조에 배정된 의제의 논의·초안·확인 상태를 기록합니다' },
+  { id: 'progress', label: '의제·권고안 기록', hint: '배정 의제를 고르고 권고안을 여러 개 작성·확인·제출합니다' },
   { id: 'submission', label: '조별 산출물', hint: '현재 열린 단계의 조별 초안을 기록합니다' },
   { id: 'attendance', label: '출석 체크', hint: '조원 출석·지각·조퇴를 기록합니다' },
   { id: 'vote', label: '투표', hint: '조 안에서 표를 물을 때만 씁니다' },

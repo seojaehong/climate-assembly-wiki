@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-09-12T02:41:16.928Z",
+  "status": "pass",
+  "baseUrl": "http://127.0.0.1:4323",
+  "checks": [
+    {
+      "name": "hq-agenda-count-1분과",
+      "passed": true,
+      "detail": "1분과 의제는 9건이어야 합니다(실제 9건)."
+    },
+    {
+      "name": "hq-projector-1분과",
+      "passed": true,
+      "detail": "1분과 송출 버튼이 보여야 합니다."
+    },
+    {
+      "name": "hq-agenda-count-2분과",
+      "passed": true,
+      "detail": "2분과 의제는 8건이어야 합니다(실제 8건)."
+    },
+    {
+      "name": "hq-projector-2분과",
+      "passed": true,
+      "detail": "2분과 송출 버튼이 보여야 합니다."
+    },
+    {
+      "name": "hq-agenda-count-3분과",
+      "passed": true,
+      "detail": "3분과 의제는 8건이어야 합니다(실제 8건)."
+    },
+    {
+      "name": "hq-projector-3분과",
+      "passed": true,
+      "detail": "3분과 송출 버튼이 보여야 합니다."
+    },
+    {
+      "name": "hq-multi-team-assignment",
+      "passed": true,
+      "detail": "하나의 의제에 두 개 이상 조가 배정된 상태를 표시해야 합니다."
+    },
+    {
+      "name": "hq-status-대기",
+      "passed": true,
+      "detail": "5단계 상태의 '대기'이 표시되어야 합니다."
+    },
+    {
+      "name": "hq-status-논의 중",
+      "passed": true,
+      "detail": "5단계 상태의 '논의 중'이 표시되어야 합니다."
+    },
+    {
+      "name": "hq-status-초안 작성",
+      "passed": true,
+      "detail": "5단계 상태의 '초안 작성'이 표시되어야 합니다."
+    },
+    {
+      "name": "hq-status-조 확인",
+      "passed": true,
+      "detail": "5단계 상태의 '조 확인'이 표시되어야 합니다."
+    },
+    {
+      "name": "hq-status-제출 완료",
+      "passed": true,
+      "detail": "5단계 상태의 '제출 완료'이 표시되어야 합니다."
+    },
+    {
+      "name": "hq-projector-open",
+      "passed": true,
+      "detail": "분과 전체화면 송출이 열려야 합니다."
+    },
+    {
+      "name": "hq-add-fields",
+      "passed": true,
+      "detail": "의제 제목과 연결 시민 원문 입력칸이 필요합니다."
+    },
+    {
+      "name": "team-agenda-select",
+      "passed": true,
+      "detail": "배정 의제 드롭다운이 보여야 합니다."
+    },
+    {
+      "name": "team-transition-waiting",
+      "passed": true,
+      "detail": "권고안은 대기에서 시작해야 합니다."
+    },
+    {
+      "name": "team-transition-discussing",
+      "passed": true,
+      "detail": "discussing 단계로 전환되어야 합니다."
+    },
+    {
+      "name": "team-transition-drafting",
+      "passed": true,
+      "detail": "drafting 단계로 전환되어야 합니다."
+    },
+    {
+      "name": "team-transition-team_confirmed",
+      "passed": true,
+      "detail": "team_confirmed 단계로 전환되어야 합니다."
+    },
+    {
+      "name": "team-transition-submitted",
+      "passed": true,
+      "detail": "submitted 단계로 전환되어야 합니다."
+    },
+    {
+      "name": "team-active-fields",
+      "passed": true,
+      "detail": "오늘 작성할 세 입력칸이 모두 보여야 합니다."
+    },
+    {
+      "name": "inactive-fields-hidden",
+      "passed": true,
+      "detail": "이행 일정 이후 필드는 현재 입력 화면에 나오면 안 됩니다."
+    },
+    {
+      "name": "no-external-network",
+      "passed": true,
+      "detail": "외부 연결 시도 0건"
+    }
+  ],
+  "divisionCounts": {
+    "1분과": 9,
+    "2분과": 8,
+    "3분과": 8
+  },
+  "externalNetworkAttemptCount": 0,
+  "productionDatabaseRequestCount": 0,
+  "screenshots": [
+    "evaluation/0912-agenda-progress-board/hq-add-agenda.png",
+    "evaluation/0912-agenda-progress-board/team-recommendation-authoring.png"
+  ]
+}

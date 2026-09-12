@@ -19,15 +19,18 @@ const teams: AgendaTeam[] = [1, 2, 3].flatMap((division) =>
 );
 
 const fixture: AgendaBoardPayload = {
+  version: 3,
   sessionSlug: '0912-deliberation',
   scope: 'hq',
   teamId: null,
+  teamSubgroup: null,
   activeStage: {
     id: '00000000-0000-4000-8000-000000000001',
     ordinal: 3,
     prompt: '의제별 조별 숙의 및 공유문안 작성',
     status: 'open',
   },
+  stageIntegrity: { openStageCount: 1, writable: true },
   stages: Array.from({ length: 8 }, (_, index) => ({
     id: `00000000-0000-4000-8000-00000000000${index + 1}`,
     ordinal: index + 1,
@@ -41,15 +44,30 @@ const fixture: AgendaBoardPayload = {
     const statuses = ['waiting', 'discussing', 'drafting', 'team_confirmed', 'submitted'] as const;
     return {
       ...agenda,
-      suggestedTeamNumbers: [...agenda.suggestedTeamNumbers],
+      archived: false,
+      createdAt: '2026-09-12T05:00:00.000Z',
       sourceUtterances: [...agenda.sourceUtterances],
-      assignments: assigned.map((team, assignmentIndex) => ({
+      assignments: assigned.map((team) => ({
         teamId: team.id,
         teamName: team.name,
+        assignedAt: '2026-09-12T05:10:00.000Z',
+      })),
+      recommendations: assigned.map((team, assignmentIndex) => ({
+        id: `10000000-0000-4000-${String(index).padStart(4, '0')}-${String(assignmentIndex).padStart(12, '0')}`,
+        authorTeamId: team.id,
+        authorTeamName: team.name,
+        sortOrder: assignmentIndex + 1,
+        title: `${team.name} 정책권고안`,
+        problemRecognition: '지역과 계층에 따른 기후 대응 여건의 차이를 줄여야 합니다.',
+        recommendationContent: '실행 주체와 지원 기준을 분명히 한 단계별 실행안을 마련합니다.',
+        expectedEffect: index % 3 === 0 ? '모두가 전환의 혜택을 누릴 수 있습니다.' : null,
         status: statuses[(index + assignmentIndex) % statuses.length],
-        publicDraft: index % 3 === 0 ? '우리 조는 실행 주체와 지원 기준을 분명히 한 단계별 실행안을 제안합니다.' : null,
         feedback: null,
         updatedAt: '2026-09-12T05:30:00.000Z',
+        archived: false,
+        revisionVersion: 1,
+        revisionCount: 1,
+        progressCount: 1,
       })),
     };
   }),
@@ -67,7 +85,7 @@ const fixture: AgendaBoardPayload = {
   </style>
 </head><body>
   <div style="background:#6e2020;color:#fff;text-align:center;padding:8px;font-weight:700;">
-    검증용 fixture · 운영 DB 요청 없음 · 9·8·8 의제 / 15개 조 / 다중 배정
+    검증용 fixture · 운영 DB 요청 없음 · 9·8·8 의제 / 복수 권고안 / 권고안별 진행상태
   </div>
   <AgendaProgressBoard mode="hq" fixturePayload={fixture} client:only="react" />
 </body></html>

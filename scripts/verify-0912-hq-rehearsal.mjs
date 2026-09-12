@@ -658,9 +658,10 @@ async function runBrowserRehearsal(options, fixture, fixturePath, fixtureSha256)
       serviceWorkers: 'block',
       acceptDownloads: false,
     });
-    await context.addInitScript(({ capabilityKey, actorKey, capability, actor }) => {
+    await context.addInitScript(({ capabilityKey, actorKey, viewKey, capability, actor }) => {
       sessionStorage.setItem(capabilityKey, capability);
       sessionStorage.setItem(actorKey, actor);
+      sessionStorage.setItem(viewKey, 'submissions');
       const attempts = [];
       class BlockedWebSocket {
         static CONNECTING = 0;
@@ -696,6 +697,7 @@ async function runBrowserRehearsal(options, fixture, fixturePath, fixtureSha256)
     }, {
       capabilityKey: fixture.storage.capabilityStorageKey,
       actorKey: fixture.storage.actorStorageKey,
+      viewKey: 'climate_vote_hq_view_v1',
       capability: runtimeCapability,
       actor: fixture.session.operatorActorLabel,
     });

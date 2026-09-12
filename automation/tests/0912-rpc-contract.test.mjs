@@ -30,7 +30,7 @@ describe('9/12 UI-fixture RPC emulator subset', () => {
   test('separates declared inventory, emulator implementation, and browser fixture allowance', () => {
     expect(fixture.expectedRpcContracts).toEqual(RPC_0912_DECLARED_CONTRACTS);
     expect(fixture.rpcCoverage.emulatorImplementedRpcNames).toEqual(RPC_0912_EMULATOR_IMPLEMENTED);
-    expect(RPC_0912_DECLARED_CONTRACTS).toHaveLength(56);
+    expect(RPC_0912_DECLARED_CONTRACTS).toHaveLength(64);
     expect(RPC_0912_EMULATOR_IMPLEMENTED).toHaveLength(22);
     expect(RPC_0912_DECLARED_CONTRACTS.length).toBeGreaterThan(RPC_0912_EMULATOR_IMPLEMENTED.length);
     expect(Object.keys(fixture.fieldRehearsal.rpcBehaviors).every(
@@ -38,6 +38,7 @@ describe('9/12 UI-fixture RPC emulator subset', () => {
     )).toBe(true);
     expect(RPC_0912_DECLARED_CONTRACTS).toContain('workshop_hq_logout_v2');
     expect(RPC_0912_DECLARED_CONTRACTS).toContain('mod_set_round_status_v3');
+    expect(RPC_0912_DECLARED_CONTRACTS).toContain('recommendation_progress_v2');
     expect(RPC_0912_DECLARED_CONTRACTS).not.toContain('mod_set_round_status_v2');
     expect(RPC_0912_EMULATOR_IMPLEMENTED).not.toContain('workshop_hq_logout_v2');
     expect(fixture.rpcCoverage).toMatchObject({

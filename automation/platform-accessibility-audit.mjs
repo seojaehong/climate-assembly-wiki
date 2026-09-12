@@ -868,6 +868,7 @@ async function prepareModeratorConsole({ context, page, baseUrl }) {
     expectedRpcCalls: {
       mod_exchange_join_code: 0,
       mod_session_get: 0,
+      agenda_board_v2: 0,
       topic_list_v2: 0,
       submission_get_v2: 0,
       mod_rounds_v2: 0,
@@ -967,6 +968,60 @@ async function prepareModeratorConsole({ context, page, baseUrl }) {
       return jsonResponse(route, { message: 'Synthetic moderator token contract mismatch' }, 401);
     }
     if (rpc === 'mod_session_get') return jsonResponse(route, tokenResponse);
+    if (rpc === 'agenda_board_v2') {
+      return jsonResponse(route, {
+        version: 2,
+        sessionSlug: session.slug,
+        scope: 'team',
+        teamId: team.id,
+        teamSubgroup: team.subgroup,
+        activeStage: {
+          id: topicRows[0].id,
+          ordinal: topicRows[0].ordinal,
+          prompt: topicRows[0].prompt,
+          status: 'open',
+        },
+        stageIntegrity: { openStageCount: 1, writable: true },
+        stages: [{
+          id: topicRows[0].id,
+          ordinal: topicRows[0].ordinal,
+          prompt: topicRows[0].prompt,
+          status: 'open',
+        }],
+        teams: [{ id: team.id, name: team.name, subgroup: team.subgroup, tableNo: team.table_no }],
+        agendas: [{
+          id: '00000000-0000-4000-8000-000000000098',
+          subgroup: team.subgroup,
+          ordinal: 1,
+          title: '접근성 감사 합성 의제',
+          archived: false,
+          createdAt: '2026-09-12T01:00:00.000Z',
+          sourceUtterances: ['개인정보 없는 접근성 감사 합성 원문'],
+          assignments: [{
+            teamId: team.id,
+            teamName: team.name,
+            assignedAt: '2026-09-12T01:00:00.000Z',
+          }],
+          recommendations: [{
+            id: '00000000-0000-4000-8000-000000000099',
+            authorTeamId: team.id,
+            authorTeamName: team.name,
+            sortOrder: 1,
+            title: '접근성 감사 합성 권고안',
+            problemRecognition: '합성 문제 인식입니다.',
+            recommendationContent: '합성 권고 내용입니다.',
+            expectedEffect: null,
+            status: 'waiting',
+            feedback: null,
+            updatedAt: '2026-09-12T01:00:00.000Z',
+            archived: false,
+            revisionCount: 1,
+            revisions: [],
+            progress: [],
+          }],
+        }],
+      });
+    }
     if (rpc === 'topic_list_v2') {
       return jsonResponse(route, topicRows);
     }
@@ -1017,11 +1072,12 @@ async function prepareModeratorConsole({ context, page, baseUrl }) {
 }
 
 async function exerciseModeratorTimerTab({ page }) {
+  const progressTab = page.getByRole('tab', { name: '의제·권고안 기록' });
   const submissionTab = page.getByRole('tab', { name: '조별 산출물' });
   const timerTab = page.getByRole('tab', { name: '타이머' });
   await submissionTab.waitFor({ state: 'visible', timeout: 10_000 });
-  await assertFocused(submissionTab, 'Moderator submission tab');
-  await submissionTab.press('End');
+  await assertFocused(progressTab, 'Moderator progress tab');
+  await progressTab.press('End');
   await page.locator('#mod-panel-timer:not([hidden])').waitFor({ state: 'visible', timeout: 10_000 });
   if (await timerTab.getAttribute('aria-selected') !== 'true'
     || !await timerTab.evaluate((element) => document.activeElement === element)) {
@@ -1065,6 +1121,7 @@ async function prepareWorkshopHqDashboard({ context, page, baseUrl }) {
     'hq_rounds_v2',
     'hq_vote_counts_v2',
     'hq_votes_v2',
+    'agenda_board_v2',
   ]);
   const mutationRpcNames = new Set([
     'workshop_hq_open_next_topic',
@@ -1210,6 +1267,50 @@ async function prepareWorkshopHqDashboard({ context, page, baseUrl }) {
         expires_at: '2026-09-13T13:00:00.000Z',
       }]);
     }
+    if (rpc === 'agenda_board_v2') {
+      return jsonResponse(route, {
+        version: 2,
+        sessionSlug: '0912-deliberation',
+        scope: 'hq',
+        teamId: null,
+        teamSubgroup: null,
+        activeStage: { id: topicId, ordinal: 1, prompt: '접근성 감사 합성 꼭지', status: 'open' },
+        stageIntegrity: { openStageCount: 1, writable: true },
+        stages: [{ id: topicId, ordinal: 1, prompt: '접근성 감사 합성 꼭지', status: 'open' }],
+        teams: [{ id: teamId, name: '접근성 감사 합성 조', subgroup: '1분과', tableNo: 'T-01' }],
+        agendas: [{
+          id: '00000000-0000-4000-8000-000000000108',
+          subgroup: '1분과',
+          ordinal: 1,
+          title: '접근성 감사 합성 의제',
+          archived: false,
+          createdAt: '2026-09-12T01:00:00.000Z',
+          sourceUtterances: ['개인정보 없는 접근성 감사 합성 원문'],
+          assignments: [{
+            teamId,
+            teamName: '접근성 감사 합성 조',
+            assignedAt: '2026-09-12T01:00:00.000Z',
+          }],
+          recommendations: [{
+            id: '00000000-0000-4000-8000-000000000109',
+            authorTeamId: teamId,
+            authorTeamName: '접근성 감사 합성 조',
+            sortOrder: 1,
+            title: '접근성 감사 합성 권고안',
+            problemRecognition: '합성 문제 인식입니다.',
+            recommendationContent: '합성 권고 내용입니다.',
+            expectedEffect: null,
+            status: 'waiting',
+            feedback: null,
+            updatedAt: '2026-09-12T01:00:00.000Z',
+            archived: false,
+            revisionCount: 1,
+            revisions: [],
+            progress: [],
+          }],
+        }],
+      });
+    }
     if (rpc === 'attendance_roster_v2') {
       return jsonResponse(route, [{
         assignment_id: '00000000-0000-4000-8000-000000000105',
@@ -1300,6 +1401,7 @@ async function prepareWorkshopHqDashboard({ context, page, baseUrl }) {
 }
 
 async function exerciseWorkshopHqSubmissions({ page }) {
+  await page.getByRole('tab', { name: '조별 산출물' }).click();
   await page.locator('#workshop-hq-title').waitFor({ state: 'visible', timeout: 10_000 });
   const devices = page.getByRole('button', { name: /접속 기기 1대 보기/ });
   await devices.click();
@@ -1309,13 +1411,13 @@ async function exerciseWorkshopHqSubmissions({ page }) {
 
 async function exerciseWorkshopHqDashboard({ page }) {
   await page.locator('#workshop-hq-title').waitFor({ state: 'visible', timeout: 10_000 });
-  const submissionsTab = page.getByRole('tab', { name: '조별 산출물' });
+  const progressTab = page.getByRole('tab', { name: '의제 진행상황' });
   const gridTab = page.getByRole('tab', { name: '투표·출석 현황' });
   const gridLoaded = page.waitForResponse((response) => (
     new URL(response.url()).pathname.endsWith('/rpc/hq_rounds_v2')
   ));
-  await assertFocused(submissionsTab, 'HQ submissions tab');
-  await submissionsTab.press('ArrowRight');
+  await assertFocused(progressTab, 'HQ progress tab');
+  await progressTab.press('End');
   await gridLoaded;
   if (await gridTab.getAttribute('aria-selected') !== 'true'
     || !await gridTab.evaluate((element) => document.activeElement === element)

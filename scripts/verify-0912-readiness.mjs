@@ -612,11 +612,20 @@ export function verify0912Readiness({
       '0912-p1a-seed.sql',
       'platform_p1a_0912_event_access.sql',
       'platform_p1a_0912_event_access.verify.sql',
+      '20260912_s23_division_progress_board.sql',
+      '20260912_s23_division_progress_board.verify.sql',
+      '20260912_s24_recommendation_workflow.sql',
+      '20260912_s24_recommendation_workflow.verify.sql',
     ]);
     const driverOrder = inspectRequiredOrder(readSourceText, 'automation/tests/fixtures/0912-p1a-driver.sql', [
       '\\i /tmp/platform_p1_tenancy.sql',
       '\\i /tmp/0912-p1a-seed.sql',
       '\\i /tmp/platform_p1a_0912_event_access.sql',
+      '\\i /tmp/20260912_s23_division_progress_board.sql',
+      '\\i /tmp/20260912_s24_recommendation_workflow.sql',
+      '\\i /tmp/platform_p1a_0912_event_access.verify.sql',
+      '\\i /tmp/20260912_s23_division_progress_board.verify.sql',
+      '\\i /tmp/20260912_s24_recommendation_workflow.verify.sql',
     ]);
     const activationDriver = inspectRequiredText(
       readSourceText,

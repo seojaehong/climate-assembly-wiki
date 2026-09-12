@@ -14,6 +14,7 @@
     "verify:0912:postgres": "bash scripts/verify-0912-postgres.sh",
     "verify:0912:field": "node scripts/verify-field-rehearsal.mjs --report .tmp-verify/0912-13-field-rehearsal.json",
     "verify:0912:hq": "node scripts/verify-0912-hq-rehearsal.mjs --report .tmp-verify/0912-13-hq-rehearsal.json",
+    "verify:0912:agenda-fixture": "node automation/verify-agenda-recommendation-fixtures.mjs",
     "verify:0912:release-report": "node scripts/verify-0912-release-report.mjs",
     "prepare:0912:operator": "node scripts/prepare-0912-operator-packet.mjs",
     "verify:0912:local": "vitest run && npm run test:automation && astro check && node scripts/verify-workshop-access-contract.mjs && node scripts/verify-0912-readiness.mjs --output .tmp-verify/0912-13-traceability-report.json && bash scripts/verify-0912-postgres.sh",

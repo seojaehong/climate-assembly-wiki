@@ -30,6 +30,8 @@ import {
 } from './hq-gate-logic';
 
 const hqSessionStorage = createSafeBrowserStorage('sessionStorage');
+const HQ_VIEW_KEY = 'climate_vote_hq_view_v1';
+type HqView = 'progress' | 'submissions' | 'grid';
 
 function storedToken(): string | null {
   const saved = hqSessionStorage.getItem(HQ_TOKEN_KEY);
@@ -38,6 +40,11 @@ function storedToken(): string | null {
 
 function storedActor(): string {
   return hqSessionStorage.getItem(HQ_ACTOR_KEY) ?? '';
+}
+
+function storedView(): HqView {
+  const saved = hqSessionStorage.getItem(HQ_VIEW_KEY);
+  return saved === 'submissions' || saved === 'grid' ? saved : 'progress';
 }
 
 export default function HqGate() {
@@ -66,16 +73,23 @@ export default function HqGate() {
   const currentPasswordRef = useRef<HTMLInputElement>(null);
   // 본부 화면 전환 — 9/12 현장에서는 9·8·8 의제 배정과 진행상태가 중심이다.
   // 제출물과 투표·출석 그리드는 그대로 유지하고 진행상황판만 기본으로 연다.
-  const [view, setView] = useState<'progress' | 'submissions' | 'grid'>('progress');
+  const [view, setView] = useState<HqView>(storedView);
+
+  const selectView = useCallback((next: HqView) => {
+    hqSessionStorage.setItem(HQ_VIEW_KEY, next);
+    setView(next);
+  }, []);
 
   const clearLocalSession = useCallback((nextMessage: string | null) => {
     hqSessionStorage.removeItem(HQ_TOKEN_KEY);
     hqSessionStorage.removeItem(HQ_ACTOR_KEY);
+    hqSessionStorage.removeItem(HQ_VIEW_KEY);
     setNonPersistentMode(!hqSessionStorage.isPersistent());
     setToken(null);
     setActor('');
     setActorInput('');
     setPassword('');
+    setView('progress');
     setPwOpen(false);
     setPwCurrent('');
     setPwNext('');
@@ -302,7 +316,7 @@ export default function HqGate() {
               aria-controls="hq-console-content"
               aria-selected={view === id}
               tabIndex={view === id ? 0 : -1}
-              onClick={() => setView(id)}
+              onClick={() => selectView(id)}
               className={`min-h-11 rounded-lg px-4 text-[14px] font-bold transition focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#F4C542] ${
                 view === id ? 'bg-white text-[#1F4E79]' : 'border border-white/40 text-white/85'
               }`}

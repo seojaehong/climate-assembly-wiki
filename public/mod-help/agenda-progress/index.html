@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="robots" content="noindex,nofollow">
+  <meta name="color-scheme" content="light">
+  <title>9/12–13 권고안 진행상황판 가이드</title>
+  <style>
+    :root{--navy:#1f4e79;--teal:#137586;--green:#4f9d3a;--bg:#f5f8fb;--line:#dce7ee;--text:#1f2933;--muted:#5a6b73}
+    *{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:var(--bg);color:var(--text);font-family:Pretendard,-apple-system,BlinkMacSystemFont,"Malgun Gothic",sans-serif;line-height:1.55}
+    main{max-width:1060px;margin:0 auto;padding:32px 20px 64px}.topnav{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}.topnav div{display:flex;gap:8px}.link{display:inline-flex;min-height:44px;align-items:center;border:1px solid #9ccad1;border-radius:12px;background:#fff;padding:0 14px;color:#135c73;font-weight:800;text-decoration:none}.back{color:var(--teal);font-weight:800}
+    header{border-radius:28px;background:var(--navy);padding:34px;color:#fff}.eyebrow{margin:0;color:#9de3ea;font:800 12px ui-monospace,monospace;letter-spacing:.14em;text-transform:uppercase}h1{margin:8px 0 0;font-size:38px;line-height:1.2;letter-spacing:-.03em}header p:last-child{max-width:760px;margin:14px 0 0;color:#e7f4f7;font-size:17px;font-weight:650}
+    .rules{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px}.rule{min-height:98px;border:1px solid var(--line);border-radius:18px;background:#fff;padding:18px}.rule b,.rule span{display:block}.rule b{color:var(--teal);font-size:14px}.rule span{margin-top:6px;font-size:17px;font-weight:850}
+    .guide{margin-top:28px;border:1px solid var(--line);border-radius:24px;background:#fff;padding:28px;scroll-margin-top:18px}.title{display:flex;align-items:center;gap:14px}.icon{display:grid;width:52px;height:52px;flex:0 0 52px;place-items:center;border-radius:15px;background:var(--green);color:#fff;font-size:24px;font-weight:900}.icon.hq{background:var(--navy)}.icon.common{background:var(--teal)}.title p{margin:0;color:var(--teal);font-size:13px;font-weight:850}.title h2{margin:2px 0 0;color:var(--navy);font-size:26px;line-height:1.25}
+    .steps{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin:20px 0 0;padding:0;list-style:none;counter-reset:steps}.steps li{display:flex;gap:12px;border-radius:15px;background:var(--bg);padding:14px}.steps li::before{counter-increment:steps;content:counter(steps);display:grid;width:32px;height:32px;flex:0 0 32px;place-items:center;border-radius:10px;background:var(--green);color:#fff;font-weight:900}.guide.hq .steps li::before{background:var(--navy)}.steps b,.steps span{display:block}.steps b{font-size:16px}.steps span{margin-top:3px;color:var(--muted);font-size:14px}
+    figure{margin:22px 0 0;overflow:hidden;border:1px solid #c4d8e4;border-radius:18px;background:var(--bg)}figure img{display:block;width:100%;max-height:720px;object-fit:cover;object-position:top;border-bottom:1px solid #c4d8e4}figcaption{padding:14px 16px;color:#475569;font-size:14px}.note{margin-top:18px;border-radius:16px;padding:17px 19px}.check{border:1px solid rgba(79,157,58,.5);background:rgba(79,157,58,.07)}.warn{border:1px solid #f59e0b;background:#fef3c7;color:#78350f}.note h3,.note p{margin:0}.note h3{margin-bottom:7px}.note ul{display:grid;gap:5px;margin:0;padding-left:20px}
+    .status{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:20px 0 0;padding:0;list-style:none}.status li{min-height:92px;border:1px solid #c4d8e4;border-radius:15px;background:#f8fafc;padding:14px}.status li:nth-child(2){background:#e0f2fe;border-color:#38bdf8}.status li:nth-child(3){background:#fef3c7;border-color:#f59e0b}.status li:nth-child(4){background:#f3e8ff;border-color:#a855f7}.status li:nth-child(5){background:#d1fae5;border-color:#34d399}.status b,.status span{display:block}.status span{margin-top:8px;color:var(--muted);font-size:12px}.explain{color:var(--muted);font-size:15px;font-weight:650}
+    .trouble{margin-top:28px;border-radius:24px;background:#1f2933;padding:24px;color:#fff}.trouble h2{margin:0 0 14px}.trouble dl{display:grid;gap:10px;margin:0}.trouble dl div{border-radius:13px;background:rgba(255,255,255,.08);padding:13px 15px}.trouble dt{font-weight:900;color:#9de3ea}.trouble dd{margin:4px 0 0;color:#e5e7eb;font-size:14px}.foot{display:flex;justify-content:center;gap:10px;margin-top:26px}
+    @media(max-width:720px){main{padding:20px 12px 48px}.topnav{align-items:flex-start;flex-direction:column}.topnav div{width:100%}.topnav .link{flex:1;justify-content:center}header{padding:26px 22px}h1{font-size:30px}.rules,.steps,.status{grid-template-columns:1fr}.guide{padding:20px}.status li{min-height:auto}figure img{max-height:520px}}
+    @media print{@page{size:A4;margin:12mm}body{background:#fff}.topnav,.foot{display:none}.guide{break-inside:avoid}}
+  </style>
+</head>
+<body>
+<main>
+  <nav class="topnav"><a class="back" href="/mod-help/">← 사용 가이드</a><div><a class="link" href="#record">기록모더 안내</a><a class="link" href="#hq">HQ 안내</a></div></nav>
+  <header><p class="eyebrow">9/12–13 현장용</p><h1>권고안 작성·진행상황판 사용 가이드</h1><p>기록모더레이터는 자기 조 권고안 카드를 작성하고 HQ는 모든 분과를 확인·지원합니다. 오늘은 권고 제목, 배경·문제 인식, 권고 내용까지만 입력합니다.</p></header>
+  <section class="rules" aria-label="핵심 원칙"><div class="rule"><b>의제 수</b><span>1분과 9개 · 2분과 8개 · 3분과 8개</span></div><div class="rule"><b>카드 단위</b><span>권고제목 하나마다 권고안 카드 한 장</span></div><div class="rule"><b>작성 범위</b><span>제목 · 문제인식 · 권고내용까지만</span></div></section>
+
+  <section id="record" class="guide">
+    <div class="title"><span class="icon">📝</span><div><p>기록모더레이터</p><h2>자기 조 권고안 작성하기</h2></div></div>
+    <ol class="steps"><li><div><b>분과·조 확인</b><span>로그인 뒤 표시된 분과와 조가 현장 배정과 같은지 확인합니다.</span></div></li><li><div><b>의제 선택</b><span>자기 분과 전체 의제(1분과 9개, 2·3분과 각 8개)에서 논의할 의제를 고릅니다.</span></div></li><li><div><b>권고안 카드 추가</b><span>권고제목 하나마다 카드 한 장을 만들고 문제인식과 권고내용을 이어 씁니다.</span></div></li><li><div><b>초안 저장</b><span>작성 중 수시로 저장하고 마지막 서버 갱신 시각을 확인합니다.</span></div></li><li><div><b>조 확인</b><span>세 입력칸을 조원과 읽고 합의된 카드만 조 확인 완료로 넘깁니다.</span></div></li><li><div><b>최종 제출</b><span>제출 완료 배지와 분과 현황판 반영을 확인합니다.</span></div></li></ol>
+    <figure><img src="team-recommendation-authoring.png" alt="기록모더레이터 권고안 카드 작성 화면"><figcaption><b>① 의제 선택 → ② + 권고안 추가 → ③ 세 입력칸 작성 → ④ 저장·조 확인·제출</b> 순서로 진행합니다.</figcaption></figure>
+    <div class="note check"><h3>제출 전 20초 점검</h3><ul><li>내 분과·조·의제가 맞다.</li><li>권고제목 하나당 카드가 한 장이다.</li><li>제목·문제인식·권고내용이 모두 채워졌다.</li><li>제출 완료 배지가 보인다.</li></ul></div>
+  </section>
+
+  <section id="hq" class="guide hq">
+    <div class="title"><span class="icon hq">🎛️</span><div><p>책임모더레이터 · HQ</p><h2>전체 분과 확인하고 지원하기</h2></div></div>
+    <ol class="steps"><li><div><b>전체 25개 확인</b><span>전체 및 분과 탭의 9·8·8 건수를 확인합니다.</span></div></li><li><div><b>분과·상태 필터</b><span>분과나 상태를 골라 지연·보완 대상 조를 찾습니다.</span></div></li><li><div><b>대신 입력·수정</b><span>대상 분과·조·의제를 확인한 뒤 권고안 카드를 작성합니다.</span></div></li><li><div><b>보완 요청</b><span>보완 내용을 구체적으로 남기고 필요한 경우 재열기합니다.</span></div></li><li><div><b>분과 화면 송출</b><span>분과별 현황 송출로 조별 권고제목과 진행상태를 크게 보여줍니다.</span></div></li></ol>
+    <figure><img src="hq-progress-board.png" alt="HQ 전체 25개 의제와 분과별 진행상태 화면"><figcaption><b>① 분과·상태 필터 → ② 의제 펼치기 → ③ 조 배정·대신 입력·보완 요청 → ④ 분과 송출</b> 순서로 사용합니다.</figcaption></figure>
+    <div class="note warn"><h3>HQ 대신 입력 시</h3><p>저장 전에 대상 분과·조·의제를 다시 확인하세요. 대상 조와 입력 행위자가 이력에 함께 남습니다.</p></div>
+  </section>
+
+  <section class="guide"><div class="title"><span class="icon common">5</span><div><p>공통</p><h2>상태는 이렇게 바뀝니다</h2></div></div><ol class="status"><li><b>대기</b><span>새 카드 저장</span></li><li><b>논의 중</b><span>논의 시작</span></li><li><b>초안 작성</b><span>초안 작성 완료</span></li><li><b>조 확인</b><span>조 확인 완료</span></li><li><b>제출 완료</b><span>최종 제출</span></li></ol><p class="explain">상단 색상 박스는 진행 건수입니다. 기록모더레이터는 개별 카드의 다음 행동 버튼으로 상태를 바꾸고 HQ는 색상 박스를 필터로 사용합니다.</p></section>
+  <section class="trouble"><h2>막혔을 때</h2><dl><div><dt>의제가 9·8·8보다 적어요</dt><dd>새로고침 후에도 같으면 입력하지 말고 HQ에 분과·조를 알려주세요.</dd></div><div><dt>저장됐는지 모르겠어요</dt><dd>연결 상태와 마지막 갱신 시각을 확인하고 버튼을 여러 번 누르지 않습니다.</dd></div><div><dt>잘못 제출했어요</dt><dd>HQ에 재열기를 요청하고 기존 카드를 수정합니다. 같은 카드를 다시 만들지 않습니다.</dd></div></dl></section>
+  <footer class="foot"><a class="link" href="/mod">기록모더 화면으로</a><a class="link" href="/hq">HQ 화면으로</a></footer>
+</main>
+</body>
+</html>

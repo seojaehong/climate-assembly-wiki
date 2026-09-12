@@ -52,6 +52,7 @@ target_files=(
   "supabase/verify/20260908_s21_correct_0912_topics.sql"
   "supabase/verify/20260910_s22_align_0912_final_plan.sql"
   "supabase/verify/20260912_s23_division_progress_board.sql"
+  "supabase/verify/20260912_s24_recommendation_workflow.sql"
   "supabase/verify/platform_p2a_0912_token_only_activation.sql"
   "supabase/verify/platform_p2a_0912_token_only_activation_rollback.sql"
   "supabase/verify/design_provisioning_post_apply.sql"
@@ -193,6 +194,8 @@ docker cp supabase/verify/20260910_s22_align_0912_final_plan.sql \
   "${container}:/tmp/20260910_s22_align_0912_final_plan.verify.sql"
 docker cp supabase/verify/20260912_s23_division_progress_board.sql \
   "${container}:/tmp/20260912_s23_division_progress_board.verify.sql"
+docker cp supabase/verify/20260912_s24_recommendation_workflow.sql \
+  "${container}:/tmp/20260912_s24_recommendation_workflow.verify.sql"
 docker cp supabase/verify/driver_pass1.sql "${container}:/tmp/driver_pass1.sql"
 docker cp supabase/verify/platform_p1a_0912_event_access.sql \
   "${container}:/tmp/platform_p1a_0912_event_access.verify.sql"

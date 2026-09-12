@@ -110,13 +110,18 @@
         "agenda_item",
         "agenda_source_utterance",
         "agenda_assignment_event",
-        "agenda_progress_event"
+        "agenda_progress_event",
+        "agenda_lifecycle_event",
+        "agenda_recommendation",
+        "agenda_recommendation_revision",
+        "agenda_recommendation_archive_event",
+        "agenda_recommendation_progress_event"
       ],
       "storageLocations": ["managed_supabase_database", "browser_local_draft_before_send"],
-      "purpose": "분과별 의제 원문 연결, 조 배정과 진행상태 및 시민 공유문안의 변경 이력을 보존",
+      "purpose": "분과별 의제 원문 연결, 조 배정, 권고안 문안과 권고안별 진행·개정·보관 이력을 보존",
       "dataSubjects": ["participant", "staff"],
       "dataClasses": ["deliberation_content", "political_opinion_candidate", "operational_state", "audit_metadata"],
-      "ingress": ["reviewed_agenda_source", "hq_assignment", "moderator_progress_update"],
+      "ingress": ["reviewed_agenda_source", "hq_assignment", "moderator_agenda_creation", "moderator_recommendation_revision", "recommendation_progress_update"],
       "internalUses": ["session_operation", "moderation", "provenance_review", "accountability"],
       "egress": ["division_projector", "restricted_archive"],
       "publicRelease": "human_review_only"

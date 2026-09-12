@@ -61,6 +61,14 @@ export const RPC_0912_DECLARED_CONTRACTS = Object.freeze([
   'workshop_hq_revoke_device',
   'workshop_hq_set_deadline',
   'workshop_hq_rotate_join_codes',
+  'agenda_board_v2',
+  'agenda_create_v2',
+  'agenda_archive_v2',
+  'agenda_assignment_set_v2',
+  'recommendation_create_v2',
+  'recommendation_revise_v2',
+  'recommendation_archive_v2',
+  'recommendation_progress_v2',
 ]);
 
 /**

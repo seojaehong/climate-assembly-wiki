@@ -363,7 +363,18 @@ declare
     'climate_vote.hq_clear_submissions_v3(text,text,text,jsonb,uuid)',
     'climate_vote.agenda_board_v1(text,text)',
     'climate_vote.agenda_assignment_set_v1(text,text,uuid,uuid,boolean,uuid)',
-    'climate_vote.agenda_progress_write_v1(text,text,uuid,uuid,uuid,text,text,text,uuid)'
+    'climate_vote.agenda_progress_write_v1(text,text,uuid,uuid,uuid,text,text,text,uuid)',
+    'climate_vote.agenda_board_v2(text,text)',
+    'climate_vote.agenda_create_v2(text,text,text,text,text,uuid)',
+    'climate_vote.agenda_archive_v2(text,text,uuid,text,uuid)',
+    'climate_vote.agenda_assignment_set_v2(text,text,uuid,uuid,boolean,uuid)',
+    'climate_vote.recommendation_create_v2(text,text,uuid,uuid,text,text,text,text,uuid)',
+    'climate_vote.recommendation_create_v2(text,text,uuid,uuid,text,text,text,text,uuid,uuid)',
+    'climate_vote.recommendation_revise_v2(text,text,uuid,text,text,text,text,integer,uuid)',
+    'climate_vote.recommendation_revise_v2(text,text,uuid,text,text,text,text,integer,uuid,uuid)',
+    'climate_vote.recommendation_archive_v2(text,text,uuid,text,uuid)',
+    'climate_vote.recommendation_progress_v2(text,text,uuid,text,text,uuid)',
+    'climate_vote.recommendation_progress_v2(text,text,uuid,text,text,uuid,uuid)'
   ];
   v_authenticated_allowed text[]:=v_anon_allowed||array[
     'climate_vote.org_of_uid()',
