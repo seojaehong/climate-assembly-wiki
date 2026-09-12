@@ -477,7 +477,9 @@ def render_page(rows: list[dict], canon: dict, lock: dict) -> str:
  <div class="box">
   <div class="key">🔑</div>
   <h1>시민 발언 전체</h1>
-  <p>기후시민회의 제5차 분과토론 기록입니다.<br>모더레이터에게 받은 암호를 넣어 주세요.</p>
+  <p>기후시민회의 제5차 분과토론 기록입니다.<br>모더레이터에게 받은 <b>숫자 네 자리</b>를 넣어 주세요.</p>
+  <!-- 이 화면 암호는 숫자만 쓴다. 숫자 아닌 글자를 넣으려면 inputmode 를 함께 걷어내야
+       한다 — 폰에서 숫자 자판만 올라와 특수문자를 못 넣는다(2026-09-12 현장에서 걸렸다). -->
   <input id="pw" type="password" inputmode="numeric" autocomplete="off"
    maxlength="24" aria-label="암호" placeholder="····">
   <button id="go" type="button">열기</button>
@@ -662,7 +664,8 @@ def render_guide(rows: list[dict], canon: dict) -> str:
 <ul>
  <li><b>첫 번째</b> — 브라우저가 띄우는 작은 창입니다. <b>사용자 이름은 아무거나</b> 넣거나 비워도 되고,
  암호만 맞으면 됩니다.</li>
- <li><b>두 번째</b> — 화면 가운데 열쇠 그림 아래에 같은 암호를 한 번 더 넣습니다.</li>
+ <li><b>두 번째</b> — 화면 가운데 열쇠 그림 아래에 넣습니다. <b>첫 번째와 다른 암호</b>이고
+ <b>숫자 네 자리</b>입니다. 폰에서는 숫자 자판이 바로 올라옵니다.</li>
 </ul>
 <div class="note">두 번인 이유가 있습니다. 첫 번째는 <b>파일이 서버에서 나가지 않게</b> 막고,
 두 번째는 <b>파일이 새어 나가더라도 내용을 읽지 못하게</b> 막습니다. 발언에 실명이 들어 있어서
