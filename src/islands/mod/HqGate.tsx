@@ -305,7 +305,6 @@ export default function HqGate() {
         >
           {([
             ['progress', '주제 진행상황'],
-            ['submissions', '조별 산출물'],
           ] as const).map(([id, label]) => (
             <button
               key={id}
