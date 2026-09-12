@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   fetchWorkshopDevices,
   fetchWorkshopHqStatus,
-  rotateWorkshopJoinCodes,
   revokeWorkshopDevice,
   type WorkshopDevice,
   type WorkshopHqStatus,
@@ -34,8 +33,6 @@ export default function WorkshopHqStatus({
   const [notice, setNotice] = useState<string | null>(null);
   const [lastSyncedAt, setLastSyncedAt] = useState<number | null>(null);
   const [showDevices, setShowDevices] = useState(false);
-  const [joinCodes, setJoinCodes] = useState<Array<{ team_id: string; team_name: string; table_no: string | null; join_code: string }> | null>(null);
-  const [joinCodeBusy, setJoinCodeBusy] = useState(false);
   const requestIdsRef = useRef<Map<string, string>>(new Map());
   const refreshRef = useRef<{ token: string; sequence: number; inFlight: Promise<void> | null }>({
     token,
@@ -119,23 +116,6 @@ export default function WorkshopHqStatus({
     }
   };
 
-  const rotateCodes = async () => {
-    if (!window.confirm('15개 조의 기존 접속코드를 폐기하고 새 코드를 발급합니까?')) return;
-    setJoinCodeBusy(true);
-    setError(null);
-    setNotice(null);
-    try {
-      const result = await rotateWorkshopJoinCodes(token, CURRENT_SESSION_SLUG, crypto.randomUUID());
-      setJoinCodes(result.codes);
-      setNotice('15개 조 접속코드를 발급했습니다. 이 화면에서만 확인할 수 있습니다.');
-    } catch (caught) {
-      console.error('[workshop HQ] join-code rotation failed', caught);
-      setError('조 접속코드를 발급하지 못했습니다. HQ 권한과 운영 DB 연결을 확인해 주세요.');
-    } finally {
-      setJoinCodeBusy(false);
-    }
-  };
-
   return (
     <section className="border-b-4 border-[#1F4E79] bg-[#EEF6FA] px-4 py-5 sm:px-6" aria-labelledby="workshop-hq-title">
       <div className="mx-auto max-w-[1600px]">
@@ -160,20 +140,12 @@ export default function WorkshopHqStatus({
           <div className="flex flex-wrap items-center gap-3">
             <div className="min-w-0 flex-1">
               <h3 className="text-[18px] font-extrabold text-[#1F4E79]">조 접속코드</h3>
-              <p className="text-[14px] text-[#5A6B73]">코드 발급 시 기존 조 링크는 즉시 무효화됩니다.</p>
+              <p className="text-[14px] text-[#5A6B73]">오늘 운영 코드는 고정되어 있습니다. 재발급하면 기존 링크가 모두 무효화됩니다.</p>
             </div>
-            <button type="button" onClick={() => void rotateCodes()} disabled={joinCodeBusy}
-              className="min-h-11 rounded-xl bg-[#1F4E79] px-4 text-[15px] font-extrabold text-white disabled:opacity-40">
-              {joinCodeBusy ? '발급 중…' : '15개 조 코드 발급'}
-            </button>
+            <span role="status" className="rounded-xl border-2 border-[#4F9D3A] bg-[#F2FAEF] px-4 py-2 text-[15px] font-extrabold text-[#2D6A24]">
+              오늘 운영 중 · 재발급 잠금
+            </span>
           </div>
-          {joinCodes ? <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-            {joinCodes.map((row) => <div key={row.team_id} className="rounded-xl border border-[#DCE7EE] bg-[#F8FAFC] p-3">
-              <div className="text-[14px] font-extrabold text-[#334E5C]">{row.team_name}</div>
-              <div className="mt-1 font-mono text-[20px] font-black tracking-widest text-[#137586]">{row.join_code}</div>
-              <a className="mt-1 block truncate text-[12px] text-[#1F4E79]" href={`/mod?code=${row.join_code}`}>https://climate-assembly.org/mod?code={row.join_code}</a>
-            </div>)}
-          </div> : null}
         </div>
 
         {status ? (
