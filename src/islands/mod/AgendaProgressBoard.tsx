@@ -86,13 +86,12 @@ function isAddedAgenda(agenda: AgendaBoardItem): boolean {
   return agenda.ordinal > canonicalCount;
 }
 
-function displayAgendaOrdinal(agendas: AgendaBoardItem[], agenda: AgendaBoardItem): number {
-  if (agenda.archived) return agenda.ordinal;
-  const activeAgendas = agendas
-    .filter((item) => !item.archived && item.subgroup === agenda.subgroup)
-    .sort((left, right) => left.ordinal - right.ordinal);
-  const index = activeAgendas.findIndex((item) => item.id === agenda.id);
-  return index >= 0 ? index + 1 : agenda.ordinal;
+// 화면 번호는 언제나 주제의 진짜 번호(ordinal)다. 목록 안 위치로 다시 매기지 않는다.
+// 2026-09-12 현장에서 걸렸다 — 조 화면은 그 조에 배정된 주제만 받으므로, 위치로 매기면
+// 1분과 1조에게 「6번」이 「2번」으로 보였다. 조가 손에 든 종이 자료는 진짜 번호를 쓰므로
+// 화면과 종이가 어긋나 조가 다른 주제를 고르게 된다.
+function displayAgendaOrdinal(_agendas: AgendaBoardItem[], agenda: AgendaBoardItem): number {
+  return agenda.ordinal;
 }
 
 // The first-division presentation follows the facilitator's confirmed speaking order.
