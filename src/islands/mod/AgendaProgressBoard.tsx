@@ -628,7 +628,7 @@ export default function AgendaProgressBoard({
     const title = newAgendaTitle.trim();
     const sourceUtterance = newAgendaSource.trim();
     if (!title || !sourceUtterance) {
-      setMessage('새 의제 제목과 연결 시민 원문을 모두 입력해 주세요.');
+      setMessage('새 주제 제목과 연결 시민 원문을 모두 입력해 주세요.');
       return;
     }
     const targetSubgroup = mode === 'team' ? (subgroup ?? newAgendaSubgroup) : newAgendaSubgroup;
@@ -861,7 +861,7 @@ export default function AgendaProgressBoard({
     const key = `agenda:archive:${agenda.id}`;
     const storedReason = archiveReasonFromFingerprint(pendingRequestFingerprints[key]);
     const reason = storedReason ?? window.prompt(
-      `“${agenda.title}” 의제를 보관합니다. 보관 사유를 입력해 주세요.`,
+      `“${agenda.title}” 주제를 보관합니다. 보관 사유를 입력해 주세요.`,
       '',
     )?.trim();
     if (!reason) {
@@ -955,14 +955,14 @@ export default function AgendaProgressBoard({
           ) : (
             <label className="min-w-0 flex-1 basis-full text-[14px] font-extrabold text-[#334E5C] sm:min-w-[280px] sm:basis-auto">
               작성할 주제
-              <select aria-label="작성할 의제 선택" disabled={anyRecommendationCreatePending} value={selectedAgendaId} onChange={(event) => setSelectedAgendaId(event.target.value)} className="mt-1 min-h-12 w-full rounded-xl border border-[#C4D8E4] bg-white px-3 text-[16px] disabled:bg-[#F1F5F9]">
+              <select aria-label="작성할 주제 선택" disabled={anyRecommendationCreatePending} value={selectedAgendaId} onChange={(event) => setSelectedAgendaId(event.target.value)} className="mt-1 min-h-12 w-full rounded-xl border border-[#C4D8E4] bg-white px-3 text-[16px] disabled:bg-[#F1F5F9]">
                 {visibleAgendas.map((agenda) => <option key={agenda.id} value={agenda.id}>{agenda.subgroup} · {agenda.title}</option>)}
               </select>
             </label>
           )}
           <label className="min-w-0 flex-1 basis-full text-[14px] font-extrabold text-[#334E5C] sm:min-w-[220px] sm:basis-auto">
             주제·권고안 검색
-            <input type="search" aria-label="의제와 권고안 검색" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="제목, 내용, 조 이름" className="mt-1 min-h-12 w-full rounded-xl border border-[#C4D8E4] px-3 text-[16px]" />
+            <input type="search" aria-label="주제와 권고안 검색" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="제목, 내용, 조 이름" className="mt-1 min-h-12 w-full rounded-xl border border-[#C4D8E4] px-3 text-[16px]" />
           </label>
           {mode === 'hq' ? (
             <label className="text-[14px] font-extrabold text-[#334E5C]">
@@ -997,24 +997,24 @@ export default function AgendaProgressBoard({
             <div className="mt-4 grid gap-3 sm:grid-cols-[180px_1fr]">
               {mode === 'hq' ? (
                 <label className="text-[14px] font-extrabold text-[#334E5C]">분과
-                  <select aria-label="새 의제 분과" disabled={!topicWritesEnabled || agendaCreatePending} value={newAgendaSubgroup} onChange={(event) => setNewAgendaSubgroup(event.target.value)} className="mt-1 min-h-12 w-full rounded-xl border border-[#C4D8E4] bg-white px-3 disabled:bg-[#F1F5F9]">
+                  <select aria-label="새 주제 분과" disabled={!topicWritesEnabled || agendaCreatePending} value={newAgendaSubgroup} onChange={(event) => setNewAgendaSubgroup(event.target.value)} className="mt-1 min-h-12 w-full rounded-xl border border-[#C4D8E4] bg-white px-3 disabled:bg-[#F1F5F9]">
                     {divisions.map((division) => <option key={division}>{division}</option>)}
                   </select>
                 </label>
               ) : <p className="self-end pb-3 text-[15px] font-extrabold text-[#137586]">{subgroup}에 추가</p>}
-              <label className="text-[14px] font-extrabold text-[#334E5C]">의제 제목 <span className="text-[#B91C1C]">필수</span>
-                <input autoFocus aria-label="새 의제 제목" disabled={!topicWritesEnabled || agendaCreatePending} value={newAgendaTitle} onChange={(event) => setNewAgendaTitle(event.target.value)} className="mt-1 min-h-12 w-full rounded-xl border border-[#C4D8E4] px-3 text-[16px] disabled:bg-[#F1F5F9]" />
+              <label className="text-[14px] font-extrabold text-[#334E5C]">주제 제목 <span className="text-[#B91C1C]">필수</span>
+                <input autoFocus aria-label="새 주제 제목" disabled={!topicWritesEnabled || agendaCreatePending} value={newAgendaTitle} onChange={(event) => setNewAgendaTitle(event.target.value)} className="mt-1 min-h-12 w-full rounded-xl border border-[#C4D8E4] px-3 text-[16px] disabled:bg-[#F1F5F9]" />
               </label>
               <label className="text-[14px] font-extrabold text-[#334E5C] sm:col-span-2">연결 시민 원문 <span className="text-[#B91C1C]">필수</span>
-                <textarea aria-label="새 의제 연결 시민 원문" disabled={!topicWritesEnabled || agendaCreatePending} rows={4} maxLength={2000} value={newAgendaSource} onChange={(event) => setNewAgendaSource(event.target.value)} placeholder="이 의제와 연결되는 시민 발언 원문을 그대로 붙여 넣어 주세요." className="mt-1 w-full rounded-xl border border-[#C4D8E4] p-3 text-[16px] leading-relaxed disabled:bg-[#F1F5F9]" />
+                <textarea aria-label="새 주제 연결 시민 원문" disabled={!topicWritesEnabled || agendaCreatePending} rows={4} maxLength={2000} value={newAgendaSource} onChange={(event) => setNewAgendaSource(event.target.value)} placeholder="이 주제와 연결되는 시민 발언 원문을 그대로 붙여 넣어 주세요." className="mt-1 w-full rounded-xl border border-[#C4D8E4] p-3 text-[16px] leading-relaxed disabled:bg-[#F1F5F9]" />
               </label>
               <div className="flex justify-end sm:col-span-2">
-                <button type="button" disabled={!topicWritesEnabled || busyKey === 'agenda:create'} onClick={() => void submitAgenda()} className="min-h-12 rounded-xl bg-[#1F4E79] px-6 font-extrabold text-white disabled:opacity-50">의제 추가</button>
+                <button type="button" disabled={!topicWritesEnabled || busyKey === 'agenda:create'} onClick={() => void submitAgenda()} className="min-h-12 rounded-xl bg-[#1F4E79] px-6 font-extrabold text-white disabled:opacity-50">주제 추가</button>
               </div>
             </div>
             {similarTitles.length > 0 ? (
               <p role="status" className="mt-3 rounded-xl border border-[#F59E0B] bg-[#FEF3C7] px-4 py-3 text-[14px] font-bold text-[#92400E]">
-                비슷한 기존 의제가 있습니다: {similarTitles.slice(0, 3).join(' · ')}. 중복인지 확인한 뒤 추가해 주세요.
+                비슷한 기존 주제가 있습니다: {similarTitles.slice(0, 3).join(' · ')}. 중복인지 확인한 뒤 추가해 주세요.
               </p>
             ) : null}
           </section>
@@ -1040,13 +1040,16 @@ export default function AgendaProgressBoard({
         <div className="mt-5 space-y-4">
           {displayedAgendas.length === 0 ? (
             <div className="rounded-2xl border border-[#C4D8E4] bg-white p-10 text-center text-[18px] font-bold text-[#64748B]">
-              {mode === 'team' ? '배정된 의제가 아직 없습니다. 필요하면 새 의제를 추가해 주세요.' : '조건에 맞는 의제가 없습니다.'}
+              {mode === 'team' ? '배정된 주제가 아직 없습니다. 필요하면 새 주제를 추가해 주세요.' : '조건에 맞는 주제가 없습니다.'}
             </div>
           ) : null}
           {displayedAgendas.map((agenda) => {
             const agendaExpanded = mode === 'team' || expanded[agenda.id] === true;
             const teams = (payload?.teams ?? []).filter((team) => team.subgroup === agenda.subgroup);
-            const recommendations = agenda.recommendations.filter((recommendation) => showArchived || !recommendation.archived);
+            const recommendations = agenda.recommendations.filter((recommendation) =>
+              (showArchived || !recommendation.archived)
+              && (statusFilter === 'all' || recommendation.status === statusFilter),
+            );
             const recommendationCreateKey = `recommendation:create:${agenda.id}`;
             const recommendationCreatePending = Boolean(pendingRequestIds[recommendationCreateKey]);
             const agendaCounts = statusCounts(recommendations.filter((recommendation) => !recommendation.archived).map((recommendation) => recommendation.status));
@@ -1054,7 +1057,7 @@ export default function AgendaProgressBoard({
               <article data-agenda-subgroup={agenda.subgroup} key={agenda.id} className={`rounded-2xl border bg-white p-4 shadow-sm sm:p-5 ${agenda.archived ? 'border-[#CBD5E1] opacity-75' : 'border-[#DCE7EE]'}`}>
                 <div className="flex flex-wrap items-start gap-4">
                   <div className="min-w-0 flex-1 basis-full text-left sm:min-w-[260px] sm:basis-auto">
-                    <p className="text-[13px] font-extrabold text-[#137586]">{agenda.subgroup} · 의제 {agenda.ordinal}{agenda.archived ? ' · 보관됨' : ''}</p>
+                    <p className="text-[13px] font-extrabold text-[#137586]">{agenda.subgroup} · 주제 {agenda.ordinal}{agenda.archived ? ' · 보관됨' : ''}</p>
                     <h3 className="mt-1 text-[22px] font-black leading-snug text-[#1F2933]">{agenda.title}</h3>
                     <div className="mt-3"><AssignmentSummary assignments={agenda.assignments} /></div>
                     <div className="mt-3 flex flex-wrap gap-1 text-[12px] font-extrabold text-[#5A6B73]">
@@ -1065,9 +1068,9 @@ export default function AgendaProgressBoard({
                   <div className="flex flex-wrap gap-2">
                     {mode === 'hq' ? <button type="button" aria-expanded={agendaExpanded} onClick={() => setExpanded((current) => ({ ...current, [agenda.id]: !agendaExpanded }))} className="min-h-11 rounded-xl border border-[#1F4E79] px-4 text-[14px] font-extrabold text-[#1F4E79]">권고안 {agendaExpanded ? '접기' : '펼치기'}</button> : null}
                     {!agenda.archived ? <button type="button" disabled={!topicWritesEnabled || anyRecommendationCreatePending} onClick={() => openRecommendationForm(agenda)} className="min-h-11 rounded-xl bg-[#137586] px-4 text-[14px] font-extrabold text-white disabled:opacity-40">+ 권고안 추가</button> : null}
-                    {mode === 'hq' ? <button type="button" onClick={() => setProjectingAgendaId(agenda.id)} className="min-h-11 rounded-xl bg-[#23B2C3] px-4 text-[14px] font-extrabold text-white">이 의제 송출</button> : null}
+                    {mode === 'hq' ? <button type="button" onClick={() => setProjectingAgendaId(agenda.id)} className="min-h-11 rounded-xl bg-[#23B2C3] px-4 text-[14px] font-extrabold text-white">이 주제 송출</button> : null}
                     {mode === 'hq' && !agenda.archived ? (
-                      <button type="button" onClick={() => archiveAgendaItem(agenda)} className="min-h-11 rounded-xl border border-[#9A3412] px-4 text-[14px] font-extrabold text-[#9A3412]">의제 보관</button>
+                      <button type="button" onClick={() => archiveAgendaItem(agenda)} className="min-h-11 rounded-xl border border-[#9A3412] px-4 text-[14px] font-extrabold text-[#9A3412]">주제 보관</button>
                     ) : null}
                   </div>
                 </div>
