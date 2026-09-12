@@ -78,7 +78,7 @@ test('archive workflows cover every workshop in the canonical schedule', async (
   expect(captureCrons).toEqual(schedule.workshops.map((workshop) => captureCronForWorkshop(workshop)));
   expect(finalizeCrons).toEqual(schedule.workshops.map((workshop) => finalizeCronForWorkshop(workshop)));
   expect(snapshotCrons).toEqual(schedule.workshops.map((workshop) => snapshotCronForWorkshop(workshop)));
-  expect(snapshotCrons.every((cron) => cron.startsWith('*/5 '))).toBe(true);
+  expect(snapshotCrons.every((cron) => cron.startsWith('*/15 '))).toBe(true);
   expect(captureWorkflow.concurrency).toBeUndefined();
   expect(snapshotWorkflow.concurrency).toBeUndefined();
   const finalizeStep = finalizeWorkflow.jobs.finalize.steps.find((step) => step.name === 'Finalize report');
@@ -97,7 +97,7 @@ test('keeps the overnight snapshot window active between the two Gyeongju worksh
     (workshop) => workshop.name === '6차_권고안초안작성_경주합숙1일차',
   );
 
-  expect(snapshotCronForWorkshop(firstDay)).toBe('*/5 * 12 9 *');
+  expect(snapshotCronForWorkshop(firstDay)).toBe('*/15 * 12 9 *');
   expect(findActiveWorkshop(loaded, new Date('2026-09-12T14:00:00Z'))).toBeNull();
   expect(findActiveSnapshotWorkshop(loaded, new Date('2026-09-12T14:00:00Z'))?.name)
     .toBe('6차_권고안초안작성_경주합숙1일차');
@@ -164,7 +164,7 @@ test('rejects invalid calendar dates, times, and off-grid capture windows', () =
     date: '2026-08-29',
     start_kst: '09:03',
     end_kst: '18:00',
-  })).toThrow('workshop capture times must align to five minutes');
+  })).toThrow('workshop capture times must align to fifteen minutes');
   expect(() => captureCronForWorkshop({
     date: '2026-08-29',
     start_kst: '18:00',

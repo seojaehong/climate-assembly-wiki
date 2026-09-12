@@ -1,17 +1,17 @@
 name: snapshot
 on:
   schedule:
-    # Run every five minutes during each workshop window; the CLI enforces the exact date and end minute.
-    - cron: '*/5 0-9 4 7 *'
-    - cron: '*/5 0-9 29 8 *'
+    # Run every fifteen minutes during each workshop window; the CLI enforces the exact date and end minute.
+    - cron: '*/15 0-9 4 7 *'
+    - cron: '*/15 0-9 29 8 *'
     # 9.12~13 합숙은 1박 2일이라 밤을 건너야 한다. UTC 기준으로 끊기지 않게 이어 붙인다.
     #   9/12 00-23 UTC = 9/12 09:00 ~ 9/13 08:59 KST
     #   9/13 00-09 UTC = 9/13 09:00 ~ 9/13 18:59 KST
     # ★ 종전 '0-12 12 9' + '0-9 13 9' 는 **9/12 22시~9/13 09시 KST 가 비어 있었다.**
     #   조가 밤에 저장한 것이 아침까지 백업되지 않는 창이었다.
-    - cron: '*/5 * 12 9 *'
-    - cron: '*/5 0-9 13 9 *'
-    - cron: '*/5 0-9 17 10 *'
+    - cron: '*/15 * 12 9 *'
+    - cron: '*/15 0-9 13 9 *'
+    - cron: '*/15 0-9 17 10 *'
   workflow_dispatch:
 jobs:
   snapshot:
