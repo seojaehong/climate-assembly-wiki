@@ -24,7 +24,7 @@ function kstDate(now, offsetDays = 0) {
   return kst.toISOString().slice(0, 10);
 }
 
-export function expectedCaptureSets(workshop, intervalMinutes = 5) {
+export function expectedCaptureSets(workshop, intervalMinutes = 15) {
   return expectedCaptureTimestamps(workshop, intervalMinutes).length;
 }
 

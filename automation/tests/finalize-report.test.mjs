@@ -38,20 +38,20 @@ test('alerts Discord after a failed finalize workflow step', () => {
   expect(steps[alertIndex].if).toBe('failure()');
 });
 
-test('derives inclusive five-minute capture counts from workshop hours', () => {
-  expect(expectedCaptureSets({ date: '2026-08-29', start_kst: '09:00', end_kst: '18:00' })).toBe(109);
-  expect(expectedCaptureSets({ date: '2026-08-29', start_kst: '09:00', end_kst: '21:00' })).toBe(145);
+test('derives inclusive fifteen-minute capture counts from workshop hours', () => {
+  expect(expectedCaptureSets({ date: '2026-08-29', start_kst: '09:00', end_kst: '18:00' })).toBe(37);
+  expect(expectedCaptureSets({ date: '2026-08-29', start_kst: '09:00', end_kst: '21:00' })).toBe(49);
 });
 
 test('derives exact UTC capture timestamps from the KST workshop schedule', () => {
   expect(expectedCaptureTimestamps({
     date: '2026-08-29',
     start_kst: '09:00',
-    end_kst: '09:10',
+    end_kst: '09:30',
   })).toEqual([
     '2026-08-29T00-00',
-    '2026-08-29T00-05',
-    '2026-08-29T00-10',
+    '2026-08-29T00-15',
+    '2026-08-29T00-30',
   ]);
 });
 
@@ -83,7 +83,7 @@ test('loads finalization counts from the Drive workshop archive', async () => {
       data: {
         files: [
           { id: 'capture-1', name: '2026-08-29T00-00' },
-          { id: 'capture-2', name: '2026-08-29T00-05' },
+          { id: 'capture-2', name: '2026-08-29T00-15' },
           { id: 'snapshots-1', name: 'snapshots' },
         ],
       },
@@ -121,7 +121,7 @@ test('loads finalization counts from the Drive workshop archive', async () => {
       start_kst: '09:00',
       end_kst: '18:00',
     },
-    expectedSets: 108,
+    expectedSets: 37,
     requiredCaptureFiles: [
       'page-board.png',
       'page-event.png',
@@ -136,7 +136,7 @@ test('loads finalization counts from the Drive workshop archive', async () => {
     captureSets: 2,
     snapshotCount: 1,
     finalVotes: null,
-    expectedSets: 108,
+    expectedSets: 37,
   });
   expect(result.markdown).toContain('캡쳐 set: 2');
   expect(result.markdown).toContain('스냅샷 건수: 1');

@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import yaml from 'js-yaml';
 
+const CAPTURE_INTERVAL_MINUTES = 15;
+
 export function normalizeDate(d) {
   let date;
   if (d instanceof Date) {
@@ -57,11 +59,12 @@ export function captureCronForWorkshop(workshop) {
   const start = new Date(workshopInstant(workshop.date, workshop.start_kst));
   const end = new Date(workshopInstant(workshop.date, workshop.end_kst));
   if (end < start) throw new Error('workshop end time precedes start time');
-  if (start.getUTCMinutes() % 5 !== 0 || end.getUTCMinutes() % 5 !== 0) {
-    throw new Error('workshop capture times must align to five minutes');
+  if (start.getUTCMinutes() % CAPTURE_INTERVAL_MINUTES !== 0
+    || end.getUTCMinutes() % CAPTURE_INTERVAL_MINUTES !== 0) {
+    throw new Error('workshop capture times must align to fifteen minutes');
   }
   if (!sameUtcDate(start, end)) throw new Error('capture cron requires a single UTC date');
-  return `*/5 ${start.getUTCHours()}-${end.getUTCHours()} ${start.getUTCDate()} ${start.getUTCMonth() + 1} *`;
+  return `*/${CAPTURE_INTERVAL_MINUTES} ${start.getUTCHours()}-${end.getUTCHours()} ${start.getUTCDate()} ${start.getUTCMonth() + 1} *`;
 }
 
 export function snapshotCronForWorkshop(workshop) {
@@ -71,9 +74,10 @@ export function snapshotCronForWorkshop(workshop) {
   if (endExclusive <= start) {
     throw new Error('invalid snapshot end');
   }
-  const lastRun = new Date(endExclusive.getTime() - 5 * 60 * 1000);
-  if (start.getUTCMinutes() % 5 !== 0 || lastRun.getUTCMinutes() % 5 !== 0) {
-    throw new Error('workshop snapshot times must align to five minutes');
+  const lastRun = new Date(endExclusive.getTime() - CAPTURE_INTERVAL_MINUTES * 60 * 1000);
+  if (start.getUTCMinutes() % CAPTURE_INTERVAL_MINUTES !== 0
+    || lastRun.getUTCMinutes() % CAPTURE_INTERVAL_MINUTES !== 0) {
+    throw new Error('workshop snapshot times must align to fifteen minutes');
   }
   if (!sameUtcDate(start, lastRun)) {
     throw new Error('snapshot cron requires a single UTC date');
@@ -81,7 +85,7 @@ export function snapshotCronForWorkshop(workshop) {
   const startHour = start.getUTCHours();
   const endHour = lastRun.getUTCHours();
   const hours = startHour === 0 && endHour === 23 ? '*' : `${startHour}-${endHour}`;
-  return `*/5 ${hours} ${start.getUTCDate()} ${start.getUTCMonth() + 1} *`;
+  return `*/${CAPTURE_INTERVAL_MINUTES} ${hours} ${start.getUTCDate()} ${start.getUTCMonth() + 1} *`;
 }
 
 export function finalizeCronForWorkshop(workshop, delayHours = 4) {
@@ -93,7 +97,7 @@ export function finalizeCronForWorkshop(workshop, delayHours = 4) {
   return `${finalizeAt.getUTCMinutes()} ${finalizeAt.getUTCHours()} ${finalizeAt.getUTCDate()} ${finalizeAt.getUTCMonth() + 1} *`;
 }
 
-export function expectedCaptureTimestamps(workshop, intervalMinutes = 5) {
+export function expectedCaptureTimestamps(workshop, intervalMinutes = CAPTURE_INTERVAL_MINUTES) {
   if (!Number.isSafeInteger(intervalMinutes) || intervalMinutes <= 0) {
     throw new Error(`invalid capture interval: ${intervalMinutes}`);
   }
