@@ -1401,7 +1401,8 @@ async function prepareWorkshopHqDashboard({ context, page, baseUrl }) {
 }
 
 async function exerciseWorkshopHqSubmissions({ page }) {
-  await page.getByRole('tab', { name: '조별 산출물' }).click();
+  // The field UI now exposes operations inside the progress tab.
+  await page.getByRole('tab', { name: '주제 진행상황' }).click();
   await page.locator('#hq-console-content details > summary').filter({ hasText: '현장 운영 상태 열기' }).click();
   await page.locator('#workshop-hq-title').waitFor({ state: 'visible', timeout: 10_000 });
   const devices = page.getByRole('button', { name: /접속 기기 1대 보기/ });
@@ -1413,21 +1414,16 @@ async function exerciseWorkshopHqSubmissions({ page }) {
 async function exerciseWorkshopHqDashboard({ page }) {
   await page.locator('#agenda-progress-title').waitFor({ state: 'visible', timeout: 10_000 });
   const progressTab = page.getByRole('tab', { name: '주제 진행상황' });
-  const submissionsTab = page.getByRole('tab', { name: '조별 산출물' });
-  const submissionsLoaded = page.waitForResponse((response) => (
-    new URL(response.url()).pathname.endsWith('/rpc/hq_submissions_v3')
-  ));
   await assertFocused(progressTab, 'HQ progress tab');
-  await progressTab.press('End');
-  await submissionsLoaded;
-  if (await submissionsTab.getAttribute('aria-selected') !== 'true'
-    || !await submissionsTab.evaluate((element) => document.activeElement === element)
-    || !await page.locator('#hq-console-content[aria-labelledby="hq-tab-submissions"]').isVisible()) {
-    throw new Error('HQ submissions tab did not remain mounted and selected after keyboard navigation');
+  for (const key of ['End', 'Home', 'ArrowRight', 'ArrowLeft']) {
+    await progressTab.press(key);
+    if (await progressTab.getAttribute('aria-selected') !== 'true'
+      || !await page.locator('#hq-console-content[aria-labelledby="hq-tab-progress"]').isVisible()) {
+      throw new Error('HQ progress tab did not remain selected after keyboard navigation');
+    }
+    await assertFocused(progressTab, `HQ progress tab after ${key}`);
   }
-  await submissionsTab.press('Home');
   await page.locator('#agenda-progress-title').waitFor({ state: 'visible', timeout: 10_000 });
-  await assertFocused(progressTab, 'HQ progress tab after Home');
 }
 
 export const DEFAULT_AUDIT_ROUTES = [

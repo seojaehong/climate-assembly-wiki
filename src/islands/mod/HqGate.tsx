@@ -43,8 +43,8 @@ function storedActor(): string {
 }
 
 function storedView(): HqView {
-  const saved = hqSessionStorage.getItem(HQ_VIEW_KEY);
-  return saved === 'submissions' ? saved : 'progress';
+  // Hidden legacy tabs must not be restored from an earlier browser session.
+  return 'progress';
 }
 
 export default function HqGate() {
