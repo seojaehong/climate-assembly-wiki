@@ -318,12 +318,13 @@ function DivisionProjectorView({
     0,
   );
   const pageSize = 2;
-  const pageCount = Math.max(1, Math.ceil(agendas.length / pageSize));
+  const cardPageCount = Math.ceil(agendas.length / pageSize);
+  const pageCount = Math.max(1, 1 + cardPageCount);
   const [page, setPage] = useState(0);
   useEffect(() => {
     setPage((current) => Math.min(current, pageCount - 1));
   }, [pageCount]);
-  const visibleAgendas = agendas.slice(page * pageSize, (page + 1) * pageSize);
+  const visibleAgendas = agendas.slice((page - 1) * pageSize, page * pageSize);
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#F5F8FB] p-6 text-[#1F2933] sm:p-10" role="dialog" aria-modal="true" aria-label={`${division} 권고안 현황 송출 화면`}>
       <header className="mx-auto flex w-full items-start gap-4 border-b-4 border-[#23B2C3] pb-6">
@@ -338,13 +339,13 @@ function DivisionProjectorView({
           <button type="button" onClick={onClose} className="min-h-12 rounded-xl border-2 border-[#1F4E79] bg-white px-5 text-[17px] font-extrabold text-[#1F4E79]">운영 화면으로</button>
         </div>
       </header>
-      <section className="mx-auto mt-6 w-full rounded-3xl border border-[#C4D8E4] bg-white p-5" aria-label={`${division} 주제·조 선택 결과`}>
-        <h3 className="text-[22px] font-black text-[#1F4E79]">{division} 주제·조 선택 결과</h3>
+      {page === 0 ? <section className="mx-auto mt-6 w-full rounded-3xl border-2 border-[#137586] bg-white p-7 shadow-sm" aria-label={`${division} 주제·조 선택 결과`}>
+        <h3 className="text-[30px] font-black text-[#1F4E79]">{division} 주제·조 선택 결과</h3>
         <div className="mt-3 overflow-x-auto">
-          <table className="min-w-full border-collapse text-left text-[14px]"><thead><tr className="border-b-2 border-[#DCE7EE]"><th className="p-2">주제</th>{teams.map((team) => <th key={team.id} className="p-2 text-center">{team.name}</th>)}</tr></thead><tbody>{agendas.map((agenda) => <tr key={agenda.id} className="border-b border-[#EEF2F5]"><th className="p-2 font-bold">주제 {agenda.ordinal}. {agenda.title}</th>{teams.map((team) => <td key={team.id} className="p-2 text-center font-black text-[#137586]">{agenda.assignments.some((assignment) => assignment.teamId === team.id) ? '✓' : '—'}</td>)}</tr>)}</tbody></table>
+          <table className="min-w-full border-collapse text-left text-[20px]"><thead><tr className="border-b-2 border-[#DCE7EE]"><th className="p-4 text-[22px]">주제</th>{teams.map((team) => <th key={team.id} className="p-4 text-center text-[22px]">{team.name}</th>)}</tr></thead><tbody>{agendas.map((agenda) => <tr key={agenda.id} className="border-b border-[#EEF2F5]"><th className="p-4 text-[21px] font-bold">주제 {agenda.ordinal}. {agenda.title}</th>{teams.map((team) => <td key={team.id} className="p-4 text-center text-[28px] font-black text-[#137586]">{agenda.assignments.some((assignment) => assignment.teamId === team.id) ? '✓' : '—'}</td>)}</tr>)}</tbody></table>
         </div>
-      </section>
-      <div className="mx-auto mt-8 grid w-full gap-5 lg:grid-cols-2">
+      </section> : null}
+      {page > 0 ? <div className="mx-auto mt-8 grid w-full gap-5 lg:grid-cols-2">
         {visibleAgendas.map((agenda) => {
           const recommendations = agenda.recommendations.filter((item) => !item.archived);
           return (
@@ -370,7 +371,7 @@ function DivisionProjectorView({
             </section>
           );
         })}
-      </div>
+      </div> : null}
       {pageCount > 1 ? <nav className="mx-auto mt-6 flex w-full items-center justify-center gap-2" aria-label="송출 화면 페이지">
         {Array.from({ length: pageCount }, (_, index) => <button key={index} type="button" onClick={() => setPage(index)} aria-current={index === page ? 'page' : undefined} className={`min-h-10 min-w-10 rounded-full border-2 px-3 text-[16px] font-extrabold ${index === page ? 'border-[#137586] bg-[#137586] text-white' : 'border-[#C4D8E4] bg-white text-[#1F4E79]'}`}>{index + 1}</button>)}
       </nav> : null}
