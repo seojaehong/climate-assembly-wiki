@@ -85,6 +85,15 @@ function isAddedAgenda(agenda: AgendaBoardItem): boolean {
   return agenda.ordinal > canonicalCount;
 }
 
+function displayAgendaOrdinal(agendas: AgendaBoardItem[], agenda: AgendaBoardItem): number {
+  if (agenda.archived) return agenda.ordinal;
+  const activeAgendas = agendas
+    .filter((item) => !item.archived && item.subgroup === agenda.subgroup)
+    .sort((left, right) => left.ordinal - right.ordinal);
+  const index = activeAgendas.findIndex((item) => item.id === agenda.id);
+  return index >= 0 ? index + 1 : agenda.ordinal;
+}
+
 function isAuthorizationError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   // Do not treat schema/RPC errors containing names such as `p_session_slug`
@@ -269,13 +278,13 @@ function RecommendationFields({
   );
 }
 
-function ProjectorView({ item, onClose }: { item: AgendaBoardItem; onClose: () => void }) {
+function ProjectorView({ item, displayOrdinal, onClose }: { item: AgendaBoardItem; displayOrdinal: number; onClose: () => void }) {
   const recommendations = item.recommendations.filter((recommendation) => !recommendation.archived);
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#F5F8FB] p-6 text-[#1F2933] sm:p-10" role="dialog" aria-modal="true" aria-label={`${item.title} 송출 화면`}>
       <header className="mx-auto flex max-w-7xl items-start gap-4 border-b-4 border-[#23B2C3] pb-6">
         <div className="min-w-0 flex-1">
-          <p className="text-[22px] font-extrabold text-[#137586]">{item.subgroup} · 주제 {item.ordinal}</p>
+          <p className="text-[22px] font-extrabold text-[#137586]">{item.subgroup} · 주제 {displayOrdinal}</p>
           <h2 className="mt-2 text-[38px] font-black leading-tight sm:text-[54px]">{item.title}</h2>
         </div>
         <button type="button" onClick={onClose} className="min-h-12 rounded-xl border-2 border-[#1F4E79] bg-white px-5 text-[17px] font-extrabold text-[#1F4E79]">
@@ -351,7 +360,7 @@ function DivisionProjectorView({
       {page === 0 ? <section className="mx-auto mt-6 w-full rounded-3xl border-2 border-[#137586] bg-white p-7 shadow-sm" aria-label={`${division} 주제·조 선택 결과`}>
         <h3 className="text-[30px] font-black text-[#1F4E79]">{division} 주제·조 선택 결과</h3>
         <div className="mt-3 overflow-x-auto">
-          <table className="min-w-full border-collapse text-left text-[20px]"><thead><tr className="border-b-2 border-[#DCE7EE]"><th className="p-4 text-[22px]">주제</th>{teams.map((team) => <th key={team.id} className="p-4 text-center text-[22px]">{team.name}</th>)}</tr></thead><tbody>{agendas.map((agenda) => { const addedAgenda = isAddedAgenda(agenda); return <tr key={agenda.id} className={`border-b border-[#EEF2F5] ${addedAgenda ? 'bg-[#FFFBEB]' : ''}`}><th className={`p-4 text-[21px] font-bold ${addedAgenda ? 'text-[#9A6700]' : 'text-[#1F2933]'}`}>주제 {agenda.ordinal}. {agenda.title}{addedAgenda ? ' · 추가' : ''}</th>{teams.map((team) => <td key={team.id} className="p-4 text-center text-[28px] font-black text-[#137586]">{agenda.assignments.some((assignment) => assignment.teamId === team.id) ? '✓' : '—'}</td>)}</tr>; })}</tbody></table>
+          <table className="min-w-full border-collapse text-left text-[20px]"><thead><tr className="border-b-2 border-[#DCE7EE]"><th className="p-4 text-[22px]">주제</th>{teams.map((team) => <th key={team.id} className="p-4 text-center text-[22px]">{team.name}</th>)}</tr></thead><tbody>{agendas.map((agenda) => { const addedAgenda = isAddedAgenda(agenda); return <tr key={agenda.id} className={`border-b border-[#EEF2F5] ${addedAgenda ? 'bg-[#FFFBEB]' : ''}`}><th className={`p-4 text-[21px] font-bold ${addedAgenda ? 'text-[#9A6700]' : 'text-[#1F2933]'}`}>주제 {displayAgendaOrdinal(agendas, agenda)}. {agenda.title}{addedAgenda ? ' · 추가' : ''}</th>{teams.map((team) => <td key={team.id} className="p-4 text-center text-[28px] font-black text-[#137586]">{agenda.assignments.some((assignment) => assignment.teamId === team.id) ? '✓' : '—'}</td>)}</tr>; })}</tbody></table>
         </div>
       </section> : null}
       {page > 0 ? <div className="mx-auto mt-8 grid w-full gap-5 lg:grid-cols-2">
@@ -360,7 +369,7 @@ function DivisionProjectorView({
           return (
             <section key={agenda.id} className="rounded-3xl border border-[#C4D8E4] bg-white p-6 shadow-sm">
               <div className="flex flex-wrap items-baseline justify-between gap-3">
-                <h3 className={`text-[27px] font-black ${isAddedAgenda(agenda) ? 'text-[#9A6700]' : 'text-[#1F2933]'}`}><span className={`mr-2 text-[18px] ${isAddedAgenda(agenda) ? 'text-[#B07A00]' : 'text-[#137586]'}`}>주제 {agenda.ordinal}{isAddedAgenda(agenda) ? ' · 추가' : ''}</span>{agenda.title}</h3>
+                <h3 className={`text-[27px] font-black ${isAddedAgenda(agenda) ? 'text-[#9A6700]' : 'text-[#1F2933]'}`}><span className={`mr-2 text-[18px] ${isAddedAgenda(agenda) ? 'text-[#B07A00]' : 'text-[#137586]'}`}>주제 {displayAgendaOrdinal(agendas, agenda)}{isAddedAgenda(agenda) ? ' · 추가' : ''}</span>{agenda.title}</h3>
                 <span className="text-[17px] font-extrabold text-[#475569]">권고안 {recommendations.length}건</span>
               </div>
               <p className="mt-2 text-[17px] font-extrabold text-[#137586]">선택 조: {agenda.assignments.length > 0 ? agenda.assignments.map((assignment) => assignment.teamName).join(' · ') : '아직 선택된 조 없음'}</p>
@@ -1095,7 +1104,7 @@ export default function AgendaProgressBoard({
             <div className="mt-4 overflow-x-auto">
               <table className="min-w-full border-collapse text-left text-[13px]">
                 <thead><tr className="border-b-2 border-[#DCE7EE] text-[#475569]"><th className="p-2">주제</th>{(payload?.teams ?? []).map((team) => <th key={team.id} className="p-2 text-center">{team.name}</th>)}</tr></thead>
-                <tbody>{(payload?.agendas ?? []).filter((agenda) => !agenda.archived).map((agenda) => <tr key={agenda.id} className="border-b border-[#EEF2F5]"><th className="p-2 font-bold">{agenda.subgroup} {agenda.ordinal}. {agenda.title}</th>{(payload?.teams ?? []).map((team) => <td key={team.id} className="p-2 text-center font-black text-[#137586]">{agenda.assignments.some((assignment) => assignment.teamId === team.id) ? '✓' : '—'}</td>)}</tr>)}</tbody>
+                <tbody>{(payload?.agendas ?? []).filter((agenda) => !agenda.archived).map((agenda) => <tr key={agenda.id} className="border-b border-[#EEF2F5]"><th className="p-2 font-bold">{agenda.subgroup} {displayAgendaOrdinal(payload?.agendas ?? [], agenda)}. {agenda.title}</th>{(payload?.teams ?? []).map((team) => <td key={team.id} className="p-2 text-center font-black text-[#137586]">{agenda.assignments.some((assignment) => assignment.teamId === team.id) ? '✓' : '—'}</td>)}</tr>)}</tbody>
               </table>
             </div>
           </details>
@@ -1122,7 +1131,7 @@ export default function AgendaProgressBoard({
               <article data-agenda-subgroup={agenda.subgroup} key={agenda.id} className={`rounded-2xl border p-4 shadow-sm sm:p-5 ${agenda.archived ? 'border-[#CBD5E1] bg-[#F8FAFC] opacity-75' : addedAgenda ? 'border-[#D6B36A] bg-[#FFFBEB]' : 'border-[#DCE7EE] bg-white'}`}>
                 <div className="flex flex-wrap items-start gap-4">
                   <div className="min-w-0 flex-1 basis-full text-left sm:min-w-[260px] sm:basis-auto">
-                    <p className={`text-[13px] font-extrabold ${addedAgenda ? 'text-[#9A6700]' : 'text-[#137586]'}`}>{agenda.subgroup} · 주제 {agenda.ordinal}{addedAgenda ? ' · 추가 주제' : ''}{agenda.archived ? ' · 보관됨' : ''}</p>
+                    <p className={`text-[13px] font-extrabold ${addedAgenda ? 'text-[#9A6700]' : 'text-[#137586]'}`}>{agenda.subgroup} · 주제 {displayAgendaOrdinal(payload?.agendas ?? [], agenda)}{addedAgenda ? ' · 추가 주제' : ''}{agenda.archived ? ' · 보관됨' : ''}</p>
                     <h3 className="mt-1 text-[22px] font-black leading-snug text-[#1F2933]">{agenda.title}</h3>
                     <div className="mt-3"><AssignmentSummary assignments={agenda.assignments} /></div>
                     <div className="mt-3 flex flex-wrap gap-1 text-[12px] font-extrabold text-[#5A6B73]">
@@ -1273,7 +1282,7 @@ export default function AgendaProgressBoard({
           })}
         </div>
       </div>
-      {projecting ? <ProjectorView item={projecting} onClose={() => setProjectingAgendaId(null)} /> : null}
+      {projecting ? <ProjectorView item={projecting} displayOrdinal={displayAgendaOrdinal(payload?.agendas ?? [], projecting)} onClose={() => setProjectingAgendaId(null)} /> : null}
       {projectingDivision ? (
         <DivisionProjectorView
           division={projectingDivision}
