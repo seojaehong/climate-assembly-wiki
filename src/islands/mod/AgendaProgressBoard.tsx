@@ -94,6 +94,24 @@ function displayAgendaOrdinal(agendas: AgendaBoardItem[], agenda: AgendaBoardIte
   return index >= 0 ? index + 1 : agenda.ordinal;
 }
 
+// The first-division presentation follows the facilitator's confirmed speaking order.
+// The numbers refer to topic ordinals, not team numbers.
+const FIRST_DIVISION_PRESENTATION_ORDER = [1, 6, 3, 4, 8, 7] as const;
+
+function presentationRank(
+  agenda: AgendaBoardItem,
+  sourceAgendas: AgendaBoardItem[],
+  division: string,
+): number {
+  const ordinal = displayAgendaOrdinal(sourceAgendas, agenda);
+  if (division === '1분과') {
+    const preferredIndex = FIRST_DIVISION_PRESENTATION_ORDER.indexOf(ordinal as (typeof FIRST_DIVISION_PRESENTATION_ORDER)[number]);
+    if (preferredIndex >= 0) return preferredIndex;
+    return FIRST_DIVISION_PRESENTATION_ORDER.length + ordinal;
+  }
+  return ordinal;
+}
+
 function isAuthorizationError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   // Do not treat schema/RPC errors containing names such as `p_session_slug`
@@ -310,7 +328,11 @@ function ProjectorView({ item, displayOrdinal, onClose }: { item: AgendaBoardIte
                   <StatusBadge status={recommendation.status} />
                 </div>
                 <h4 className="mt-2 text-[27px] font-black">{recommendation.title}</h4>
-                <p className="mt-3 whitespace-pre-wrap text-[21px] font-semibold leading-[1.55]">{recommendation.recommendationContent}</p>
+                <div className="mt-4 space-y-3 text-[20px] leading-[1.55]">
+                  <div><p className="font-black text-[#137586]">배경·문제 인식</p><p className="whitespace-pre-wrap font-semibold">{recommendation.problemRecognition || '작성 중'}</p></div>
+                  <div><p className="font-black text-[#137586]">기대효과</p><p className="whitespace-pre-wrap font-semibold">{recommendation.expectedEffect || '아직 입력되지 않았습니다.'}</p></div>
+                  <div><p className="font-black text-[#137586]">권고 내용</p><p className="whitespace-pre-wrap font-semibold">{recommendation.recommendationContent || '작성 중'}</p></div>
+                </div>
               </article>
             ))}
           </div>
@@ -336,13 +358,20 @@ function DivisionProjectorView({
     0,
   );
   const pageSize = 2;
-  const cardPageCount = Math.ceil(agendas.length / pageSize);
+  const orderedAgendas = useMemo(
+    () => [...agendas].sort((left, right) => {
+      const rankDifference = presentationRank(left, agendas, division) - presentationRank(right, agendas, division);
+      return rankDifference || left.createdAt.localeCompare(right.createdAt) || left.id.localeCompare(right.id);
+    }),
+    [agendas, division],
+  );
+  const cardPageCount = Math.ceil(orderedAgendas.length / pageSize);
   const pageCount = Math.max(1, 1 + cardPageCount);
   const [page, setPage] = useState(0);
   useEffect(() => {
     setPage((current) => Math.min(current, pageCount - 1));
   }, [pageCount]);
-  const visibleAgendas = agendas.slice((page - 1) * pageSize, page * pageSize);
+  const visibleAgendas = orderedAgendas.slice((page - 1) * pageSize, page * pageSize);
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#F5F8FB] p-6 text-[#1F2933] sm:p-10" role="dialog" aria-modal="true" aria-label={`${division} 권고안 현황 송출 화면`}>
       <header className="mx-auto flex w-full items-start gap-4 border-b-4 border-[#23B2C3] pb-6">
@@ -350,6 +379,7 @@ function DivisionProjectorView({
           <p className="text-[22px] font-extrabold text-[#137586]">9/12–13 시민참여단 워크숍</p>
           <h2 className="mt-2 text-[38px] font-black leading-tight sm:text-[54px]">{division} 권고안 진행상황</h2>
           <p className="mt-2 text-[20px] font-bold text-[#5A6B73]">주제 {agendas.length}개 · 권고안 {recommendationCount}건 · {page + 1}/{pageCount}쪽</p>
+          {division === '1분과' ? <p className="mt-2 text-[18px] font-black text-[#137586]">발표 순서: 주제 1 → 6 → 3 → 4 → 8 → 7 · 이후 나머지 주제</p> : null}
         </div>
         <div className="flex shrink-0 flex-wrap justify-end gap-2">
           <button type="button" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={page === 0} className="min-h-12 rounded-xl border-2 border-[#1F4E79] bg-white px-4 text-[17px] font-extrabold text-[#1F4E79] disabled:cursor-not-allowed disabled:opacity-40">이전</button>
@@ -360,7 +390,7 @@ function DivisionProjectorView({
       {page === 0 ? <section className="mx-auto mt-6 w-full rounded-3xl border-2 border-[#137586] bg-white p-7 shadow-sm" aria-label={`${division} 주제·조 선택 결과`}>
         <h3 className="text-[30px] font-black text-[#1F4E79]">{division} 주제·조 선택 결과</h3>
         <div className="mt-3 overflow-x-auto">
-          <table className="min-w-full border-collapse text-left text-[20px]"><thead><tr className="border-b-2 border-[#DCE7EE]"><th className="p-4 text-[22px]">주제</th>{teams.map((team) => <th key={team.id} className="p-4 text-center text-[22px]">{team.name}</th>)}</tr></thead><tbody>{agendas.map((agenda) => { const addedAgenda = isAddedAgenda(agenda); return <tr key={agenda.id} className={`border-b border-[#EEF2F5] ${addedAgenda ? 'bg-[#FFFBEB]' : ''}`}><th className={`p-4 text-[21px] font-bold ${addedAgenda ? 'text-[#9A6700]' : 'text-[#1F2933]'}`}>주제 {displayAgendaOrdinal(agendas, agenda)}. {agenda.title}{addedAgenda ? ' · 추가' : ''}</th>{teams.map((team) => <td key={team.id} className="p-4 text-center text-[28px] font-black text-[#137586]">{agenda.assignments.some((assignment) => assignment.teamId === team.id) ? '✓' : '—'}</td>)}</tr>; })}</tbody></table>
+          <table className="min-w-full border-collapse text-left text-[20px]"><thead><tr className="border-b-2 border-[#DCE7EE]"><th className="p-4 text-[22px]">주제</th>{teams.map((team) => <th key={team.id} className="p-4 text-center text-[22px]">{team.name}</th>)}</tr></thead><tbody>{orderedAgendas.map((agenda) => { const addedAgenda = isAddedAgenda(agenda); return <tr key={agenda.id} className={`border-b border-[#EEF2F5] ${addedAgenda ? 'bg-[#FFFBEB]' : ''}`}><th className={`p-4 text-[21px] font-bold ${addedAgenda ? 'text-[#9A6700]' : 'text-[#1F2933]'}`}>주제 {displayAgendaOrdinal(agendas, agenda)}. {agenda.title}{addedAgenda ? ' · 추가' : ''}</th>{teams.map((team) => <td key={team.id} className="p-4 text-center text-[28px] font-black text-[#137586]">{agenda.assignments.some((assignment) => assignment.teamId === team.id) ? '✓' : '—'}</td>)}</tr>; })}</tbody></table>
         </div>
       </section> : null}
       {page > 0 ? <div className="mx-auto mt-8 grid w-full gap-5 lg:grid-cols-2">
@@ -372,7 +402,7 @@ function DivisionProjectorView({
                 <h3 className={`text-[27px] font-black ${isAddedAgenda(agenda) ? 'text-[#9A6700]' : 'text-[#1F2933]'}`}><span className={`mr-2 text-[18px] ${isAddedAgenda(agenda) ? 'text-[#B07A00]' : 'text-[#137586]'}`}>주제 {displayAgendaOrdinal(agendas, agenda)}{isAddedAgenda(agenda) ? ' · 추가' : ''}</span>{agenda.title}</h3>
                 <span className="text-[17px] font-extrabold text-[#475569]">권고안 {recommendations.length}건</span>
               </div>
-              <p className="mt-2 text-[17px] font-extrabold text-[#137586]">선택 조: {agenda.assignments.length > 0 ? agenda.assignments.map((assignment) => assignment.teamName).join(' · ') : '아직 선택된 조 없음'}</p>
+                    <p className="mt-2 text-[17px] font-extrabold text-[#137586]">선택 조: {agenda.assignments.length > 0 ? agenda.assignments.map((assignment) => assignment.teamName).join(' · ') : '아직 선택된 조 없음'}</p>
               {recommendations.length === 0 ? <p className="mt-4 text-[19px] font-bold text-[#94A3B8]">작성 전</p> : null}
               <div className="mt-4 grid gap-3 lg:grid-cols-2">
                 {recommendations.map((recommendation) => (
@@ -382,7 +412,11 @@ function DivisionProjectorView({
                       <StatusBadge status={recommendation.status} />
                     </div>
                     <h4 className="mt-2 text-[22px] font-black">{recommendation.title}</h4>
-                    <p className="mt-2 line-clamp-4 whitespace-pre-wrap text-[17px] font-semibold leading-relaxed">{recommendation.recommendationContent || '권고 내용 작성 중'}</p>
+                    <div className="mt-3 space-y-2 text-[16px] leading-relaxed">
+                      <div><p className="font-black text-[#137586]">배경·문제 인식</p><p className="whitespace-pre-wrap font-semibold">{recommendation.problemRecognition || '작성 중'}</p></div>
+                      <div><p className="font-black text-[#137586]">기대효과</p><p className="whitespace-pre-wrap font-semibold">{recommendation.expectedEffect || '아직 입력되지 않았습니다.'}</p></div>
+                      <div><p className="font-black text-[#137586]">권고 내용</p><p className="whitespace-pre-wrap font-semibold">{recommendation.recommendationContent || '권고 내용 작성 중'}</p></div>
+                    </div>
                   </article>
                 ))}
               </div>
@@ -979,7 +1013,7 @@ export default function AgendaProgressBoard({
           </div>
           <div className="mt-4 rounded-xl bg-[#EAF8FA] px-4 py-3 text-[14px] font-bold leading-relaxed text-[#135C73]">
             {mode === 'team'
-              ? `배정된 주제를 고른 뒤 권고안을 여러 건 작성할 수 있습니다. 오늘은 제목·배경 및 문제 인식·권고 내용만 입력합니다. 미전송 기기 초안 ${unsentCount}건.`
+              ? `① 위 주제 목록에서 배정된 주제를 선택합니다. ② ‘+ 권고안 추가’를 누릅니다. ③ 제목·배경 및 문제 인식·권고 내용을 입력한 뒤 ‘새 권고안 저장’을 누릅니다. 오늘은 이 세 항목만 작성합니다. 미전송 기기 초안 ${unsentCount}건.`
               : '진행상태는 주제가 아니라 각 조의 권고안별로 집계됩니다. 권고안은 삭제하지 않고 이력을 남깁니다.'}
           </div>
           {payload && !topicWritesEnabled ? (
