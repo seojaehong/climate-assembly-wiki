@@ -454,12 +454,22 @@ export default function HqGate() {
       >
         {view === 'progress' ? (
           <>
-            <WorkshopHqStatus token={token} onAuthorizationExpired={handleAuthorizationExpired} />
+            <details className="border-b border-[#C4D8E4] bg-[#F5F8FB] px-4 py-3 sm:px-6">
+              <summary className="mx-auto max-w-[1600px] cursor-pointer list-none rounded-xl border border-[#C4D8E4] bg-white px-4 py-3 text-[15px] font-extrabold text-[#1F4E79] focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#F4C542]">
+                현장 운영 상태 열기 · 세션·조 편성·활성 기기
+              </summary>
+              <WorkshopHqStatus token={token} onAuthorizationExpired={handleAuthorizationExpired} />
+            </details>
             <AgendaProgressBoard mode="hq" token={token} onAuthorizationExpired={handleAuthorizationExpired} />
           </>
         ) : view === 'submissions' ? (
           <>
-            <WorkshopHqStatus token={token} onAuthorizationExpired={handleAuthorizationExpired} />
+            <details className="border-b border-[#C4D8E4] bg-[#F5F8FB] px-4 py-3 sm:px-6">
+              <summary className="mx-auto max-w-[1600px] cursor-pointer list-none rounded-xl border border-[#C4D8E4] bg-white px-4 py-3 text-[15px] font-extrabold text-[#1F4E79] focus-visible:outline focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#F4C542]">
+                현장 운영 상태 열기 · 세션·조 편성·활성 기기
+              </summary>
+              <WorkshopHqStatus token={token} onAuthorizationExpired={handleAuthorizationExpired} />
+            </details>
             <HqSubmissionBoard token={token} onAuthorizationExpired={handleAuthorizationExpired} />
           </>
         ) : <HqGrid token={token} onAuthorizationExpired={handleAuthorizationExpired} />}

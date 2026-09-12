@@ -26,7 +26,6 @@ describe('workshop HQ visibility logic', () => {
     expect(readinessItems(status)).toEqual([
       { label: '행사 세션', value: '0912-deliberation', ok: true },
       { label: '조 편성', value: '15개 조', ok: true },
-      { label: '꼭지 준비', value: '6개', ok: true },
       { label: '활성 기기', value: '2대', ok: true },
     ]);
   });

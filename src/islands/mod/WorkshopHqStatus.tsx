@@ -2,9 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   fetchWorkshopDevices,
   fetchWorkshopHqStatus,
-  openNextWorkshopTopic,
   revokeWorkshopDevice,
-  setWorkshopTopicStatus,
   type WorkshopDevice,
   type WorkshopHqStatus,
 } from '../../lib/workshop-hq';
@@ -15,7 +13,6 @@ import {
   groupWorkshopDevices,
   hqOperationErrorMessage,
   readinessItems,
-  topicStatusLabel,
 } from './workshop-hq-logic';
 import { classifyHqAuthorizationError } from './hq-gate-logic';
 
@@ -119,18 +116,6 @@ export default function WorkshopHqStatus({
     }
   };
 
-  const openNext = () => {
-    const ordinal = status?.next_topic_ordinal;
-    const prompt = status?.next_topic_prompt;
-    if (ordinal == null || !prompt) return;
-    if (!window.confirm(`꼭지 ${ordinal} 「${prompt}」를 모든 ${status.teams_total}개 조에 엽니까?`)) return;
-    void run(
-      `open:${ordinal}`,
-      async (requestId) => { await openNextWorkshopTopic(token, CURRENT_SESSION_SLUG, ordinal, requestId); },
-      `꼭지 ${ordinal}을 열었습니다. 조 화면에는 10초 안에 표시됩니다.`,
-    );
-  };
-
   return (
     <section className="border-b-4 border-[#1F4E79] bg-[#EEF6FA] px-4 py-5 sm:px-6" aria-labelledby="workshop-hq-title">
       <div className="mx-auto max-w-[1600px]">
@@ -166,8 +151,6 @@ export default function WorkshopHqStatus({
             <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
               {[
                 ['접속 중인 조', `${status.teams_online}/${status.teams_total}`],
-                ['열린 꼭지', `${status.topic_open}개`],
-                ['마친 꼭지', `${status.topic_closed}개`],
                 ['작성 중 제출', `${status.submissions_draft}건`],
                 ['제출 완료', `${status.submissions_final}건`],
               ].map(([label, value]) => (
@@ -176,49 +159,6 @@ export default function WorkshopHqStatus({
                   <div className="text-[24px] font-extrabold tabular-nums">{value}</div>
                 </div>
               ))}
-            </div>
-
-            <div className="mt-4 rounded-2xl border-2 border-[#C4D8E4] bg-white p-4">
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="min-w-0 flex-1">
-                  <h3 className="text-[19px] font-extrabold text-[#1F4E79]">꼭지 개방</h3>
-                  <p className="text-[15px] text-[#5A6B73]">
-                    {status.next_topic_ordinal == null ? '열 수 있는 다음 꼭지가 없습니다.' : `다음: ${status.next_topic_ordinal}. ${status.next_topic_prompt}`}
-                  </p>
-                </div>
-                <button type="button" disabled={busy || status.next_topic_ordinal == null} onClick={openNext}
-                  className="min-h-12 rounded-xl bg-[#1F4E79] px-5 text-[17px] font-extrabold text-white disabled:opacity-40">
-                  다음 꼭지 열기
-                </button>
-              </div>
-              <div className="mt-3 grid gap-2 lg:grid-cols-2">
-                {status.topics.map((topic) => (
-                  <div key={topic.id} className="flex flex-wrap items-center gap-2 rounded-xl border border-[#DCE7EE] p-3">
-                    <span className="min-w-0 flex-1 text-[15px] font-bold text-[#1F2933]">{topic.ordinal}. {topic.prompt}</span>
-                    <span className="rounded-full bg-[#EEF4F8] px-2 py-1 text-[13px] font-bold text-[#1F4E79]">{topicStatusLabel(topic.status)}</span>
-                    {topic.status !== 'draft' ? (
-                      <button type="button" disabled={busy} onClick={() => {
-                        const next = topic.status === 'open' ? 'closed' : 'open';
-                        if (!window.confirm(`${topic.ordinal}번 꼭지를 ${next === 'open' ? '다시 엽니까' : '닫습니까'}?`)) return;
-                        void run(
-                          `topic:${topic.id}:${topic.status}:${next}`,
-                          (requestId) => setWorkshopTopicStatus(
-                            token,
-                            CURRENT_SESSION_SLUG,
-                            topic.id,
-                            topic.status,
-                            next,
-                            requestId,
-                          ).then(() => undefined),
-                          `${topic.ordinal}번 꼭지를 ${next === 'open' ? '열었습니다' : '닫았습니다'}.`,
-                        );
-                      }} className="min-h-11 rounded-lg border border-[#1F4E79] px-3 text-[14px] font-bold text-[#1F4E79] disabled:opacity-40">
-                        {topic.status === 'open' ? '닫기' : '다시 열기'}
-                      </button>
-                    ) : null}
-                  </div>
-                ))}
-              </div>
             </div>
 
             <div className="mt-4 rounded-2xl border border-[#C4D8E4] bg-white p-4">

@@ -11,7 +11,6 @@ export function readinessItems(status: WorkshopHqStatus): ReadinessItem[] {
   return [
     { label: '행사 세션', value: status.session_slug, ok: status.session_slug === '0912-deliberation' },
     { label: '조 편성', value: `${status.teams_total}개 조`, ok: status.teams_total === 15 },
-    { label: '꼭지 준비', value: `${status.topic_total}개`, ok: status.topic_total === 6 },
     { label: '활성 기기', value: `${status.active_devices}대`, ok: status.active_devices <= status.teams_total * 2 },
   ];
 }

@@ -316,18 +316,29 @@ function DivisionProjectorView({
     (count, agenda) => count + agenda.recommendations.filter((item) => !item.archived).length,
     0,
   );
+  const pageSize = 2;
+  const pageCount = Math.max(1, Math.ceil(agendas.length / pageSize));
+  const [page, setPage] = useState(0);
+  useEffect(() => {
+    setPage((current) => Math.min(current, pageCount - 1));
+  }, [pageCount]);
+  const visibleAgendas = agendas.slice(page * pageSize, (page + 1) * pageSize);
   return (
     <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#F5F8FB] p-6 text-[#1F2933] sm:p-10" role="dialog" aria-modal="true" aria-label={`${division} 권고안 현황 송출 화면`}>
-      <header className="mx-auto flex max-w-7xl items-start gap-4 border-b-4 border-[#23B2C3] pb-6">
+      <header className="mx-auto flex w-full items-start gap-4 border-b-4 border-[#23B2C3] pb-6">
         <div className="min-w-0 flex-1">
           <p className="text-[22px] font-extrabold text-[#137586]">9/12–13 시민참여단 워크숍</p>
           <h2 className="mt-2 text-[38px] font-black leading-tight sm:text-[54px]">{division} 권고안 진행상황</h2>
-          <p className="mt-2 text-[20px] font-bold text-[#5A6B73]">의제 {agendas.length}개 · 권고안 {recommendationCount}건</p>
+          <p className="mt-2 text-[20px] font-bold text-[#5A6B73]">의제 {agendas.length}개 · 권고안 {recommendationCount}건 · {page + 1}/{pageCount}쪽</p>
         </div>
-        <button type="button" onClick={onClose} className="min-h-12 rounded-xl border-2 border-[#1F4E79] bg-white px-5 text-[17px] font-extrabold text-[#1F4E79]">운영 화면으로</button>
+        <div className="flex shrink-0 flex-wrap justify-end gap-2">
+          <button type="button" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={page === 0} className="min-h-12 rounded-xl border-2 border-[#1F4E79] bg-white px-4 text-[17px] font-extrabold text-[#1F4E79] disabled:cursor-not-allowed disabled:opacity-40">이전</button>
+          <button type="button" onClick={() => setPage((current) => Math.min(pageCount - 1, current + 1))} disabled={page >= pageCount - 1} className="min-h-12 rounded-xl border-2 border-[#1F4E79] bg-white px-4 text-[17px] font-extrabold text-[#1F4E79] disabled:cursor-not-allowed disabled:opacity-40">다음</button>
+          <button type="button" onClick={onClose} className="min-h-12 rounded-xl border-2 border-[#1F4E79] bg-white px-5 text-[17px] font-extrabold text-[#1F4E79]">운영 화면으로</button>
+        </div>
       </header>
-      <div className="mx-auto mt-8 max-w-7xl space-y-5">
-        {agendas.map((agenda) => {
+      <div className="mx-auto mt-8 grid w-full gap-5 lg:grid-cols-2">
+        {visibleAgendas.map((agenda) => {
           const recommendations = agenda.recommendations.filter((item) => !item.archived);
           return (
             <section key={agenda.id} className="rounded-3xl border border-[#C4D8E4] bg-white p-6 shadow-sm">
@@ -352,6 +363,9 @@ function DivisionProjectorView({
           );
         })}
       </div>
+      {pageCount > 1 ? <nav className="mx-auto mt-6 flex w-full items-center justify-center gap-2" aria-label="송출 화면 페이지">
+        {Array.from({ length: pageCount }, (_, index) => <button key={index} type="button" onClick={() => setPage(index)} aria-current={index === page ? 'page' : undefined} className={`min-h-10 min-w-10 rounded-full border-2 px-3 text-[16px] font-extrabold ${index === page ? 'border-[#137586] bg-[#137586] text-white' : 'border-[#C4D8E4] bg-white text-[#1F4E79]'}`}>{index + 1}</button>)}
+      </nav> : null}
     </div>
   );
 }
@@ -883,7 +897,7 @@ export default function AgendaProgressBoard({
 
   return (
     <section className="min-h-[70vh] bg-[#F5F8FB] p-4 sm:p-6" aria-labelledby="agenda-progress-title">
-      <div className="mx-auto max-w-7xl">
+      <div className="w-full">
         <header className="rounded-2xl border border-[#C4D8E4] bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-start gap-4">
             <div className="min-w-0 flex-1 basis-full sm:min-w-[240px] sm:basis-auto">
@@ -963,9 +977,14 @@ export default function AgendaProgressBoard({
             + 새 의제 추가
           </button>
           {mode === 'hq' ? (
-            <label className="flex min-h-12 items-center gap-2 rounded-xl border border-[#C4D8E4] px-3 text-[14px] font-bold text-[#475569]">
-              <input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} /> 보관함 포함
-            </label>
+            <details className="rounded-xl border border-[#C4D8E4] bg-white px-3 py-2 text-[14px] font-bold text-[#475569]">
+              <summary className="cursor-pointer list-none">고급 관리</summary>
+              <label className="mt-2 flex items-center gap-2 border-t border-[#E5EDF2] pt-2 font-semibold">
+                <input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />
+                보관된 의제·권고안 보기
+              </label>
+              <p className="mt-1 text-[12px] font-medium text-[#5A6B73]">보관은 삭제가 아니라 중복·오류 항목을 기본 화면에서 숨기고 이력을 남기는 기능입니다.</p>
+            </details>
           ) : null}
         </div>
 
