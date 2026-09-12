@@ -304,10 +304,12 @@ function ProjectorView({ item, onClose }: { item: AgendaBoardItem; onClose: () =
 
 function DivisionProjectorView({
   division,
+  teams,
   agendas,
   onClose,
 }: {
   division: string;
+  teams: AgendaTeam[];
   agendas: AgendaBoardItem[];
   onClose: () => void;
 }) {
@@ -336,6 +338,12 @@ function DivisionProjectorView({
           <button type="button" onClick={onClose} className="min-h-12 rounded-xl border-2 border-[#1F4E79] bg-white px-5 text-[17px] font-extrabold text-[#1F4E79]">운영 화면으로</button>
         </div>
       </header>
+      <section className="mx-auto mt-6 w-full rounded-3xl border border-[#C4D8E4] bg-white p-5" aria-label={`${division} 주제·조 선택 결과`}>
+        <h3 className="text-[22px] font-black text-[#1F4E79]">{division} 주제·조 선택 결과</h3>
+        <div className="mt-3 overflow-x-auto">
+          <table className="min-w-full border-collapse text-left text-[14px]"><thead><tr className="border-b-2 border-[#DCE7EE]"><th className="p-2">주제</th>{teams.map((team) => <th key={team.id} className="p-2 text-center">{team.name}</th>)}</tr></thead><tbody>{agendas.map((agenda) => <tr key={agenda.id} className="border-b border-[#EEF2F5]"><th className="p-2 font-bold">주제 {agenda.ordinal}. {agenda.title}</th>{teams.map((team) => <td key={team.id} className="p-2 text-center font-black text-[#137586]">{agenda.assignments.some((assignment) => assignment.teamId === team.id) ? '✓' : '—'}</td>)}</tr>)}</tbody></table>
+        </div>
+      </section>
       <div className="mx-auto mt-8 grid w-full gap-5 lg:grid-cols-2">
         {visibleAgendas.map((agenda) => {
           const recommendations = agenda.recommendations.filter((item) => !item.archived);
@@ -1194,6 +1202,7 @@ export default function AgendaProgressBoard({
       {projectingDivision ? (
         <DivisionProjectorView
           division={projectingDivision}
+          teams={(payload?.teams ?? []).filter((team) => team.subgroup === projectingDivision)}
           agendas={(payload?.agendas ?? []).filter((agenda) => !agenda.archived && agenda.subgroup === projectingDivision)}
           onClose={() => setProjectingDivision(null)}
         />
