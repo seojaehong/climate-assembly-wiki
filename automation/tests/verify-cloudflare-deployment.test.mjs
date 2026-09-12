@@ -106,7 +106,7 @@ test('manual deployment forces asset upload and verifies the custom domain', () 
     'utf8',
   );
 
-  expect(workflow).toContain('pages deploy dist --project-name=climate-assembly-wiki --branch=main --skip-caching');
+  expect(workflow).toContain('pages deploy dist --project-name=climate-assembly-wiki --skip-caching');
   expect(workflow).toContain('name: Verify custom-domain ResultView asset');
   expect(workflow).toContain('run: node automation/verify-cloudflare-deployment.mjs');
   expect(workflow).toContain('DEPLOYMENT_REVISION_EXPECTED_COMMIT: ${{ github.sha }}');
