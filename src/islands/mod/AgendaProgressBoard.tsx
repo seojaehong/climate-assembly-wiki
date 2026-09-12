@@ -81,7 +81,9 @@ function formatUpdatedAt(value: string | null): string {
 
 function isAuthorizationError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
-  return /authorization|token|session|로그인|만료/i.test(message);
+  // Do not treat schema/RPC errors containing names such as `p_session_slug`
+  // as an expired login. Only explicit authentication failures may log out HQ.
+  return /authorization required|unauthori[sz]ed|invalid token|token expired|token required|로그인(?:이|을)? (?:다시|확인)|인증(?:이|이) 만료|세션(?:이|이) 만료/i.test(message);
 }
 
 function localDraftKey(teamId: string, recommendationId: string): string {
