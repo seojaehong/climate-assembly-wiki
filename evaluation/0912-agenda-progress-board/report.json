@@ -1,6 +1,7 @@
 {
   "schemaVersion": 1,
-  "status": "ready_for_production_apply",
+  "status": "production_database_verified",
+  "productionAppliedAt": "2026-09-12T11:52:25+09:00",
   "agendaCounts": {
     "1분과": 9,
     "2분과": 8,
@@ -17,7 +18,13 @@
     "externalNetworkAttempts": 0,
     "productionDatabaseRequestsDuringFixture": 0,
     "postgresS23ToS24": "pass",
-    "postgresS24Reapply": "pass"
+    "postgresS24Reapply": "pass",
+    "productionTables": 5,
+    "productionAgendaCounts": "9/8/8",
+    "productionTeamCount": 15,
+    "productionOpenStageCount": 1,
+    "namedHqAccounts": 3,
+    "plaintextCredentialsStored": false
   },
   "artifacts": [
     "evaluation/0912-agenda-progress-board/browser-fixture-report.json",
