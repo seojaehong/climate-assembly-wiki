@@ -538,7 +538,11 @@ export default function AgendaProgressBoard({
   }, [divisionFilter, payload, search, showArchived, statusFilter]);
 
   useEffect(() => {
-    if (mode !== 'team' || visibleAgendas.length === 0) return;
+    if (mode !== 'team') return;
+    if (visibleAgendas.length === 0) {
+      setSelectedAgendaId('');
+      return;
+    }
     if (!visibleAgendas.some((agenda) => agenda.id === selectedAgendaId)) {
       setSelectedAgendaId(visibleAgendas[0].id);
     }
@@ -937,9 +941,12 @@ export default function AgendaProgressBoard({
           ) : (
             <label className="min-w-0 flex-1 basis-full text-[14px] font-extrabold text-[#334E5C] sm:min-w-[280px] sm:basis-auto">
               작성할 주제
-              <select aria-label="작성할 주제 선택" disabled={anyRecommendationCreatePending} value={selectedAgendaId} onChange={(event) => setSelectedAgendaId(event.target.value)} className="mt-1 min-h-12 w-full rounded-xl border border-[#C4D8E4] bg-white px-3 text-[16px] disabled:bg-[#F1F5F9]">
+              <select aria-label="작성할 주제 선택" disabled={anyRecommendationCreatePending || loading || visibleAgendas.length === 0} value={selectedAgendaId} onChange={(event) => setSelectedAgendaId(event.target.value)} className="mt-1 min-h-12 w-full rounded-xl border border-[#C4D8E4] bg-white px-3 text-[16px] disabled:bg-[#F1F5F9]">
+                {loading ? <option value="">주제를 불러오는 중…</option> : null}
+                {!loading && visibleAgendas.length === 0 ? <option value="">HQ에서 배정된 주제가 없습니다</option> : null}
                 {visibleAgendas.map((agenda) => <option key={agenda.id} value={agenda.id}>{agenda.subgroup} · {agenda.title}</option>)}
               </select>
+              {!loading && visibleAgendas.length === 0 ? <span role="status" className="mt-2 block text-[13px] font-bold text-[#B45309]">HQ에서 이 조에 주제를 배정하면 목록이 나타납니다. 배정 후 ‘지금 새로고침’을 눌러 주세요.</span> : null}
             </label>
           )}
           <label className="min-w-0 flex-1 basis-full text-[14px] font-extrabold text-[#334E5C] sm:min-w-[220px] sm:basis-auto">
