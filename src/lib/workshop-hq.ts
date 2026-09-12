@@ -36,6 +36,18 @@ export type WorkshopDevice = {
   expires_at: string;
 };
 
+export type WorkshopJoinCode = {
+  team_id: string;
+  team_name: string;
+  table_no: string | null;
+  join_code: string;
+};
+
+export type WorkshopJoinCodeRotation = {
+  status: 'rotated';
+  codes: WorkshopJoinCode[];
+};
+
 export type OpenTopicResult = {
   status: 'opened' | 'already_open';
   topic_id: string;
@@ -120,6 +132,25 @@ export async function fetchWorkshopDevices(token: string, sessionSlug: string): 
   });
   if (error) throw rpcError(error);
   return (data ?? []) as WorkshopDevice[];
+}
+
+export async function rotateWorkshopJoinCodes(
+  token: string,
+  sessionSlug: string,
+  requestId: string,
+): Promise<WorkshopJoinCodeRotation> {
+  const { data, error } = await client().schema('climate_vote').rpc('workshop_hq_rotate_join_codes', {
+    p_token: token,
+    p_session_slug: sessionSlug,
+    p_confirmation: `ROTATE ${sessionSlug}`,
+    p_idempotency_key: requestId,
+  });
+  if (error) throw rpcError(error);
+  const result = data as WorkshopJoinCodeRotation;
+  if (result.status !== 'rotated' || !Array.isArray(result.codes) || result.codes.length !== 15) {
+    throw new Error('join_code_rotation_invalid_response');
+  }
+  return result;
 }
 
 export async function openNextWorkshopTopic(
