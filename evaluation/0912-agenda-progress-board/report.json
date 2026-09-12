@@ -1,8 +1,11 @@
 {
   "schemaVersion": 1,
-  "status": "production_workflow_verified_ci_pending",
+  "status": "completed",
   "productionAppliedAt": "2026-09-12T11:52:25+09:00",
-  "productionVerifiedAt": "2026-09-12T12:20:14+09:00",
+  "productionVerifiedAt": "2026-09-12T13:34:50+09:00",
+  "productionSourceCommit": "a6a6f450c08201d6edc4019b2e78549351e45bfc",
+  "ciSourceCommit": "57ae440206d52b7c53d27b79553617ed740b62ec",
+  "productionRuntimeEquivalentToCi": true,
   "productionUrl": "https://climate-assembly-wiki.pages.dev/hq/",
   "agendaCounts": {
     "1분과": 9,
@@ -14,7 +17,7 @@
   "verification": {
     "unitTests": 25,
     "automationTests": 42,
-    "browserChecks": 23,
+    "browserChecks": 36,
     "staticReadinessChecks": 15,
     "builtPages": 9495,
     "externalNetworkAttempts": 0,
@@ -30,8 +33,25 @@
     "namedHqLiveLogins": 3,
     "liveDivisionFilterCounts": "9/8/8",
     "liveProjectorViews": 3,
-    "mainCi": "pending_reverification",
-    "accessibilityAudit": "pending_reverification",
+    "mainCi": "pass",
+    "mainCiRun": "https://github.com/seojaehong/climate-assembly-wiki/actions/runs/34673187637",
+    "rootTestFiles": 128,
+    "automationTestFiles": 37,
+    "automationTestCases": 603,
+    "fieldRehearsalChecks": 11,
+    "legacyHqRehearsalChecks": 8,
+    "accessibilityAudit": "pass",
+    "accessibilityChecks": 46,
+    "accessibilityRun": "https://github.com/seojaehong/climate-assembly-wiki/actions/runs/34672873115",
+    "postgresDryRunSeconds": 166,
+    "liveConcurrentTeams": 2,
+    "responseLossRetrySameRequestId": true,
+    "retryCreatedExactlyOne": true,
+    "syntheticRecordsArchived": 2,
+    "temporaryAssignmentsRestored": 2,
+    "originalFilesMoved": 13,
+    "originalSha256Verified": true,
+    "downloadsOriginalsRemaining": 0,
     "cloudflareProductionDeploy": "pass",
     "legacy0829": {
       "teams": 15,
@@ -44,8 +64,18 @@
     }
   },
   "artifacts": [
+    "evaluation/0912-agenda-progress-board/completion-audit-20260912.md",
+    "evaluation/0912-agenda-progress-board/live-recording.json",
+    "evaluation/0912-agenda-progress-board/live-concurrent-recording.json",
+    "evaluation/0912-agenda-progress-board/postgres-dry-run.json",
     "evaluation/0912-agenda-progress-board/browser-fixture-report.json",
     "evaluation/0912-agenda-progress-board/hq-add-agenda.png",
     "evaluation/0912-agenda-progress-board/team-recommendation-authoring.png"
+  ],
+  "scopeNotes": [
+    "Completion applies to the emergency agenda progress board, not deferred multivoting, photo upload, or A/B/C/D integration.",
+    "Historical production counts establish presence, not a byte-identical before-and-after baseline.",
+    "Physical projector connections and venue network quality require an onsite operator check.",
+    "Four unrelated private-platform CLI repository-path rejection tests fail under the local Codex Windows path alias. This is logged separately; the Linux CI suite passes."
   ]
 }
