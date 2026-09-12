@@ -1110,16 +1110,26 @@ alter table climate_vote.agenda_recommendation_progress_event replica identity f
 
 do $realtime$
 begin
-  begin alter publication supabase_realtime add table climate_vote.agenda_lifecycle_event;
-  exception when duplicate_object then null; end;
-  begin alter publication supabase_realtime add table climate_vote.agenda_recommendation;
-  exception when duplicate_object then null; end;
-  begin alter publication supabase_realtime add table climate_vote.agenda_recommendation_revision;
-  exception when duplicate_object then null; end;
-  begin alter publication supabase_realtime add table climate_vote.agenda_recommendation_archive_event;
-  exception when duplicate_object then null; end;
-  begin alter publication supabase_realtime add table climate_vote.agenda_recommendation_progress_event;
-  exception when duplicate_object then null; end;
+  begin
+    alter publication supabase_realtime add table climate_vote.agenda_lifecycle_event;
+  exception when duplicate_object then null;
+  end;
+  begin
+    alter publication supabase_realtime add table climate_vote.agenda_recommendation;
+  exception when duplicate_object then null;
+  end;
+  begin
+    alter publication supabase_realtime add table climate_vote.agenda_recommendation_revision;
+  exception when duplicate_object then null;
+  end;
+  begin
+    alter publication supabase_realtime add table climate_vote.agenda_recommendation_archive_event;
+  exception when duplicate_object then null;
+  end;
+  begin
+    alter publication supabase_realtime add table climate_vote.agenda_recommendation_progress_event;
+  exception when duplicate_object then null;
+  end;
 end
 $realtime$;
 
