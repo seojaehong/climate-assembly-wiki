@@ -1,0 +1,69 @@
+{
+  "startedAt": "2026-09-12T04:11:30.451Z",
+  "phase": "complete",
+  "status": "pass",
+  "namedHq": [
+    {
+      "operator": "강혜연",
+      "counts": {
+        "1분과": 9,
+        "2분과": 8,
+        "3분과": 8
+      }
+    },
+    {
+      "operator": "박진환",
+      "counts": {
+        "1분과": 9,
+        "2분과": 8,
+        "3분과": 8
+      }
+    },
+    {
+      "operator": "서재홍",
+      "counts": {
+        "1분과": 9,
+        "2분과": 8,
+        "3분과": 8
+      }
+    }
+  ],
+  "transitions": [
+    "waiting",
+    "discussing",
+    "drafting",
+    "team_confirmed",
+    "submitted"
+  ],
+  "assignmentAdded": true,
+  "assignmentRestored": true,
+  "recommendationArchived": true,
+  "teamLoggedOut": true,
+  "hqLoggedOut": true,
+  "projectors": [
+    "1분과",
+    "2분과",
+    "3분과"
+  ],
+  "agendaTitle": "세제혜택·인센티브 등 기업 지원 제도",
+  "initiallyAssigned": false,
+  "secondInitiallyAssigned": false,
+  "secondAssignmentAdded": true,
+  "responseLoss": {
+    "dropped": 1,
+    "attempts": 2,
+    "upstreamCommitted": true,
+    "sameRequestId": true
+  },
+  "recommendationId": "17f19ea4-a7ce-4849-9356-cecaa069b48e",
+  "secondRecommendationId": "35b9b1d3-5a4c-458e-bcc4-70bb0247464d",
+  "readBack": true,
+  "secondReadBack": true,
+  "divisionIsolation": true,
+  "hqReadBack": true,
+  "retryCreatedExactlyOne": true,
+  "secondRecommendationArchived": true,
+  "secondAssignmentRestored": true,
+  "secondTeamLoggedOut": true,
+  "finishedAt": "2026-09-12T04:11:56.678Z"
+}

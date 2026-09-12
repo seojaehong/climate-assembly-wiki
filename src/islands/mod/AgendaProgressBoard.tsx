@@ -1050,7 +1050,7 @@ export default function AgendaProgressBoard({
                   <div className="flex flex-wrap gap-2">
                     {mode === 'hq' ? <button type="button" aria-expanded={agendaExpanded} onClick={() => setExpanded((current) => ({ ...current, [agenda.id]: !agendaExpanded }))} className="min-h-11 rounded-xl border border-[#1F4E79] px-4 text-[14px] font-extrabold text-[#1F4E79]">권고안 {agendaExpanded ? '접기' : '펼치기'}</button> : null}
                     {!agenda.archived ? <button type="button" disabled={!topicWritesEnabled || anyRecommendationCreatePending} onClick={() => openRecommendationForm(agenda)} className="min-h-11 rounded-xl bg-[#137586] px-4 text-[14px] font-extrabold text-white disabled:opacity-40">+ 권고안 추가</button> : null}
-                    {mode === 'hq' ? <button type="button" onClick={() => setProjectingAgendaId(agenda.id)} className="min-h-11 rounded-xl bg-[#23B2C3] px-4 text-[14px] font-extrabold text-white">이 주제 송출</button> : null}
+                    {mode === 'hq' ? <button type="button" onClick={() => setProjectingAgendaId(agenda.id)} className="min-h-11 rounded-xl bg-[#087986] px-4 text-[14px] font-extrabold text-white">이 주제 송출</button> : null}
                   </div>
                 </div>
 

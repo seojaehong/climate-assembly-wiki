@@ -985,7 +985,7 @@ test('covers authenticated and published production surfaces with read-only brow
     skipTarget: 'hq-console-content',
     fixture: 'ci-0912-hq-dashboard-read-fixture-v1',
     requiresFixtureEvidence: true,
-    readySelector: '#hq-console-content h1',
+    readySelector: '#agenda-progress-title',
     prepare: expect.any(Function),
     afterNavigation: expect.any(Function),
   });
