@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>사용법 · 시민 발언 전체</title>
+<style>
+*{box-sizing:border-box}
+:root{--paper:#eef3f6;--ink:#153249;--card:#fff;--line:#d3e0e8;--muted:#5a7186;
+ --accent:#006b75;--accent-soft:#e2f1f2;--mark:#ffe08a;--pick:#8a5a00;--pick-soft:#fff3d6}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);
+ font:19px/1.75 "Pretendard","Noto Sans KR","Malgun Gothic",system-ui,sans-serif;
+ word-break:keep-all;overflow-wrap:anywhere}
+header{background:var(--ink);color:#fff}
+header .bar{max-width:900px;margin:0 auto;padding:22px 24px;display:flex;
+ flex-wrap:wrap;gap:10px 18px;align-items:baseline}
+header b{font-size:26px;font-weight:800;letter-spacing:-.02em;margin-right:auto}
+header a{color:#fff;font-size:17px;font-weight:700;text-decoration:none;
+ border:1px solid rgba(255,255,255,.45);border-radius:9px;padding:7px 15px}
+header a:hover{background:rgba(255,255,255,.14)}
+main{max-width:900px;margin:0 auto;padding:26px 24px 90px}
+.lead{font-size:20px;color:var(--muted);margin:0 0 30px}
+.lead b{color:var(--ink)}
+section{background:var(--card);border:1px solid var(--line);border-radius:14px;
+ padding:24px 26px;margin:0 0 18px}
+h2{margin:0 0 14px;font-size:22px;font-weight:800;display:flex;gap:12px;align-items:center}
+h2 i{flex:0 0 auto;width:34px;height:34px;border-radius:50%;background:var(--accent-soft);
+ color:#0b4a51;display:grid;place-items:center;font-style:normal;font-size:17px;font-weight:800}
+p{margin:0 0 12px}
+ul{margin:0 0 12px;padding-left:22px}
+li{margin:0 0 7px}
+.note{background:#f6fafb;border-left:4px solid var(--accent);border-radius:0 9px 9px 0;
+ padding:12px 16px;margin:14px 0 0;font-size:17.5px;color:#3c5468}
+.warn{background:var(--pick-soft);border-left-color:#d9a441;color:#6b4600}
+table{width:100%;border-collapse:collapse;margin:6px 0 12px;font-size:18px}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:700;font-size:16px;white-space:nowrap}
+td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;font-weight:700}
+code,kbd{background:#eef3f6;border:1px solid var(--line);border-radius:6px;
+ padding:2px 8px;font:inherit;font-size:16.5px;white-space:nowrap}
+kbd{border-bottom-width:2px}
+.mock{background:#f6fafb;border:1px solid var(--line);border-radius:11px;
+ padding:15px 17px;margin:12px 0}
+.mock .top{display:flex;flex-wrap:wrap;gap:9px;align-items:center;margin-bottom:11px}
+.mock .box{flex:1 1 180px;background:#fff;border:1px solid var(--line);border-radius:9px;
+ padding:9px 13px;color:var(--muted);font-size:17px}
+.mock .sw{display:flex;background:var(--ink);border-radius:9px;padding:3px}
+.mock .sw span{padding:6px 12px;border-radius:7px;font-size:15.5px;font-weight:700;color:#cfe0ea}
+.mock .sw span.on{background:#fff;color:var(--ink)}
+.mock .row{display:grid;grid-template-columns:auto 1fr;gap:3px 14px;background:#fff;
+ border:1px solid var(--line);border-radius:11px;padding:13px 16px}
+.mock .dot{grid-row:1 / span 2;width:42px;height:42px;border-radius:50%;
+ background:var(--accent-soft);color:#0b4a51;display:grid;place-items:center;
+ font-size:16px;font-weight:800;align-self:start}
+.mock .meta{display:flex;flex-wrap:wrap;gap:4px 9px;align-items:center;
+ color:var(--muted);font-size:15px}
+.mock .pick{background:var(--pick-soft);color:var(--pick);border:1px solid #f0d8a0;
+ border-radius:999px;padding:1px 10px;font-size:14px;font-weight:700}
+.mock .say{margin:2px 0 0;font-size:18px}
+.mock mark{background:var(--mark);padding:1px 2px;border-radius:3px}
+.tag{display:inline-block;background:var(--accent-soft);color:#0b4a51;border-radius:7px;
+ padding:1px 9px;font-size:16px;font-weight:700}
+footer{max-width:900px;margin:0 auto;padding:0 24px 70px;color:var(--muted);font-size:15.5px}
+@media (max-width:640px){
+ body{font-size:18px}
+ header .bar,main,footer{padding-left:15px;padding-right:15px}
+ section{padding:20px 17px}
+ h2{font-size:20px}
+ .mock .row{grid-template-columns:1fr}
+ .mock .dot{grid-row:auto}
+}
+@media print{
+ body{background:#fff;font-size:11.5pt;line-height:1.6}
+ header{background:#fff;color:var(--ink);border-bottom:2px solid var(--ink)}
+ header a{display:none}
+ section{break-inside:avoid;border-color:#aaa;padding:14px 16px;margin-bottom:10px}
+ main{padding:14px 0 0}
+}
+</style>
+</head>
+<body>
+<header><div class="bar">
+ <b>사용법 · 시민 발언 전체</b>
+ <a href="./">화면 열기 →</a>
+</div></header>
+<main>
+
+<p class="lead">제5차 분과토론에서 나온 <b>시민 발언 804건</b>을 이름·낱말로 찾아보는
+화면입니다. 발언자 159명, 3개 분과 15개 조, 1·2세션을 담았습니다.
+<b>의제에 선정되지 않은 발언도 그대로</b> 들어 있습니다.</p>
+
+<section>
+<h2><i>1</i>들어가기 — 암호를 두 번 넣습니다</h2>
+<p>처음 들어갈 때만 두 번이고, 그 뒤로는 묻지 않습니다.</p>
+<ul>
+ <li><b>첫 번째</b> — 브라우저가 띄우는 작은 창입니다. <b>사용자 이름은 아무거나</b> 넣거나 비워도 되고,
+ 암호만 맞으면 됩니다.</li>
+ <li><b>두 번째</b> — 화면 가운데 열쇠 그림 아래에 같은 암호를 한 번 더 넣습니다.</li>
+</ul>
+<div class="note">두 번인 이유가 있습니다. 첫 번째는 <b>파일이 서버에서 나가지 않게</b> 막고,
+두 번째는 <b>파일이 새어 나가더라도 내용을 읽지 못하게</b> 막습니다. 발언에 실명이 들어 있어서
+두 겹으로 두었습니다.</div>
+<div class="note warn">브라우저를 완전히 닫으면 다시 묻습니다. 현장에서는 <b>쓰는 동안 창을 닫지 마세요.</b></div>
+</section>
+
+<section>
+<h2><i>2</i>찾기 — 검색창 한 곳에서 다 됩니다</h2>
+<div class="mock"><div class="top">
+ <div class="box">🔍 이름 · 낱말 · 조로 찾기</div>
+</div></div>
+<p>이름이든 낱말이든 조 번호든 같은 칸에 넣습니다. <b>띄어쓰기는 무시</b>합니다.</p>
+<table>
+ <tr><th>넣어 보면</th><th></th><th>결과</th></tr>
+ <tr><td><code>김명훈</code></td><td>이름으로 찾기</td><td class="n">12건</td></tr><tr><td><code>재생에너지</code></td><td>낱말로 찾기</td><td class="n">17건</td></tr><tr><td><code>3조</code></td><td>조로 찾기</td><td class="n">97건</td></tr><tr><td><code>일회용</code></td><td>낱말로 찾기</td><td class="n">67건</td></tr>
+ <tr><td><code>RPT-1-1-S1-003</code></td><td>기록번호로 한 건만</td><td class="n">1건</td></tr>
+</table>
+<div class="note">찾은 건수가 눈에 보이는 것보다 많을 때가 있습니다.
+<b>의제 주제명까지 함께 훑기</b> 때문입니다. 예를 들어 <code>재생에너지</code>는 17건이 나오는데,
+본문에 그 낱말이 있는 것은 15건이고 나머지 2건은
+「재생에너지·전력 인프라 투자」라는 의제에 묶인 발언입니다.</div>
+</section>
+
+<section>
+<h2><i>3</i>이름 가리기 — 화면을 여럿이 볼 때</h2>
+<div class="mock"><div class="top">
+ <div class="sw"><span class="on">실명 보기</span><span>조 단위</span></div>
+</div></div>
+<p>오른쪽 위에서 <span class="tag">조 단위</span>를 누르면 이름이 사라지고
+<b>「1조 A」처럼 조 안에서만 통하는 글자</b>로 바뀝니다.
+같은 사람은 1세션과 2세션에서 <b>같은 글자</b>를 씁니다.</p>
+<p>빔프로젝터로 띄우거나 다른 조에 보여줄 때 먼저 눌러 두면 됩니다.
+누가 한 말인지 이어서 읽을 수는 있고, 이름만 가려집니다.</p>
+</section>
+
+<section>
+<h2><i>4</i>분과·세션으로 좁히기</h2>
+<p>검색창 아래 단추로 분과(1·2·3)와 세션(1·2)을 좁힙니다. 검색어와 함께 걸립니다 —
+<code>교육</code>을 넣고 <span class="tag">3분과</span>를 누르면 3분과 안에서만 찾습니다.</p>
+</section>
+
+<section>
+<h2><i>5</i>화면 읽기</h2>
+<div class="mock"><div class="row">
+ <div class="dot">명훈</div>
+ <div class="meta"><span>RPT-1-1-S1-023</span><span>1분과 1조 · 1세션</span>
+  <span class="pick">의제 대표발언 · 재생에너지·전력 인프라 투자</span></div>
+ <p class="say">친환경적으로 노력하는 기업에게 비용을 지원해주는 <mark>접근</mark>이 어떨까 싶다.</p>
+</div></div>
+<ul>
+ <li><b>RPT-…</b> — 기록번호입니다. 누르면 그 발언의 주소가 됩니다.</li>
+ <li><b>1분과 1조 · 1세션</b> — 어느 자리에서 나온 말인지입니다.</li>
+ <li><span class="pick">의제 대표발언</span> — 분과 장표에 오른 발언입니다. 119건 있습니다.
+ 이 표시가 없다고 해서 덜 중요한 것은 아니고, 장표에 넣지 않았을 뿐입니다.</li>
+ <li><b>노란 칠</b> — 찾은 낱말이 있는 자리입니다.</li>
+ <li><b>기록 문맥</b> — 이름이 붙지 않은 기록입니다. 소제목이나 여러 사람의 말이 이어진 부분으로
+ 80건 있고, 테두리가 점선입니다.</li>
+</ul>
+</section>
+
+<section>
+<h2><i>6</i>빠르게 쓰기</h2>
+<ul>
+ <li><kbd>/</kbd> 를 누르면 어디에 있든 검색창으로 갑니다.</li>
+ <li>기록번호를 누른 뒤 <b>주소창을 복사해 보내면</b>, 받은 사람은 그 발언으로 바로 갑니다
+ (암호는 따로 넣어야 합니다).</li>
+ <li><kbd>Ctrl</kbd>+<kbd>P</kbd> 로 인쇄합니다. <b>검색해서 좁힌 뒤 인쇄하면 그 결과만</b> 나옵니다.
+ 검색창과 단추는 인쇄되지 않습니다.</li>
+ <li>휴대전화에서도 그대로 됩니다.</li>
+</ul>
+</section>
+
+<section>
+<h2><i>7</i>알아둘 것</h2>
+<ul>
+ <li><b>실명이 들어 있습니다.</b> 주소와 암호를 함께 넘기지 마세요.</li>
+ <li>검색은 <b>정확히 그 글자</b>를 찾습니다. 비슷한 말은 걸리지 않으니
+ <code>일회용품</code>이 없으면 <code>일회용</code>으로 줄여 보세요.</li>
+ <li>내용을 고칠 수는 없는 화면입니다. 고쳐야 할 곳을 찾으면 기록번호를 적어 알려주세요.</li>
+</ul>
+</section>
+
+</main>
+<footer>
+ <p>출처 = 00_입력자료\20260829_기후시민회의 8.29.전체회의_결과보고서_3.0.hwp<br>발언 804건 · 발언자 159명 ·
+ 의제 대표발언 119건 · 이름 없는 기록 문맥 80건</p>
+</footer>
+</body>
+</html>
