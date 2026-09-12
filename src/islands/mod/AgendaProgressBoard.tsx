@@ -1026,6 +1026,19 @@ export default function AgendaProgressBoard({
         </div>
         {mode === 'hq' && statusFilter !== 'all' ? <button type="button" onClick={() => setStatusFilter('all')} className="mt-3 min-h-11 rounded-xl border-2 border-[#137586] bg-white px-4 font-extrabold text-[#137586]">전체 보기 · 상태 필터 해제</button> : null}
 
+        {mode === 'hq' ? (
+          <details className="mt-5 rounded-2xl border border-[#C4D8E4] bg-white p-4">
+            <summary className="cursor-pointer text-[16px] font-black text-[#1F4E79]">분과별 주제·조 선택 결과 확인</summary>
+            <p className="mt-2 text-[13px] font-bold text-[#5A6B73]">선택 시간에 HQ가 확정한 결과입니다. 확정된 주제만 해당 조 기록모더레이터 화면에 공개됩니다.</p>
+            <div className="mt-4 overflow-x-auto">
+              <table className="min-w-full border-collapse text-left text-[13px]">
+                <thead><tr className="border-b-2 border-[#DCE7EE] text-[#475569]"><th className="p-2">주제</th>{(payload?.teams ?? []).map((team) => <th key={team.id} className="p-2 text-center">{team.name}</th>)}</tr></thead>
+                <tbody>{(payload?.agendas ?? []).filter((agenda) => !agenda.archived).map((agenda) => <tr key={agenda.id} className="border-b border-[#EEF2F5]"><th className="p-2 font-bold">{agenda.subgroup} {agenda.ordinal}. {agenda.title}</th>{(payload?.teams ?? []).map((team) => <td key={team.id} className="p-2 text-center font-black text-[#137586]">{agenda.assignments.some((assignment) => assignment.teamId === team.id) ? '✓' : '—'}</td>)}</tr>)}</tbody>
+              </table>
+            </div>
+          </details>
+        ) : null}
+
         <div className="mt-5 space-y-4">
           {displayedAgendas.length === 0 ? (
             <div className="rounded-2xl border border-[#C4D8E4] bg-white p-10 text-center text-[18px] font-bold text-[#64748B]">
