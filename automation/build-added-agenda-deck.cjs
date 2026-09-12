@@ -3,6 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const pptxgen = require('pptxgenjs');
 const directory = path.resolve(process.argv[2] || 'evaluation/0912-added-agenda-deck');
+const compact = process.argv.includes('--compact');
 const skill = process.env.CITIZEN_DECK_SKILL;
 if (!skill) throw new Error('CITIZEN_DECK_SKILL is required');
 const data = JSON.parse(fs.readFileSync(path.join(directory, 'source-snapshot.json'), 'utf8'));
@@ -33,11 +34,41 @@ function footer(slide, summary) {
 const stamp = new Intl.DateTimeFormat('ko-KR', {timeZone:'Asia/Seoul',hour:'2-digit',minute:'2-digit',hour12:false}).format(new Date(data.capturedAt));
 let slide = add();
 slide.background = {color:ui.P.navy};
-text(slide,'시민회의 · 회의용 등록 의견',.6,.65,8.8,.4,17,ui.P.sky);
+text(slide,compact?'시민회의 · 추가 주제 목록':'시민회의 · 회의용 등록 의견',.6,.65,8.8,.4,17,ui.P.sky);
 text(slide,'오늘 추가된 주제',.6,1.65,8.8,.7,36,'FFFFFF',true);
-text(slide,'분과별로 함께 확인합니다',.6,2.5,8.8,.6,26,'FFFFFF');
+text(slide,compact?'1분과 18건 · 2분과 20건 · 3분과 4건':'분과별로 함께 확인합니다',.6,2.5,8.8,.6,26,'FFFFFF');
 text(slide,`2026. 9. 12. ${stamp} 기준 · 3개 분과`,.6,4.22,8.8,.4,18,'FFFFFF');
 slide.addNotes('운영 HQ 읽기 전용 스냅샷 기준. 기존 정본 9·8·8을 넘는 금일 생성 비보관 등록을 전수 수록합니다. 등록 의견을 요약했으며 확정 권고안이 아닙니다. 시민 발언의 수치·사례를 외부 검증한 자료가 아닙니다.');
+if (compact) {
+  const compactDirectory=path.join(directory,'compact');
+  fs.mkdirSync(compactDirectory,{recursive:true});
+  for(const division of ['1분과','2분과','3분과']) {
+    const agendas=data.agendas.filter(a=>a.subgroup===division).sort((a,b)=>a.ordinal-b.ordinal);
+    const half=Math.ceil(agendas.length/2);
+    for(let part=0;part<2;part++) {
+      const selected=agendas.slice(part*half,(part+1)*half);
+      const itemHeight=selected.length>5?3.35/selected.length:1.5;
+      const bodySize=selected.length>5?19:26;
+      const s=add();
+      ui.header(s,{num:division[0],kicker:`2026.09.12 · ${stamp} 기준 · ${part+1}/2`,title:`${division} 추가 주제`,hi:'추가 주제'});
+      selected.forEach((a,index)=>{
+        const y=1.5+index*itemHeight;
+        const team=a.assignments.map(t=>t.teamName.replace(`${division} `,'')).join('·')||'미배정';
+        if(index%2===0) s.addShape(ui.R,{x:.45,y:y-.015,w:9.1,h:itemHeight-.015,fill:{color:ui.P.pale},line:{color:ui.P.pale}});
+        text(s,team,.59,y,.68,itemHeight-.02,selected.length>5?12:17,ui.P.teal,true);
+        text(s,titles(a),1.38,y,8.03,itemHeight-.02,bodySize,ui.P.navy);
+        coverage.push({subgroup:division,ordinal:a.ordinal,slide:slides.length});
+      });
+      ui.footer(s,{summary:'주제명만 수록했습니다. 같은 제목의 별도 등록은 유지했습니다.',page:slides.length,total:7,char:false});
+      s.addImage({path:path.join(skill,'assets/geudeugi.png'),x:9.28,y:4.92,w:.45,h:.59});
+      s.addNotes(selected.map(a=>`등록 ${division} ${a.ordinal}: ${clean(a.title)} / ${a.assignments.map(t=>t.teamName).join(', ')}`).join('\n'));
+    }
+  }
+  if(slides.length!==7 || coverage.length!==data.agendas.length) throw new Error('Compact coverage mismatch');
+  fs.writeFileSync(path.join(compactDirectory,'coverage.json'),JSON.stringify({capturedAt:data.capturedAt,totalSlides:slides.length,agendas:coverage,archivedExcluded:data.archived.length},null,2));
+  deck.writeFile({fileName:path.join(compactDirectory,'0912_분과별_추가주제_회의용.pptx')}).then(()=>console.log(JSON.stringify({slides:slides.length,topics:coverage.length,mode:'titles-only'}))).catch(error=>{console.error(error.message);process.exitCode=1;});
+  return;
+}
 slide = add();
 ui.header(slide,{num:'+',kicker:'2026.09.12 · 추가 등록 현황',title:'오늘 추가된 등록은 모두 42건입니다'});
 ['1분과','2분과','3분과'].forEach((division,i)=>{
