@@ -114,7 +114,9 @@ async function submit() {
         'apikey': KEY,
         'Authorization': 'Bearer ' + KEY,
         'Content-Type': 'application/json',
-        'Prefer': 'return=minimal,resolution=ignore-duplicates',
+        // resolution=ignore-duplicates 는 쓰지 않는다 — ON CONFLICT 가 SELECT 권한을
+        // 요구해 42501 로 막힌다(2026-09-12 실측). 중복은 409 로 받아 같은 화면을 보여준다.
+        'Prefer': 'return=minimal',
       },
       body: JSON.stringify({ email: value, consent: true, source: 'qr' }),
     });
