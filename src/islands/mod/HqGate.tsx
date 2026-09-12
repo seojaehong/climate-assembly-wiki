@@ -71,7 +71,7 @@ export default function HqGate() {
   const passwordDialogRef = useRef<HTMLFormElement>(null);
   const passwordTriggerRef = useRef<HTMLButtonElement>(null);
   const currentPasswordRef = useRef<HTMLInputElement>(null);
-  // 본부 화면 전환 — 9/12 현장에서는 9·8·8 의제 배정과 진행상태가 중심이다.
+  // 본부 화면 전환 — 9/12 현장에서는 9·8·8 주제 배정과 진행상태가 중심이다.
   // 제출물과 투표·출석 그리드는 그대로 유지하고 진행상황판만 기본으로 연다.
   const [view, setView] = useState<HqView>(storedView);
 
@@ -304,7 +304,7 @@ export default function HqGate() {
           }}
         >
           {([
-            ['progress', '의제 진행상황'],
+            ['progress', '주제 진행상황'],
             ['submissions', '조별 산출물'],
             ['grid', '투표·출석 현황'],
           ] as const).map(([id, label]) => (

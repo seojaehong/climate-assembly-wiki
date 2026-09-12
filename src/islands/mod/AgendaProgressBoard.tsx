@@ -267,7 +267,7 @@ function ProjectorView({ item, onClose }: { item: AgendaBoardItem; onClose: () =
     <div className="fixed inset-0 z-[100] overflow-y-auto bg-[#F5F8FB] p-6 text-[#1F2933] sm:p-10" role="dialog" aria-modal="true" aria-label={`${item.title} 송출 화면`}>
       <header className="mx-auto flex max-w-7xl items-start gap-4 border-b-4 border-[#23B2C3] pb-6">
         <div className="min-w-0 flex-1">
-          <p className="text-[22px] font-extrabold text-[#137586]">{item.subgroup} · 의제 {item.ordinal}</p>
+          <p className="text-[22px] font-extrabold text-[#137586]">{item.subgroup} · 주제 {item.ordinal}</p>
           <h2 className="mt-2 text-[38px] font-black leading-tight sm:text-[54px]">{item.title}</h2>
         </div>
         <button type="button" onClick={onClose} className="min-h-12 rounded-xl border-2 border-[#1F4E79] bg-white px-5 text-[17px] font-extrabold text-[#1F4E79]">
@@ -329,7 +329,7 @@ function DivisionProjectorView({
         <div className="min-w-0 flex-1">
           <p className="text-[22px] font-extrabold text-[#137586]">9/12–13 시민참여단 워크숍</p>
           <h2 className="mt-2 text-[38px] font-black leading-tight sm:text-[54px]">{division} 권고안 진행상황</h2>
-          <p className="mt-2 text-[20px] font-bold text-[#5A6B73]">의제 {agendas.length}개 · 권고안 {recommendationCount}건 · {page + 1}/{pageCount}쪽</p>
+          <p className="mt-2 text-[20px] font-bold text-[#5A6B73]">주제 {agendas.length}개 · 권고안 {recommendationCount}건 · {page + 1}/{pageCount}쪽</p>
         </div>
         <div className="flex shrink-0 flex-wrap justify-end gap-2">
           <button type="button" onClick={() => setPage((current) => Math.max(0, current - 1))} disabled={page === 0} className="min-h-12 rounded-xl border-2 border-[#1F4E79] bg-white px-4 text-[17px] font-extrabold text-[#1F4E79] disabled:cursor-not-allowed disabled:opacity-40">이전</button>
@@ -343,7 +343,7 @@ function DivisionProjectorView({
           return (
             <section key={agenda.id} className="rounded-3xl border border-[#C4D8E4] bg-white p-6 shadow-sm">
               <div className="flex flex-wrap items-baseline justify-between gap-3">
-                <h3 className="text-[27px] font-black"><span className="mr-2 text-[18px] text-[#137586]">의제 {agenda.ordinal}</span>{agenda.title}</h3>
+                <h3 className="text-[27px] font-black"><span className="mr-2 text-[18px] text-[#137586]">주제 {agenda.ordinal}</span>{agenda.title}</h3>
                 <span className="text-[17px] font-extrabold text-[#475569]">권고안 {recommendations.length}건</span>
               </div>
               {recommendations.length === 0 ? <p className="mt-4 text-[19px] font-bold text-[#94A3B8]">작성 전</p> : null}
@@ -922,12 +922,12 @@ export default function AgendaProgressBoard({
           </div>
           <div className="mt-4 rounded-xl bg-[#EAF8FA] px-4 py-3 text-[14px] font-bold leading-relaxed text-[#135C73]">
             {mode === 'team'
-              ? `배정된 의제를 고른 뒤 권고안을 여러 건 작성할 수 있습니다. 오늘은 제목·배경 및 문제 인식·권고 내용만 입력합니다. 미전송 기기 초안 ${unsentCount}건.`
-              : '진행상태는 의제가 아니라 각 조의 권고안별로 집계됩니다. 의제와 권고안은 삭제하지 않고 보관해 이력을 남깁니다.'}
+              ? `배정된 주제를 고른 뒤 권고안을 여러 건 작성할 수 있습니다. 오늘은 제목·배경 및 문제 인식·권고 내용만 입력합니다. 미전송 기기 초안 ${unsentCount}건.`
+              : '진행상태는 주제가 아니라 각 조의 권고안별로 집계됩니다. 주제와 권고안은 삭제하지 않고 보관해 이력을 남깁니다.'}
           </div>
           {payload && !topicWritesEnabled ? (
             <p role="status" className="mt-4 rounded-xl border-2 border-[#DC2626] bg-[#FEF2F2] px-4 py-3 text-[15px] font-extrabold leading-relaxed text-[#991B1B]">
-              읽기 전용: 현재 열린 작업단계를 하나로 확정할 수 없습니다. 새 의제·권고안 작성과 권고안 문안·상태 변경은 잠겼습니다. HQ의 조 배정·보관 기능은 계속 사용할 수 있습니다.
+              읽기 전용: 현재 열린 작업단계를 하나로 확정할 수 없습니다. 새 주제·권고안 작성과 권고안 문안·상태 변경은 잠겼습니다. HQ의 조 배정·보관 기능은 계속 사용할 수 있습니다.
             </p>
           ) : null}
           {message ? <p role="alert" className="mt-4 rounded-xl bg-[#FFF4D6] px-4 py-3 text-[14px] font-bold text-[#6B4B00]">{message}</p> : null}
@@ -954,14 +954,14 @@ export default function AgendaProgressBoard({
             </div>
           ) : (
             <label className="min-w-0 flex-1 basis-full text-[14px] font-extrabold text-[#334E5C] sm:min-w-[280px] sm:basis-auto">
-              작성할 의제
+              작성할 주제
               <select aria-label="작성할 의제 선택" disabled={anyRecommendationCreatePending} value={selectedAgendaId} onChange={(event) => setSelectedAgendaId(event.target.value)} className="mt-1 min-h-12 w-full rounded-xl border border-[#C4D8E4] bg-white px-3 text-[16px] disabled:bg-[#F1F5F9]">
                 {visibleAgendas.map((agenda) => <option key={agenda.id} value={agenda.id}>{agenda.subgroup} · {agenda.title}</option>)}
               </select>
             </label>
           )}
           <label className="min-w-0 flex-1 basis-full text-[14px] font-extrabold text-[#334E5C] sm:min-w-[220px] sm:basis-auto">
-            의제·권고안 검색
+            주제·권고안 검색
             <input type="search" aria-label="의제와 권고안 검색" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="제목, 내용, 조 이름" className="mt-1 min-h-12 w-full rounded-xl border border-[#C4D8E4] px-3 text-[16px]" />
           </label>
           {mode === 'hq' ? (
@@ -974,14 +974,14 @@ export default function AgendaProgressBoard({
             </label>
           ) : null}
           <button type="button" disabled={!topicWritesEnabled} onClick={() => setAgendaFormOpen(true)} className="min-h-12 rounded-xl bg-[#137586] px-5 text-[15px] font-extrabold text-white disabled:opacity-40">
-            + 새 의제 추가
+            + 새 주제 추가
           </button>
           {mode === 'hq' ? (
             <details className="rounded-xl border border-[#C4D8E4] bg-white px-3 py-2 text-[14px] font-bold text-[#475569]">
               <summary className="cursor-pointer list-none">고급 관리</summary>
               <label className="mt-2 flex items-center gap-2 border-t border-[#E5EDF2] pt-2 font-semibold">
                 <input type="checkbox" checked={showArchived} onChange={(event) => setShowArchived(event.target.checked)} />
-                보관된 의제·권고안 보기
+                보관된 주제·권고안 보기
               </label>
               <p className="mt-1 text-[12px] font-medium text-[#5A6B73]">보관은 삭제가 아니라 중복·오류 항목을 기본 화면에서 숨기고 이력을 남기는 기능입니다.</p>
             </details>
@@ -991,7 +991,7 @@ export default function AgendaProgressBoard({
         {agendaFormOpen ? (
           <section className="mt-4 rounded-2xl border-2 border-[#137586] bg-white p-5" aria-labelledby="new-agenda-title">
             <div className="flex items-center justify-between gap-3">
-              <h3 id="new-agenda-title" className="text-[21px] font-black text-[#1F4E79]">새 의제 추가</h3>
+              <h3 id="new-agenda-title" className="text-[21px] font-black text-[#1F4E79]">새 주제 추가</h3>
               <button type="button" disabled={agendaCreatePending} onClick={() => setAgendaFormOpen(false)} className="min-h-11 rounded-lg border border-[#C4D8E4] px-3 font-bold disabled:opacity-40">닫기</button>
             </div>
             <div className="mt-4 grid gap-3 sm:grid-cols-[180px_1fr]">
@@ -1021,14 +1021,21 @@ export default function AgendaProgressBoard({
         ) : null}
 
         <p className="mt-5 text-[13px] font-extrabold text-[#5A6B73]">권고안 진행건수 · 분과 전체</p>
-        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5">
-          {AGENDA_STATUSES.map((status) => (
-            <button key={status} type="button" onClick={() => mode === 'hq' && setStatusFilter(status)} className={`rounded-xl border p-3 text-left ${AGENDA_STATUS_STYLES[status]}`}>
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5" aria-label="권고안 진행건수 요약">
+          {AGENDA_STATUSES.map((status) => mode === 'hq' ? (
+            <button key={status} type="button" aria-pressed={statusFilter === status} onClick={() => setStatusFilter((current) => current === status ? 'all' : status)} className={`rounded-xl border-2 p-3 text-left ${AGENDA_STATUS_STYLES[status]} ${statusFilter === status ? 'ring-4 ring-[#137586] ring-offset-2' : ''}`}>
+              {statusFilter === status ? <span aria-hidden="true">✓ </span> : null}
               <span className="text-[13px] font-extrabold">{AGENDA_STATUS_LABELS[status]}</span>
               <strong className="mt-1 block text-[24px] font-black">{counts[status]}</strong>
             </button>
+          ) : (
+            <div key={status} className={`rounded-xl border p-3 ${AGENDA_STATUS_STYLES[status]}`}>
+              <span className="text-[13px] font-extrabold">{AGENDA_STATUS_LABELS[status]}</span>
+              <strong className="mt-1 block text-[24px] font-black">{counts[status]}</strong>
+            </div>
           ))}
         </div>
+        {mode === 'hq' && statusFilter !== 'all' ? <button type="button" onClick={() => setStatusFilter('all')} className="mt-3 min-h-11 rounded-xl border-2 border-[#137586] bg-white px-4 font-extrabold text-[#137586]">전체 보기 · 상태 필터 해제</button> : null}
 
         <div className="mt-5 space-y-4">
           {displayedAgendas.length === 0 ? (
@@ -1037,9 +1044,7 @@ export default function AgendaProgressBoard({
             </div>
           ) : null}
           {displayedAgendas.map((agenda) => {
-            const agendaExpanded = mode === 'team'
-              ? expanded[agenda.id] !== false
-              : expanded[agenda.id] === true;
+            const agendaExpanded = mode === 'team' || expanded[agenda.id] === true;
             const teams = (payload?.teams ?? []).filter((team) => team.subgroup === agenda.subgroup);
             const recommendations = agenda.recommendations.filter((recommendation) => showArchived || !recommendation.archived);
             const recommendationCreateKey = `recommendation:create:${agenda.id}`;
@@ -1048,7 +1053,7 @@ export default function AgendaProgressBoard({
             return (
               <article data-agenda-subgroup={agenda.subgroup} key={agenda.id} className={`rounded-2xl border bg-white p-4 shadow-sm sm:p-5 ${agenda.archived ? 'border-[#CBD5E1] opacity-75' : 'border-[#DCE7EE]'}`}>
                 <div className="flex flex-wrap items-start gap-4">
-                  <button type="button" aria-expanded={agendaExpanded} onClick={() => setExpanded((current) => ({ ...current, [agenda.id]: !agendaExpanded }))} className="min-w-0 flex-1 basis-full text-left sm:min-w-[260px] sm:basis-auto">
+                  <div className="min-w-0 flex-1 basis-full text-left sm:min-w-[260px] sm:basis-auto">
                     <p className="text-[13px] font-extrabold text-[#137586]">{agenda.subgroup} · 의제 {agenda.ordinal}{agenda.archived ? ' · 보관됨' : ''}</p>
                     <h3 className="mt-1 text-[22px] font-black leading-snug text-[#1F2933]">{agenda.title}</h3>
                     <div className="mt-3"><AssignmentSummary assignments={agenda.assignments} /></div>
@@ -1056,8 +1061,9 @@ export default function AgendaProgressBoard({
                       <span className="rounded-lg bg-[#F1F5F9] px-2 py-1">권고안 {recommendations.filter((item) => !item.archived).length}건</span>
                       {AGENDA_STATUSES.filter((status) => agendaCounts[status] > 0).map((status) => <span key={status} className="rounded-lg bg-[#F1F5F9] px-2 py-1">{AGENDA_STATUS_LABELS[status]} {agendaCounts[status]}</span>)}
                     </div>
-                  </button>
+                  </div>
                   <div className="flex flex-wrap gap-2">
+                    {mode === 'hq' ? <button type="button" aria-expanded={agendaExpanded} onClick={() => setExpanded((current) => ({ ...current, [agenda.id]: !agendaExpanded }))} className="min-h-11 rounded-xl border border-[#1F4E79] px-4 text-[14px] font-extrabold text-[#1F4E79]">권고안 {agendaExpanded ? '접기' : '펼치기'}</button> : null}
                     {!agenda.archived ? <button type="button" disabled={!topicWritesEnabled || anyRecommendationCreatePending} onClick={() => openRecommendationForm(agenda)} className="min-h-11 rounded-xl bg-[#137586] px-4 text-[14px] font-extrabold text-white disabled:opacity-40">+ 권고안 추가</button> : null}
                     {mode === 'hq' ? <button type="button" onClick={() => setProjectingAgendaId(agenda.id)} className="min-h-11 rounded-xl bg-[#23B2C3] px-4 text-[14px] font-extrabold text-white">이 의제 송출</button> : null}
                     {mode === 'hq' && !agenda.archived ? (
@@ -1138,17 +1144,16 @@ export default function AgendaProgressBoard({
                             </div>
                             <StatusBadge status={recommendation.status} />
                           </div>
+                          <ol aria-label="권고안 5단계 진행" className="mt-3 flex flex-wrap gap-2 text-[13px] font-extrabold">
+                            {AGENDA_STATUSES.map((status, index) => <li key={status} aria-current={status === recommendation.status ? 'step' : undefined} className={`rounded-lg border px-3 py-2 ${status === recommendation.status ? 'border-[#137586] bg-[#EAF8FA] text-[#135C73]' : 'border-[#DCE7EE] text-[#64748B]'}`}>
+                              {index < AGENDA_STATUSES.indexOf(recommendation.status) ? '✓ ' : `${index + 1}. `}{AGENDA_STATUS_LABELS[status]}
+                            </li>)}
+                          </ol>
+                          {mode === 'team' && notArchived ? <p className="mt-2 text-[14px] font-bold text-[#334E5C]">
+                            현재 {AGENDA_STATUS_LABELS[recommendation.status]} · {recommendation.status === 'waiting' ? '논의 시작을 눌러 주세요.' : recommendation.status === 'discussing' ? '문안을 작성하고 초안 작성 완료를 눌러 주세요.' : recommendation.status === 'drafting' ? '세 입력값을 확인한 뒤 조 확인 완료를 눌러 주세요.' : recommendation.status === 'team_confirmed' ? '조가 확인한 문안을 최종 제출해 주세요.' : '제출이 완료되었습니다.'}
+                          </p> : null}
                           {recommendation.feedback ? <p className="mt-3 rounded-xl border-2 border-[#F59E0B] bg-[#FEF3C7] p-3 text-[15px] font-bold text-[#92400E]">HQ 보완 요청: {recommendation.feedback}</p> : null}
-                          <div className="mt-4">
-                            <RecommendationFields value={draft} disabled={!baseEditable || hasPendingMutation} prefix={`${recommendation.authorTeamName} 권고안 ${recommendation.sortOrder}`} onChange={(next) => updateDraft(recommendation, next)} />
-                          </div>
-                          {recommendation.expectedEffect ? (
-                            <details className="mt-4 rounded-xl border border-[#DCE7EE] bg-[#F8FAFC] p-3">
-                              <summary className="cursor-pointer text-[14px] font-extrabold text-[#475569]">기존 기대효과 보기 · 지금은 입력하지 않음</summary>
-                              <p className="mt-2 whitespace-pre-wrap text-[14px] leading-relaxed text-[#475569]">{recommendation.expectedEffect}</p>
-                            </details>
-                          ) : null}
-                          <div className="mt-4 flex flex-wrap items-center gap-2">
+                          <div data-recommendation-actions className="mt-3 flex flex-wrap items-center gap-2">
                             {recommendationEditable && (mode === 'hq' || recommendation.status !== 'waiting') ? <button type="button" disabled={!topicWritesEnabled || !canSaveRecommendation({ editable: baseEditable, dirty: dirty[recommendation.id] === true, mode, status: recommendation.status }) || (hasPendingMutation && !savePending) || busyKey === saveKey} onClick={() => void saveRecommendation(recommendation)} className="min-h-11 rounded-xl bg-[#B45309] px-4 font-extrabold text-white disabled:opacity-40">{savePending ? '같은 초안으로 다시 확인' : recommendationSaveLabel(mode, recommendation.status)}</button> : null}
                             {notArchived && mode === 'team' && recommendation.status === 'waiting' ? <button type="button" disabled={!topicWritesEnabled || (hasPendingMutation && !pendingRequestIds[`start:${recommendation.id}`]) || busyKey === `start:${recommendation.id}`} onClick={() => void act(recommendation, 'start')} className="min-h-11 rounded-xl bg-[#0369A1] px-4 font-extrabold text-white disabled:opacity-40">{pendingRequestIds[`start:${recommendation.id}`] ? '논의 시작 다시 확인' : '논의 시작'}</button> : null}
                             {notArchived && mode === 'team' && recommendation.status === 'drafting' ? <button type="button" disabled={!topicWritesEnabled || (hasPendingMutation && !pendingRequestIds[`confirm:${recommendation.id}`]) || busyKey === `confirm:${recommendation.id}`} onClick={() => void act(recommendation, 'confirm')} className="min-h-11 rounded-xl bg-[#7E22CE] px-4 font-extrabold text-white disabled:opacity-40">{pendingRequestIds[`confirm:${recommendation.id}`] ? '조 확인 다시 확인' : '조 확인 완료'}</button> : null}
@@ -1163,6 +1168,15 @@ export default function AgendaProgressBoard({
                             {notArchived && mode === 'hq' ? <button type="button" disabled={hasPendingMutation && !pendingRequestIds[`recommendation:archive:${recommendation.id}`]} onClick={() => archiveRecommendationItem(recommendation)} className="min-h-11 rounded-xl border border-[#9A3412] px-4 font-extrabold text-[#9A3412] disabled:opacity-40">{pendingRequestIds[`recommendation:archive:${recommendation.id}`] ? '권고안 보관 다시 확인' : '권고안 보관'}</button> : null}
                             <span className="ml-auto text-[13px] font-bold text-[#64748B]">서버 갱신 {formatUpdatedAt(recommendation.updatedAt)} · 수정이력 {recommendation.revisionCount}건{dirty[recommendation.id] ? ' · 기기 초안 미전송' : ''}</span>
                           </div>
+                          <div className="mt-4">
+                            <RecommendationFields value={draft} disabled={!baseEditable || hasPendingMutation} prefix={`${recommendation.authorTeamName} 권고안 ${recommendation.sortOrder}`} onChange={(next) => updateDraft(recommendation, next)} />
+                          </div>
+                          {recommendation.expectedEffect ? (
+                            <details className="mt-4 rounded-xl border border-[#DCE7EE] bg-[#F8FAFC] p-3">
+                              <summary className="cursor-pointer text-[14px] font-extrabold text-[#475569]">기존 기대효과 보기 · 지금은 입력하지 않음</summary>
+                              <p className="mt-2 whitespace-pre-wrap text-[14px] leading-relaxed text-[#475569]">{recommendation.expectedEffect}</p>
+                            </details>
+                          ) : null}
                         </section>
                       );
                     })}
