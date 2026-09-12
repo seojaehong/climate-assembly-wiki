@@ -45,3 +45,7 @@
 /s-v9m4tqz7kp2h/*
   X-Robots-Tag: noindex, nofollow, noarchive
   Cache-Control: no-cache
+
+/lecture/*
+  X-Robots-Tag: noindex, nofollow
+  Cache-Control: no-cache
