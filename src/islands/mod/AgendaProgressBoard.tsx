@@ -80,6 +80,11 @@ function formatUpdatedAt(value: string | null): string {
     : new Intl.DateTimeFormat('ko-KR', { hour: '2-digit', minute: '2-digit' }).format(date);
 }
 
+function isAddedAgenda(agenda: AgendaBoardItem): boolean {
+  const canonicalCount = agenda.subgroup === '1분과' ? 9 : 8;
+  return agenda.ordinal > canonicalCount;
+}
+
 function isAuthorizationError(error: unknown): boolean {
   const message = error instanceof Error ? error.message : String(error);
   // Do not treat schema/RPC errors containing names such as `p_session_slug`
@@ -1104,6 +1109,7 @@ export default function AgendaProgressBoard({
           ) : null}
           {displayedAgendas.map((agenda) => {
             const agendaExpanded = mode === 'team' || expanded[agenda.id] === true;
+            const addedAgenda = isAddedAgenda(agenda);
             const teams = (payload?.teams ?? []).filter((team) => team.subgroup === agenda.subgroup);
             const recommendations = agenda.recommendations.filter((recommendation) =>
               (showArchived || !recommendation.archived)
@@ -1113,10 +1119,10 @@ export default function AgendaProgressBoard({
             const recommendationCreatePending = Boolean(pendingRequestIds[recommendationCreateKey]);
             const agendaCounts = statusCounts(recommendations.filter((recommendation) => !recommendation.archived).map((recommendation) => recommendation.status));
             return (
-              <article data-agenda-subgroup={agenda.subgroup} key={agenda.id} className={`rounded-2xl border bg-white p-4 shadow-sm sm:p-5 ${agenda.archived ? 'border-[#CBD5E1] opacity-75' : 'border-[#DCE7EE]'}`}>
+              <article data-agenda-subgroup={agenda.subgroup} key={agenda.id} className={`rounded-2xl border p-4 shadow-sm sm:p-5 ${agenda.archived ? 'border-[#CBD5E1] bg-[#F8FAFC] opacity-75' : addedAgenda ? 'border-[#D6B36A] bg-[#FFFBEB]' : 'border-[#DCE7EE] bg-white'}`}>
                 <div className="flex flex-wrap items-start gap-4">
                   <div className="min-w-0 flex-1 basis-full text-left sm:min-w-[260px] sm:basis-auto">
-                    <p className="text-[13px] font-extrabold text-[#137586]">{agenda.subgroup} · 주제 {agenda.ordinal}{agenda.archived ? ' · 보관됨' : ''}</p>
+                    <p className={`text-[13px] font-extrabold ${addedAgenda ? 'text-[#9A6700]' : 'text-[#137586]'}`}>{agenda.subgroup} · 주제 {agenda.ordinal}{addedAgenda ? ' · 추가 주제' : ''}{agenda.archived ? ' · 보관됨' : ''}</p>
                     <h3 className="mt-1 text-[22px] font-black leading-snug text-[#1F2933]">{agenda.title}</h3>
                     <div className="mt-3"><AssignmentSummary assignments={agenda.assignments} /></div>
                     <div className="mt-3 flex flex-wrap gap-1 text-[12px] font-extrabold text-[#5A6B73]">
