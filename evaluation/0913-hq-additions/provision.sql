@@ -6,13 +6,13 @@ do $provision$
 declare
   v_password text := 'ENTER_INITIAL_PASSWORD_HERE';
   v_name text;
-  v_names text[] := array['한만목','김상규','김진우'];
+  v_names text[] := array['김진우'];
 begin
   if v_password = 'ENTER_INITIAL_PASSWORD_HERE' or length(v_password) = 0 then
     raise exception 'Enter the user-approved initial password before execution';
   end if;
   if exists(select 1 from climate_vote.hq_operator where name = any(v_names))
-     or exists(select 1 from climate_vote.attendance_secret where secret_key = any(array['hq:한만목','hq:김상규','hq:김진우'])) then
+     or exists(select 1 from climate_vote.attendance_secret where secret_key = 'hq:김진우') then
     raise exception 'An operator or credential already exists; inspect before proceeding';
   end if;
   foreach v_name in array v_names loop
