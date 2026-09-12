@@ -1,7 +1,7 @@
 /**
  * 9.12~13 본부 v3 통합 브라우저 리허설.
  *
- * 프로덕션 빌드의 `/hq?ops=1`을 열지만 Supabase HTTP는 단 한 요청도 전달하지 않는다.
+ * 기존 기록 전용 `/hq?ops=1&view=submissions`를 열지만 Supabase HTTP는 단 한 요청도 전달하지 않는다.
  * 허용한 RPC만 상태를 가진 합성 응답으로 처리하고, 그 밖의 Supabase HTTP는 차단한다.
  * WebSocket도 페이지 코드보다 먼저 무동작 구현으로 바꾼다.
  *
@@ -407,7 +407,7 @@ async function runBrowserRehearsal(options, fixture, fixturePath, fixtureSha256)
   const startedAt = Date.now();
   const runtimeCapability = randomBytes(32).toString('hex');
   const sensitiveValues = [runtimeCapability];
-  const url = `${options.baseUrl}/hq?ops=1`;
+  const url = `${options.baseUrl}/hq?ops=1&view=submissions`;
   const checks = [];
   const findings = [];
   const pageErrors = [];
@@ -958,7 +958,7 @@ async function runBrowserRehearsal(options, fixture, fixturePath, fixtureSha256)
     elapsedMs: Date.now() - startedAt,
     ...source,
     status: failed === 0 && passed > 0 ? 'pass' : 'fail',
-    target: { baseUrl: options.baseUrl, route: '/hq?ops=1' },
+    target: { baseUrl: options.baseUrl, route: '/hq?ops=1&view=submissions' },
     fixture: displayPath(fixturePath),
     fixtureSha256,
     fixtureIdentity: {
