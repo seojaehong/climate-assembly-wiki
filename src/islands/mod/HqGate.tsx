@@ -43,8 +43,9 @@ function storedActor(): string {
 }
 
 function storedView(): HqView {
-  // Hidden legacy tabs must not be restored from an earlier browser session.
-  return 'progress';
+  // Legacy records are opt-in; never restore hidden tabs from session storage.
+  const query = new URLSearchParams(window.location.search);
+  return query.get('ops') === '1' && query.get('view') === 'submissions' ? 'submissions' : 'progress';
 }
 
 export default function HqGate() {
@@ -305,6 +306,7 @@ export default function HqGate() {
         >
           {([
             ['progress', '주제 진행상황'],
+            ...(view === 'submissions' ? [['submissions', '조별 산출물'] as const] : []),
           ] as const).map(([id, label]) => (
             <button
               key={id}
