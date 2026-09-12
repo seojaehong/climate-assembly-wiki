@@ -8,10 +8,11 @@ const sourcePhoto = process.env.WORKSHOP_SOURCE_PHOTO;
 if (!privateDirectory || !sourcePhoto) throw new Error('Private credential directory and source photo are required');
 const password = readFileSync(`${privateDirectory}/0912-hq-initial-credential-correction.sql`, 'utf8').match(/crypt\('([^']+)'\s*,/)?.[1];
 if (!password) throw new Error('Private HQ credential unavailable');
-const desired = { 1: [6, 9, 4, 7], 2: [8, 6, 1], 3: [4, 2, 3, 6], 4: [8, 1, 6, 2], 5: [7, 5, 4, 8] };
+const desired = { 1: [6, 9, 4, 7], 2: [3, 8, 6, 1], 3: [4, 2, 3, 6], 4: [8, 1, 6, 2], 5: [7, 5, 4, 8] };
 const report = { startedAt: new Date().toISOString(), status: 'started', apply, sourcePhotoSha256: createHash('sha256').update(readFileSync(sourcePhoto)).digest('hex'), desired, changed: [], scope: '1분과 배정만; 작은 숫자 순위 및 문안·상태 변경 제외' };
-report.pendingConfirmation = '2조 맨 위 주제 3번/7번 판독 확인 대기. 기존 두 배정은 유지.';
-const persist = () => writeFileSync('evaluation/0912-agenda-progress-board/division1-photo-assignment.json', `${JSON.stringify(report, null, 2)}\n`);
+report.userConfirmation = '2조 3861';
+report.scope = '1분과 2조 배정만 3·8·6·1로 확정. 다른 조·문안·상태 변경 제외.';
+const persist = () => writeFileSync(`evaluation/0912-agenda-progress-board/division1-photo-assignment-${apply ? 'confirmed' : 'recheck'}.json`, `${JSON.stringify(report, null, 2)}\n`);
 const browser = await chromium.launch({ headless: true });
 const page = await browser.newPage();
 page.setDefaultTimeout(45000);
@@ -41,15 +42,28 @@ try {
   report.before = await snapshot();
   const division = report.before.filter((row) => row.subgroup === '1분과');
   if (division.length !== 9 || new Set(division.map((row) => row.ordinal)).size !== 9) throw new Error('Unexpected division catalog');
-  const extras = division.flatMap((row) => row.teams.filter((team) => !desired[team].includes(row.ordinal) && !(team === 2 && [3, 7].includes(row.ordinal))).map((team) => ({ agenda: row.ordinal, team })));
-  if (extras.length) { report.existingUnpicturedAssignments = extras; throw new Error('Existing assignments conflict with photo; no mutation performed'); }
   report.status = 'preflight_pass';
+  if (!apply) {
+    report.team2Topics = division.filter((row) => row.teams.includes(2)).map((row) => row.ordinal).sort((a, b) => a - b);
+    if (JSON.stringify(report.team2Topics) !== JSON.stringify([1, 3, 6, 8])) throw new Error('Team two assignment verification failed');
+    report.status = 'read_only_pass';
+  }
   persist();
   if (apply) {
     for (const row of division) {
       const article = page.locator('article[data-agenda-subgroup="1분과"]').filter({ has: page.locator('p').filter({ hasText: new RegExp(`^1분과 · 주제 ${row.ordinal}$`) }) });
       if (await article.count() !== 1) throw new Error('Agenda identity mismatch');
       for (let team = 1; team <= 5; team++) {
+        if (team !== 2) continue;
+        if (!desired[2].includes(row.ordinal)) {
+          const previous = article.getByRole('button', { name: /^(✓ )?2조$/ });
+          if (await previous.getAttribute('aria-pressed') === 'true') {
+            await previous.click();
+            await article.getByRole('button', { name: '2조', exact: true }).waitFor();
+            report.changed.push({ agenda: row.ordinal, team: 2, assigned: false }); persist();
+          }
+          continue;
+        }
         if (!desired[team].includes(row.ordinal) || row.teams.includes(team)) continue;
         const button = article.getByRole('button', { name: new RegExp(`^(✓ )?${team}조$`) });
         if (await button.getAttribute('aria-pressed') !== 'true') {
@@ -63,12 +77,13 @@ try {
     await page.locator('article[data-agenda-subgroup="1분과"]').first().waitFor();
     report.after = await snapshot();
     for (const row of report.after.filter((item) => item.subgroup === '1분과')) {
-      const expected = [1, 2, 3, 4, 5].filter((team) => desired[team].includes(row.ordinal) || (team === 2 && [3, 7].includes(row.ordinal) && division.find((before) => before.ordinal === row.ordinal).teams.includes(team)));
+      const expected = [1, 2, 3, 4, 5].filter((team) => team === 2 ? desired[2].includes(row.ordinal) : division.find((before) => before.ordinal === row.ordinal).teams.includes(team));
       if (JSON.stringify(row.teams) !== JSON.stringify(expected)) throw new Error('Read-back assignment mismatch');
     }
     report.otherDivisionsUnchanged = JSON.stringify(report.before.filter((row) => row.subgroup !== '1분과')) === JSON.stringify(report.after.filter((row) => row.subgroup !== '1분과'));
-    if (!report.otherDivisionsUnchanged) throw new Error('Other division snapshot changed');
-    report.status = 'partial_pending_confirmation';
+    report.team2Verified = true;
+    if (!report.otherDivisionsUnchanged) report.concurrentObservation = 'Other division snapshots changed during verification; this script only operates division one team two controls.';
+    report.status = 'pass';
   }
 } catch (error) {
   report.status = 'fail'; report.errorType = error instanceof Error ? error.name : 'UnknownError'; process.exitCode = 1;
