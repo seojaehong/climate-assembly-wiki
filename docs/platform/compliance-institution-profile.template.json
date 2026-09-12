@@ -21,6 +21,16 @@
     "scheduleAuthority": null,
     "mappings": [
       {
+        "datasetId": "agenda-progress-board",
+        "recordClass": "pending",
+        "unitTaskCode": null,
+        "retentionPeriod": "pending",
+        "retentionTrigger": null,
+        "dispositionAction": "pending",
+        "dispositionAuthority": null,
+        "destructionMethod": null
+      },
+      {
         "datasetId": "analysis-publication",
         "recordClass": "pending",
         "unitTaskCode": null,

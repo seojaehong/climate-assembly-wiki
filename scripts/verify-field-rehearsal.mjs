@@ -365,6 +365,7 @@ const DRAFT1 = `climate_vote_draft:${TEAM_ID}:${TOPIC1}`;
 const QUEUE1 = `climate_vote_queue:${TEAM_ID}:${TOPIC1}`;
 const SESSION_KEY = 'climate_vote_mod_session_v1';
 const DEVICE_KEY = 'climate_vote_mod_device_id';
+const MOD_TAB_KEY = 'climate_vote_mod_tab_v2';
 
 /** 서버가 처음 들고 있는 updated_at. 초안 봉투·큐의 baseUpdatedAt 이 이 값을 딛는다. */
 const T0 = FIXTURE.session.startsAt;
@@ -755,6 +756,13 @@ const bannerMessage = async (page) => {
  */
 const openMod = async ({ includeJoinCode = false } = {}) => {
   const page = await context.newPage();
+  // This rehearsal exercises the existing submission recovery flow. The live
+  // console now defaults to the independent agenda-progress tab, so select the
+  // submission tab before React mounts instead of allowing the unrelated board
+  // poll to enter this fixture's deliberately narrow RPC allowlist.
+  await page.addInitScript((storageKey) => {
+    sessionStorage.setItem(storageKey, 'submission');
+  }, MOD_TAB_KEY);
   await page.goto(includeJoinCode ? URL_MOD : `${BASE}/mod`, {
     waitUntil: 'domcontentloaded',
     timeout: 60_000,
