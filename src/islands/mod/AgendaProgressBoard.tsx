@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   archiveRecommendation,
+  archiveAgenda,
   createAgenda,
   createRecommendation,
   fetchAgendaBoard,
@@ -692,6 +693,17 @@ export default function AgendaProgressBoard({
     }
   };
 
+  const archiveAgendaItem = async (agenda: AgendaBoardItem) => {
+    if (mode !== 'hq' || agenda.archived) return;
+    const key = `agenda:archive:${agenda.id}`;
+    const snapshot = { agendaId: agenda.id, reason: `테스트 주제 보관 · ${agenda.title}` };
+    await runMutation(key, mutationPayloadFingerprint(snapshot), (requestId) => archiveAgenda({
+      token: token ?? '', agendaId: agenda.id, reason: snapshot.reason, requestId,
+    }));
+    setMessage(`주제 ${agenda.ordinal}을(를) 보관했습니다.`);
+    setShowArchived(false);
+  };
+
   const openRecommendationForm = (agenda: AgendaBoardItem) => {
     if (!topicWritesEnabled) {
       setMessage('현재 작업단계를 하나로 확정할 수 없어 새 권고안을 작성할 수 없습니다.');
@@ -1115,6 +1127,7 @@ export default function AgendaProgressBoard({
                   <div className="flex flex-wrap gap-2">
                     {mode === 'hq' ? <button type="button" aria-expanded={agendaExpanded} onClick={() => setExpanded((current) => ({ ...current, [agenda.id]: !agendaExpanded }))} className="min-h-11 rounded-xl border border-[#1F4E79] px-4 text-[14px] font-extrabold text-[#1F4E79]">권고안 {agendaExpanded ? '접기' : '펼치기'}</button> : null}
                     {mode === 'hq' && !agenda.archived ? <button type="button" disabled={!topicWritesEnabled || busyKey === `agenda:update:${agenda.id}`} onClick={() => startAgendaEdit(agenda)} className="min-h-11 rounded-xl border border-[#137586] bg-white px-4 text-[14px] font-extrabold text-[#137586] disabled:opacity-40">주제 수정</button> : null}
+                    {mode === 'hq' && !agenda.archived ? <button type="button" disabled={!topicWritesEnabled || busyKey === `agenda:archive:${agenda.id}`} onClick={() => void archiveAgendaItem(agenda)} className="min-h-11 rounded-xl border border-[#B91C1C] bg-white px-4 text-[14px] font-extrabold text-[#B91C1C] disabled:opacity-40">주제 보관</button> : null}
                     {!agenda.archived ? <button type="button" disabled={!topicWritesEnabled || anyRecommendationCreatePending} onClick={() => openRecommendationForm(agenda)} className="min-h-11 rounded-xl bg-[#137586] px-4 text-[14px] font-extrabold text-white disabled:opacity-40">+ 권고안 추가</button> : null}
                     {mode === 'hq' ? <button type="button" onClick={() => setProjectingAgendaId(agenda.id)} className="min-h-11 rounded-xl bg-[#087986] px-4 text-[14px] font-extrabold text-white">이 주제 송출</button> : null}
                   </div>
