@@ -345,6 +345,7 @@ function DivisionProjectorView({
                 <h3 className="text-[27px] font-black"><span className="mr-2 text-[18px] text-[#137586]">주제 {agenda.ordinal}</span>{agenda.title}</h3>
                 <span className="text-[17px] font-extrabold text-[#475569]">권고안 {recommendations.length}건</span>
               </div>
+              <p className="mt-2 text-[17px] font-extrabold text-[#137586]">선택 조: {agenda.assignments.length > 0 ? agenda.assignments.map((assignment) => assignment.teamName).join(' · ') : '아직 선택된 조 없음'}</p>
               {recommendations.length === 0 ? <p className="mt-4 text-[19px] font-bold text-[#94A3B8]">작성 전</p> : null}
               <div className="mt-4 grid gap-3 lg:grid-cols-2">
                 {recommendations.map((recommendation) => (
