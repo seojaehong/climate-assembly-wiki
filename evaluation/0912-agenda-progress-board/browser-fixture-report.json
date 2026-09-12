@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-12T02:41:16.928Z",
+  "generatedAt": "2026-09-12T03:53:41.003Z",
   "status": "pass",
   "baseUrl": "http://127.0.0.1:4323",
   "checks": [
@@ -65,19 +65,64 @@
       "detail": "5단계 상태의 '제출 완료'이 표시되어야 합니다."
     },
     {
-      "name": "hq-projector-open",
+      "name": "hq-projector-open-1분과",
       "passed": true,
-      "detail": "분과 전체화면 송출이 열려야 합니다."
+      "detail": "각 분과 전체화면 송출이 실제로 열려야 합니다."
+    },
+    {
+      "name": "hq-projector-open-2분과",
+      "passed": true,
+      "detail": "각 분과 전체화면 송출이 실제로 열려야 합니다."
+    },
+    {
+      "name": "hq-projector-open-3분과",
+      "passed": true,
+      "detail": "각 분과 전체화면 송출이 실제로 열려야 합니다."
+    },
+    {
+      "name": "hq-status-filter-selected",
+      "passed": true,
+      "detail": "HQ 상태 필터 선택이 표시되어야 합니다."
+    },
+    {
+      "name": "hq-status-filter-cards",
+      "passed": true,
+      "detail": "상태 필터는 권고안 카드에도 적용되어야 합니다."
+    },
+    {
+      "name": "hq-status-filter-toggle-off",
+      "passed": true,
+      "detail": "동일 필터 재선택으로 전체 상태를 복원해야 합니다."
+    },
+    {
+      "name": "hq-status-filter-clear",
+      "passed": true,
+      "detail": "전체 보기로 상태 필터를 해제해야 합니다."
     },
     {
       "name": "hq-add-fields",
       "passed": true,
-      "detail": "의제 제목과 연결 시민 원문 입력칸이 필요합니다."
+      "detail": "주제 제목과 연결 시민 원문 입력칸이 필요합니다."
     },
     {
       "name": "team-agenda-select",
       "passed": true,
-      "detail": "배정 의제 드롭다운이 보여야 합니다."
+      "detail": "배정 주제 드롭다운이 보여야 합니다."
+    },
+    {
+      "name": "team-summary-static",
+      "passed": true,
+      "detail": "조별 상태 요약에는 무반응 버튼이 없어야 합니다."
+    },
+    {
+      "name": "team-five-step-display",
+      "passed": true,
+      "detail": "카드 상단에 다섯 단계가 표시되어야 합니다."
+    },
+    {
+      "name": "team-actions-before-fields",
+      "passed": true,
+      "detail": "다음 행동 버튼이 입력 본문보다 앞에 있어야 합니다."
     },
     {
       "name": "team-transition-waiting",
@@ -85,9 +130,19 @@
       "detail": "권고안은 대기에서 시작해야 합니다."
     },
     {
+      "name": "team-current-step-discussing",
+      "passed": true,
+      "detail": "현재 단계를 표시해야 합니다."
+    },
+    {
       "name": "team-transition-discussing",
       "passed": true,
       "detail": "discussing 단계로 전환되어야 합니다."
+    },
+    {
+      "name": "team-current-step-drafting",
+      "passed": true,
+      "detail": "현재 단계를 표시해야 합니다."
     },
     {
       "name": "team-transition-drafting",
@@ -95,9 +150,19 @@
       "detail": "drafting 단계로 전환되어야 합니다."
     },
     {
+      "name": "team-current-step-team_confirmed",
+      "passed": true,
+      "detail": "현재 단계를 표시해야 합니다."
+    },
+    {
       "name": "team-transition-team_confirmed",
       "passed": true,
       "detail": "team_confirmed 단계로 전환되어야 합니다."
+    },
+    {
+      "name": "team-current-step-submitted",
+      "passed": true,
+      "detail": "현재 단계를 표시해야 합니다."
     },
     {
       "name": "team-transition-submitted",

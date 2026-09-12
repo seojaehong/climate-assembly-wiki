@@ -1,0 +1,380 @@
+{
+  "schemaVersion": 1,
+  "reportId": "0912-p1a-p2a-postgres-verification",
+  "generatedAt": "2026-09-12T03:52:42.575Z",
+  "sourceCommit": "6d690319b3a305432e9fe366121ba5e88a6801be",
+  "sourceTreeClean": false,
+  "releaseMode": false,
+  "status": "pass",
+  "database": "disposable-postgres-16",
+  "checkFunctionBodies": true,
+  "staticContractVerification": "passed",
+  "migrationOrderVerification": "passed",
+  "behaviorVerification": "passed",
+  "concurrentJoinRateLimitVerification": "passed",
+  "concurrentTeamDeviceLimitVerification": "passed",
+  "concurrentActiveRoundCreationVerification": "passed",
+  "concurrentSharedHqThrottleVerification": "passed",
+  "concurrentNamedPasswordRecoveryVerification": "passed",
+  "ballotCloseRaceVerification": "passed",
+  "rollbackWithoutActivity": "passed",
+  "rollbackWithActivity": "refused",
+  "canvasScopeRollbackGuardVerification": "passed",
+  "tokenOnlyActivationVerification": "passed",
+  "legacyPermissionNegativeVerification": "passed",
+  "legacyCrossSessionDeadlineNegativeVerification": "passed",
+  "predictableJoinCodeExclusionVerification": "passed",
+  "postP4LegacyNegativeVerification": "passed",
+  "p3ReadOnlyPostApplyVerification": "passed",
+  "p4ReadOnlyPostApplyVerification": "passed",
+  "p4LegacyHistoryPreservationVerification": "passed",
+  "p4BehaviorVerification": "passed",
+  "activationRollbackGuardVerification": "passed",
+  "activationRollbackExerciseVerification": "passed",
+  "activationReapplyVerification": "passed",
+  "seedCliSqlSyntaxAndSuccessVerification": "passed",
+  "correctedTopicPlanVerification": "passed",
+  "seedCliPartialTenancyFailClosedVerification": "passed",
+  "seedCliCapabilityValuesLogged": 0,
+  "seedCliContainerTemporaryFileMode": "0600",
+  "seedCliHostTemporaryFileAvoided": true,
+  "seedCliContainerCopyRemovedWithCreatedContainer": true,
+  "targetManifestCount": 82,
+  "targetManifestSha256": "9d9525ab13b59dd4817e4e3f76e94279d517eca4ec3bd5b742faac42b4338b2b",
+  "targetManifestVerifiedAtCompletion": true,
+  "targetManifest": [
+    {
+      "path": "automation/0912-rpc-contract.mjs",
+      "sha256": "f579b7365a3c832b8888eff51aa09b0e220e2353636861943a0f0da6d99de5a1"
+    },
+    {
+      "path": "automation/tests/0912-rpc-contract.test.mjs",
+      "sha256": "934db018bf5ed4c5277a083932497349d6538fb1812fcde66c3746bbd6fe2a69"
+    },
+    {
+      "path": "automation/tests/fixtures/0912-p1a-activation-driver.sql",
+      "sha256": "667fe6133ba8a5c6dd3d405dbe06c3cf40ad015facc64be10901fed40c3ec807"
+    },
+    {
+      "path": "automation/tests/fixtures/0912-p1a-driver.sql",
+      "sha256": "74975e6848b7320d2a2ccf400d1319ed624d155f200d830d4b68a1ae9f30a589"
+    },
+    {
+      "path": "automation/tests/fixtures/0912-p1a-seed.sql",
+      "sha256": "defe41e04638824a46ce35aa98fa022233ad121b19eacb4bae8263f2ef726d03"
+    },
+    {
+      "path": "automation/tests/fixtures/0912-seed-cli-prelude.sql",
+      "sha256": "a8a0415aa13957e523be9549a5b93cdd10160e9c1b72d2f1a157f65a47969dbc"
+    },
+    {
+      "path": "docs/operations/0912-13-runbook.md",
+      "sha256": "68db355aa396c6d73521ef2f7cbd1b1f24f3b446bd6347c414aef03c4f1c5323"
+    },
+    {
+      "path": "docs/platform/platform-compliance-catalog.json",
+      "sha256": "855116ab242cd120bbee7d31b5f26173eaaac6696f11d0fcf1870c5ae4d937cf"
+    },
+    {
+      "path": "public/v/index.html",
+      "sha256": "b47348448148a428201cda6539a64cd96409644d42be193f5629b11e82d5a658"
+    },
+    {
+      "path": "public/v/vote-form.js",
+      "sha256": "0fafa3600db4d97ba9e78aff8116b3f246ff26f6254470245f29249e0c94b749"
+    },
+    {
+      "path": "scripts/loadtest-mod-console.mjs",
+      "sha256": "76bdf67ecf917354ccdadfa81d1edd886db098066979e07aa9e142487221234e"
+    },
+    {
+      "path": "scripts/verify-0912-postgres.sh",
+      "sha256": "f1fd9d7f6bc7db816cea05ae67eb07260fd18a0a87d4487a585062ae460c6c40"
+    },
+    {
+      "path": "scripts/verify-workshop-access-contract.mjs",
+      "sha256": "12b8310836aa862f9ef06ea6fe856900e238177a1b3833c9e0e99c1b0d12f882"
+    },
+    {
+      "path": "src/islands/CanvasBoard.tsx",
+      "sha256": "e9c40aec7b93f831480e22e8f0c0ee55db223b241f1e73e1943f7be12e21b32b"
+    },
+    {
+      "path": "src/islands/mod/HqSubmissionBoard.tsx",
+      "sha256": "1e9caf9a15a2f5e1528755a8007d8fdb561633c3884887db255a9d61bb67e083"
+    },
+    {
+      "path": "src/islands/mod/ModConsole.tsx",
+      "sha256": "a88b2a11c8f3e56bea830df42de6fa86a990c4ddbe1239247bfca082e943eb31"
+    },
+    {
+      "path": "src/islands/mod/VoteCard.tsx",
+      "sha256": "da0982fbb637cecd027c51a528b1ad3f6005cb99c7855a3d0fe49c169e16e5a5"
+    },
+    {
+      "path": "src/islands/mod/hq-submission-board-logic.ts",
+      "sha256": "ec1f0025f9549c9e74b107f4e8daab55614a5a610289dba80c62563978311265"
+    },
+    {
+      "path": "src/islands/mod/mod-console-accessibility.test.ts",
+      "sha256": "d6994808979bb42020a034b893cb12ce2f9bd5322ac6f4b121909cebaeabb980"
+    },
+    {
+      "path": "src/islands/platform/publish/ImplementationConsole.tsx",
+      "sha256": "17426703a042c5585c061d62d68057626eb8aa463de5afd695aab97c531182dd"
+    },
+    {
+      "path": "src/lib/attendance.ts",
+      "sha256": "68d81e8d5b27e4cddb79b579106ea6a527b92c2d7d342210b7644c460a4cb74b"
+    },
+    {
+      "path": "src/lib/deliberation.ts",
+      "sha256": "8d26c24c0c313027bf5d42df42340c83c31df3a3d9d089083e4bcb266e36280a"
+    },
+    {
+      "path": "src/lib/hq-submissions.ts",
+      "sha256": "a875bf61697b9ab0b1d0e8585ae8dbcade24f4bda79a06fe26b1917edfe3a48f"
+    },
+    {
+      "path": "src/lib/mod-console.ts",
+      "sha256": "1ee358609276a554dcc6cdf2d79fb5c23b1a96684c86fbecbfabb2accdd643a1"
+    },
+    {
+      "path": "src/lib/platform.ts",
+      "sha256": "c2422110d77b985e7605725042a646b5cad13d022e512ad53c15668db7dc3dd1"
+    },
+    {
+      "path": "src/lib/workshop-access.ts",
+      "sha256": "9b969a300e454aa76d013a0d8fae7202742dfcdfa371a0ac3bc5e027a2e2f5e2"
+    },
+    {
+      "path": "src/lib/workshop-hq.ts",
+      "sha256": "dfb4ea702bcd71a4a70b9028377b0a3439c609b0c3ff2d7492b7aea5aff06cf1"
+    },
+    {
+      "path": "src/pages/v.astro",
+      "sha256": "decfa99d0119ea0b5ef35d9a50f041336df7fbe8e3bbbef2d484e29ecbe30531"
+    },
+    {
+      "path": "supabase/migrations/20260621140534_snapshot_include_agenda.sql",
+      "sha256": "68d53e1ff5663035348e710c4931c00122482de8f50179b83c33611cef6b032f"
+    },
+    {
+      "path": "supabase/migrations/20260724_capture_votes_unique_index.sql",
+      "sha256": "e085089893f26a78931c7ef7c554abc22a4390c3fd01c305dee20fcfa216cbfe"
+    },
+    {
+      "path": "supabase/migrations/20260724_mod_console_core.sql",
+      "sha256": "1e463be6850dcd616c65fb3f4bc49a5e9f9d82bfb07e34b4f76da31edff097d3"
+    },
+    {
+      "path": "supabase/migrations/20260724_mod_log_timer_rpc.sql",
+      "sha256": "beacbd054e913ad147606cb6f7be54d866ae2342a2bcafe7cbfd34d7f0bfe8bc"
+    },
+    {
+      "path": "supabase/migrations/20260724_votes_active_round_guard.sql",
+      "sha256": "9d7646343f4af230ee4075146cf7cdb561bde1ab72315e08766767de573e988f"
+    },
+    {
+      "path": "supabase/migrations/20260725_attendance_roster_hq.sql",
+      "sha256": "b2fa78bd8cf5524dcec7fc7433af2164b7c0d9bc5614dbcafdfa7bab7169ee65"
+    },
+    {
+      "path": "supabase/migrations/20260726_attendance_unlock_by_join_code.sql",
+      "sha256": "8a0b64b639a417365716a830352119a7df899a76312957bc33a658ebf8ff011b"
+    },
+    {
+      "path": "supabase/migrations/20260726_grant_authenticated_execute.sql",
+      "sha256": "7ae987d9414561a1bf3de8b6d5aea78cc34020af4c43e30b863dc884742d6645"
+    },
+    {
+      "path": "supabase/migrations/20260726_revoke_pin_unlock.sql",
+      "sha256": "9195d75dfcd4fefd493f629a4b8fbb3f0004252ca307971dc3ae44daf2555b66"
+    },
+    {
+      "path": "supabase/migrations/20260726_revoke_public_execute_attendance.sql",
+      "sha256": "c48cd55ac0366ae2a5db161a38e6327b174e2feaa3d4cd745f94c27967fa6dd2"
+    },
+    {
+      "path": "supabase/migrations/20260726_team_table_no.sql",
+      "sha256": "94c5edbb795d52295bae346248651e6094fed532a38cdb44c10ff30b4294b3cc"
+    },
+    {
+      "path": "supabase/migrations/20260808_s1_assembly_topic_submission.sql",
+      "sha256": "8af26f5a6843863cae6266fe123fbe9c555dc490d7e9d6b916325e5e1ec35c8e"
+    },
+    {
+      "path": "supabase/migrations/20260808_s2_ballot_multi_agenda.sql",
+      "sha256": "c861147bd8dcbe03bfd2d27e05747e4e0f781527ddb06933962f867b5b94d322"
+    },
+    {
+      "path": "supabase/migrations/20260808_s4_ballot_subgroup.sql",
+      "sha256": "bfe62dfeea9147777ade09598596323f2b3babc5c25a136676a0571842ed2242"
+    },
+    {
+      "path": "supabase/migrations/20260828_s10_hq_named_operator.sql",
+      "sha256": "f0bb9a48f722484d34b7cb74a5f026e988518c1d7567fb8181c6b120db16f1bb"
+    },
+    {
+      "path": "supabase/migrations/20260828_s11_hq_change_password.sql",
+      "sha256": "edf5d4c6c3d9a9edafa2d59d5c65a6225af2e852e9bbdc7615b0f423629813fc"
+    },
+    {
+      "path": "supabase/migrations/20260828_s12_ontology_kind.sql",
+      "sha256": "464e0ae430db173f587ba4fde7b9de1576d4ba3f1ad0f9e83af52d9096252abd"
+    },
+    {
+      "path": "supabase/migrations/20260828_s13_team_reopen.sql",
+      "sha256": "8932a09927fe385cb093b722f0118f27b9aa55b173105d09f1b16141d4bdcca9"
+    },
+    {
+      "path": "supabase/migrations/20260828_s14_hq_clear_submissions.sql",
+      "sha256": "24c290c2fa7bbf84f4fcaa55be04efea79a48ecbefc43b5438299011afad2228"
+    },
+    {
+      "path": "supabase/migrations/20260828_s8_hq_reopen_and_history.sql",
+      "sha256": "59e10d83dd5d852ff50324bcf4cf3517ed0c0303f551c578b021dc3cacdac90f"
+    },
+    {
+      "path": "supabase/migrations/20260828_s9_submission_category.sql",
+      "sha256": "95ff622fcbbca588183448f874598ab738ee4e5d6fe384357f15e654a1f83719"
+    },
+    {
+      "path": "supabase/migrations/20260830_s15_submission_server_line_split.sql",
+      "sha256": "ad7588f2839b58fb3b502860d0e40bb06d6476674f6099580c7a5954c59583fe"
+    },
+    {
+      "path": "supabase/migrations/20260901_s17_topic_deadline.sql",
+      "sha256": "91cf9395e627aad06a2f2e57a3dd693658f973553270448e158cbf861e581e70"
+    },
+    {
+      "path": "supabase/migrations/20260902_s19_hq_topic_deadlines.sql",
+      "sha256": "2d7bda2a8783af74c46f4e7d872781b3b8c6a99add8beeafc27153c0ef012cf0"
+    },
+    {
+      "path": "supabase/migrations/20260908_s21_correct_0912_topics.sql",
+      "sha256": "1a6b680447b821219cc55606fcfab12c89c82b31b19503e33f352289a12f1edc"
+    },
+    {
+      "path": "supabase/migrations/20260910_s22_align_0912_final_plan.sql",
+      "sha256": "1377891470b3534686296a536358e3932c0541422b3026b56bdaa33e04dd7bde"
+    },
+    {
+      "path": "supabase/migrations/20260912_s23_division_progress_board.sql",
+      "sha256": "bbfdb61e6758756c5764382224266502fff069d91048234a277feff98020fe7a"
+    },
+    {
+      "path": "supabase/migrations/20260912_s24_recommendation_workflow.sql",
+      "sha256": "e5364dd5b26b49679736112d29d9bdd952c5767608dc3195b961afbfba08557b"
+    },
+    {
+      "path": "supabase/migrations/platform_p1_tenancy.sql",
+      "sha256": "dc8e3dd1873018411547a2f71a8495592d0d7e7ca868146e2bca51e7995895f6"
+    },
+    {
+      "path": "supabase/migrations/platform_p1a_0912_event_access.sql",
+      "sha256": "342b9455c5d0bd1e44ec203351b6cf6df513c54817434f97979c8ad00fe7888e"
+    },
+    {
+      "path": "supabase/migrations/platform_p1b_backfill.sql",
+      "sha256": "67bc7db2a167d81e2424df10067fcee48169ff764fb239fefb0db8a6de33da10"
+    },
+    {
+      "path": "supabase/migrations/platform_p1c_activation_preflight.sql",
+      "sha256": "ae7fd43043b40752c5670ad33b8b859488649942d34d024d9a2eeb2810dc5181"
+    },
+    {
+      "path": "supabase/migrations/platform_p1c_org_selection.sql",
+      "sha256": "bf13e512393e4677fe901b15026427e6e1d31e0f58748ba21f576aa868d8e6a2"
+    },
+    {
+      "path": "supabase/migrations/platform_p1c_org_selection_activation.sql",
+      "sha256": "5514251a2b160937d0b36c380ead317ae876d86405e385c89807d20e992919f8"
+    },
+    {
+      "path": "supabase/migrations/platform_p2_analysis_review.sql",
+      "sha256": "f51d457e0dfd327cfc3c96d1968fe07d4fae60985f702419f58b32f13e629f62"
+    },
+    {
+      "path": "supabase/migrations/platform_p2a_0912_token_only_activation.sql",
+      "sha256": "bae8914bfa7165e6a5147fb3ab7ab83e7910bc157e50750b24fb6c5411d77fad"
+    },
+    {
+      "path": "supabase/migrations/platform_p3_design_provisioning.sql",
+      "sha256": "64071683b1cfa0aa6c7205a2e6a60b777073d2ee1642efeac11aaf93305e9d22"
+    },
+    {
+      "path": "supabase/migrations/platform_p4_audit_log.sql",
+      "sha256": "097651bc3b20af2d10504708116f9f9f777a07a9565432d009fad5736c7c4a2d"
+    },
+    {
+      "path": "supabase/rollbacks/platform_p1_BEFORE.sql",
+      "sha256": "2a83b6f0801aadbbd67c343e6cf74d2e262d04a8f5efd5e0ed4fb2a0a51fc58b"
+    },
+    {
+      "path": "supabase/rollbacks/platform_p1a_0912_event_access_BEFORE.sql",
+      "sha256": "c63790c2e9dfe2aa6c5bccdba9ae72e89741323e4455b272a0ae15ceb926ed8e"
+    },
+    {
+      "path": "supabase/rollbacks/platform_p2a_0912_token_only_activation_BEFORE.sql",
+      "sha256": "cb0f0b3c8356f11308467275e72b0177e219d3c774ef9810cd5f8c9fc4f39bfc"
+    },
+    {
+      "path": "supabase/verify/00_prelude.sql",
+      "sha256": "6576d35babdfd52a875f45cd16ceabcdb380b91749d1b20fd9d9c6a72c21597c"
+    },
+    {
+      "path": "supabase/verify/20260908_s21_correct_0912_topics.sql",
+      "sha256": "f9e6f79f6f8e2c81591ad8732ff4e3d7f03767c4014a2d8c9945533011d131a8"
+    },
+    {
+      "path": "supabase/verify/20260910_s22_align_0912_final_plan.sql",
+      "sha256": "80b2f59017acfb81a7494a6538809821b6c03ca2f7b2c33174741efd1b89480a"
+    },
+    {
+      "path": "supabase/verify/20260912_s23_division_progress_board.sql",
+      "sha256": "e3c73b2aff6e7e00270fb7c0d83d5dcc37d7dbdb0a2c59cb3816f83116bede67"
+    },
+    {
+      "path": "supabase/verify/20260912_s24_recommendation_workflow.sql",
+      "sha256": "c32eafe8bdd94cac6cf83ab802b2ff72e56bdd4818433f88fbd0ba4da5ca4480"
+    },
+    {
+      "path": "supabase/verify/design_provisioning_post_apply.sql",
+      "sha256": "1e8cc79e58d17e03c158dc4cc37fe55a45d603b4ff848ec233e701d24c80e60d"
+    },
+    {
+      "path": "supabase/verify/driver_pass1.sql",
+      "sha256": "ba8e5211ed78d97dcd6ff627c2070c94bcdcf6001e25b99c0e87841c8d15cc5e"
+    },
+    {
+      "path": "supabase/verify/platform_audit_history_snapshot.sql",
+      "sha256": "ea2aca4ab4a9ca4abaaae73795ab61317b4e90057ade850666ab671c0a3be4c0"
+    },
+    {
+      "path": "supabase/verify/platform_audit_post_apply.sql",
+      "sha256": "c91525c3e178c3ec89b8a3de55a5ec9547b16fcfe5c552cf09062b10043bce15"
+    },
+    {
+      "path": "supabase/verify/platform_audit_test.sql",
+      "sha256": "2eb3b5060af7f64160f1d7033959d388c7e4b0be4264717a9c3261dab78e049f"
+    },
+    {
+      "path": "supabase/verify/platform_p1a_0912_event_access.sql",
+      "sha256": "dff172e7f5e0d5da9c54de45f24425e7f320ae88fff4168d95e5164a872734d0"
+    },
+    {
+      "path": "supabase/verify/platform_p2a_0912_token_only_activation.sql",
+      "sha256": "55a75aee9e151eff2b0d34edd75a9799754c4fe4a0a07afdfc25c6129e1a41fe"
+    },
+    {
+      "path": "supabase/verify/platform_p2a_0912_token_only_activation_rollback.sql",
+      "sha256": "96369368cffac44e8eae7c65a96baaecc94bfb77cdbbd40a5418d70dcec4644d"
+    }
+  ],
+  "safety": {
+    "productionDatabaseConnectionCount": 0,
+    "productionMutationCount": 0
+  },
+  "elapsedSeconds": 166
+}

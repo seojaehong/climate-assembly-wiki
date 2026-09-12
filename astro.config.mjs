@@ -1,4 +1,6 @@
 import { defineConfig } from 'astro/config';
+import { realpathSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import sitemap from '@astrojs/sitemap';
 import tailwindcss from '@tailwindcss/vite';
 import yaml from '@rollup/plugin-yaml';
@@ -64,6 +66,13 @@ export default defineConfig({
     // mutable cache there lets simultaneous checks race on deps_temp -> deps.
     // The ignored per-worktree Astro directory gives every checkout its own cache.
     cacheDir: '.astro/vite-cache',
+    server: {
+      fs: {
+        // Windows worktrees use a junction to the shared dependency directory.
+        // Permit that resolved directory without exposing the parent workspace.
+        allow: [fileURLToPath(new URL('.', import.meta.url)), realpathSync(fileURLToPath(new URL('./node_modules', import.meta.url)))],
+      },
+    },
     plugins: [tailwindcss(), yaml()],
     define: {
       __DEPLOY_REVISION__: JSON.stringify(deployRevision),

@@ -309,8 +309,8 @@ const POSTGRES_REPORT_FIELDS = Object.freeze([
   ...POSTGRES_PASSED_FIELDS,
   'rollbackWithActivity',
   'seedCliCapabilityValuesLogged',
-  'seedCliHostTemporaryFileMode',
-  'seedCliHostTemporaryFileRemovedBeforeExecution',
+  'seedCliContainerTemporaryFileMode',
+  'seedCliHostTemporaryFileAvoided',
   'seedCliContainerCopyRemovedWithCreatedContainer',
   'targetManifestCount',
   'targetManifestSha256',
@@ -1840,8 +1840,8 @@ export function hasPassingPostgresEvidence(payload, expectedManifestPaths) {
     && POSTGRES_PASSED_FIELDS.every((field) => payload[field] === 'passed')
     && payload.rollbackWithActivity === 'refused'
     && payload.seedCliCapabilityValuesLogged === 0
-    && payload.seedCliHostTemporaryFileMode === '0600'
-    && payload.seedCliHostTemporaryFileRemovedBeforeExecution === true
+    && payload.seedCliContainerTemporaryFileMode === '0600'
+    && payload.seedCliHostTemporaryFileAvoided === true
     && payload.seedCliContainerCopyRemovedWithCreatedContainer === true
     && payload.targetManifestCount === manifest.length
     && SHA256_PATTERN.test(payload.targetManifestSha256)

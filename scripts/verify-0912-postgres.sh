@@ -149,14 +149,10 @@ fi
 
 container="${P1A_CONTAINER_NAME:-p1a-0912-${RANDOM}-$$}"
 container_id=""
-seed_sql_path=""
 concurrency_dir=""
 cleanup() {
   if [[ -n "$container_id" ]]; then
     docker rm -f "$container_id" >/dev/null 2>&1 || true
-  fi
-  if [[ -n "$seed_sql_path" && -f "$seed_sql_path" ]]; then
-    rm -f -- "$seed_sql_path"
   fi
   if [[ -n "$concurrency_dir" && -d "$concurrency_dir" ]]; then
     rm -rf -- "$concurrency_dir"
@@ -729,15 +725,16 @@ docker exec "$container" psql -U postgres -d verify \
   -v ON_ERROR_STOP=1 -v seed_cli_throwaway_fixture=on \
   -f /tmp/0912-seed-cli-prelude.sql >/dev/null
 
-seed_sql_path="$(mktemp)"
-chmod 600 "$seed_sql_path"
-seed_sql_mode="0$(stat -c '%a' "$seed_sql_path")"
-test "$seed_sql_mode" = "0600"
-"$node_bin" scripts/seed-0829-teams.mjs --print-seed-sql >"$seed_sql_path"
-test -s "$seed_sql_path"
-docker cp "$seed_sql_path" "${container}:/tmp/0912-seed-cli-generated.sql" >/dev/null
-rm -f -- "$seed_sql_path"
-seed_sql_path=""
+# Keep generated capabilities inside the disposable Linux container. Windows
+# filesystems cannot reliably express POSIX 0600 even after chmod succeeds.
+"$node_bin" scripts/seed-0829-teams.mjs --print-seed-sql | \
+  docker exec -i "$container" sh -c '
+    umask 077
+    cat > /tmp/0912-seed-cli-generated.sql
+    test -s /tmp/0912-seed-cli-generated.sql
+    test "$(stat -c %a /tmp/0912-seed-cli-generated.sql)" = 600
+  '
+seed_sql_mode="0$(docker exec "$container" stat -c %a /tmp/0912-seed-cli-generated.sql)"
 docker exec "$container" psql -U postgres -d verify \
   -v ON_ERROR_STOP=1 -f /tmp/0912-seed-cli-generated.sql >/dev/null
 
@@ -793,7 +790,7 @@ if [[ "$target_manifest_after" != "$target_manifest" ]]; then
   echo "verification refused: a manifest target changed during execution" >&2
   exit 1
 fi
-report="$(printf '{"schemaVersion":1,"reportId":"0912-p1a-p2a-postgres-verification","generatedAt":"%s","sourceCommit":"%s","sourceTreeClean":%s,"releaseMode":%s,"status":"pass","database":"disposable-postgres-16","checkFunctionBodies":true,"staticContractVerification":"passed","migrationOrderVerification":"passed","behaviorVerification":"passed","concurrentJoinRateLimitVerification":"passed","concurrentTeamDeviceLimitVerification":"passed","concurrentActiveRoundCreationVerification":"passed","concurrentSharedHqThrottleVerification":"passed","concurrentNamedPasswordRecoveryVerification":"passed","ballotCloseRaceVerification":"passed","rollbackWithoutActivity":"passed","rollbackWithActivity":"refused","canvasScopeRollbackGuardVerification":"passed","tokenOnlyActivationVerification":"passed","legacyPermissionNegativeVerification":"passed","legacyCrossSessionDeadlineNegativeVerification":"passed","predictableJoinCodeExclusionVerification":"passed","postP4LegacyNegativeVerification":"passed","p3ReadOnlyPostApplyVerification":"passed","p4ReadOnlyPostApplyVerification":"passed","p4LegacyHistoryPreservationVerification":"passed","p4BehaviorVerification":"passed","activationRollbackGuardVerification":"passed","activationRollbackExerciseVerification":"passed","activationReapplyVerification":"passed","seedCliSqlSyntaxAndSuccessVerification":"passed","correctedTopicPlanVerification":"passed","seedCliPartialTenancyFailClosedVerification":"passed","seedCliCapabilityValuesLogged":0,"seedCliHostTemporaryFileMode":"%s","seedCliHostTemporaryFileRemovedBeforeExecution":true,"seedCliContainerCopyRemovedWithCreatedContainer":true,"targetManifestCount":%d,"targetManifestSha256":"%s","targetManifestVerifiedAtCompletion":true,"targetManifest":%s,"safety":{"productionDatabaseConnectionCount":0,"productionMutationCount":0},"elapsedSeconds":%d}' \
+report="$(printf '{"schemaVersion":1,"reportId":"0912-p1a-p2a-postgres-verification","generatedAt":"%s","sourceCommit":"%s","sourceTreeClean":%s,"releaseMode":%s,"status":"pass","database":"disposable-postgres-16","checkFunctionBodies":true,"staticContractVerification":"passed","migrationOrderVerification":"passed","behaviorVerification":"passed","concurrentJoinRateLimitVerification":"passed","concurrentTeamDeviceLimitVerification":"passed","concurrentActiveRoundCreationVerification":"passed","concurrentSharedHqThrottleVerification":"passed","concurrentNamedPasswordRecoveryVerification":"passed","ballotCloseRaceVerification":"passed","rollbackWithoutActivity":"passed","rollbackWithActivity":"refused","canvasScopeRollbackGuardVerification":"passed","tokenOnlyActivationVerification":"passed","legacyPermissionNegativeVerification":"passed","legacyCrossSessionDeadlineNegativeVerification":"passed","predictableJoinCodeExclusionVerification":"passed","postP4LegacyNegativeVerification":"passed","p3ReadOnlyPostApplyVerification":"passed","p4ReadOnlyPostApplyVerification":"passed","p4LegacyHistoryPreservationVerification":"passed","p4BehaviorVerification":"passed","activationRollbackGuardVerification":"passed","activationRollbackExerciseVerification":"passed","activationReapplyVerification":"passed","seedCliSqlSyntaxAndSuccessVerification":"passed","correctedTopicPlanVerification":"passed","seedCliPartialTenancyFailClosedVerification":"passed","seedCliCapabilityValuesLogged":0,"seedCliContainerTemporaryFileMode":"%s","seedCliHostTemporaryFileAvoided":true,"seedCliContainerCopyRemovedWithCreatedContainer":true,"targetManifestCount":%d,"targetManifestSha256":"%s","targetManifestVerifiedAtCompletion":true,"targetManifest":%s,"safety":{"productionDatabaseConnectionCount":0,"productionMutationCount":0},"elapsedSeconds":%d}' \
   "$generated_at" "$source_commit" "$source_tree_clean" "$release_mode" "$seed_sql_mode" \
   "$target_manifest_count" "$target_manifest_sha256" "$target_manifest" "$elapsed_seconds")"
 echo "$report"
