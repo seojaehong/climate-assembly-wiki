@@ -1029,7 +1029,7 @@ export default function AgendaProgressBoard({
             return (
               <article data-agenda-subgroup={agenda.subgroup} key={agenda.id} className={`rounded-2xl border bg-white p-4 shadow-sm sm:p-5 ${agenda.archived ? 'border-[#CBD5E1] opacity-75' : 'border-[#DCE7EE]'}`}>
                 <div className="flex flex-wrap items-start gap-4">
-                  <button type="button" aria-expanded={agendaExpanded} onClick={() => setExpanded((current) => ({ ...current, [agenda.id]: !agendaExpanded }))} className="min-w-[260px] flex-1 text-left">
+                  <button type="button" aria-expanded={agendaExpanded} onClick={() => setExpanded((current) => ({ ...current, [agenda.id]: !agendaExpanded }))} className="min-w-0 flex-1 basis-full text-left sm:min-w-[260px] sm:basis-auto">
                     <p className="text-[13px] font-extrabold text-[#137586]">{agenda.subgroup} · 의제 {agenda.ordinal}{agenda.archived ? ' · 보관됨' : ''}</p>
                     <h3 className="mt-1 text-[22px] font-black leading-snug text-[#1F2933]">{agenda.title}</h3>
                     <div className="mt-3"><AssignmentSummary assignments={agenda.assignments} /></div>
