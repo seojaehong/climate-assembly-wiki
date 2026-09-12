@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  archiveAgenda,
   archiveRecommendation,
   createAgenda,
   createRecommendation,
@@ -857,23 +856,6 @@ export default function AgendaProgressBoard({
     }));
   };
 
-  const archiveAgendaItem = (agenda: AgendaBoardItem) => {
-    const key = `agenda:archive:${agenda.id}`;
-    const storedReason = archiveReasonFromFingerprint(pendingRequestFingerprints[key]);
-    const reason = storedReason ?? window.prompt(
-      `“${agenda.title}” 주제를 보관합니다. 보관 사유를 입력해 주세요.`,
-      '',
-    )?.trim();
-    if (!reason) {
-      setMessage('보관을 취소했습니다. 보관하려면 구체적인 사유를 입력해 주세요.');
-      return;
-    }
-    const snapshot = { agendaId: agenda.id, reason };
-    void runMutation(key, mutationPayloadFingerprint(snapshot), (requestId) => archiveAgenda({
-      token: token ?? '', agendaId: agenda.id, reason, requestId,
-    }));
-  };
-
   const archiveRecommendationItem = (recommendation: AgendaRecommendation) => {
     const key = `recommendation:archive:${recommendation.id}`;
     const storedReason = archiveReasonFromFingerprint(pendingRequestFingerprints[key]);
@@ -923,11 +905,11 @@ export default function AgendaProgressBoard({
           <div className="mt-4 rounded-xl bg-[#EAF8FA] px-4 py-3 text-[14px] font-bold leading-relaxed text-[#135C73]">
             {mode === 'team'
               ? `배정된 주제를 고른 뒤 권고안을 여러 건 작성할 수 있습니다. 오늘은 제목·배경 및 문제 인식·권고 내용만 입력합니다. 미전송 기기 초안 ${unsentCount}건.`
-              : '진행상태는 주제가 아니라 각 조의 권고안별로 집계됩니다. 주제와 권고안은 삭제하지 않고 보관해 이력을 남깁니다.'}
+              : '진행상태는 주제가 아니라 각 조의 권고안별로 집계됩니다. 권고안은 삭제하지 않고 이력을 남깁니다.'}
           </div>
           {payload && !topicWritesEnabled ? (
             <p role="status" className="mt-4 rounded-xl border-2 border-[#DC2626] bg-[#FEF2F2] px-4 py-3 text-[15px] font-extrabold leading-relaxed text-[#991B1B]">
-              읽기 전용: 현재 열린 작업단계를 하나로 확정할 수 없습니다. 새 주제·권고안 작성과 권고안 문안·상태 변경은 잠겼습니다. HQ의 조 배정·보관 기능은 계속 사용할 수 있습니다.
+              읽기 전용: 현재 열린 작업단계를 하나로 확정할 수 없습니다. 새 주제·권고안 작성과 권고안 문안·상태 변경은 잠겼습니다. HQ의 조 배정 기능은 계속 사용할 수 있습니다.
             </p>
           ) : null}
           {message ? <p role="alert" className="mt-4 rounded-xl bg-[#FFF4D6] px-4 py-3 text-[14px] font-bold text-[#6B4B00]">{message}</p> : null}
@@ -1069,9 +1051,6 @@ export default function AgendaProgressBoard({
                     {mode === 'hq' ? <button type="button" aria-expanded={agendaExpanded} onClick={() => setExpanded((current) => ({ ...current, [agenda.id]: !agendaExpanded }))} className="min-h-11 rounded-xl border border-[#1F4E79] px-4 text-[14px] font-extrabold text-[#1F4E79]">권고안 {agendaExpanded ? '접기' : '펼치기'}</button> : null}
                     {!agenda.archived ? <button type="button" disabled={!topicWritesEnabled || anyRecommendationCreatePending} onClick={() => openRecommendationForm(agenda)} className="min-h-11 rounded-xl bg-[#137586] px-4 text-[14px] font-extrabold text-white disabled:opacity-40">+ 권고안 추가</button> : null}
                     {mode === 'hq' ? <button type="button" onClick={() => setProjectingAgendaId(agenda.id)} className="min-h-11 rounded-xl bg-[#23B2C3] px-4 text-[14px] font-extrabold text-white">이 주제 송출</button> : null}
-                    {mode === 'hq' && !agenda.archived ? (
-                      <button type="button" onClick={() => archiveAgendaItem(agenda)} className="min-h-11 rounded-xl border border-[#9A3412] px-4 text-[14px] font-extrabold text-[#9A3412]">주제 보관</button>
-                    ) : null}
                   </div>
                 </div>
 
