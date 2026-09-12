@@ -1,5 +1,6 @@
 .gitattributes text eol=lf
 .github/workflows/*.yml text eol=lf
+scripts/loadtest-mod-console.mjs text eol=lf
 src/islands/platform/design/design-blueprint-contract.json text eol=lf
 automation/platform-design-provisioning-plan.mjs text eol=lf
 automation/platform-design-provisioning-durable-store.mjs text eol=lf
