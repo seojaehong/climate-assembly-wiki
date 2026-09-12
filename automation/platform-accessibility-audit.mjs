@@ -1402,6 +1402,7 @@ async function prepareWorkshopHqDashboard({ context, page, baseUrl }) {
 
 async function exerciseWorkshopHqSubmissions({ page }) {
   await page.getByRole('tab', { name: '조별 산출물' }).click();
+  await page.locator('#hq-console-content details > summary').filter({ hasText: '현장 운영 상태 열기' }).click();
   await page.locator('#workshop-hq-title').waitFor({ state: 'visible', timeout: 10_000 });
   const devices = page.getByRole('button', { name: /접속 기기 1대 보기/ });
   await devices.click();
@@ -1410,8 +1411,8 @@ async function exerciseWorkshopHqSubmissions({ page }) {
 }
 
 async function exerciseWorkshopHqDashboard({ page }) {
-  await page.locator('#workshop-hq-title').waitFor({ state: 'visible', timeout: 10_000 });
-  const progressTab = page.getByRole('tab', { name: '의제 진행상황' });
+  await page.locator('#agenda-progress-title').waitFor({ state: 'visible', timeout: 10_000 });
+  const progressTab = page.getByRole('tab', { name: '주제 진행상황' });
   const gridTab = page.getByRole('tab', { name: '투표·출석 현황' });
   const gridLoaded = page.waitForResponse((response) => (
     new URL(response.url()).pathname.endsWith('/rpc/hq_rounds_v2')

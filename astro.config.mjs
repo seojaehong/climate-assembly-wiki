@@ -70,7 +70,7 @@ export default defineConfig({
       fs: {
         // Windows worktrees use a junction to the shared dependency directory.
         // Permit that resolved directory without exposing the parent workspace.
-        allow: [fileURLToPath(new URL('.', import.meta.url)), realpathSync(fileURLToPath(new URL('./node_modules', import.meta.url)))],
+        allow: [fileURLToPath(new URL('.', import.meta.url)), realpathSync(fileURLToPath(new URL('.', import.meta.url))), realpathSync(fileURLToPath(new URL('./node_modules', import.meta.url)))],
       },
     },
     plugins: [tailwindcss(), yaml()],

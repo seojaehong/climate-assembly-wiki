@@ -1003,7 +1003,7 @@ export default function AgendaProgressBoard({
         ) : null}
 
         <p className="mt-5 text-[13px] font-extrabold text-[#5A6B73]">권고안 진행건수 · 분과 전체</p>
-        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5" aria-label="권고안 진행건수 요약">
+        <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-5" role="group" aria-label="권고안 진행건수 요약">
           {AGENDA_STATUSES.map((status) => mode === 'hq' ? (
             <button key={status} type="button" aria-pressed={statusFilter === status} onClick={() => setStatusFilter((current) => current === status ? 'all' : status)} className={`rounded-xl border-2 p-3 text-center ${AGENDA_STATUS_STYLES[status]} ${statusFilter === status ? 'ring-4 ring-[#137586] ring-offset-2' : ''}`}>
               {statusFilter === status ? <span aria-hidden="true">✓ </span> : null}

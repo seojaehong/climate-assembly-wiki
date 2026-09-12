@@ -1,0 +1,629 @@
+{
+  "schemaVersion": 5,
+  "generatedAt": "2026-09-12T04:06:56.301Z",
+  "sourceCommit": "e34074fcb7cb747d50b13f01a6c1acb6b4bea767",
+  "sourceTreeClean": false,
+  "evidenceClassification": "draft-uncommitted-source-measurement",
+  "releaseEvidence": false,
+  "targetRevision": {
+    "status": "not_verified",
+    "sourceCommit": null,
+    "reason": "The audited origin does not expose a machine-verifiable deployment revision."
+  },
+  "baseUrl": "http://127.0.0.1:4333",
+  "standard": "WCAG 2.2 AA automated subset + skip-link focus + keyboard focus order and appearance + responsive overflow",
+  "engine": {
+    "name": "axe-core",
+    "version": "4.12.1",
+    "tags": [
+      "wcag2a",
+      "wcag2aa",
+      "wcag21a",
+      "wcag21aa",
+      "wcag22aa"
+    ]
+  },
+  "status": "fail",
+  "summary": {
+    "routeCount": 3,
+    "profileCount": 2,
+    "auditCaseCount": 6,
+    "passedRoutes": 0,
+    "passedCases": 0,
+    "violationCount": 0,
+    "incompleteCount": 0,
+    "excludedSurfaceCount": 0
+  },
+  "coverage": {
+    "profiles": [
+      {
+        "id": "desktop",
+        "viewport": {
+          "width": 1440,
+          "height": 1000
+        }
+      },
+      {
+        "id": "mobile",
+        "viewport": {
+          "width": 360,
+          "height": 800
+        },
+        "minimumContentWidth": 280
+      }
+    ],
+    "audited": [
+      "moderator-console:desktop",
+      "moderator-console:mobile",
+      "hq-console-submissions:desktop",
+      "hq-console-submissions:mobile",
+      "hq-console-dashboard:desktop",
+      "hq-console-dashboard:mobile"
+    ],
+    "excluded": []
+  },
+  "routes": [
+    {
+      "id": "moderator-console:desktop",
+      "routeId": "moderator-console",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/mod?code=000000",
+      "url": "http://127.0.0.1:4333/mod?code=000000",
+      "fixture": "ci-0912-synthetic-read-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 4,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 2,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 2,
+        "blockedExternalWebSocketOrigins": [
+          "ws://127.0.0.1:4333",
+          "ws://127.0.0.1:5173"
+        ],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "expectedRpcCalls": {
+          "mod_exchange_join_code": 1,
+          "mod_session_get": 0,
+          "agenda_board_v2": 1,
+          "topic_list_v2": 1,
+          "submission_get_v2": 0,
+          "mod_rounds_v2": 1,
+          "mod_session_teams_v2": 0,
+          "mod_vote_counts_v2": 0,
+          "mod_votes_v2": 0
+        },
+        "workerWebSocketAttemptCount": 0,
+        "liveDatabaseMutationCount": 0,
+        "workshopSessionPersisted": true,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 2,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 2,
+          "blockedExternalOrigins": [
+            "ws://127.0.0.1:4333",
+            "ws://127.0.0.1:5173"
+          ]
+        }
+      },
+      "readiness": {
+        "selector": "#mod-console-content [data-testid=\"workshop-status-rail\"]",
+        "reached": true
+      },
+      "httpStatus": 404,
+      "passed": false,
+      "skipLink": {
+        "found": true,
+        "target": "mod-console-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "moderator-console:mobile",
+      "routeId": "moderator-console",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/mod?code=000000",
+      "url": "http://127.0.0.1:4333/mod?code=000000",
+      "fixture": "ci-0912-synthetic-read-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 4,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 2,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 2,
+        "blockedExternalWebSocketOrigins": [
+          "ws://127.0.0.1:4333",
+          "ws://127.0.0.1:5173"
+        ],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "expectedRpcCalls": {
+          "mod_exchange_join_code": 1,
+          "mod_session_get": 0,
+          "agenda_board_v2": 1,
+          "topic_list_v2": 1,
+          "submission_get_v2": 0,
+          "mod_rounds_v2": 1,
+          "mod_session_teams_v2": 0,
+          "mod_vote_counts_v2": 0,
+          "mod_votes_v2": 0
+        },
+        "workerWebSocketAttemptCount": 0,
+        "liveDatabaseMutationCount": 0,
+        "workshopSessionPersisted": true,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 2,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 2,
+          "blockedExternalOrigins": [
+            "ws://127.0.0.1:4333",
+            "ws://127.0.0.1:5173"
+          ]
+        }
+      },
+      "readiness": {
+        "selector": "#mod-console-content [data-testid=\"workshop-status-rail\"]",
+        "reached": true
+      },
+      "httpStatus": 404,
+      "passed": false,
+      "skipLink": {
+        "found": true,
+        "target": "mod-console-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [
+        {
+          "label": "조 작업 상태 가로 목록",
+          "found": true,
+          "clientWidth": 286,
+          "scrollWidth": 667,
+          "scrollable": true,
+          "focused": true,
+          "keyboardScrolled": true
+        }
+      ],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "hq-console-submissions:desktop",
+      "routeId": "hq-console-submissions",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/hq",
+      "url": "http://127.0.0.1:4333/hq",
+      "fixture": "ci-0912-hq-submissions-read-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 7,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 2,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 2,
+        "blockedExternalWebSocketOrigins": [
+          "ws://127.0.0.1:4333",
+          "ws://127.0.0.1:5173"
+        ],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 2,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 2,
+          "blockedExternalOrigins": [
+            "ws://127.0.0.1:4333",
+            "ws://127.0.0.1:5173"
+          ]
+        }
+      },
+      "readiness": {
+        "selector": "[aria-label=\"접근성 감사 합성 조 접속 기기\"]",
+        "reached": true
+      },
+      "httpStatus": 404,
+      "passed": false,
+      "skipLink": {
+        "found": true,
+        "target": "hq-console-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "hq-console-submissions:mobile",
+      "routeId": "hq-console-submissions",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/hq",
+      "url": "http://127.0.0.1:4333/hq",
+      "fixture": "ci-0912-hq-submissions-read-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 7,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 2,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 2,
+        "blockedExternalWebSocketOrigins": [
+          "ws://127.0.0.1:4333",
+          "ws://127.0.0.1:5173"
+        ],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 2,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 2,
+          "blockedExternalOrigins": [
+            "ws://127.0.0.1:4333",
+            "ws://127.0.0.1:5173"
+          ]
+        }
+      },
+      "readiness": {
+        "selector": "[aria-label=\"접근성 감사 합성 조 접속 기기\"]",
+        "reached": true
+      },
+      "httpStatus": 404,
+      "passed": false,
+      "skipLink": {
+        "found": true,
+        "target": "hq-console-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "hq-console-dashboard:desktop",
+      "routeId": "hq-console-dashboard",
+      "profile": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "path": "/hq?ops=1",
+      "url": "http://127.0.0.1:4333/hq?ops=1",
+      "fixture": "ci-0912-hq-dashboard-read-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 9,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 2,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 2,
+        "blockedExternalWebSocketOrigins": [
+          "ws://127.0.0.1:4333",
+          "ws://127.0.0.1:5173"
+        ],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 2,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 2,
+          "blockedExternalOrigins": [
+            "ws://127.0.0.1:4333",
+            "ws://127.0.0.1:5173"
+          ]
+        }
+      },
+      "readiness": {
+        "selector": "#hq-console-content h1",
+        "reached": true
+      },
+      "httpStatus": 404,
+      "passed": false,
+      "skipLink": {
+        "found": true,
+        "target": "hq-console-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 1440,
+        "documentWidth": 1440,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 1440,
+        "minimumContentWidth": 0,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    },
+    {
+      "id": "hq-console-dashboard:mobile",
+      "routeId": "hq-console-dashboard",
+      "profile": "mobile",
+      "viewport": {
+        "width": 360,
+        "height": 800
+      },
+      "path": "/hq?ops=1",
+      "url": "http://127.0.0.1:4333/hq?ops=1",
+      "fixture": "ci-0912-hq-dashboard-read-fixture-v1",
+      "fixtureNetworkRequired": true,
+      "fixtureNetwork": {
+        "supabaseHttpRequestCount": 9,
+        "unexpectedSupabaseRequestCount": 0,
+        "unexpectedSupabasePaths": [],
+        "blockedExternalRequestCount": 0,
+        "blockedExternalOrigins": [],
+        "escapedNetworkRequestCount": 0,
+        "escapedNetworkOrigins": [],
+        "webSocketRoutingInstalled": true,
+        "webSocketRouteAttemptCount": 2,
+        "syntheticWebSocketAttemptCount": 0,
+        "blockedExternalWebSocketAttemptCount": 2,
+        "blockedExternalWebSocketOrigins": [
+          "ws://127.0.0.1:4333",
+          "ws://127.0.0.1:5173"
+        ],
+        "contractViolationCount": 0,
+        "mutationRequestCount": 0,
+        "workerWebSocketAttemptCount": 0,
+        "liveDatabaseMutationCount": 0,
+        "webSocket": {
+          "stubbed": true,
+          "stubConnectionAttemptCount": 2,
+          "actualNetworkConnectionCount": 0,
+          "blockedExternalConnectionAttemptCount": 2,
+          "blockedExternalOrigins": [
+            "ws://127.0.0.1:4333",
+            "ws://127.0.0.1:5173"
+          ]
+        }
+      },
+      "readiness": {
+        "selector": "#hq-console-content h1",
+        "reached": true
+      },
+      "httpStatus": 404,
+      "passed": false,
+      "skipLink": {
+        "found": true,
+        "target": "hq-console-content",
+        "focusMoved": true
+      },
+      "keyboardFocusOrder": {
+        "required": false,
+        "expected": [],
+        "availability": [],
+        "forward": [],
+        "reverse": [],
+        "forwardExit": null,
+        "backwardExit": null,
+        "escapedForward": false,
+        "escapedBackward": false,
+        "focusAppearance": {
+          "required": false,
+          "minimumOutlineWidthPx": 2,
+          "minimumContrastRatio": 3,
+          "indicators": [],
+          "passed": true
+        },
+        "passed": true
+      },
+      "requiredScrollRegions": [],
+      "layout": {
+        "viewportWidth": 360,
+        "documentWidth": 360,
+        "rawHorizontalOverflow": false,
+        "horizontalOverflow": false,
+        "contentWidth": 360,
+        "minimumContentWidth": 280,
+        "contentWidthSufficient": true,
+        "clippedOutsideScrollRegions": []
+      },
+      "violations": [],
+      "incomplete": [],
+      "error": null
+    }
+  ]
+}

@@ -186,26 +186,25 @@ describe('9/12 readiness traceability verifier', () => {
 
   test('cleans only the created PostgreSQL container and removes secret seed SQL on every exit path', () => {
     const runner = readFileSync(resolve(projectRoot, 'scripts/verify-0912-postgres.sh'), 'utf8');
-    const initialized = runner.indexOf('seed_sql_path=""');
+    const initialized = runner.indexOf('container_id=""');
     const trapped = runner.indexOf('trap cleanup EXIT');
-    const generated = runner.indexOf('seed_sql_path="$(mktemp)"');
-    const permissioned = runner.indexOf('chmod 600 "$seed_sql_path"');
-    const verifiedMode = runner.indexOf('test "$seed_sql_mode" = "0600"');
-    const copied = runner.indexOf('docker cp "$seed_sql_path"');
-    const removed = runner.indexOf('rm -f -- "$seed_sql_path"', copied);
-    const cleared = runner.indexOf('seed_sql_path=""', removed);
+    const streamed = runner.indexOf('docker exec -i "$container" sh -c');
+    const permissioned = runner.indexOf('umask 077', streamed);
+    const generated = runner.indexOf('cat > /tmp/0912-seed-cli-generated.sql', permissioned);
+    const verifiedMode = runner.indexOf('test "$(stat -c %a /tmp/0912-seed-cli-generated.sql)" = 600', generated);
+    const executed = runner.indexOf('-f /tmp/0912-seed-cli-generated.sql', verifiedMode);
 
     expect(initialized).toBeGreaterThanOrEqual(0);
     expect(trapped).toBeGreaterThan(initialized);
-    expect(runner).toContain('[[ -n "$seed_sql_path" && -f "$seed_sql_path" ]]');
+    expect(runner).toContain('set -euo pipefail');
+    expect(runner).not.toContain('seed_sql_path=');
     expect(runner).toContain('docker rm -f "$container_id"');
     expect(runner).not.toContain('docker rm -f "$container"');
-    expect(generated).toBeGreaterThan(trapped);
-    expect(permissioned).toBeGreaterThan(generated);
-    expect(verifiedMode).toBeGreaterThan(permissioned);
-    expect(copied).toBeGreaterThan(verifiedMode);
-    expect(removed).toBeGreaterThan(copied);
-    expect(cleared).toBeGreaterThan(removed);
+    expect(streamed).toBeGreaterThan(trapped);
+    expect(permissioned).toBeGreaterThan(streamed);
+    expect(generated).toBeGreaterThan(permissioned);
+    expect(verifiedMode).toBeGreaterThan(generated);
+    expect(executed).toBeGreaterThan(verifiedMode);
   });
 
   test('normalizes Git status when WSL inspects a Windows checkout', () => {

@@ -1,0 +1,54 @@
+{
+  "startedAt": "2026-09-12T04:01:22.226Z",
+  "phase": "complete",
+  "status": "pass",
+  "namedHq": [
+    {
+      "operator": "강혜연",
+      "counts": {
+        "1분과": 9,
+        "2분과": 8,
+        "3분과": 8
+      }
+    },
+    {
+      "operator": "박진환",
+      "counts": {
+        "1분과": 9,
+        "2분과": 8,
+        "3분과": 8
+      }
+    },
+    {
+      "operator": "서재홍",
+      "counts": {
+        "1분과": 9,
+        "2분과": 8,
+        "3분과": 8
+      }
+    }
+  ],
+  "transitions": [
+    "waiting",
+    "discussing",
+    "drafting",
+    "team_confirmed",
+    "submitted"
+  ],
+  "assignmentAdded": true,
+  "assignmentRestored": true,
+  "recommendationArchived": true,
+  "teamLoggedOut": true,
+  "hqLoggedOut": true,
+  "projectors": [
+    "1분과",
+    "2분과",
+    "3분과"
+  ],
+  "agendaTitle": "세제혜택·인센티브 등 기업 지원 제도",
+  "initiallyAssigned": false,
+  "recommendationId": "5d46678f-f04a-4391-beb1-15ea87bbfdd4",
+  "readBack": true,
+  "hqReadBack": true,
+  "finishedAt": "2026-09-12T04:01:35.352Z"
+}
