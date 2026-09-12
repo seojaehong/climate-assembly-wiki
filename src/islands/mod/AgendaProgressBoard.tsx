@@ -886,7 +886,7 @@ export default function AgendaProgressBoard({
       <div className="mx-auto max-w-7xl">
         <header className="rounded-2xl border border-[#C4D8E4] bg-white p-5 shadow-sm">
           <div className="flex flex-wrap items-start gap-4">
-            <div className="min-w-[240px] flex-1">
+            <div className="min-w-0 flex-1 basis-full sm:min-w-[240px] sm:basis-auto">
               <p className="text-[13px] font-extrabold uppercase tracking-[.12em] text-[#137586]">9/12–13 시민참여단 워크숍</p>
               <h2 id="agenda-progress-title" className="mt-1 text-[29px] font-black text-[#1F4E79]">
                 {mode === 'hq' ? '분과별 권고안 진행상황판' : '우리 조 권고안 작성'}
@@ -939,14 +939,14 @@ export default function AgendaProgressBoard({
               </div>
             </div>
           ) : (
-            <label className="min-w-[280px] flex-1 text-[14px] font-extrabold text-[#334E5C]">
+            <label className="min-w-0 flex-1 basis-full text-[14px] font-extrabold text-[#334E5C] sm:min-w-[280px] sm:basis-auto">
               작성할 의제
               <select aria-label="작성할 의제 선택" disabled={anyRecommendationCreatePending} value={selectedAgendaId} onChange={(event) => setSelectedAgendaId(event.target.value)} className="mt-1 min-h-12 w-full rounded-xl border border-[#C4D8E4] bg-white px-3 text-[16px] disabled:bg-[#F1F5F9]">
                 {visibleAgendas.map((agenda) => <option key={agenda.id} value={agenda.id}>{agenda.subgroup} · {agenda.title}</option>)}
               </select>
             </label>
           )}
-          <label className="min-w-[220px] flex-1 text-[14px] font-extrabold text-[#334E5C]">
+          <label className="min-w-0 flex-1 basis-full text-[14px] font-extrabold text-[#334E5C] sm:min-w-[220px] sm:basis-auto">
             의제·권고안 검색
             <input type="search" aria-label="의제와 권고안 검색" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="제목, 내용, 조 이름" className="mt-1 min-h-12 w-full rounded-xl border border-[#C4D8E4] px-3 text-[16px]" />
           </label>
@@ -1113,7 +1113,7 @@ export default function AgendaProgressBoard({
                       return (
                         <section key={recommendation.id} data-recommendation-id={recommendation.id} data-recommendation-status={recommendation.status} className={`rounded-2xl border p-4 ${recommendation.archived ? 'border-[#CBD5E1] bg-[#F8FAFC]' : 'border-[#C4D8E4] bg-white'}`} aria-labelledby={`recommendation-${recommendation.id}`}>
                           <div className="flex flex-wrap items-start gap-3">
-                            <div className="min-w-[220px] flex-1">
+                            <div className="min-w-0 flex-1 basis-full sm:min-w-[220px] sm:basis-auto">
                               <p className="text-[13px] font-extrabold text-[#137586]">권고안 {recommendation.sortOrder} · {recommendation.authorTeamName}{recommendation.archived ? ' · 보관됨' : ''}</p>
                               <h4 id={`recommendation-${recommendation.id}`} className="mt-1 text-[20px] font-black text-[#1F2933]">{recommendation.title || '제목 작성 중'}</h4>
                             </div>
@@ -1136,7 +1136,7 @@ export default function AgendaProgressBoard({
                             {notArchived && mode === 'team' && recommendation.status === 'team_confirmed' ? <button type="button" disabled={!topicWritesEnabled || (hasPendingMutation && !pendingRequestIds[`submit:${recommendation.id}`]) || busyKey === `submit:${recommendation.id}`} onClick={() => void act(recommendation, 'submit')} className="min-h-11 rounded-xl bg-[#047857] px-4 font-extrabold text-white disabled:opacity-40">{pendingRequestIds[`submit:${recommendation.id}`] ? '최종 제출 다시 확인' : '최종 제출'}</button> : null}
                             {notArchived && mode === 'hq' && (recommendation.status === 'team_confirmed' || recommendation.status === 'submitted') ? (
                               <>
-                                <input aria-label={`${recommendation.title} 보완 요청`} disabled={!topicWritesEnabled || hasPendingMutation} value={feedbacks[recommendation.id] ?? ''} onChange={(event) => setFeedbacks((current) => ({ ...current, [recommendation.id]: event.target.value }))} placeholder="구체적인 보완 요청" className="min-h-11 min-w-[220px] flex-1 rounded-xl border border-[#C4D8E4] px-3 disabled:bg-[#F1F5F9]" />
+                                <input aria-label={`${recommendation.title} 보완 요청`} disabled={!topicWritesEnabled || hasPendingMutation} value={feedbacks[recommendation.id] ?? ''} onChange={(event) => setFeedbacks((current) => ({ ...current, [recommendation.id]: event.target.value }))} placeholder="구체적인 보완 요청" className="min-h-11 min-w-0 flex-1 basis-full rounded-xl border border-[#C4D8E4] px-3 disabled:bg-[#F1F5F9] sm:min-w-[220px] sm:basis-auto" />
                                 <button type="button" disabled={!topicWritesEnabled || (!feedbacks[recommendation.id]?.trim() && !pendingRequestIds[`revision_request:${recommendation.id}`]) || (hasPendingMutation && !pendingRequestIds[`revision_request:${recommendation.id}`])} onClick={() => void act(recommendation, 'revision_request')} className="min-h-11 rounded-xl bg-[#B45309] px-4 font-extrabold text-white disabled:opacity-40">{pendingRequestIds[`revision_request:${recommendation.id}`] ? '보완 요청 다시 확인' : '보완 요청'}</button>
                                 <button type="button" disabled={!topicWritesEnabled || (hasPendingMutation && !pendingRequestIds[`reopen:${recommendation.id}`])} onClick={() => void act(recommendation, 'reopen')} className="min-h-11 rounded-xl border border-[#1F4E79] px-4 font-extrabold text-[#1F4E79] disabled:opacity-40">{pendingRequestIds[`reopen:${recommendation.id}`] ? '재열기 다시 확인' : '재열기'}</button>
                               </>
