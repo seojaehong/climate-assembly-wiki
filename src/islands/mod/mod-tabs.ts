@@ -22,7 +22,6 @@ export type ModTab = {
 export const MOD_TABS: readonly ModTab[] = [
   { id: 'progress', label: '의제·권고안 기록', hint: '배정 의제를 고르고 권고안을 여러 개 작성·확인·제출합니다' },
   { id: 'submission', label: '조별 산출물', hint: '현재 열린 단계의 조별 초안을 기록합니다' },
-  { id: 'attendance', label: '출석 체크', hint: '조원 출석·지각·조퇴를 기록합니다' },
   { id: 'vote', label: '투표', hint: '조 안에서 표를 물을 때만 씁니다' },
   { id: 'timer', label: '타이머', hint: '발언·세션 시간을 겁니다' },
 ] as const;

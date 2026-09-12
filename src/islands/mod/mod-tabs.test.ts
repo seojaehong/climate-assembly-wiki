@@ -35,7 +35,7 @@ describe('MOD_TABS', () => {
 
 describe('normalizeTabId', () => {
   it('passes a known id through', () => {
-    expect(normalizeTabId('attendance')).toBe('attendance');
+    expect(normalizeTabId('attendance')).toBe(DEFAULT_MOD_TAB);
   });
 
   // 저장값이 낡거나 깨졌을 때 빈 화면이 되지 않게 기본 탭으로 떨어뜨린다.
@@ -54,8 +54,8 @@ describe('tabAfterKey — roving keyboard navigation', () => {
 
   it('supports Home and End and ignores unrelated keys', () => {
     expect(tabAfterKey('vote', 'Home')).toBe('progress');
-    expect(tabAfterKey('attendance', 'End')).toBe('timer');
-    expect(tabAfterKey('attendance', 'Enter')).toBeNull();
+    expect(tabAfterKey('submission', 'End')).toBe('timer');
+    expect(tabAfterKey('submission', 'Enter')).toBeNull();
   });
 });
 
