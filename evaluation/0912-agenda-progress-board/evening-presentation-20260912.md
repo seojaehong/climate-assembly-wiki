@@ -25,4 +25,8 @@
 
 ## 배포
 
-타입검사 및 배포 확인 결과는 후속 갱신한다.
+- 운영 코드 d48430e136832284fc5b375b0e36c1687e6eb4eb. 배포 34685640431 성공. climate-assembly.org와 climate-assembly-wiki.pages.dev의 배포 manifest가 동일 커밋임을 확인했다.
+- 실제 운영 주소의 네트워크 격리 fixture: 기능 검사 41건 통과. 마지막 외부 연결 시도 0건 검사는 차단된 요청 2건으로 실패했다. 운영 DB 요청은 0건. 전체 통과로 주장하지 않으며 evening-live-fixture-report.json에 실패를 그대로 보존했다.
+- 로컬 네트워크 격리 fixture는 재실행해 42건 전부 통과했다.
+- 차단된 외부 요청 출처는 static.cloudflareinsights.com이며 모두 차단했다. 접근성 CI 34685639492는 성공했다.
+- 전체 CI 34685639475는 별도 자동화 검사에서 실패: 기존 s25의 agenda_edit_event 테이블이 compliance catalog에 누락되어 3건 실패, 600건 통과. 변경 전 b99dc3f의 CI 34685063218도 실패 상태였다. 이번 입력·송출 수정 범위 밖이므로 목록을 임의 수정하지 않았다.

@@ -161,6 +161,7 @@ try {
     baseUrl,
     checks,
     externalNetworkAttemptCount: externalAttempts.length,
+    externalNetworkOrigins: [...new Set(externalAttempts.map((url) => new URL(url).origin))],
     productionDatabaseRequestCount: 0,
     error: error instanceof Error ? error.message : String(error),
   };

@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-09-12T09:25:33.726Z",
-  "status": "pass",
-  "baseUrl": "http://127.0.0.1:4333",
+  "generatedAt": "2026-09-12T09:25:24.870Z",
+  "status": "fail",
+  "baseUrl": "https://climate-assembly.org",
   "checks": [
     {
       "name": "hq-agenda-count-1분과",
@@ -211,19 +211,14 @@
     },
     {
       "name": "no-external-network",
-      "passed": true,
-      "detail": "외부 연결 시도 0건"
+      "passed": false,
+      "detail": "외부 연결 시도 2건"
     }
   ],
-  "divisionCounts": {
-    "1분과": 9,
-    "2분과": 8,
-    "3분과": 8
-  },
-  "externalNetworkAttemptCount": 0,
+  "externalNetworkAttemptCount": 2,
+  "externalNetworkOrigins": [
+    "https://static.cloudflareinsights.com"
+  ],
   "productionDatabaseRequestCount": 0,
-  "screenshots": [
-    "evaluation/0912-agenda-progress-board/hq-add-agenda.png",
-    "evaluation/0912-agenda-progress-board/team-recommendation-authoring.png"
-  ]
+  "error": "no-external-network: 외부 연결 시도 2건"
 }
