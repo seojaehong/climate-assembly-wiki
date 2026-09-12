@@ -2,15 +2,15 @@ import { describe, it, expect } from 'vitest';
 import { MOD_TABS, DEFAULT_MOD_TAB, normalizeTabId, tabAfterKey, tabById } from './mod-tabs';
 
 describe('MOD_TABS', () => {
-  it('opens on 조별 산출물 — the current workshop task', () => {
-    expect(DEFAULT_MOD_TAB).toBe('submission');
-    expect(MOD_TABS[0].id).toBe('submission');
+  it('opens on 의제 진행 — the current workshop task', () => {
+    expect(DEFAULT_MOD_TAB).toBe('progress');
+    expect(MOD_TABS[0].id).toBe('progress');
   });
 
   it('keeps 투표·타이머 behind the main tab', () => {
     const order = MOD_TABS.map((tab) => tab.id);
-    expect(order.indexOf('vote')).toBeGreaterThan(order.indexOf('submission'));
-    expect(order.indexOf('timer')).toBeGreaterThan(order.indexOf('submission'));
+    expect(order.indexOf('vote')).toBeGreaterThan(order.indexOf('progress'));
+    expect(order.indexOf('timer')).toBeGreaterThan(order.indexOf('progress'));
   });
 
   it('gives every tab a label and a hint', () => {
@@ -46,14 +46,14 @@ describe('normalizeTabId', () => {
 
 describe('tabAfterKey — roving keyboard navigation', () => {
   it('wraps with horizontal and vertical arrow keys', () => {
-    expect(tabAfterKey('submission', 'ArrowLeft')).toBe('timer');
-    expect(tabAfterKey('timer', 'ArrowRight')).toBe('submission');
-    expect(tabAfterKey('submission', 'ArrowUp')).toBe('timer');
-    expect(tabAfterKey('timer', 'ArrowDown')).toBe('submission');
+    expect(tabAfterKey('progress', 'ArrowLeft')).toBe('timer');
+    expect(tabAfterKey('timer', 'ArrowRight')).toBe('progress');
+    expect(tabAfterKey('progress', 'ArrowUp')).toBe('timer');
+    expect(tabAfterKey('timer', 'ArrowDown')).toBe('progress');
   });
 
   it('supports Home and End and ignores unrelated keys', () => {
-    expect(tabAfterKey('vote', 'Home')).toBe('submission');
+    expect(tabAfterKey('vote', 'Home')).toBe('progress');
     expect(tabAfterKey('attendance', 'End')).toBe('timer');
     expect(tabAfterKey('attendance', 'Enter')).toBeNull();
   });
@@ -65,6 +65,6 @@ describe('tabById', () => {
   });
 
   it('never returns undefined', () => {
-    expect(tabById('submission')).toBeDefined();
+    expect(tabById('progress')).toBeDefined();
   });
 });

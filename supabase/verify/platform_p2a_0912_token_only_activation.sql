@@ -360,7 +360,10 @@ declare
     'climate_vote.hq_submission_kind_assign_v3(text,text,uuid,integer,text,timestamp with time zone,bigint,uuid)',
     'climate_vote.hq_submission_kinds_v3(text,text)',
     'climate_vote.hq_topic_deadlines_v2(text,text)',
-    'climate_vote.hq_clear_submissions_v3(text,text,text,jsonb,uuid)'
+    'climate_vote.hq_clear_submissions_v3(text,text,text,jsonb,uuid)',
+    'climate_vote.agenda_board_v1(text,text)',
+    'climate_vote.agenda_assignment_set_v1(text,text,uuid,uuid,boolean,uuid)',
+    'climate_vote.agenda_progress_write_v1(text,text,uuid,uuid,uuid,text,text,text,uuid)'
   ];
   v_authenticated_allowed text[]:=v_anon_allowed||array[
     'climate_vote.org_of_uid()',

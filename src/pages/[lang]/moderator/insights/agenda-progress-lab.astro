@@ -1,0 +1,73 @@
+---
+/** Offline-only 9/8/8 board fixture. It passes all data as props and makes no Supabase request. */
+import { AGENDA_CATALOG_0912 } from '../../../../data/0912-agenda-catalog';
+import type { AgendaBoardPayload, AgendaTeam } from '../../../../lib/agenda-progress';
+import AgendaProgressBoard from '../../../../islands/mod/AgendaProgressBoard';
+import globalCss from '../../../../styles/global.css?inline';
+
+export function getStaticPaths() {
+  return [{ params: { lang: 'ko' } }];
+}
+
+const teams: AgendaTeam[] = [1, 2, 3].flatMap((division) =>
+  [1, 2, 3, 4, 5].map((team) => ({
+    id: `00000000-0000-4000-8${division}00-00000000000${team}`,
+    name: `${division}분과 ${team}조`,
+    subgroup: `${division}분과`,
+    tableNo: `${division}-${team}`,
+  })),
+);
+
+const fixture: AgendaBoardPayload = {
+  sessionSlug: '0912-deliberation',
+  scope: 'hq',
+  teamId: null,
+  activeStage: {
+    id: '00000000-0000-4000-8000-000000000001',
+    ordinal: 3,
+    prompt: '의제별 조별 숙의 및 공유문안 작성',
+    status: 'open',
+  },
+  stages: Array.from({ length: 8 }, (_, index) => ({
+    id: `00000000-0000-4000-8000-00000000000${index + 1}`,
+    ordinal: index + 1,
+    prompt: `${index + 1}단계 작업`,
+    status: index === 2 ? 'open' as const : 'closed' as const,
+  })),
+  teams,
+  agendas: AGENDA_CATALOG_0912.map((agenda, index) => {
+    const divisionTeams = teams.filter((team) => team.subgroup === agenda.subgroup);
+    const assigned = index % 4 === 0 ? divisionTeams.slice(0, 2) : divisionTeams.slice(index % 5, index % 5 + 1);
+    const statuses = ['waiting', 'discussing', 'drafting', 'team_confirmed', 'submitted'] as const;
+    return {
+      ...agenda,
+      suggestedTeamNumbers: [...agenda.suggestedTeamNumbers],
+      sourceUtterances: [...agenda.sourceUtterances],
+      assignments: assigned.map((team, assignmentIndex) => ({
+        teamId: team.id,
+        teamName: team.name,
+        status: statuses[(index + assignmentIndex) % statuses.length],
+        publicDraft: index % 3 === 0 ? '우리 조는 실행 주체와 지원 기준을 분명히 한 단계별 실행안을 제안합니다.' : null,
+        feedback: null,
+        updatedAt: '2026-09-12T05:30:00.000Z',
+      })),
+    };
+  }),
+};
+---
+<!doctype html>
+<html lang="ko" class="light" data-theme="light"><head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>9·8·8 진행상황판 검증 화면</title>
+  <style is:global set:html={globalCss}></style>
+  <style is:global>
+    body { font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif; }
+  </style>
+</head><body>
+  <div style="background:#6e2020;color:#fff;text-align:center;padding:8px;font-weight:700;">
+    검증용 fixture · 운영 DB 요청 없음 · 9·8·8 의제 / 15개 조 / 다중 배정
+  </div>
+  <AgendaProgressBoard mode="hq" fixturePayload={fixture} client:only="react" />
+</body></html>

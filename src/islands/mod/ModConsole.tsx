@@ -56,6 +56,7 @@ import { downloadBlob, resultImageFileName, svgToPngBlob, RESULT_IMAGE_SCALE } f
 import AttendancePanel from './AttendancePanel';
 import BallotPanel from './BallotPanel';
 import SubmissionPanel from './SubmissionPanel';
+import AgendaProgressBoard from './AgendaProgressBoard';
 import DeadlineBanner from './DeadlineBanner';
 import { tableNoLabel } from './table-no';
 import { topicAnchorId } from './submission-guide';
@@ -1198,6 +1199,14 @@ function HomeScreen({
           )}
 
           {tab === 'timer' && <Timer access={access} teamName={teamName} />}
+          {tab === 'progress' && access && (
+            <AgendaProgressBoard
+              mode="team"
+              token={access.accessToken}
+              teamId={teamId}
+              subgroup={subgroup}
+            />
+          )}
           {tab === 'attendance' && (
             <AttendancePanel teamId={teamId} teamName={teamName} accessToken={access?.accessToken} />
           )}

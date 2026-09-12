@@ -14,6 +14,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { unlockHqNamed, changeHqPassword, revokeHqSession } from '../../lib/attendance';
 import HqGrid from './HqGrid';
 import HqSubmissionBoard from './HqSubmissionBoard';
+import AgendaProgressBoard from './AgendaProgressBoard';
 import WorkshopHqStatus from './WorkshopHqStatus';
 import { createSafeBrowserStorage } from '../../lib/safe-browser-storage';
 import {
@@ -63,9 +64,9 @@ export default function HqGate() {
   const passwordDialogRef = useRef<HTMLFormElement>(null);
   const passwordTriggerRef = useRef<HTMLButtonElement>(null);
   const currentPasswordRef = useRef<HTMLInputElement>(null);
-  // 본부 화면 전환 — 8.29의 본 과업이 조별 산출물이므로 그것을 기본으로 연다.
-  // (투표·출석 그리드는 여전히 필요하지만 그날의 중심은 아니다.)
-  const [view, setView] = useState<'submissions' | 'grid'>('submissions');
+  // 본부 화면 전환 — 9/12 현장에서는 9·8·8 의제 배정과 진행상태가 중심이다.
+  // 제출물과 투표·출석 그리드는 그대로 유지하고 진행상황판만 기본으로 연다.
+  const [view, setView] = useState<'progress' | 'submissions' | 'grid'>('progress');
 
   const clearLocalSession = useCallback((nextMessage: string | null) => {
     hqSessionStorage.removeItem(HQ_TOKEN_KEY);
@@ -289,6 +290,7 @@ export default function HqGate() {
           }}
         >
           {([
+            ['progress', '의제 진행상황'],
             ['submissions', '조별 산출물'],
             ['grid', '투표·출석 현황'],
           ] as const).map(([id, label]) => (
@@ -436,7 +438,12 @@ export default function HqGate() {
         aria-labelledby={`hq-tab-${view}`}
         tabIndex={-1}
       >
-        {view === 'submissions' ? (
+        {view === 'progress' ? (
+          <>
+            <WorkshopHqStatus token={token} onAuthorizationExpired={handleAuthorizationExpired} />
+            <AgendaProgressBoard mode="hq" token={token} onAuthorizationExpired={handleAuthorizationExpired} />
+          </>
+        ) : view === 'submissions' ? (
           <>
             <WorkshopHqStatus token={token} onAuthorizationExpired={handleAuthorizationExpired} />
             <HqSubmissionBoard token={token} onAuthorizationExpired={handleAuthorizationExpired} />

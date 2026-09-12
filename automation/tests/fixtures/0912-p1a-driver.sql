@@ -37,7 +37,10 @@ set check_function_bodies = on;
 \i /tmp/0912-p1a-seed.sql
 \echo === P1A EVENT ACCESS ===
 \i /tmp/platform_p1a_0912_event_access.sql
+\echo === P1A DIVISION PROGRESS BOARD ===
+\i /tmp/20260912_s23_division_progress_board.sql
 \echo === P1A BEHAVIOR VERIFICATION ===
 \i /tmp/platform_p1a_0912_event_access.verify.sql
+\i /tmp/20260912_s23_division_progress_board.verify.sql
 
 \echo === P1A 0912 DRIVER PASSED ===

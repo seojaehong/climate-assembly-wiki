@@ -5,7 +5,7 @@
  * 메인인 산출물이 스크롤 아래로 밀리므로, 산출물을 첫 탭으로 세우고 나머지를 뒤에 둔다.
  */
 
-export type ModTabId = 'submission' | 'attendance' | 'vote' | 'timer';
+export type ModTabId = 'progress' | 'submission' | 'attendance' | 'vote' | 'timer';
 
 export type ModTab = {
   id: ModTabId;
@@ -20,6 +20,7 @@ export type ModTab = {
  * 순서를 바꾸면 조가 여는 첫 화면이 바뀐다 — 회차 운영과 함께 판단할 것.
  */
 export const MOD_TABS: readonly ModTab[] = [
+  { id: 'progress', label: '의제 진행', hint: '우리 조에 배정된 의제의 논의·초안·확인 상태를 기록합니다' },
   { id: 'submission', label: '조별 산출물', hint: '현재 열린 단계의 조별 초안을 기록합니다' },
   { id: 'attendance', label: '출석 체크', hint: '조원 출석·지각·조퇴를 기록합니다' },
   { id: 'vote', label: '투표', hint: '조 안에서 표를 물을 때만 씁니다' },
@@ -27,10 +28,10 @@ export const MOD_TABS: readonly ModTab[] = [
 ] as const;
 
 /** 아무 것도 고르지 않았을 때 열리는 탭. */
-export const DEFAULT_MOD_TAB: ModTabId = 'submission';
+export const DEFAULT_MOD_TAB: ModTabId = 'progress';
 
 /** 탭 선택 보관 키 — 새로고침해도 보던 탭에 그대로 머문다. */
-export const MOD_TAB_KEY = 'climate_vote_mod_tab';
+export const MOD_TAB_KEY = 'climate_vote_mod_tab_v2';
 
 /**
  * 저장값·URL 등 바깥에서 들어온 값을 탭 id로 좁힌다.

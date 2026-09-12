@@ -41,6 +41,9 @@ end $roles$;
 \i /tmp/0912-p1a-seed.sql
 \echo === P2A ADDITIVE TOKEN ACCESS ===
 \i /tmp/platform_p1a_0912_event_access.sql
+\echo === P2A DIVISION PROGRESS BOARD ===
+\i /tmp/20260912_s23_division_progress_board.sql
+\i /tmp/20260912_s23_division_progress_board.verify.sql
 
 \echo === P2 ANALYSIS BEFORE LOCKDOWN ===
 \i /tmp/platform_p2_analysis_review.sql

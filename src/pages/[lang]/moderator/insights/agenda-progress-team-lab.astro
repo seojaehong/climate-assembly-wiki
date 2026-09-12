@@ -1,0 +1,72 @@
+---
+/** Offline record-moderator fixture. No Supabase request is made. */
+import { AGENDA_CATALOG_0912 } from '../../../../data/0912-agenda-catalog';
+import type { AgendaBoardPayload, AgendaTeam } from '../../../../lib/agenda-progress';
+import AgendaProgressBoard from '../../../../islands/mod/AgendaProgressBoard';
+import globalCss from '../../../../styles/global.css?inline';
+
+export function getStaticPaths() {
+  return [{ params: { lang: 'ko' } }];
+}
+
+const team: AgendaTeam = {
+  id: '00000000-0000-4000-8100-000000000001',
+  name: '1분과 1조',
+  subgroup: '1분과',
+  tableNo: '1-1',
+};
+
+const fixture: AgendaBoardPayload = {
+  sessionSlug: '0912-deliberation',
+  scope: 'team',
+  teamId: team.id,
+  activeStage: {
+    id: '00000000-0000-4000-8000-000000000003',
+    ordinal: 3,
+    prompt: '의제별 조별 숙의 및 공유문안 작성',
+    status: 'open',
+  },
+  stages: Array.from({ length: 8 }, (_, index) => ({
+    id: `00000000-0000-4000-8000-00000000000${index + 1}`,
+    ordinal: index + 1,
+    prompt: `${index + 1}단계 작업`,
+    status: index === 2 ? 'open' as const : 'closed' as const,
+  })),
+  teams: [team],
+  agendas: AGENDA_CATALOG_0912.slice(0, 2).map((agenda, index) => ({
+    ...agenda,
+    suggestedTeamNumbers: [...agenda.suggestedTeamNumbers],
+    sourceUtterances: [...agenda.sourceUtterances],
+    assignments: [{
+      teamId: team.id,
+      teamName: team.name,
+      status: index === 0 ? 'waiting' as const : 'drafting' as const,
+      publicDraft: index === 0 ? null : '우리 조의 현장 검증용 공유문안입니다.',
+      feedback: null,
+      updatedAt: '2026-09-12T05:30:00.000Z',
+    }],
+  })),
+};
+---
+<!doctype html>
+<html lang="ko" class="light" data-theme="light"><head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <title>기록모더레이터 진행상황판 검증 화면</title>
+  <style is:global set:html={globalCss}></style>
+  <style is:global>
+    body { font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif; }
+  </style>
+</head><body>
+  <div style="background:#6e2020;color:#fff;text-align:center;padding:8px;font-weight:700;">
+    검증용 fixture · 운영 DB 요청 없음 · 기록모더레이터 1개 조 범위
+  </div>
+  <AgendaProgressBoard
+    mode="team"
+    teamId={team.id}
+    subgroup={team.subgroup}
+    fixturePayload={fixture}
+    client:only="react"
+  />
+</body></html>

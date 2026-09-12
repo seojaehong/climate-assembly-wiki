@@ -1,5 +1,5 @@
 ---
-import '../styles/global.css';
+import globalCss from '../styles/global.css?inline';
 import ModConsole from '../islands/mod/ModConsole';
 ---
 <!doctype html>
@@ -9,6 +9,7 @@ import ModConsole from '../islands/mod/ModConsole';
   <meta name="robots" content="noindex,nofollow" />
   <meta name="color-scheme" content="light" />
   <title>기후시민회의 모더레이터 콘솔 [/mod]</title>
+  <style is:global set:html={globalCss}></style>
   <style is:global>
     body { font-family: Pretendard, -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif; }
     .tr-num { letter-spacing: -.03em; font-variant-numeric: tabular-nums; }
