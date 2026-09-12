@@ -1,7 +1,9 @@
 {
   "schemaVersion": 1,
-  "status": "production_database_verified",
+  "status": "production_verified",
   "productionAppliedAt": "2026-09-12T11:52:25+09:00",
+  "productionVerifiedAt": "2026-09-12T12:20:14+09:00",
+  "productionUrl": "https://climate-assembly-wiki.pages.dev/hq/",
   "agendaCounts": {
     "1분과": 9,
     "2분과": 8,
@@ -24,7 +26,22 @@
     "productionTeamCount": 15,
     "productionOpenStageCount": 1,
     "namedHqAccounts": 3,
-    "plaintextCredentialsStored": false
+    "plaintextCredentialsStored": false,
+    "namedHqLiveLogins": 3,
+    "liveDivisionFilterCounts": "9/8/8",
+    "liveProjectorViews": 3,
+    "mainCi": "pass",
+    "accessibilityAudit": "pass",
+    "cloudflareProductionDeploy": "pass",
+    "legacy0829": {
+      "teams": 15,
+      "topics": 3,
+      "submissions": 45,
+      "submissionItems": 641,
+      "attendance": 184,
+      "rounds": 2,
+      "votes": 1
+    }
   },
   "artifacts": [
     "evaluation/0912-agenda-progress-board/browser-fixture-report.json",
