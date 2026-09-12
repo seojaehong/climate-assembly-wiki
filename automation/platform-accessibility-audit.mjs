@@ -1413,18 +1413,21 @@ async function exerciseWorkshopHqSubmissions({ page }) {
 async function exerciseWorkshopHqDashboard({ page }) {
   await page.locator('#agenda-progress-title').waitFor({ state: 'visible', timeout: 10_000 });
   const progressTab = page.getByRole('tab', { name: '주제 진행상황' });
-  const gridTab = page.getByRole('tab', { name: '투표·출석 현황' });
-  const gridLoaded = page.waitForResponse((response) => (
-    new URL(response.url()).pathname.endsWith('/rpc/hq_rounds_v2')
+  const submissionsTab = page.getByRole('tab', { name: '조별 산출물' });
+  const submissionsLoaded = page.waitForResponse((response) => (
+    new URL(response.url()).pathname.endsWith('/rpc/hq_submissions_v3')
   ));
   await assertFocused(progressTab, 'HQ progress tab');
   await progressTab.press('End');
-  await gridLoaded;
-  if (await gridTab.getAttribute('aria-selected') !== 'true'
-    || !await gridTab.evaluate((element) => document.activeElement === element)
-    || !await page.locator('#hq-console-content[role="tabpanel"] h1', { hasText: '기후시민회의 운영 현황' }).isVisible()) {
-    throw new Error('HQ grid tab did not remain mounted and selected after keyboard navigation');
+  await submissionsLoaded;
+  if (await submissionsTab.getAttribute('aria-selected') !== 'true'
+    || !await submissionsTab.evaluate((element) => document.activeElement === element)
+    || !await page.locator('#hq-console-content[aria-labelledby="hq-tab-submissions"]').isVisible()) {
+    throw new Error('HQ submissions tab did not remain mounted and selected after keyboard navigation');
   }
+  await submissionsTab.press('Home');
+  await page.locator('#agenda-progress-title').waitFor({ state: 'visible', timeout: 10_000 });
+  await assertFocused(progressTab, 'HQ progress tab after Home');
 }
 
 export const DEFAULT_AUDIT_ROUTES = [
@@ -1634,7 +1637,7 @@ export const DEFAULT_AUDIT_ROUTES = [
     skipTarget: 'hq-console-content',
     fixture: 'ci-0912-hq-dashboard-read-fixture-v1',
     requiresFixtureEvidence: true,
-    readySelector: '#hq-console-content h1',
+    readySelector: '#agenda-progress-title',
     prepare: prepareWorkshopHqDashboard,
     afterNavigation: exerciseWorkshopHqDashboard,
   },

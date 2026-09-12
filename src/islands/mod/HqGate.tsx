@@ -44,7 +44,7 @@ function storedActor(): string {
 
 function storedView(): HqView {
   const saved = hqSessionStorage.getItem(HQ_VIEW_KEY);
-  return saved === 'submissions' || saved === 'grid' ? saved : 'progress';
+  return saved === 'submissions' ? saved : 'progress';
 }
 
 export default function HqGate() {
