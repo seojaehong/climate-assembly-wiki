@@ -351,7 +351,7 @@ function DivisionProjectorView({
       {page === 0 ? <section className="mx-auto mt-6 w-full rounded-3xl border-2 border-[#137586] bg-white p-7 shadow-sm" aria-label={`${division} 주제·조 선택 결과`}>
         <h3 className="text-[30px] font-black text-[#1F4E79]">{division} 주제·조 선택 결과</h3>
         <div className="mt-3 overflow-x-auto">
-          <table className="min-w-full border-collapse text-left text-[20px]"><thead><tr className="border-b-2 border-[#DCE7EE]"><th className="p-4 text-[22px]">주제</th>{teams.map((team) => <th key={team.id} className="p-4 text-center text-[22px]">{team.name}</th>)}</tr></thead><tbody>{agendas.map((agenda) => <tr key={agenda.id} className="border-b border-[#EEF2F5]"><th className="p-4 text-[21px] font-bold">주제 {agenda.ordinal}. {agenda.title}</th>{teams.map((team) => <td key={team.id} className="p-4 text-center text-[28px] font-black text-[#137586]">{agenda.assignments.some((assignment) => assignment.teamId === team.id) ? '✓' : '—'}</td>)}</tr>)}</tbody></table>
+          <table className="min-w-full border-collapse text-left text-[20px]"><thead><tr className="border-b-2 border-[#DCE7EE]"><th className="p-4 text-[22px]">주제</th>{teams.map((team) => <th key={team.id} className="p-4 text-center text-[22px]">{team.name}</th>)}</tr></thead><tbody>{agendas.map((agenda) => { const addedAgenda = isAddedAgenda(agenda); return <tr key={agenda.id} className={`border-b border-[#EEF2F5] ${addedAgenda ? 'bg-[#FFFBEB]' : ''}`}><th className={`p-4 text-[21px] font-bold ${addedAgenda ? 'text-[#9A6700]' : 'text-[#1F2933]'}`}>주제 {agenda.ordinal}. {agenda.title}{addedAgenda ? ' · 추가' : ''}</th>{teams.map((team) => <td key={team.id} className="p-4 text-center text-[28px] font-black text-[#137586]">{agenda.assignments.some((assignment) => assignment.teamId === team.id) ? '✓' : '—'}</td>)}</tr>; })}</tbody></table>
         </div>
       </section> : null}
       {page > 0 ? <div className="mx-auto mt-8 grid w-full gap-5 lg:grid-cols-2">
@@ -360,7 +360,7 @@ function DivisionProjectorView({
           return (
             <section key={agenda.id} className="rounded-3xl border border-[#C4D8E4] bg-white p-6 shadow-sm">
               <div className="flex flex-wrap items-baseline justify-between gap-3">
-                <h3 className="text-[27px] font-black"><span className="mr-2 text-[18px] text-[#137586]">주제 {agenda.ordinal}</span>{agenda.title}</h3>
+                <h3 className={`text-[27px] font-black ${isAddedAgenda(agenda) ? 'text-[#9A6700]' : 'text-[#1F2933]'}`}><span className={`mr-2 text-[18px] ${isAddedAgenda(agenda) ? 'text-[#B07A00]' : 'text-[#137586]'}`}>주제 {agenda.ordinal}{isAddedAgenda(agenda) ? ' · 추가' : ''}</span>{agenda.title}</h3>
                 <span className="text-[17px] font-extrabold text-[#475569]">권고안 {recommendations.length}건</span>
               </div>
               <p className="mt-2 text-[17px] font-extrabold text-[#137586]">선택 조: {agenda.assignments.length > 0 ? agenda.assignments.map((assignment) => assignment.teamName).join(' · ') : '아직 선택된 조 없음'}</p>
