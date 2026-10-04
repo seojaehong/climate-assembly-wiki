@@ -86,7 +86,11 @@ export function isDeviceTokenPersistent(): boolean {
   return publicVoteStorage.isPersistent();
 }
 
-/** 브라우저 로컬 디바이스 토큰. 저장소가 막히면 현재 페이지 메모리에서 재사용한다. */
+/**
+ * 브라우저 로컬 디바이스 토큰. 저장소가 막히면 현재 페이지 메모리에서 재사용한다.
+ * 한계: 그런 기기에서는 새로고침하면 새 토큰이 된다. 중복 투표는 서버
+ * `unique(ballot_id, client_id)` 가 막고, 막힌 기기의 재제출만 새 응답으로 들어갈 수 있다.
+ */
 export function getDeviceToken(): string {
   const existing = publicVoteStorage.getItem('cv_device');
   if (existing) return existing;

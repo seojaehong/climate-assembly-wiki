@@ -60,4 +60,20 @@ describe('createSafeBrowserStorage', () => {
     expect(storage.isPersistent()).toBe(false);
     warning.mockRestore();
   });
+
+  it('serves page memory when native getItem throws SecurityError', () => {
+    const warning = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const native = new MemoryStorage();
+    native.getItem = () => { throw new DOMException('blocked', 'SecurityError'); };
+    const storage = createSafeBrowserStorage('localStorage', {
+      getStorage: () => native,
+      memory: new Map<string, string>(),
+    });
+
+    expect(storage.getItem('cv_device')).toBeNull();
+    storage.setItem('cv_device', 'page-token');
+    expect(storage.getItem('cv_device')).toBe('page-token');
+    expect(storage.isPersistent()).toBe(false);
+    warning.mockRestore();
+  });
 });

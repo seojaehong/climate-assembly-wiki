@@ -1,4 +1,5 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { createSafeBrowserStorage } from './safe-browser-storage';
 
 export const PLATFORM_ORG_CONTEXT_KEY = 'climate_vote_platform_org_context';
 export const PLATFORM_ORG_CONTEXT_HEADER = 'x-platform-org-context';
@@ -11,8 +12,14 @@ export interface PlatformOrgContextStorage {
   removeItem(key: string): void;
 }
 
+// 쿠키·사이트 데이터를 막은 기기에서는 `window.sessionStorage` 를 읽기만 해도 SecurityError 가
+// 난다. 이 값이 platformFetch 의 기본 인자로 평가되므로, 그대로 두면 모든 REST 요청이
+// fetch 전에 실패한다(운영 E2E N11). 안전 래퍼는 막히면 페이지 메모리로 내려간다.
+const safeSessionStorage = createSafeBrowserStorage('sessionStorage');
+const safeLocalStorage = createSafeBrowserStorage('localStorage');
+
 function browserSessionStorage(): PlatformOrgContextStorage | null {
-  return typeof window === 'undefined' ? null : window.sessionStorage;
+  return typeof window === 'undefined' ? null : safeSessionStorage;
 }
 
 export function readPlatformOrgContextToken(
@@ -105,6 +112,8 @@ let _client: SupabaseClient | null = null;
 export function getSupabase(): SupabaseClient | null {
   if (!url || !anon) return null;
   if (!_client) _client = createClient(url, anon, {
+    // 저장소가 막힌 기기에서도 auth 세션은 페이지 메모리에 유지된다(새로고침하면 사라짐).
+    auth: { storage: safeLocalStorage },
     global: { fetch: platformFetch },
     realtime: { params: { eventsPerSecond: 20 } },
   });

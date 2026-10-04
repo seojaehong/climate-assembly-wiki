@@ -117,8 +117,10 @@ export default function AttendancePanel({
   const tokenKey = `attendance_team_token:${teamId}`;
   const externalAccessToken = accessToken?.trim() || null;
   const [storedToken, setStoredToken] = useState<string | null>(() => {
-    if (externalAccessToken || typeof sessionStorage === 'undefined') return null;
+    if (externalAccessToken) return null;
     try {
+      // typeof 도 막힌 기기에서는 SecurityError 를 던지므로 try 안에서 본다.
+      if (typeof sessionStorage === 'undefined') return null;
       return sessionStorage.getItem(tokenKey);
     } catch (error) {
       console.error('[attendance] failed to read legacy token', error);
