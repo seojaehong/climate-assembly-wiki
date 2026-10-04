@@ -235,7 +235,7 @@ function IntroView({
 }) {
   return (
     <div className="flex flex-col items-center text-center" style={{ gap: 'clamp(16px,3vh,40px)' }}>
-      <h1 className="text-[clamp(80px,8vw,150px)] font-black leading-none" style={{ letterSpacing: '-.03em' }}>
+      <h1 className="text-[clamp(80px,8vw,150px)] font-black leading-none" style={{ letterSpacing: '-.03em', color: C.text }}>
         {label} 의결
       </h1>
       <p className="text-[clamp(32px,2.6vw,52px)] font-extrabold tr-num" style={{ color: C.sub }}>
@@ -280,7 +280,7 @@ function MotionView({
         <h2
           data-testid="ceremony-title"
           className="text-[clamp(40px,3.6vw,72px)] font-black leading-[1.18] line-clamp-3 break-keep"
-          style={{ letterSpacing: '-.02em' }}
+          style={{ letterSpacing: '-.02em', color: C.text }}
         >
           {item.title}
         </h2>
@@ -395,7 +395,7 @@ function SummaryView({
   return (
     <div className="flex min-h-0 flex-col" style={{ gap: 'clamp(12px,2.4vh,32px)' }}>
       <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2">
-        <h1 data-testid="ceremony-summary" className="text-[clamp(56px,5vw,96px)] font-black leading-none">
+        <h1 data-testid="ceremony-summary" className="text-[clamp(56px,5vw,96px)] font-black leading-none" style={{ color: C.text }}>
           {label} 의결 <span className="tr-num" style={{ color: C.gold, fontSize: 'clamp(80px,8vw,150px)' }}>{summary.passed.length}</span>건
         </h1>
         <p className="text-[clamp(28px,2.2vw,44px)] font-extrabold tr-num" style={{ color: C.sub }}>
