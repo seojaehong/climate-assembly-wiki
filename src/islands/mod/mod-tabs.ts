@@ -5,7 +5,7 @@
  * 세로로 늘어놓지 않고 진행상황판을 첫 탭으로 세워 기록 흐름을 바로 시작한다.
  */
 
-export type ModTabId = 'progress' | 'submission' | 'attendance' | 'vote' | 'timer';
+export type ModTabId = 'progress' | 'submission' | 'attendance' | 'vote' | 'timer' | 'decision';
 
 export type ModTab = {
   id: ModTabId;
@@ -24,6 +24,8 @@ export const MOD_TABS: readonly ModTab[] = [
   { id: 'submission', label: '조별 산출물', hint: '현재 열린 단계의 조별 초안을 기록합니다' },
   { id: 'vote', label: '투표', hint: '조 안에서 표를 물을 때만 씁니다' },
   { id: 'timer', label: '타이머', hint: '발언·세션 시간을 겁니다' },
+  // 10/17 토론회 분과 의결 — 준비판·투표 열기·세리머니(1단계 시연판). 맨 뒤라 기본 탭을 바꾸지 않는다.
+  { id: 'decision', label: '10/17 의결', hint: '분과 의결안을 준비하고 투표·세리머니 화면을 띄웁니다' },
 ] as const;
 
 /** 아무 것도 고르지 않았을 때 열리는 탭. */

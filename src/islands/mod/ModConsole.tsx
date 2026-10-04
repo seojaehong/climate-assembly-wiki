@@ -57,6 +57,7 @@ import AttendancePanel from './AttendancePanel';
 import BallotPanel from './BallotPanel';
 import SubmissionPanel from './SubmissionPanel';
 import AgendaProgressBoard from './AgendaProgressBoard';
+import DivisionVotePanel from './DivisionVotePanel';
 import DeadlineBanner from './DeadlineBanner';
 import { tableNoLabel } from './table-no';
 import { topicAnchorId } from './submission-guide';
@@ -1211,6 +1212,7 @@ function HomeScreen({
             <AttendancePanel teamId={teamId} teamName={teamName} accessToken={access?.accessToken} />
           )}
           {tab === 'vote' && <BallotPanel access={access} subgroup={subgroup ?? null} />}
+          {tab === 'decision' && <DivisionVotePanel access={access} />}
           {tab === 'submission' && (
             <SubmissionPanel
               access={access}

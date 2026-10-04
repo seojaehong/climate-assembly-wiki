@@ -27,6 +27,12 @@ describe('MOD_TABS', () => {
     expect(copy).not.toContain('세 꼭지');
   });
 
+  it('puts the 10/17 의결 tab last without changing the default', () => {
+    expect(MOD_TABS[MOD_TABS.length - 1].id).toBe('decision');
+    expect(tabById('decision').label).toBe('10/17 의결');
+    expect(normalizeTabId('decision')).toBe('decision');
+  });
+
   it('has no duplicate ids', () => {
     const ids = MOD_TABS.map((tab) => tab.id);
     expect(new Set(ids).size).toBe(ids.length);
@@ -46,15 +52,16 @@ describe('normalizeTabId', () => {
 
 describe('tabAfterKey — roving keyboard navigation', () => {
   it('wraps with horizontal and vertical arrow keys', () => {
-    expect(tabAfterKey('progress', 'ArrowLeft')).toBe('timer');
-    expect(tabAfterKey('timer', 'ArrowRight')).toBe('progress');
-    expect(tabAfterKey('progress', 'ArrowUp')).toBe('timer');
-    expect(tabAfterKey('timer', 'ArrowDown')).toBe('progress');
+    expect(tabAfterKey('progress', 'ArrowLeft')).toBe('decision');
+    expect(tabAfterKey('decision', 'ArrowRight')).toBe('progress');
+    expect(tabAfterKey('timer', 'ArrowRight')).toBe('decision');
+    expect(tabAfterKey('progress', 'ArrowUp')).toBe('decision');
+    expect(tabAfterKey('decision', 'ArrowDown')).toBe('progress');
   });
 
   it('supports Home and End and ignores unrelated keys', () => {
     expect(tabAfterKey('vote', 'Home')).toBe('progress');
-    expect(tabAfterKey('submission', 'End')).toBe('timer');
+    expect(tabAfterKey('submission', 'End')).toBe('decision');
     expect(tabAfterKey('submission', 'Enter')).toBeNull();
   });
 });

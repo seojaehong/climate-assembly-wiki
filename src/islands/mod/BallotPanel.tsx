@@ -80,7 +80,7 @@ function statusBadgeClass(status: BallotListRow['status']): string {
 // 풀스크린 — 참가용 QR (대형 스크린: QR 최대, 안내 24px+)
 // ============================================================
 
-function BallotQrFullscreen({
+export function BallotQrFullscreen({
   ballot,
   onExit,
 }: {
