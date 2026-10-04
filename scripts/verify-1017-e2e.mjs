@@ -257,6 +257,8 @@ async function runCeremony(page, onStep) {
 
 // ── 공통 상태 ────────────────────────────────────────────────
 let mainBallot = null; // {id, token}
+// 「투표」 탭·「10/17 의결」 목록에서 투표 하나를 id 로 정확히 고른다 — .first() 는 다른 투표를 누른다.
+const ballotCard = (page, id) => page.locator(`[data-ballot-id="${id}"]`);
 const S = {};
 
 async function phaseMain() {
@@ -543,7 +545,7 @@ async function phaseMain() {
   await pg.getByRole('dialog', { name: '투표 만들기 확인' }).getByRole('button', { name: '만들기' }).click();
   await pg.getByText('투표 초안을 만들었습니다').waitFor({ timeout: 15000 });
   const list = await rpc('ballot_list_v2', { p_token: T2 });
-  const mine = (list.data ?? []).filter((b) => b.subgroup === '2분과');
+  const mine = (list.data ?? []).filter((b) => b.subgroup === '2분과' && b.status === 'draft');
   mainBallot = mine[0] ? { id: mine[0].id, token: mine[0].token } : null;
   if (mainBallot) {
     manifest.ballots.push(mainBallot.id);
@@ -554,7 +556,7 @@ async function phaseMain() {
   S.p4create = { dialog: dlgText.slice(0, 60), count: mine.length, status: mine[0]?.status, items: mine[0]?.item_count, stmtIds: stmts, scales: (res0?.data?.items ?? []).map((i) => i.scale) };
   // 「투표」 탭에서 시작 → QR 자동
   await pg.locator('#mod-tab-vote').click();
-  await pg.getByRole('button', { name: '투표 시작', exact: true }).first().click();
+  await ballotCard(pg, mainBallot.id).getByRole('button', { name: '투표 시작', exact: true }).click();
   await pg.getByRole('dialog').getByRole('button', { name: '투표 시작', exact: true }).click();
   await pg.waitForTimeout(1500);
   const bodyText = await pg.locator('body').innerText();
@@ -574,7 +576,7 @@ async function phaseMain() {
   await viewTab(pg, '투표 열기').click();
   await pg.getByRole('button', { name: '새로고침' }).click();
   await pg.waitForTimeout(800);
-  await pg.getByRole('button', { name: 'QR 띄우기' }).first().click();
+  await ballotCard(pg, mainBallot.id).getByRole('button', { name: 'QR 띄우기' }).click();
   await pg.waitForTimeout(800);
   S.p4qr2 = /\/b\?t=([0-9a-f]{32})/.exec(await pg.locator('body').innerText())?.[1] === mainBallot?.token;
   await pg.keyboard.press('Escape');
@@ -659,12 +661,12 @@ async function phaseMain() {
     const after = await rpc('ballot_results_v2', { p_ballot_token: mainBallot.token, p_token: T2 });
     S.n8 = { rows, responses: after.data.responses };
     S.otherBallot = other.ok ? other.data.id : null;
-    // 「투표」 탭은 세션의 모든 투표를 최신순으로 보인다 — 다른 투표를 치워 두지 않으면 아래 .first() 가 그것을 누른다.
+    // 다른 분과 투표는 치워 둔다. 아래 UI 조작은 ballotCard 로 mainBallot 만 누른다.
     if (other.ok) await rpc('ballot_set_status_v2', { p_token: T3, p_ballot_id: other.data.id, p_status: 'archived' });
   }
   // 마감(UI)
   await pg.locator('#mod-tab-vote').click();
-  await pg.getByRole('button', { name: '투표 마감', exact: true }).first().click();
+  await ballotCard(pg, mainBallot.id).getByRole('button', { name: '투표 마감', exact: true }).click();
   await pg.getByRole('dialog').getByRole('button', { name: '투표 마감', exact: true }).click();
   await pg.waitForTimeout(1500);
   // N7 — 마감 후
@@ -809,7 +811,7 @@ async function phaseMain() {
   {
     await pg.locator('#mod-tab-vote').click();
     await pg.waitForTimeout(800);
-    await pg.getByRole('button', { name: '결과 공개', exact: true }).first().click();
+    await ballotCard(pg, mainBallot.id).getByRole('button', { name: '결과 공개', exact: true }).click();
     await pg.getByRole('dialog').getByRole('button', { name: '결과 공개', exact: true }).click();
     await pg.waitForTimeout(1500);
     const pub = await rpc('ballot_results', { p_token: mainBallot.token });
@@ -933,7 +935,7 @@ async function phaseP5() {
   const status = async () => (await rpc('ballot_list_v2', { p_token: T3 })).data.find((x) => x.id === mainBallot.id)?.status;
 
   await pg.locator('#mod-tab-vote').click();
-  await pg.getByRole('button', { name: '투표 시작', exact: true }).first().click();
+  await ballotCard(pg, mainBallot.id).getByRole('button', { name: '투표 시작', exact: true }).click();
   await pg.getByRole('dialog').getByRole('button', { name: '투표 시작', exact: true }).click();
   await pg.waitForTimeout(1500);
   const qm = /climate-assembly\.org\/b\?t=([0-9a-f]{32})/.exec(await pg.locator('body').innerText());
@@ -986,7 +988,7 @@ async function phaseP5() {
   await pg.locator('#mod-tab-vote').click();
   await pg.waitForTimeout(800);
   S.voteTabCards = await pg.getByRole('button', { name: '투표 마감', exact: true }).count();
-  await pg.getByRole('button', { name: '투표 마감', exact: true }).first().click();
+  await ballotCard(pg, mainBallot.id).getByRole('button', { name: '투표 마감', exact: true }).click();
   await pg.getByRole('dialog').getByRole('button', { name: '투표 마감', exact: true }).click();
   await pg.waitForTimeout(1500);
   S.afterClose = await status();
@@ -1053,7 +1055,7 @@ async function phaseP5() {
   // 공개(UI) → 공개 뒤에만 결과
   await pg.locator('#mod-tab-vote').click();
   await pg.waitForTimeout(800);
-  await pg.getByRole('button', { name: '결과 공개', exact: true }).first().click();
+  await ballotCard(pg, mainBallot.id).getByRole('button', { name: '결과 공개', exact: true }).click();
   await pg.getByRole('dialog').getByRole('button', { name: '결과 공개', exact: true }).click();
   await pg.waitForTimeout(1500);
   S.afterPublish = await status();

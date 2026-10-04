@@ -642,7 +642,7 @@ function BallotOpener({ state, access }: { state: PrepState; access: WorkshopAut
           {failed ? <p className="mt-2 text-[16px] font-bold text-[#B91C1C]">목록을 읽지 못했습니다.</p> : null}
           <ul className="mt-3 space-y-2">
             {(rows ?? []).map((b) => (
-              <li key={b.id} className="flex flex-wrap items-center gap-3 rounded-xl bg-[#F5F8FB] px-3 py-2 text-[16px]">
+              <li key={b.id} data-ballot-id={b.id} className="flex flex-wrap items-center gap-3 rounded-xl bg-[#F5F8FB] px-3 py-2 text-[16px]">
                 <span className="font-bold">{b.title}</span>
                 <span className="text-[#5A6B73]">
                   {ballotStatusLabel(b.status)} · 안 {b.item_count}건 · 제출 {b.response_count}명
