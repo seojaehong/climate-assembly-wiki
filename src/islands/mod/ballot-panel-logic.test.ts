@@ -14,6 +14,9 @@ import {
   primaryAction,
   qrSubgroupNotice,
   scaleLabel,
+  ballotTargetOptions,
+  ballotsForSubgroup,
+  defaultBallotTarget,
   sessionSubgroups,
   subgroupBadgeLabel,
   subgroupTargetLabel,
@@ -341,5 +344,53 @@ describe('라벨', () => {
   it('척도 라벨 — 2점은 찬반으로 읽는다', () => {
     expect(scaleLabel(2)).toBe('찬반(2점)');
     expect(scaleLabel(7)).toBe('7점 척도');
+  });
+});
+
+describe('ballotsForSubgroup — 「투표」 탭은 내 분과·세션 전체 투표만 다룬다', () => {
+  const rows = [
+    { id: 'b2', subgroup: '2분과' },
+    { id: 'b2pad', subgroup: ' 2분과 ' },
+    { id: 'b1', subgroup: '1분과' },
+    { id: 'b3', subgroup: '3분과' },
+    { id: 'all', subgroup: null },
+    { id: 'blank', subgroup: '  ' },
+  ];
+  const ids = (list: ReadonlyArray<{ id: string }>) => list.map((r) => r.id);
+
+  it('같은 분과 투표는 보인다 (앞뒤 공백 무시)', () => {
+    expect(ids(ballotsForSubgroup(rows, '2분과'))).toEqual(expect.arrayContaining(['b2', 'b2pad']));
+  });
+
+  it('다른 분과 투표는 숨긴다', () => {
+    const visible = ids(ballotsForSubgroup(rows, '2분과'));
+    expect(visible).not.toContain('b1');
+    expect(visible).not.toContain('b3');
+  });
+
+  it('세션 전체 투표(subgroup null·공백)는 어느 분과 조에서도 보인다', () => {
+    expect(ids(ballotsForSubgroup(rows, '2분과'))).toEqual(['b2', 'b2pad', 'all', 'blank']);
+    expect(ids(ballotsForSubgroup(rows, '1분과'))).toEqual(['b1', 'all', 'blank']);
+  });
+
+  it('조에 분과가 없으면(본부·운영 조) 전부 보인다', () => {
+    expect(ids(ballotsForSubgroup(rows, null))).toEqual(ids(rows));
+    expect(ids(ballotsForSubgroup(rows, undefined))).toEqual(ids(rows));
+    expect(ids(ballotsForSubgroup(rows, '   '))).toEqual(ids(rows));
+  });
+});
+
+describe('ballotTargetOptions·defaultBallotTarget — 새 투표의 대상 분과', () => {
+  it('분과 조는 자기 분과만 고를 수 있고 기본값도 자기 분과다', () => {
+    expect(ballotTargetOptions(['1분과', '2분과', '3분과'], '2분과')).toEqual(['2분과']);
+    expect(ballotTargetOptions(null, ' 2분과 ')).toEqual(['2분과']);
+    expect(defaultBallotTarget(' 2분과 ')).toBe('2분과');
+  });
+
+  it('분과 없는 조는 세션의 모든 분과를 고를 수 있고 기본값은 세션 전체다', () => {
+    expect(ballotTargetOptions(['1분과', '2분과', '3분과'], null)).toEqual(['1분과', '2분과', '3분과']);
+    expect(ballotTargetOptions(null, null)).toEqual([]);
+    expect(defaultBallotTarget(null)).toBeNull();
+    expect(defaultBallotTarget('  ')).toBeNull();
   });
 });

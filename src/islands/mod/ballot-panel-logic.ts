@@ -202,9 +202,42 @@ export function qrSubgroupNotice(subgroup: string | null | undefined): string | 
 }
 
 /**
+ * 「투표」 탭이 보여 주고 조작하게 할 투표 — 내 분과 투표와 세션 전체 투표(subgroup 없음).
+ * 분과 조 콘솔에서 다른 분과 투표를 시작·마감하던 결함을 막는다. 분과 없는 조(본부·운영)는
+ * 지금처럼 전부 본다. 비교 기준은 「10/17 의결」 탭(DivisionVotePanel)과 같이 trim 한 문자열.
+ * ★ UI 필터일 뿐이다 — 서버 RPC(ballot_set_status_v2 등)는 아직 분과를 검증하지 않는다.
+ */
+export function ballotsForSubgroup<T extends { subgroup?: string | null }>(
+  rows: ReadonlyArray<T>,
+  mySubgroup: string | null | undefined,
+): T[] {
+  const mine = mySubgroup?.trim();
+  if (!mine) return [...rows];
+  return rows.filter((row) => {
+    const target = row.subgroup?.trim();
+    return !target || target === mine;
+  });
+}
+
+/** 새 투표 「대상」 분과 선택지. 분과 조는 자기 분과만, 분과 없는 조는 세션의 모든 분과. */
+export function ballotTargetOptions(
+  sessionOptions: ReadonlyArray<string> | null,
+  mySubgroup: string | null | undefined,
+): string[] {
+  const mine = mySubgroup?.trim();
+  if (mine) return [mine];
+  return [...(sessionOptions ?? [])];
+}
+
+/** 새 투표 「대상」 기본값. 분과 조는 자기 분과, 분과 없는 조는 세션 전체(null). */
+export function defaultBallotTarget(mySubgroup: string | null | undefined): string | null {
+  return mySubgroup?.trim() || null;
+}
+
+/**
  * 세션 팀 목록(hq_teams)에서 고유 분과 목록을 뽑는다 — 생성 폼 「대상」 선택지.
- * 총괄 모더레이터 1명이 한 콘솔에서 1·2·3분과 투표를 전부 만들 수 있어야 하므로,
- * 내 분과만이 아니라 세션의 모든 분과를 낸다.
+ * 총괄 모더레이터가 분과 없는 운영 조 콘솔에서 1·2·3분과 투표를 전부 만들 수 있어야 하므로,
+ * 내 분과만이 아니라 세션의 모든 분과를 낸다. 분과 조에서는 ballotTargetOptions 가 내 분과로 좁힌다.
  *
  * - subgroup이 null/공백인 팀은 제외한다(분과 없는 운영 팀).
  * - '1분과' < '2분과' < '10분과' 자연 정렬(숫자 비교).

@@ -29,7 +29,10 @@ import {
   MAX_BALLOT_ITEMS,
   ballotStatusLabel,
   ballotCreateIntent,
+  ballotTargetOptions,
   ballotUrl,
+  ballotsForSubgroup,
+  defaultBallotTarget,
   distRows,
   emptyBallotFormItem,
   primaryAction,
@@ -502,9 +505,9 @@ function CreateForm({
   const [title, setTitle] = useState('');
   const [instructions, setInstructions] = useState('');
   const [items, setItems] = useState<BallotFormItem[]>([emptyBallotFormItem()]);
-  // 대상: null=세션 전체(기본), 분과명=해당 분과 한정.
-  // 총괄 모더레이터가 한 콘솔에서 1·2·3분과 투표를 전부 만들 수 있게 세션의 모든 분과를 선택지로 낸다.
-  const [target, setTarget] = useState<string | null>(null);
+  // 대상: null=세션 전체, 분과명=해당 분과 한정. 기본값은 내 분과(분과 없는 조는 세션 전체).
+  // 분과 조는 다른 분과를 고를 수 없다. 분과 없는 운영 조(총괄 모더레이터)만 세션의 모든 분과를 고른다.
+  const [target, setTarget] = useState<string | null>(() => defaultBallotTarget(subgroup));
   // 세션 분과 목록 — 폼 오픈 시 token-scoped 팀 목록을 1회 조회한다.
   const [subgroupOptions, setSubgroupOptions] = useState<string[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -512,6 +515,8 @@ function CreateForm({
   const mySubgroup = subgroup?.trim() || null;
 
   useEffect(() => {
+    // 분과 조는 선택지가 내 분과뿐이라 세션 팀 목록을 조회할 필요가 없다.
+    if (mySubgroup) return;
     let cancelled = false;
     fetchSessionTeams(access)
       .then((teams) => {
@@ -528,7 +533,7 @@ function CreateForm({
   }, [access, mySubgroup]);
 
   // 조회 완료 전에도 기존 선택지(전체/내 분과)는 바로 쓸 수 있게 한다.
-  const targetOptions = subgroupOptions ?? (mySubgroup ? [mySubgroup] : []);
+  const targetOptions = ballotTargetOptions(subgroupOptions, mySubgroup);
 
   const setStatement = (index: number, statement: string) =>
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, statement } : item)));
@@ -840,8 +845,15 @@ export default function BallotPanel({
     }
   };
 
+  // 분과 조 콘솔은 내 분과·세션 전체 투표만 보이고 조작한다(서버는 아직 분과를 검증하지 않는다).
+  const visibleBallots = ballots === null ? null : ballotsForSubgroup(ballots, subgroup);
+
   const runTransition = async (ballot: BallotListRow, action: BallotAction) => {
     if (!access) return;
+    if (ballotsForSubgroup([ballot], subgroup).length === 0) {
+      setToast('다른 분과 투표는 이 조 콘솔에서 바꿀 수 없습니다.');
+      return;
+    }
     if (refreshState.failed || refreshState.lastSuccessAt === null) {
       setToast('최신 투표 상태를 확인한 뒤 다시 시도해 주세요.');
       return;
@@ -866,8 +878,8 @@ export default function BallotPanel({
     }
   };
 
-  const qrBallot = qrId ? (ballots ?? []).find((b) => b.id === qrId) ?? null : null;
-  const resultsBallot = resultsId ? (ballots ?? []).find((b) => b.id === resultsId) ?? null : null;
+  const qrBallot = qrId ? (visibleBallots ?? []).find((b) => b.id === qrId) ?? null : null;
+  const resultsBallot = resultsId ? (visibleBallots ?? []).find((b) => b.id === resultsId) ?? null : null;
 
   return (
     <section className="rounded-2xl border border-[#DCE7EE] bg-white overflow-hidden shadow-sm">
@@ -919,11 +931,11 @@ export default function BallotPanel({
               </div>
             ) : null}
 
-            {(ballots ?? []).map((ballot) => {
+            {(visibleBallots ?? []).map((ballot) => {
               const action = primaryAction(ballot.status);
               const busy = busyId === ballot.id;
               return (
-                <div key={ballot.id} className="rounded-xl border border-[#C4D8E4] bg-white p-4 space-y-3">
+                <div key={ballot.id} data-ballot-id={ballot.id} className="rounded-xl border border-[#C4D8E4] bg-white p-4 space-y-3">
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-[18px] font-bold text-[#1F2933] break-words">{ballot.title}</p>
@@ -998,8 +1010,14 @@ export default function BallotPanel({
               );
             })}
 
-            {ballots != null && ballots.length === 0 ? (
+            {visibleBallots != null && visibleBallots.length === 0 ? (
               <p className="text-[16px] text-[#5A6B73]">아직 만든 다의제 투표가 없습니다.</p>
+            ) : null}
+
+            {subgroup?.trim() ? (
+              <p className="text-[14px] text-[#5A6B73]">
+                이 조 콘솔에는 <b className="text-[#135C73]">{subgroup.trim()}</b> 투표와 세션 전체 투표만 보입니다.
+              </p>
             ) : null}
 
             <button
