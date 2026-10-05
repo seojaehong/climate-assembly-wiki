@@ -1471,9 +1471,17 @@ const findBallot = async (token, title) => ((await rpc('ballot_list_v2', { p_tok
 
 /** /b 에서 안마다 찬성(2)/반대(1)를 골라 제출. */
 async function voteUi(page, ballotToken, answersByOrdinal) {
-  await page.goto(`${SITE}/b?t=${ballotToken}`, { waitUntil: 'networkidle' });
+  // networkidle 은 /b 의 주기 요청 때문에 가끔 30초를 넘는다 — 폼이 뜨는 것을 기다린다
   const groups = page.locator('[role=group][aria-label$="응답"]');
-  await groups.first().waitFor({ timeout: 20000 });
+  page.__gotoTries = [];
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const t0 = Date.now();
+    const nav = await page.goto(`${SITE}/b?t=${ballotToken}`, { waitUntil: 'commit', timeout: 60000 }).then(() => 'ok').catch((e) => String(e.message).slice(0, 60));
+    const shown = await groups.first().waitFor({ timeout: 30000 }).then(() => true).catch(() => false);
+    page.__gotoTries.push(`${nav}/${shown}/${Date.now() - t0}ms`);
+    if (shown) break;
+  }
+  await page.waitForTimeout(500);
   const n = await groups.count();
   for (let k = 0; k < n; k++) await groups.nth(k).getByRole('button', { name: answersByOrdinal[k] === 2 ? '찬성' : '반대', exact: true }).click();
   await page.getByRole('button', { name: '제출하기' }).first().click();
@@ -1558,7 +1566,7 @@ async function phaseBatch() {
     rows.forEach((r) => manifest.ballots.push(r.id));
     saveManifest();
     const row = rows[0];
-    const items = row ? ((await rpc('ballot_get', { p_token: row.token })).data?.items ?? []).sort((a, b) => a.ordinal - b.ordinal) : [];
+    const items = row ? ((await rpc('ballot_results_v2', { p_ballot_token: row.token, p_token: T.b2 })).data?.items ?? []).sort((a, b) => a.ordinal - b.ordinal) : []; // 초안은 ballot_get(공개)으로 안 보인다
     const expStmts = c.ids.map((id) => `${id} 드라이런 ${plannedMotions(2).find((m) => m.id === id).cardNo}`);
     B.b3 = {
       title,
@@ -1596,7 +1604,7 @@ async function phaseBatch() {
     saveManifest();
     B.c3 = { title, rows: rows.length };
     const row = rows[0];
-    const items = row ? ((await rpc('ballot_get', { p_token: row.token })).data?.items ?? []).sort((a, b) => a.ordinal - b.ordinal) : [];
+    const items = row ? ((await rpc('ballot_results_v2', { p_ballot_token: row.token, p_token: T.b2 })).data?.items ?? []).sort((a, b) => a.ordinal - b.ordinal) : []; // 초안은 ballot_get(공개)으로 안 보인다
     ballots.B = row ? { id: row.id, token: row.token, title, ids: c.ids, items } : null;
   }
   // B6 — 하나씩, 마지막 안
@@ -1615,6 +1623,7 @@ async function phaseBatch() {
   created[2] = Object.values(ballots).filter(Boolean);
 
   // C4(b) — 열린(마감 전) 투표의 공개 결과는 없다. C6 — 저장소 차단 기기로 /b 제출
+  try {
   if (ballots.C) {
     const op = await rpc('ballot_set_status_v2', { p_token: T.b2, p_ballot_id: ballots.C.id, p_status: 'open' });
     B.c4open = { status: op.ok ? op.data.status : op.message, publicResults: (await rpc('ballot_results', { p_token: ballots.C.token })).data };
@@ -1643,11 +1652,16 @@ async function phaseBatch() {
     sent.forEach((x) => manifest.clientIds.push(x));
     saveManifest();
     await BV.page.screenshot({ path: join(SHOTS, 'c6-blocked-voter.png') });
-    B.c6 = { storageBlocked, itemsAnswered: n, before, after };
+    B.c6 = { storageBlocked, itemsAnswered: n, before, after, gotoTries: BV.page.__gotoTries };
     await BV.ctx.close();
   }
 
+  } catch (e) {
+    (B.errors ??= []).push(`C4C6: ${String(e?.message ?? e).slice(0, 200)}`);
+    await pg.keyboard.press('Escape').catch(() => {});
+  }
   // B5 — A·B 시작(UI) → 브라우저 5대로 제출 → 마감·공개(UI)
+  try {
   const VOTERS = 5;
   const planA = (k) => [4, 3, 5, 2, 4, 3, 5, 2][k % 8];
   const planB = (k) => [3, 4, 2, 5, 4, 3, 5, 2][k % 8];
@@ -1704,6 +1718,8 @@ async function phaseBatch() {
       await pg.getByRole('radio', { name: '실제 투표 결과' }).click();
       await pg.waitForTimeout(1500);
       const loadBtn = pg.getByRole('button', { name: '결과 불러오기' });
+      // 앞 화면 크기에서 고른 체크가 남아 있으면(같은 컴포넌트) 먼저 다 푼다
+      for (const cb of await pg.locator('[data-ballot-pick]').all()) if (await cb.isChecked()) await cb.uncheck();
       const disabledNone = await loadBtn.isDisabled();
       await pg.locator(`[data-ballot-pick="${ballots.A.id}"]`).check();
       await pg.locator(`[data-ballot-pick="${ballots.B.id}"]`).check();
@@ -1740,7 +1756,12 @@ async function phaseBatch() {
     await pg.setViewportSize({ width: 1920, height: 1080 });
   }
 
+  } catch (e) {
+    (B.errors ??= []).push(`B5: ${String(e?.message ?? e).slice(0, 200)}`);
+    await pg.keyboard.press('Escape').catch(() => {});
+  }
   // ═══ E1 — 화면 영역 겹침·넘침 ═══
+  try {
   B.e1 = {};
   for (const vp of [
     { width: 1280, height: 720 },
@@ -1780,7 +1801,12 @@ async function phaseBatch() {
   }
   await pg.setViewportSize({ width: 1920, height: 1080 });
 
+  } catch (e) {
+    (B.errors ??= []).push(`E1: ${String(e?.message ?? e).slice(0, 200)}`);
+    await pg.keyboard.press('Escape').catch(() => {});
+  }
   // ═══ C1 — 2분과 콘솔에서 1·3분과 묶음 투표 ═══
+  try {
   {
     const foreign = [...(created[1] ?? []), ...(created[3] ?? [])].map((b) => b.id);
     const own = (created[2] ?? []).map((b) => b.id);
@@ -1813,7 +1839,12 @@ async function phaseBatch() {
     };
   }
 
+  } catch (e) {
+    (B.errors ??= []).push(`C1: ${String(e?.message ?? e).slice(0, 200)}`);
+    await pg.keyboard.press('Escape').catch(() => {});
+  }
   // ═══ C5 — 다른 세션 조 ═══
+  try {
   {
     const X = await openConsole('batchModX', 'bx');
     const xp = X.page;
@@ -1849,7 +1880,12 @@ async function phaseBatch() {
     };
   }
 
+  } catch (e) {
+    (B.errors ??= []).push(`C5: ${String(e?.message ?? e).slice(0, 200)}`);
+    await pg.keyboard.press('Escape').catch(() => {});
+  }
   // ═══ C7 — XSS 묶음 투표 ═══
+  try {
   {
     const A = '2-<img/src=x/onerror=window.__xss=31>';
     const src = {
@@ -1920,6 +1956,10 @@ async function phaseBatch() {
     r.consoleErrs = consoleErrors.batchMod2.filter((m) => XSS_RE.test(m));
     B.c7 = r;
   }
+  } catch (e) {
+    (B.errors ??= []).push(`C7: ${String(e?.message ?? e).slice(0, 200)}`);
+    await pg.keyboard.press('Escape').catch(() => {});
+  }
   B.created = Object.fromEntries(Object.entries(created).map(([k, v]) => [k, v.map((b) => ({ id: b.id, title: b.title }))]));
   await C2.ctx.close();
 }
@@ -1941,6 +1981,7 @@ async function phaseLab() {
 function judgeBatch() {
   const B = S.batch;
   if (!B) return;
+  if (B.errors?.length) record('BATCH-SECTION', false, B.errors.join(' | '));
   if (B.lock) record('OBS-lock-batch', B.lock.shownAfterImport === '2분과' && /2분과 의결/.test(B.lock.createBtn) && /^rejected/.test(B.lock.serverCreateOtherDivision), `b2 콘솔 가져오기 직후 「${B.lock.shownAfterImport}」 · 만들기 버튼 「${B.lock.createBtn}」 · 서버 2분과 토큰→1분과 생성 ${B.lock.serverCreateOtherDivision}`);
   const sizes = (d) => Object.values(B.measure?.[d]?.sizes ?? {});
   const divs = [1, 2, 3];
@@ -1978,7 +2019,11 @@ function judgeBatch() {
   const intended = (x) => /status of 4\d\d|Failed to load resource/.test(x.m) || (x.k === 'batchBlockedVoter' && /\[browser storage\]/.test(x.m));
   const unexpected = ce.filter((x) => !intended(x));
   S.batchErrors = { pageErrors: pe, consoleIntended: ce.filter(intended).map((x) => `${x.k}: ${x.m}`), consoleUnexpected: unexpected.map((x) => `${x.k}: ${x.m}`), net: Object.fromEntries(names.map((k) => [k, netErrors[k]])) };
-  record('E2', pe.length === 0 && unexpected.length === 0, `pageerror ${pe.length} · console error ${ce.length}(의도된 거부·저장소 차단 ${ce.length - unexpected.length}, 그 외 ${unexpected.length}) ${unexpected.slice(0, 3).map((x) => x.m).join(' | ')}`);
+  // 드라이런 환경 기인 — 「의제·권고안 기록」 보드가 고정 세션 slug(AGENDA_SESSION_SLUG)로 agenda_board_v2 를 불러 드라이런 세션에서 400. 엄격 판정에는 그대로 센다.
+  const envSlug = unexpected.filter((x) => /recommendation board\] refresh failed.*session mismatch/s.test(x.m));
+  const other = unexpected.filter((x) => !envSlug.includes(x));
+  S.batchErrors.envSlug = envSlug.length;
+  record('E2', pe.length === 0 && unexpected.length === 0, `pageerror ${pe.length} · console error ${ce.length} = 의도된 4xx·저장소 차단 ${ce.length - unexpected.length} + 드라이런 세션 slug 불일치(진행 보드) ${envSlug.length} + 그 외 ${other.length} ${other.slice(0, 3).map((x) => `${x.k}: ${x.m.slice(0, 80)}`).join(' | ')}`);
 }
 const R_IN_J = 8;
 const M_IN_J = 5;
