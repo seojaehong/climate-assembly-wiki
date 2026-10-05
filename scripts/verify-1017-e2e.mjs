@@ -654,6 +654,7 @@ async function phaseMain() {
     // 양성 — 운영진(분과 없음) 토큰은 분과 투표 상태를 바꿀 수 있어야 한다(s24 뒤에도)
     const opsOpen = await rpc('ballot_set_status_v2', { p_token: TO, p_ballot_id: b3, p_status: 'open' });
     S.n15.opsChange = opsOpen.ok ? `ACCEPTED → ${opsOpen.data?.status}` : `rejected: ${opsOpen.message}`;
+    S.n15.opsCreated = { b1: !!b1, b3: !!b3, all: !!ball };
     // 뒤 시험에 끼지 않게 치운다
     for (const id of [b1, b3, ball]) if (id) await rpc('ballot_set_status_v2', { p_token: TO, p_ballot_id: id, p_status: 'archived' });
     await logout(TO);
@@ -1297,6 +1298,7 @@ function judgeMain() {
   if (S.p3lock) record('OBS-lock', S.p3lock.shownAfterImport === '2분과', `2분과 콘솔 가져오기 직후 표시 분과 「${S.p3lock.shownAfterImport}」(2분과 버튼 pressed=${S.p3lock.btn2Pressed}) → 2분과 클릭 뒤 「${S.p3lock.shownAfterClick}」`);
   if (S.n15) record('N15-server', /scope/.test(S.n15.serverRisk) && /^rejected/.test(S.n15.serverRisk), `2분과 조 토큰 → 1분과 투표 ballot_set_status_v2: ${S.n15.serverRisk}`);
   if (S.n15) record('N15-ops', /^ACCEPTED → open/.test(S.n15.opsChange ?? ''), `운영진 토큰 → 3분과 투표 open: ${S.n15.opsChange}`);
+  if (S.n15?.opsCreated) record('N16-ops', S.n15.opsCreated.b1 && S.n15.opsCreated.b3 && S.n15.opsCreated.all, `운영진 토큰 → 1분과·3분과·세션 전체 투표 생성 ${JSON.stringify(S.n15.opsCreated)}`);
 }
 
 // ── 묶음 투표 ────────────────────────────────────────────────
@@ -1457,10 +1459,17 @@ async function regionAudit(page, sel) {
   }, sel);
 }
 
-async function openConsole(name, teamKey, viewport = { width: 1920, height: 1080 }) {
+async function openConsole(name, teamKey, viewport = { width: 1920, height: 1080 }, { dwellMs = 0 } = {}) {
   const C = await newCtx(name, { viewport });
   await C.page.goto(`${SITE}/mod?code=${seed.teams[teamKey][1]}`, { waitUntil: 'networkidle' });
   await C.page.locator('#mod-tab-decision').waitFor({ timeout: 30000 });
+  if (dwellMs) {
+    // 기본 탭(의제·권고안 기록)에 폴링 주기(5초)의 두 배 넘게 머문다 — 세션 불일치 400 이 쌓이지 않는지
+    await C.page.waitForTimeout(dwellMs);
+    const board = (n) => netErrors[name].filter((x) => /agenda_board_v2/.test(x)).length;
+    C.dwell = { ms: dwellMs, board400: board(), notice: await C.page.getByText('이 회차에는 9/12 권고안 기록판이 연결돼 있지 않습니다.').count() };
+    await C.page.screenshot({ path: join(SHOTS, `${name}-progress-tab.png`) });
+  }
   await C.page.locator('#mod-tab-decision').click();
   await C.page.locator('[data-testid=division-vote-panel]').waitFor();
   return C;
@@ -1535,7 +1544,8 @@ async function phaseBatch() {
   }
 
   // ═══ 2분과 콘솔 ═══
-  const C2 = await openConsole('batchMod2', 'b2');
+  const C2 = await openConsole('batchMod2', 'b2', undefined, { dwellMs: 12000 });
+  B.dwell = C2.dwell;
   const pg = C2.page;
   await importFile(pg, RECS_FILE);
   // 잠금 관찰 — 가져온 직후 어느 분과가 보이고, 투표 만들기 버튼이 어느 분과 제목을 띄우는가
@@ -1545,14 +1555,29 @@ async function phaseBatch() {
     const btn = (await pg.locator('[data-testid=division-ballot-create]').textContent().catch(() => '')).trim();
     await pg.screenshot({ path: join(SHOTS, 'lock-b2-after-import-ballot-view.png') });
     // 서버 — 2분과 조 토큰으로 1분과 투표 생성이 되는가(되면 바로 보관)
-    const r = await rpc('ballot_create_v3', { p_token: T.b2, p_title: '잠금 시험 1분과', p_instructions: null, p_items: [{ ordinal: 1, statement: '잠금 시험', scale: 2, required: true }], p_subgroup: '1분과', p_idempotency_key: randomUUID() });
-    if (r.ok && r.data?.id) {
-      manifest.ballots.push(r.data.id);
-      saveManifest();
-      const a = await rpc('ballot_set_status_v2', { p_token: T.b2, p_ballot_id: r.data.id, p_status: 'archived' });
-      B.lockCreateArchive = a.ok ? a.data?.status : a.message;
-    }
-    B.lock = { shownAfterImport: head, createBtn: btn, serverCreateOtherDivision: r.ok ? `ACCEPTED (${r.data?.id?.slice(0, 8)})` : `rejected: ${r.message}` };
+    const mkProbe = async (sub, title) => {
+      const r = await rpc('ballot_create_v3', { p_token: T.b2, p_title: title, p_instructions: null, p_items: [{ ordinal: 1, statement: '잠금 시험', scale: 2, required: true }], p_subgroup: sub, p_idempotency_key: randomUUID() });
+      if (r.ok && r.data?.id) {
+        manifest.ballots.push(r.data.id);
+        saveManifest();
+        await rpc('ballot_set_status_v2', { p_token: T.b2, p_ballot_id: r.data.id, p_status: 'archived' });
+      }
+      return r.ok ? `ACCEPTED (${r.data?.id?.slice(0, 8)})` : `rejected: ${r.message}`;
+    };
+    const other = await mkProbe('1분과', '잠금 시험 1분과');
+    const sessionWide = await mkProbe(null, '잠금 시험 세션 전체');
+    // L1(b) — 저장소에 1분과를 골라 둔 채 2분과 콘솔에 다시 들어온다
+    await pg.evaluate(() => localStorage.setItem('climate_1017_prep_v1:division', '1'));
+    await pg.reload({ waitUntil: 'networkidle' });
+    await pg.locator('#mod-tab-decision').waitFor({ timeout: 30000 });
+    await pg.locator('#mod-tab-decision').click();
+    await pg.locator('[data-testid=division-vote-panel]').waitFor();
+    const head2 = (await pg.locator('[data-testid=division-vote-panel] p.text-\\[16px\\] > span.font-bold').first().textContent().catch(() => '')).trim();
+    await viewTab(pg, '투표 열기').click();
+    const btn2 = (await pg.locator('[data-testid=division-ballot-create]').textContent().catch(() => '')).trim();
+    const stored = await pg.evaluate(() => localStorage.getItem('climate_1017_prep_v1:division'));
+    await pg.screenshot({ path: join(SHOTS, 'lock-b2-stale-choice-ballot-view.png') });
+    B.lock = { shownAfterImport: head, createBtn: btn, staleShown: head2, staleBtn: btn2, storedAfter: stored, serverCreateOtherDivision: other, serverCreateSessionWide: sessionWide };
   }
   B.made2 = (await makeAllMotions(pg, 2)).length;
   B.measure[2] = await measureBatches(pg, 2);
@@ -1721,14 +1746,19 @@ async function phaseBatch() {
       // 앞 화면 크기에서 고른 체크가 남아 있으면(같은 컴포넌트) 먼저 다 푼다
       for (const cb of await pg.locator('[data-ballot-pick]').all()) if (await cb.isChecked()) await cb.uncheck();
       const disabledNone = await loadBtn.isDisabled();
-      await pg.locator(`[data-ballot-pick="${ballots.A.id}"]`).check();
-      await pg.locator(`[data-ballot-pick="${ballots.B.id}"]`).check();
+      // B7 — 1920 은 #1→#2(주제 순서), 1280 은 #2→#1(거꾸로) 체크. 공개 순서 = 체크 순서여야 한다.
+      const pickOrder = key === '1920' ? [ballots.A, ballots.B] : [ballots.B, ballots.A];
+      for (const b of pickOrder) await pg.locator(`[data-ballot-pick="${b.id}"]`).check();
+      const badges = [];
+      for (const b of pickOrder) badges.push((await pg.locator(`[data-ballot-order="${b.id}"]`).textContent().catch(() => '')).trim());
+      await pg.locator('[data-ballot-pick]').first().locator('xpath=ancestor::fieldset[1]').screenshot({ path: join(SHOTS, `b7-pick-order-${key}.png`) }).catch(() => {});
       await loadBtn.click();
+      await pg.waitForTimeout(2500); // 앞 크기의 같은 문구가 남아 있으므로 새로 불러올 시간을 준다
       const loadRe = /투표 \d+개 · 안 \d+건 · 제출 [\d·]+명을 불러왔습니다/;
       await pg.getByText(loadRe).waitFor({ timeout: 20000 });
       const loadMsg = await pg.getByText(loadRe).textContent();
       await pg.locator('[data-testid=division-ceremony-start]').click();
-      const seen = { disabledNone, loadMsg, verdicts: [] };
+      const seen = { disabledNone, loadMsg, verdicts: [], pickOrder: pickOrder.map((b) => b.title), badges, expectedOrder: pickOrder.flatMap((b) => b.items.map((it) => it.statement.split(' ')[0])) };
       let n = 0;
       const status = await runCeremony(pg, async (step) => {
         if (step === 'intro') {
@@ -1982,7 +2012,12 @@ function judgeBatch() {
   const B = S.batch;
   if (!B) return;
   if (B.errors?.length) record('BATCH-SECTION', false, B.errors.join(' | '));
-  if (B.lock) record('OBS-lock-batch', B.lock.shownAfterImport === '2분과' && /2분과 의결/.test(B.lock.createBtn) && /^rejected/.test(B.lock.serverCreateOtherDivision), `b2 콘솔 가져오기 직후 「${B.lock.shownAfterImport}」 · 만들기 버튼 「${B.lock.createBtn}」 · 서버 2분과 토큰→1분과 생성 ${B.lock.serverCreateOtherDivision}`);
+  if (B.lock) {
+    record('L1', B.lock.shownAfterImport === '2분과' && /「2분과 의결/.test(B.lock.createBtn) && B.lock.staleShown === '2분과' && /「2분과 의결/.test(B.lock.staleBtn), `가져오기 직후 「${B.lock.shownAfterImport}」·버튼 「${B.lock.createBtn}」 · 저장소에 1분과 선택 후 재진입 「${B.lock.staleShown}」·버튼 「${B.lock.staleBtn}」(저장값 → ${B.lock.storedAfter})`);
+    record('N16-server', /subgroup not in authorization scope/.test(B.lock.serverCreateOtherDivision), `2분과 조 토큰 → 1분과 ballot_create_v3: ${B.lock.serverCreateOtherDivision}`);
+    record('N16-sessionwide(관찰)', true, `2분과 조 토큰 → 세션 전체(null) 생성: ${B.lock.serverCreateSessionWide}`);
+  }
+  if (B.dwell) record('E2-poll', B.dwell.board400 <= 1 && B.dwell.notice === 1, `기본 탭 ${B.dwell.ms / 1000}초(폴링 5초) 머문 동안 agenda_board_v2 400 ${B.dwell.board400}건 · 안내문 ${B.dwell.notice}`);
   const sizes = (d) => Object.values(B.measure?.[d]?.sizes ?? {});
   const divs = [1, 2, 3];
   const okMeasured = divs.every((d) => B.measure?.[d] && sizes(d).length === 4);
@@ -1995,6 +2030,9 @@ function judgeBatch() {
   const b5 = B.b5;
   const cerOk = (c) => c && c.status === 'done' && c.loadedN === b5.expect.total && c.verdicts.length === b5.expect.total && c.match.every((m) => m.got === m.exp && m.stamp === m.expStamp) && new RegExp(`의결 ${b5.expect.expPass}건`).test(c.summary) && c.intro === String(b5.expect.quorum);
   record('B5', !!b5 && JSON.stringify(b5.yeasA) === JSON.stringify(b5.expA) && JSON.stringify(b5.yeasB) === JSON.stringify(b5.expB) && b5.submitted.every(([a, b]) => a > 0 && b > 0) && b5.final.every((s) => s === 'published') && cerOk(b5.cer?.['1920']) && cerOk(b5.cer?.['1280']), b5 ? `기기 ${b5.submitted.length}대 · A 찬성 ${b5.yeasA}(기대 ${b5.expA}) · B ${b5.yeasB}(기대 ${b5.expB}) · R${R_IN_J}/M${M_IN_J} 기준 ${b5.expect.threshold}표 · 불러온 안 ${b5.cer?.['1920']?.loadedN}/${b5.expect.total} · 요약 「${b5.cer?.['1920']?.summary}」 기대 의결 ${b5.expect.expPass}건 · 1280 ${cerOk(b5.cer?.['1280'])}` : '미측정');
+  const b7 = ['1920', '1280'].map((k) => b5?.cer?.[k]);
+  const b7ok = (c) => c && JSON.stringify(c.badges) === JSON.stringify(['1', '2']) && JSON.stringify(c.verdicts.map((v) => v.label)) === JSON.stringify(c.expectedOrder);
+  record('B7', b7.every(b7ok), b7.map((c, i) => (c ? `${i ? '#2→#1' : '#1→#2'} 체크: 순번 ${c.badges.join(',')} · 공개 ${c.verdicts.map((v) => v.label).join(' ')} (기대 ${c.expectedOrder.join(' ')})` : '미측정')).join(' | '));
   const b6 = B.b6;
   record('B6', !!b6 && b6.rows === 1 && b6.idShape && b6.items === 1, b6 ? `「${b6.title}」 ${b6.rows}개 · 문항 ${b6.items}` : '미측정');
   const c1 = B.c1;
@@ -2023,7 +2061,12 @@ function judgeBatch() {
   const envSlug = unexpected.filter((x) => /recommendation board\] refresh failed.*session mismatch/s.test(x.m));
   const other = unexpected.filter((x) => !envSlug.includes(x));
   S.batchErrors.envSlug = envSlug.length;
-  record('E2', pe.length === 0 && unexpected.length === 0, `pageerror ${pe.length} · console error ${ce.length} = 의도된 4xx·저장소 차단 ${ce.length - unexpected.length} + 드라이런 세션 slug 불일치(진행 보드) ${envSlug.length} + 그 외 ${other.length} ${other.slice(0, 3).map((x) => `${x.k}: ${x.m.slice(0, 80)}`).join(' | ')}`);
+  // 8767cdb 기준 판정: JS console.error 0 + 세션 불일치 400(agenda_board_v2)은 콘솔당 최대 1건(의도된 거부) + 그 밖의 4xx 응답 0
+  const resourceMsgs = ce.filter((x) => /Failed to load resource/.test(x.m));
+  const board400 = Object.fromEntries(names.map((k) => [k, netErrors[k].filter((x) => /^400 .*agenda_board_v2/.test(x)).length]));
+  const other4xx = names.flatMap((k) => netErrors[k].filter((x) => !/agenda_board_v2/.test(x)).map((x) => `${k}: ${x}`));
+  const okE2 = pe.length === 0 && unexpected.length === 0 && Object.values(board400).every((n) => n <= 1) && other4xx.length === 0 && resourceMsgs.length <= Object.values(board400).reduce((a, b) => a + b, 0);
+  record('E2', okE2, `pageerror ${pe.length} · JS console.error ${unexpected.length}${unexpected.length ? ` (${unexpected.slice(0, 2).map((x) => `${x.k}: ${x.m.slice(0, 70)}`).join(' | ')})` : ''} · 세션 불일치 400 콘솔별 ${JSON.stringify(Object.fromEntries(Object.entries(board400).filter(([, n]) => n)))} · 브라우저 자동 「Failed to load resource」 ${resourceMsgs.length} · 그 밖의 4xx ${other4xx.length}`);
 }
 const R_IN_J = 8;
 const M_IN_J = 5;
