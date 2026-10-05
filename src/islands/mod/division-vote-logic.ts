@@ -407,7 +407,38 @@ export type DivisionBallotPlan = {
   problems: string[];
 };
 
-export function buildDivisionBallot(division: number, motions: readonly Motion[]): DivisionBallotPlan {
+/**
+ * 의결안을 투표 묶음으로 나눈다. 주제 순서를 지키고 한 주제를 두 묶음으로 쪼개지 않는다.
+ * 다음 주제를 더하면 size 를 넘을 때 새 묶음을 연다. 한 주제가 size 보다 크면 그 주제만으로 한 묶음.
+ * size = 1 이면 안 하나씩, Infinity 면 전체 한 번.
+ */
+export function batchMotions(motions: readonly Motion[], size: number): Motion[][] {
+  if (size <= 1) return motions.map((m) => [m]);
+  const topics: Motion[][] = [];
+  for (const m of motions) {
+    const last = topics[topics.length - 1];
+    if (last && last[0].topicNo === m.topicNo) last.push(m);
+    else topics.push([m]);
+  }
+  const batches: Motion[][] = [];
+  for (const group of topics) {
+    const last = batches[batches.length - 1];
+    if (last && last.length + group.length <= size) last.push(...group);
+    else batches.push([...group]);
+  }
+  return batches;
+}
+
+/** 묶음 이름 — 「1-1~1-4」 또는 「1-2」. 투표 제목에 붙어 투표 목록에서 서로 구분된다. */
+export function batchLabel(batch: readonly Motion[]): string {
+  if (batch.length === 0) return '';
+  const first = batch[0].topicNo;
+  const last = batch[batch.length - 1].topicNo;
+  if (batch.length === 1) return batch[0].id;
+  return first === last ? first : `${first}~${last}`;
+}
+
+export function buildDivisionBallot(division: number, motions: readonly Motion[], label?: string): DivisionBallotPlan {
   const subgroup = divisionLabel(division);
   const problems: string[] = [];
   if (motions.length === 0) problems.push('투표에 넣을 의결안을 1개 이상 고르십시오.');
@@ -427,7 +458,7 @@ export function buildDivisionBallot(division: number, motions: readonly Motion[]
   });
   return {
     payload: {
-      title: `${subgroup} 의결`,
+      title: label ? `${subgroup} 의결 ${label}` : `${subgroup} 의결`,
       instructions: '안마다 찬성 또는 반대를 고릅니다.',
       items,
       subgroup,

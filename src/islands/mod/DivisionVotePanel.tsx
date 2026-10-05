@@ -20,6 +20,8 @@ import {
   PREP_DIVISION_KEY,
   attendanceText,
   ballotCeremonyItems,
+  batchLabel,
+  batchMotions,
   buildDivisionBallot,
   canCombine,
   combineFailureText,
@@ -537,6 +539,14 @@ function useDivisionBallots(access: WorkshopAuthorization | null, subgroup: stri
   return { rows, failed, refresh };
 }
 
+/** [묶음 크기, 버튼 이름]. 1 = 안 하나씩, Infinity = 분과 전체 한 번. */
+const BATCH_SIZES: ReadonlyArray<readonly [number, string]> = [
+  [1, '하나씩'],
+  [5, '5개 안팎'],
+  [10, '10개 안팎'],
+  [Number.POSITIVE_INFINITY, '전체 한 번'],
+];
+
 function BallotOpener({ state, access }: { state: PrepState; access: WorkshopAuthorization | null }) {
   const subgroup = divisionLabel(state.division);
   const [picked, setPicked] = useState<string[]>(() => state.motions.map((m) => m.id));
@@ -550,8 +560,11 @@ function BallotOpener({ state, access }: { state: PrepState; access: WorkshopAut
 
   useEffect(() => setPicked(state.motions.map((m) => m.id)), [state.division, state.motions.length]);
 
+  const [batchSize, setBatchSize] = useState<number>(5);
+  const batches = batchMotions(state.motions, batchSize);
   const motions = state.motions.filter((m) => picked.includes(m.id));
-  const plan = buildDivisionBallot(state.division, motions);
+  const plan = buildDivisionBallot(state.division, motions, motions.length < state.motions.length ? batchLabel(motions) : undefined);
+  const duplicate = (rows ?? []).some((b) => b.title === plan.payload.title);
 
   const create = async () => {
     if (!access) return;
@@ -580,6 +593,46 @@ function BallotOpener({ state, access }: { state: PrepState; access: WorkshopAut
 
   return (
     <div className="space-y-5">
+      {state.motions.length > 0 ? (
+        <div className="rounded-2xl border border-[#DCE7EE] p-4" data-testid="division-batches">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[16px] font-bold text-[#1F4E79]">묶음 크기</span>
+            {BATCH_SIZES.map(([size, label]) => (
+              <button
+                key={label}
+                type="button"
+                aria-pressed={batchSize === size}
+                className={batchSize === size ? btnPrimary : btnGhost}
+                onClick={() => setBatchSize(size)}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-[15px] text-[#5A6B73]">주제 순서대로 묶고 한 주제는 쪼개지 않습니다. 묶음을 누르면 아래 목록이 그 묶음으로 바뀝니다.</p>
+          <ol className="mt-3 flex flex-wrap gap-2">
+            {batches.map((batch, i) => {
+              const label = batchLabel(batch);
+              const made = (rows ?? []).some((b) => b.title === `${subgroup} 의결 ${label}`);
+              const active = batch.length === motions.length && batch.every((m) => picked.includes(m.id));
+              return (
+                <li key={batch[0].id}>
+                  <button
+                    type="button"
+                    aria-pressed={active}
+                    className={active ? btnPrimary : btnGhost}
+                    onClick={() => setPicked(batch.map((m) => m.id))}
+                  >
+                    {i + 1}. {label} · 안 {batch.length}
+                    {made ? ' ✓' : ''}
+                  </button>
+                </li>
+              );
+            })}
+          </ol>
+        </div>
+      ) : null}
+
       {state.motions.length === 0 ? (
         <p className="text-[17px] text-[#5A6B73]">준비판에서 의결안을 먼저 만드십시오.</p>
       ) : (
@@ -612,6 +665,12 @@ function BallotOpener({ state, access }: { state: PrepState; access: WorkshopAut
         </ul>
       ) : null}
 
+      {duplicate && plan.problems.length === 0 ? (
+        <p role="alert" className="rounded-xl border border-[#F5A623]/40 bg-[#FFF7E6] px-4 py-3 text-[16px] font-bold text-[#8A5A00]">
+          「{plan.payload.title}」 투표가 이미 있습니다. 다시 만들면 같은 이름이 둘이 됩니다.
+        </p>
+      ) : null}
+
       <div className="flex flex-wrap items-center gap-3">
         <button
           type="button"
@@ -620,7 +679,7 @@ function BallotOpener({ state, access }: { state: PrepState; access: WorkshopAut
           disabled={!access || busy || plan.problems.length > 0}
           onClick={() => setConfirming(true)}
         >
-          {subgroup} 투표 만들기 (찬성/반대)
+          「{plan.payload.title}」 투표 만들기 (찬성/반대)
         </button>
         {!access ? <span className="text-[16px] text-[#5A6B73]">조 코드로 들어온 콘솔에서 만들 수 있습니다.</span> : null}
       </div>
@@ -690,7 +749,7 @@ function CeremonySetup({ state, access }: { state: PrepState; access: WorkshopAu
   const [present, setPresent] = useState(45);
   const [mode, setMode] = useState<'practice' | 'ballot'>('practice');
   const [yeas, setYeas] = useState<Record<string, number>>({});
-  const [ballotId, setBallotId] = useState<string>('');
+  const [ballotIds, setBallotIds] = useState<string[]>([]);
   const [ballotItems, setBallotItems] = useState<CeremonyItem[] | null>(null);
   const [loadMsg, setLoadMsg] = useState<string | null>(null);
   const [running, setRunning] = useState<CeremonyItem[] | null>(null);
@@ -702,19 +761,25 @@ function CeremonySetup({ state, access }: { state: PrepState; access: WorkshopAu
     setYeas(next);
   };
 
+  // 묶음으로 나눠 연 투표를 여러 개 골라 한 세리머니로 잇는다(목록 순서대로).
   const loadResults = async () => {
-    const b = (rows ?? []).find((r) => r.id === ballotId);
-    if (!access || !b) return;
+    const chosen = (rows ?? []).filter((r) => ballotIds.includes(r.id));
+    if (!access || chosen.length === 0) return;
     setLoadMsg('불러오는 중…');
     try {
-      const res = await ballotResults(b.token, access);
-      if (!res) {
-        setLoadMsg('결과를 읽을 수 없습니다.');
-        return;
+      const all: CeremonyItem[] = [];
+      const counts: number[] = [];
+      for (const b of chosen) {
+        const res = await ballotResults(b.token, access);
+        if (!res) {
+          setLoadMsg(`「${b.title}」 결과를 읽을 수 없습니다.`);
+          return;
+        }
+        all.push(...ballotCeremonyItems(res));
+        counts.push(res.responses);
       }
-      const items = ballotCeremonyItems(res);
-      setBallotItems(items);
-      setLoadMsg(`안 ${items.length}건 · 제출 ${res.responses}명을 불러왔습니다.`);
+      setBallotItems(all);
+      setLoadMsg(`투표 ${chosen.length}개 · 안 ${all.length}건 · 제출 ${counts.join('·')}명을 불러왔습니다.`);
     } catch (error) {
       console.error('[division vote] results failed', error);
       setLoadMsg('결과를 읽지 못했습니다.');
@@ -781,20 +846,35 @@ function CeremonySetup({ state, access }: { state: PrepState; access: WorkshopAu
       ) : !access ? (
         <p className="text-[17px] text-[#5A6B73]">실제 결과는 조 코드로 들어온 콘솔에서 불러옵니다.</p>
       ) : (
-        <div className="flex flex-wrap items-center gap-3">
-          <select className="min-h-12 rounded-xl border border-[#C4D8E4] px-3 text-[17px]" value={ballotId} onChange={(e) => setBallotId(e.target.value)} aria-label="투표 고르기">
-            <option value="">{subgroup} 투표 고르기</option>
+        <fieldset className="rounded-2xl border border-[#DCE7EE] p-4">
+          <legend className="px-1 text-[16px] font-bold text-[#1F4E79]">{subgroup} 투표 고르기 (여러 개면 순서대로 이어 공개)</legend>
+          <ul className="space-y-1">
             {(rows ?? []).map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.title} · {ballotStatusLabel(b.status)} · 제출 {b.response_count}명
-              </option>
+              <li key={b.id}>
+                <label className="flex min-h-11 cursor-pointer items-center gap-3 text-[17px]">
+                  <input
+                    type="checkbox"
+                    className="h-6 w-6"
+                    data-ballot-pick={b.id}
+                    checked={ballotIds.includes(b.id)}
+                    onChange={() => setBallotIds((prev) => (prev.includes(b.id) ? prev.filter((x) => x !== b.id) : [...prev, b.id]))}
+                  />
+                  <span className="font-bold">{b.title}</span>
+                  <span className="text-[#5A6B73]">
+                    {ballotStatusLabel(b.status)} · 제출 {b.response_count}명
+                  </span>
+                </label>
+              </li>
             ))}
-          </select>
-          <button type="button" className={btnGhost} disabled={!ballotId} onClick={() => void loadResults()}>
-            결과 불러오기
-          </button>
-          {loadMsg ? <span className="text-[16px] font-bold text-[#1F4E79]">{loadMsg}</span> : null}
-        </div>
+            {rows && rows.length === 0 ? <li className="text-[16px] text-[#5A6B73]">아직 없습니다.</li> : null}
+          </ul>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <button type="button" className={btnGhost} disabled={ballotIds.length === 0} onClick={() => void loadResults()}>
+              결과 불러오기
+            </button>
+            {loadMsg ? <span className="text-[16px] font-bold text-[#1F4E79]">{loadMsg}</span> : null}
+          </div>
+        </fieldset>
       )}
 
       <button

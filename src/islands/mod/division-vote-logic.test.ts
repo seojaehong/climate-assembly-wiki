@@ -10,6 +10,8 @@ import {
   attendanceText,
   ballotCeremonyItems,
   barRatio,
+  batchLabel,
+  batchMotions,
   buildDivisionBallot,
   canCombine,
   cardStatusText,
@@ -194,6 +196,43 @@ describe('JSON 내보내기·가져오기', () => {
     expect(prepStorageKey(2)).not.toBe(prepStorageKey(3));
     expect(prepStorageKey(2)).toContain(':2');
     expect(exportFileName(2, new Date(2026, 9, 17, 14, 5))).toBe('1017_의결준비_2분과_20261017-1405.json');
+  });
+});
+
+describe('투표 묶음 — 주제를 쪼개지 않는다', () => {
+  // 주제별 안 수 3·1·1·4·2 (합 11)
+  const m = (topicNo: string, k: number): Motion => ({
+    id: `${topicNo}-안${k}`,
+    topicNo,
+    cardNos: [],
+    title: `${topicNo} 안${k}`,
+    text: '',
+    criteria: { effectiveness: false, equity: false, acceptability: false, sustainability: false, feasibility: false },
+  });
+  const sizes: Array<[string, number]> = [['1-1', 3], ['1-2', 1], ['1-3', 1], ['1-4', 4], ['1-5', 2]];
+  const all = sizes.flatMap(([t, n]) => Array.from({ length: n }, (_, i) => m(t, i + 1)));
+  const shape = (bs: Motion[][]) => bs.map((b) => b.map((x) => x.id));
+
+  it('5개 안팎: 다음 주제를 더하면 넘칠 때 새 묶음', () => {
+    const bs = batchMotions(all, 5);
+    expect(bs.map((b) => b.length)).toEqual([5, 4, 2]);
+    expect(bs.map(batchLabel)).toEqual(['1-1~1-3', '1-4', '1-5']);
+  });
+  it('묶음 크기보다 큰 주제는 그 주제만으로 한 묶음', () => {
+    expect(batchMotions(all, 3).map((b) => b.length)).toEqual([3, 2, 4, 2]);
+  });
+  it('하나씩 · 전체 한 번', () => {
+    expect(batchMotions(all, 1)).toHaveLength(11);
+    expect(batchMotions(all, Number.POSITIVE_INFINITY)).toHaveLength(1);
+    expect(batchLabel([all[0]])).toBe('1-1-안1');
+  });
+  it('모든 안이 빠짐없이 순서대로 들어간다', () => {
+    for (const size of [1, 3, 5, 10, Number.POSITIVE_INFINITY]) {
+      expect(shape(batchMotions(all, size)).flat()).toEqual(all.map((x) => x.id));
+    }
+  });
+  it('묶음 이름이 투표 제목에 붙어 서로 구분된다', () => {
+    expect(buildDivisionBallot(1, batchMotions(all, 5)[1], '1-4').payload.title).toBe('1분과 의결 1-4');
   });
 });
 

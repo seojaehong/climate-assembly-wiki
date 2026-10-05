@@ -584,6 +584,60 @@ async function phaseMain() {
   // N10a — 열린 동안 공개 결과 없음
   S.n10 = { open: (await rpc('ballot_results', { p_token: mainBallot.token })).data };
 
+  // ═══ N15 분과 격리 — 운영진(분과 없음) 토큰으로 1분과·3분과·세션 전체 투표를 만든다 ═══
+  if (seed.teams.o) {
+    const TO = await login('o');
+    const mk = async (sub, title) => {
+      const r = await rpc('ballot_create_v3', { p_token: TO, p_title: title, p_instructions: null, p_items: [{ ordinal: 1, statement: `${title} 문항`, scale: 2, required: true }], p_subgroup: sub, p_idempotency_key: randomUUID() });
+      if (r.ok) manifest.ballots.push(r.data.id);
+      return r.ok ? r.data.id : null;
+    };
+    const b1 = await mk('1분과', 'N15 1분과 투표');
+    const b3 = await mk('3분과', 'N15 3분과 투표');
+    const ball = await mk(null, 'N15 세션 전체 투표');
+    saveManifest();
+    // 2분과 콘솔 「투표」 탭
+    await pg.locator('#mod-tab-decision').click();
+    await pg.locator('#mod-tab-vote').click();
+    await pg.waitForTimeout(500);
+    await pg.reload({ waitUntil: 'networkidle' });
+    await pg.locator('#mod-tab-vote').waitFor({ timeout: 30000 });
+    await pg.locator('#mod-tab-vote').click();
+    await pg.waitForTimeout(2500);
+    const seen2 = await pg.locator('[data-ballot-id]').evaluateAll((els) => els.map((e) => e.getAttribute('data-ballot-id')));
+    await pg.getByRole('button', { name: /새 다의제 투표/ }).click();
+    await pg.waitForTimeout(800);
+    const targets2 = await pg.locator('button[aria-pressed]').evaluateAll((els) => els.map((e) => `${e.textContent.trim()}${e.getAttribute('aria-pressed') === 'true' ? '*' : ''}`));
+    await pg.screenshot({ path: join(SHOTS, 'n15-mod2-create-targets.png') });
+    await pg.reload({ waitUntil: 'networkidle' });
+    await pg.locator('#mod-tab-vote').waitFor({ timeout: 30000 });
+    // 운영진 콘솔
+    const MO = await newCtx('modOps');
+    await MO.page.goto(`${SITE}/mod?code=${seed.teams.o[1]}`, { waitUntil: 'networkidle' });
+    await MO.page.locator('#mod-tab-vote').waitFor({ timeout: 30000 });
+    await MO.page.locator('#mod-tab-vote').click();
+    await MO.page.waitForTimeout(2500);
+    const seenO = await MO.page.locator('[data-ballot-id]').evaluateAll((els) => els.map((e) => e.getAttribute('data-ballot-id')));
+    await MO.page.getByRole('button', { name: /새 다의제 투표/ }).click();
+    await MO.page.waitForTimeout(1500);
+    const targetsO = await MO.page.locator('button[aria-pressed]').evaluateAll((els) => els.map((e) => `${e.textContent.trim()}${e.getAttribute('aria-pressed') === 'true' ? '*' : ''}`));
+    await MO.page.screenshot({ path: join(SHOTS, 'n15-ops-create-targets.png') });
+    S.opsErrors = [...pageErrors.modOps];
+    await MO.ctx.close();
+    // 알려진 서버 위험 — 2분과 조 토큰으로 1분과 투표 상태 변경
+    const risk = await rpc('ballot_set_status_v2', { p_token: T2, p_ballot_id: b1, p_status: 'open' });
+    S.n15 = {
+      mod2: { main: seen2.includes(mainBallot.id), all: seen2.includes(ball), b1: seen2.includes(b1), b3: seen2.includes(b3), n: seen2.length, targets: targets2 },
+      ops: { main: seenO.includes(mainBallot.id), all: seenO.includes(ball), b1: seenO.includes(b1), b3: seenO.includes(b3), n: seenO.length, targets: targetsO },
+      serverRisk: risk.ok ? `ACCEPTED → ${risk.data.status}` : `rejected: ${risk.message}`,
+    };
+    // 뒤 시험에 끼지 않게 치운다
+    for (const id of [b1, b3, ball]) if (id) await rpc('ballot_set_status_v2', { p_token: TO, p_ballot_id: id, p_status: 'archived' });
+    await logout(TO);
+    manifest.tokens.o.loggedOut = true;
+    saveManifest();
+  }
+
   // ═══ P5 투표 — 화면 3표 ═══
   const itemsRes = await rpc('ballot_get', { p_token: mainBallot.token });
   const items = itemsRes.data.items.sort((a, b) => a.ordinal - b.ordinal);
@@ -699,7 +753,7 @@ async function phaseMain() {
     await pg.getByLabel('참석 M').fill('45');
     await pg.getByRole('radio', { name: '실제 투표 결과' }).click();
     await pg.waitForTimeout(1200);
-    await pg.getByLabel('투표 고르기').selectOption(mainBallot.id);
+    await pg.locator(`[data-ballot-pick="${mainBallot.id}"]`).check();
     await pg.getByRole('button', { name: '결과 불러오기' }).click();
     await pg.getByText(/제출 \d+명을 불러왔습니다/).waitFor({ timeout: 15000 });
     const loadMsg = await pg.getByText(/제출 \d+명을 불러왔습니다/).textContent();
@@ -863,17 +917,98 @@ async function phaseMain() {
     out.b = { textLen: (await B2.page.locator('body').innerText()).length, errors: [...pageErrors.blockB] };
     await B2.page.screenshot({ path: join(SHOTS, 'n11-b-storage-blocked.png') });
     await B2.ctx.close();
+    // (a) 저장소 차단 기기로 2분과 /mod 입장 → 10/17 탭 → 투표 생성·시작. 2분과 기기 2대 상한 때문에 스크립트 토큰을 먼저 내려놓는다.
+    await logout(T2);
+    manifest.tokens['2'].loggedOut = true;
     const B3 = await newCtx('blockMod', { blockStorage: true });
-    await B3.page.goto(`${SITE}/mod?code=${seed.teams['3'][1]}`, { waitUntil: 'networkidle' });
-    await B3.page.waitForTimeout(4000);
-    const hasTabs = await B3.page.locator('#mod-tab-decision').count();
+    const bp = B3.page;
+    await bp.goto(`${SITE}/mod?code=${seed.teams['2'][1]}`, { waitUntil: 'networkidle' });
+    await bp.locator('#mod-tab-decision').waitFor({ timeout: 30000 }).catch(() => {});
+    const hasTabs = await bp.locator('#mod-tab-decision').count();
+    out.mod = { joined: hasTabs > 0 };
+    let nb = null;
     if (hasTabs) {
-      await B3.page.locator('#mod-tab-decision').click();
-      await B3.page.waitForTimeout(800);
+      await bp.locator('#mod-tab-decision').click();
+      await importFile(bp, RECS_FILE);
+      await divBtn(bp, 2).click();
+      const card = byDiv[2].topics.find((t) => t.no === '2-3')?.cards[0]?.no ?? byDiv[2].topics[2].cards[0].no;
+      await makeMotion(bp, [card], 'N11 저장소 차단 안');
+      out.mod.warn = await bp.getByText('저장소를 쓸 수 없어').count();
+      await viewTab(bp, '투표 열기').click();
+      await bp.locator('[data-testid=division-ballot-create]').click();
+      await bp.getByRole('dialog', { name: '투표 만들기 확인' }).getByRole('button', { name: '만들기' }).click();
+      out.mod.created = await bp.getByText('투표 초안을 만들었습니다').waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
+      const before = new Set([mainBallot.id]);
+      const l = (await rpc('ballot_list_v2', { p_token: T3 })).data ?? [];
+      const row = l.find((x) => x.subgroup === '2분과' && x.status === 'draft' && !before.has(x.id));
+      if (row) {
+        nb = { id: row.id, token: row.token };
+        manifest.ballots.push(row.id);
+        saveManifest();
+        await bp.locator('#mod-tab-vote').click();
+        await bp.waitForTimeout(1500);
+        await ballotCard(bp, nb.id).getByRole('button', { name: '투표 시작', exact: true }).click();
+        await bp.getByRole('dialog').getByRole('button', { name: '투표 시작', exact: true }).click();
+        await bp.waitForTimeout(1500);
+        out.mod.status = ((await rpc('ballot_list_v2', { p_token: T3 })).data ?? []).find((x) => x.id === nb.id)?.status;
+        await bp.keyboard.press('Escape');
+      }
     }
-    out.mod = { tabs: hasTabs, panel: await B3.page.locator('[data-testid=division-vote-panel]').count(), warn: await B3.page.getByText('저장소를 쓸 수 없어').count(), textLen: (await B3.page.locator('body').innerText()).length, errors: [...pageErrors.blockMod] };
-    await B3.page.screenshot({ path: join(SHOTS, 'n11-mod-storage-blocked.png') });
+    out.mod.errors = [...pageErrors.blockMod];
+    await bp.screenshot({ path: join(SHOTS, 'n11-mod-storage-blocked.png') });
     await B3.ctx.close();
+    // (b)(c)(d) 저장소 차단 기기로 /b 투표
+    if (nb) {
+      const count = async () => (await rpc('ballot_results_v2', { p_ballot_token: nb.token, p_token: T3 })).data?.responses;
+      const B4 = await newCtx('blockVote', { blockStorage: true, viewport: { width: 390, height: 844 } });
+      const vp = B4.page;
+      const sent = [];
+      vp.on('request', (rq) => {
+        if (rq.url().includes('/rpc/ballot_submit')) {
+          try {
+            sent.push(JSON.parse(rq.postData()).p_client_id);
+          } catch {
+            /* */
+          }
+        }
+      });
+      const submitOnce = async () => {
+        await vp.goto(`${SITE}/b?t=${nb.token}`, { waitUntil: 'networkidle' });
+        const g = vp.locator('[role=group][aria-label$="응답"]');
+        const shown = await g.first().waitFor({ timeout: 15000 }).then(() => true).catch(() => false);
+        if (!shown) return { form: false, text: (await vp.locator('body').innerText()).replace(/\s+/g, ' ').slice(0, 80) };
+        await g.first().getByRole('button', { name: '찬성', exact: true }).click();
+        await vp.getByRole('button', { name: '제출하기' }).first().click();
+        await vp.getByRole('dialog').getByRole('button', { name: '제출하기' }).click();
+        await vp.waitForTimeout(2000);
+        return { form: true, text: (await vp.locator('body').innerText()).replace(/\s+/g, ' ').slice(0, 80) };
+      };
+      const c0 = await count();
+      const first = await submitOnce();
+      const c1 = await count();
+      // (c) 같은 페이지 — 폼이 남아 있는지, 같은 기기 토큰으로 다시 보내면 거절되는지
+      const formStill = await vp.locator('[role=group][aria-label$="응답"]').count();
+      const again = sent[0] ? await vote(nb.token, sent[0], { [((await rpc('ballot_get', { p_token: nb.token })).data.items[0].id)]: 2 }) : { ok: false, message: 'no client id captured' };
+      const c2 = await count();
+      // (d) 새로고침 — 메모리 토큰이 사라지면 새 토큰으로 다시 들어가는가
+      const second = await submitOnce();
+      const c3 = await count();
+      for (const cid of sent) manifest.clientIds.push(cid);
+      saveManifest();
+      await vp.screenshot({ path: join(SHOTS, 'n11-b-after-reload.png') });
+      out.b = {
+        counts: [c0, c1, c2, c3],
+        first: first.text,
+        sameTabFormVisible: formStill > 0,
+        samePageResubmit: again.ok ? 'ACCEPTED' : again.message.slice(0, 40),
+        afterReload: second,
+        clientIds: sent.length,
+        distinctClientIds: new Set(sent).size,
+        errors: [...pageErrors.blockVote],
+      };
+      await B4.ctx.close();
+      await rpc('ballot_set_status_v2', { p_token: T3, p_ballot_id: nb.id, p_status: 'archived' });
+    }
     S.n11 = out;
   }
 
@@ -1020,7 +1155,7 @@ async function phaseP5() {
     await pg.getByLabel('참석 M').fill('45');
     await pg.getByRole('radio', { name: '실제 투표 결과' }).click();
     await pg.waitForTimeout(1200);
-    await pg.getByLabel('투표 고르기').selectOption(mainBallot.id);
+    await pg.locator(`[data-ballot-pick="${mainBallot.id}"]`).check();
     await pg.getByRole('button', { name: '결과 불러오기' }).click();
     await pg.getByText(/제출 \d+명을 불러왔습니다/).waitFor({ timeout: 15000 });
     const loadMsg = await pg.getByText(/제출 \d+명을 불러왔습니다/).textContent();
