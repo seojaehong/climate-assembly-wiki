@@ -1031,7 +1031,10 @@ async function phaseMain() {
         errors: [...pageErrors.blockVote],
       };
       await B4.ctx.close();
-      await rpc('ballot_set_status_v2', { p_token: T3, p_ballot_id: nb.id, p_status: 'archived' });
+      // 2분과 투표다. s24 이후 3분과 토큰으로는 보관이 거부되므로 운영진(분과 없음) 토큰으로 치운다.
+      const TA = seed.teams.o ? await login('o') : T3;
+      const arch = await rpc('ballot_set_status_v2', { p_token: TA, p_ballot_id: nb.id, p_status: 'archived' });
+      if (!arch.ok) console.warn(`N11 정리 실패 — ${arch.message}. 정리 SQL 로 보관할 것`);
     }
     S.n11 = out;
   }
