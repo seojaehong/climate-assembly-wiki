@@ -106,6 +106,8 @@ const browser = await chromium.launch({ headless: true });
 const bundles = new Map(); // url → body (운영에서 받은 js)
 const supabaseHits = { lab: [] };
 const pageErrors = {};
+const consoleErrors = {};
+const netErrors = {};
 
 async function newCtx(name, { viewport = { width: 1440, height: 900 }, blockStorage = false } = {}) {
   const ctx = await browser.newContext({ viewport, locale: 'ko-KR', acceptDownloads: true });
@@ -124,8 +126,11 @@ async function newCtx(name, { viewport = { width: 1440, height: 900 }, blockStor
     });
   }
   pageErrors[name] = [];
+  consoleErrors[name] = [];
+  netErrors[name] = [];
   ctx.on('response', async (res) => {
     const u = res.url();
+    if (res.status() >= 400) netErrors[name].push(`${res.status()} ${u.replace(/\?.*$/, '').replace(/^https:\/\/[^/]+/, '')}`);
     if (u.startsWith(SITE) && /\.m?js(\?|$)/.test(u) && !bundles.has(u)) {
       try {
         bundles.set(u, await res.text());
@@ -136,6 +141,9 @@ async function newCtx(name, { viewport = { width: 1440, height: 900 }, blockStor
   });
   const page = await ctx.newPage();
   page.on('pageerror', (e) => pageErrors[name].push(String(e.message).slice(0, 200)));
+  page.on('console', (m) => {
+    if (m.type() === 'error') consoleErrors[name].push(m.text().slice(0, 200));
+  });
   page.on('dialog', async (d) => {
     page.__dialogs = [...(page.__dialogs ?? []), d.message()];
     if (page.__dismissNext) {
@@ -1214,14 +1222,754 @@ async function phaseExpired() {
   record('N9-만료', !r.ok && !r2.ok, `목록 ${r.message.slice(0, 45)} · 상태변경 ${r2.message.slice(0, 45)}`);
 }
 
+// ── 본 시험(S) 판정 — 값을 베끼지 않고 규칙으로 판정한다 ─────────
+function judgeMain() {
+  const has = (k) => S[k] !== undefined;
+  const j = (id, keys, fn, detail) => {
+    if (!keys.every(has)) return record(id, false, `미측정 — S.${keys.filter((k) => !has(k)).join(',')} 없음`);
+    let ok = false;
+    try {
+      ok = !!fn();
+    } catch (e) {
+      ok = false;
+    }
+    record(id, ok, detail());
+  };
+  const cleanAudit = (a) => a && !a.missing && a.small.length === 0 && a.off.length === 0 && a.overlaps.length === 0 && !a.hScroll;
+  j('P2', ['labStatus', 'labRobots', 'labSupabase'], () => S.labStatus === 200 && /noindex/.test(S.labRobots) && S.labSupabase === 0, () => `lab ${S.labStatus} · robots=${S.labRobots} · supabase 요청 ${S.labSupabase}`);
+  j('P3', ['labP3', 'p3mod'], () => S.labP3.ok && [1, 2, 3].every((d) => { const e = counts(byDiv[d]); const c = S.p3mod[d]; return c.topics === e.topics && c.cards === e.cards && c.recs === e.recs; }), () => `lab 1분과 ${JSON.stringify(S.labP3.c1 && [S.labP3.c1.topics, S.labP3.c1.cards, S.labP3.c1.recs])} · mod ${[1, 2, 3].map((d) => `${d}:${S.p3mod[d].topics}/${S.p3mod[d].cards}/${S.p3mod[d].recs}`).join(' ')}`);
+  j('P4', ['p4create', 'p4qr', 'p4qr2', 'motions'], () => S.p4create.count === 1 && S.p4create.status === 'draft' && S.p4create.items === S.motions.ids.length && JSON.stringify(S.p4create.stmtIds) === JSON.stringify(S.motions.ids) && S.p4create.scales.every((s) => s === 2) && S.p4qr.tokenMatch && S.p4qr2 === true, () => `투표 ${S.p4create.count}개 ${S.p4create.status} 문항 ${S.p4create.stmtIds.join(',')} scale ${S.p4create.scales} · QR ${S.p4qr.tokenMatch}/${S.p4qr2}`);
+  j('P5', ['p5ui', 'p5tally', 'p5c'], () => {
+    const t = S.p5tally;
+    const okTally = S.p5ui === 3 && t.rpcOk === 42 && t.responses === 45 && t.item1['2'] === 30 && t.item1['1'] === 15 && t.item2['2'] === 29 && t.item2['1'] === 16;
+    const okCer = ['1920', '1280'].every((k) => {
+      const c = S.p5c[k];
+      return c && c.intro === 'true' && c.verdicts.length === 2 && c.verdicts[0].yeas === '30' && c.verdicts[0].stamp === 'true' && c.verdicts[1].yeas === '29' && c.verdicts[1].stamp === 'false' && /의결 1건/.test(c.summary);
+    });
+    return okTally && okCer;
+  }, () => `화면 ${S.p5ui}표 + RPC ${S.p5tally.rpcOk} = ${S.p5tally.responses} · 안1 ${JSON.stringify(S.p5tally.item1)} 안2 ${JSON.stringify(S.p5tally.item2)} · 세리머니 ${['1920', '1280'].map((k) => (S.p5c[k]?.verdicts ?? []).map((v) => `${v.yeas}:${v.stamp}`).join('/')).join(' | ')}`);
+  j('P6', ['p6qr', 'p6'], () => ['1920', '1280'].every((k) => cleanAudit(S.p6qr[k]) && Object.values(S.p6[k] ?? {}).length >= 3 && Object.values(S.p6[k]).every(cleanAudit)), () => `QR·세리머니 ${['1920', '1280'].map((k) => `${k}: ${Object.keys(S.p6[k] ?? {}).length}장`).join(' ')} 겹침·넘침·24px 미만 0`);
+  j('P7', ['p7'], () => S.p7.defaultTab === 'mod-tab-progress' && S.p7.tabs.every((t) => t.selected && t.txtLen > 0) && Object.values(S.p7.http).every((s) => s === 200) && S.p7.errors.length === 0, () => `기본 탭 ${S.p7.defaultTab} · HTTP ${JSON.stringify(S.p7.http)} · 오류 ${S.p7.errors.length}`);
+  j('N1', ['n1'], () => S.n1.alert && S.n1.disabled && S.n1.unchanged, () => `${S.n1.alert} · 버튼 비활성 ${S.n1.disabled} · 무변화 ${S.n1.unchanged}`);
+  j('N2', ['n2'], () => S.n2.dis21 && !S.n2.dis20 && S.n2.alert && S.n2.rpc !== 'ACCEPTED', () => `21안 비활성 ${S.n2.dis21}·20안 활성 ${!S.n2.dis20} · RPC ${S.n2.rpc}`);
+  j('N3', ['n3'], () => S.n3.dis300 && S.n3.alert && S.n3.rpc !== 'ACCEPTED', () => `300자 초과 비활성 ${S.n3.dis300} · RPC ${S.n3.rpc}`);
+  j('N4', ['n4'], () => {
+    const r = S.n4.rows;
+    const q30 = r.find((x) => x.case === '재적60 참석30');
+    const q31 = r.find((x) => x.case === '재적60 참석31');
+    const p40 = r.find((x) => x.case === '찬성40/참석60');
+    const p39 = r.find((x) => x.case === '찬성39/참석60');
+    const bad = r.filter((x) => x.case.startsWith('R='));
+    return q30.established === 'false' && q30.nextDisabled && q30.phaseAfterKey === 'intro' && q31.established === 'true' && q31.phaseAfterKey === 'title' && p40.stamp === 'true' && /의결 1건/.test(p40.summary) && p39.stamp === 'false' && /의결 0건/.test(p39.summary) && bad.length === 9 && bad.every((x) => x.ceremonyNote === '' || x.ceremonyNote.startsWith('false/true')) && S.n4.pageErr === 0;
+  }, () => `정족수 30/31 · 가결 40/39 · 이상입력 ${S.n4.rows.filter((x) => x.case.startsWith('R=')).map((x) => x.ceremonyNote || '시작안됨').join(',')} · pageerror ${S.n4.pageErr}`);
+  j('N5', ['n5', 'n5other', 'xss', 'big'], () => S.n5.every((x) => x.rejected && x.same && x.pageErr === 0) && S.n5other.cancelKeeps && S.xss.flag === null && S.xss.imgs === 0 && S.xss.svgs === 0 && S.xss.shownAsText && S.big.pageErr === 0, () => `거절 ${S.n5.filter((x) => x.rejected && x.same).length}/${S.n5.length} · 취소 유지 ${S.n5other.cancelKeeps} · XSS ${S.xss.flag}/${S.xss.imgs} · 거대 ${S.big.mb}MB ${S.big.ms}ms`);
+  j('N6', ['n6'], () => /already/.test(S.n6.rpc) && S.n6.responses === 3 && S.n6.uiShowsSubmitted, () => `${S.n6.rpc} · 응답 ${S.n6.responses}`);
+  j('N7', ['n7'], () => S.n7.rpc && !S.n7.formVisible && S.n7.closedMsg, () => `${S.n7.rpc} · 폼 ${S.n7.formVisible}`);
+  j('N8', ['n8'], () => S.n8.rows.every((x) => x.rejected) && S.n8.responses === 45, () => `거절 ${S.n8.rows.filter((x) => x.rejected).length}/${S.n8.rows.length} · 응답 ${S.n8.responses}`);
+  j('N9', ['n9'], () => S.n9.every((x) => x.rejected), () => `거절 ${S.n9.filter((x) => x.rejected).length}/${S.n9.length}`);
+  j('N10', ['n10'], () => S.n10.open === null && S.n10.closed === null && !S.n10.closedPageHasNumbers && !!S.n10.published, () => `열림 ${S.n10.open} · 마감 ${S.n10.closed} · 공개 ${S.n10.published}`);
+  j('N11', ['n11'], () => {
+    const o = S.n11;
+    const c = o.b.counts ?? [];
+    return o.lab.panel === 1 && o.lab.warn >= 1 && o.lab.errors.length === 0 && o.mod.joined && o.mod.created && o.mod.status === 'open' && o.mod.errors.length === 0 && c.length === 4 && c[1] === c[0] + 1 && c[2] === c[1] && c[3] === c[2] + 1 && o.b.errors.length === 0;
+  }, () => `lab ${S.n11.lab.panel}/${S.n11.lab.warn} · mod ${S.n11.mod.created}/${S.n11.mod.status} · /b 제출 수 ${JSON.stringify(S.n11.b.counts)}`);
+  j('N12', ['n12'], () => S.n12.hits.length === 0 && S.n12.control, () => `번들 ${S.n12.bundles}개 표본 ${S.n12.sampled} 적중 ${S.n12.hits.length} · 대조군 ${S.n12.control}`);
+  j('N13', ['n13'], () => S.n13.every(([, ok]) => ok), () => `${S.n13.filter(([, ok]) => ok).length}/${S.n13.length}`);
+  j('N15', ['n15'], () => S.n15.mod2.main && S.n15.mod2.all && !S.n15.mod2.b1 && !S.n15.mod2.b3 && S.n15.ops.b1 && S.n15.ops.b3 && S.n15.ops.all, () => `2분과 콘솔 b1 ${S.n15.mod2.b1}·b3 ${S.n15.mod2.b3} · 운영진 전부 ${S.n15.ops.b1 && S.n15.ops.b3} (서버: 2분과 토큰으로 1분과 상태변경 ${S.n15.serverRisk})`);
+  // 별도 결함 항목 — UI 격리와 섞지 않는다
+  if (S.n15) record('N15-server', !/^ACCEPTED/.test(S.n15.serverRisk), `2분과 조 토큰 → 1분과 투표 ballot_set_status_v2: ${S.n15.serverRisk}`);
+}
+
+// ── 묶음 투표 ────────────────────────────────────────────────
+const HOMEWORK = ['2-14', '2-15', '2-16', '2-17'];
+const SIZES = [
+  [1, '하나씩'],
+  [5, '5개 안팎'],
+  [10, '10개 안팎'],
+  [Number.POSITIVE_INFINITY, '전체 한 번'],
+];
+/** 시험이 만드는 의결안 — 숙제 주제를 뺀 카드마다 하나. 제목은 번호만(공표 전 자료). */
+function plannedMotions(div) {
+  const out = [];
+  for (const t of byDiv[div].topics) {
+    if (HOMEWORK.includes(t.no)) continue;
+    t.cards.forEach((c, i) => out.push({ id: `${t.no}-안${i + 1}`, topicNo: t.no, cardNo: c.no, title: `드라이런 ${c.no}` }));
+  }
+  return out;
+}
+const topicOfId = (id) => id.replace(/-안\d+$/, '');
+/** 독립 재구현 — 로직 파일을 import 하지 않는다. 연속한 같은 주제를 한 덩어리로, 덩어리째 앞 묶음에 넣고 넘치면 새 묶음. */
+function expectBatches(ids, size) {
+  if (size <= 1) return ids.map((id) => [id]);
+  const chunks = [];
+  for (const id of ids) {
+    const t = topicOfId(id);
+    if (chunks.length && topicOfId(chunks[chunks.length - 1][0]) === t) chunks[chunks.length - 1].push(id);
+    else chunks.push([id]);
+  }
+  const out = [];
+  for (const ch of chunks) {
+    if (out.length && out[out.length - 1].length + ch.length <= size) out[out.length - 1].push(...ch);
+    else out.push([...ch]);
+  }
+  return out;
+}
+function expectLabel(batch) {
+  if (batch.length === 1) return batch[0];
+  const a = topicOfId(batch[0]);
+  const b = topicOfId(batch[batch.length - 1]);
+  return a === b ? a : `${a}~${b}`;
+}
+const batchArea = (page) => page.locator('[data-testid=division-batches]');
+const batchBtns = (page) => batchArea(page).locator('ol > li > button');
+const sizeBtn = (page, name) => batchArea(page).getByRole('button', { name, exact: true });
+async function pickedIds(page) {
+  return page.locator('[data-testid=division-vote-panel] fieldset li').evaluateAll((lis) =>
+    lis.filter((li) => li.querySelector('input')?.checked).map((li) => li.querySelector('span.font-bold').textContent.trim()),
+  );
+}
+async function shownMotionIds(page) {
+  return page.locator('[data-testid=division-vote-panel] fieldset li span.font-bold').allTextContents();
+}
+
+/** 콘솔에서 의결안을 카드마다 하나씩 만든다(UI). */
+async function makeAllMotions(page, div) {
+  await divBtn(page, div).click();
+  await viewTab(page, '준비판').click();
+  for (const m of plannedMotions(div)) await makeMotion(page, [m.cardNo], m.title, '');
+  return (await page.locator('[data-testid=motion-card]').evaluateAll((els) => els.map((e) => e.getAttribute('data-motion-id'))));
+}
+
+/** B1·B2·C2 측정 — 크기 4종 × 묶음 버튼 전부. */
+async function measureBatches(page, div) {
+  await viewTab(page, '투표 열기').click();
+  await batchArea(page).waitFor();
+  const screenIds = await shownMotionIds(page);
+  const plannedIds = plannedMotions(div).map((m) => m.id);
+  const out = { div, screenIds: screenIds.length, listMatchesPlan: JSON.stringify(screenIds) === JSON.stringify(plannedIds), sizes: {} };
+  for (const [size, name] of SIZES) {
+    await sizeBtn(page, name).click();
+    await page.waitForTimeout(100);
+    const pressed = await sizeBtn(page, name).getAttribute('aria-pressed');
+    const others = [];
+    for (const [, n2] of SIZES) if (n2 !== name) others.push(await sizeBtn(page, n2).getAttribute('aria-pressed'));
+    const texts = (await batchBtns(page).allTextContents()).map((t) => t.replace(/\s+/g, ' ').trim());
+    const members = [];
+    for (let i = 0; i < texts.length; i++) {
+      await batchBtns(page).nth(i).click();
+      members.push(await pickedIds(page));
+    }
+    const exp = expectBatches(screenIds, size);
+    const expTexts = exp.map((b, i) => `${i + 1}. ${expectLabel(b)} · 안 ${b.length}`);
+    const gotTexts = texts.map((t) => t.replace(/ ✓$/, ''));
+    const flat = members.flat();
+    const topicBatches = new Map();
+    members.forEach((b, i) => b.forEach((id) => topicBatches.set(topicOfId(id), new Set([...(topicBatches.get(topicOfId(id)) ?? []), i]))));
+    const s = {
+      pressed: pressed === 'true' && others.every((x) => x === 'false'),
+      n: texts.length,
+      expN: exp.length,
+      textsMatch: JSON.stringify(gotTexts) === JSON.stringify(expTexts),
+      membersMatch: JSON.stringify(members) === JSON.stringify(exp),
+      union: flat.length === screenIds.length && new Set(flat).size === screenIds.length && screenIds.every((id) => flat.includes(id)),
+      dup: flat.length - new Set(flat).size,
+      order: JSON.stringify(flat) === JSON.stringify(screenIds),
+      // 「하나씩」은 정의상 안 하나가 한 묶음이라 주제가 여러 묶음에 걸친다 — 걸침 검사는 크기 2 이상에만.
+      split: size <= 1 ? [] : [...topicBatches.entries()].filter(([, set]) => set.size > 1).map(([t]) => t),
+      splitByDesign: size <= 1 ? [...topicBatches.entries()].filter(([, set]) => set.size > 1).length : 0,
+      mismatch: gotTexts.map((t, i) => (t === expTexts[i] ? null : `${t} ≠ ${expTexts[i]}`)).filter(Boolean).slice(0, 3),
+      labels: gotTexts.map((t) => t.replace(/^\d+\. /, '')),
+    };
+    if (size === Number.POSITIVE_INFINITY) {
+      await batchBtns(page).first().click();
+      const alert = await page.locator('[data-testid=division-vote-panel] ul[role=alert]').textContent().catch(() => '');
+      s.c2 = { total: screenIds.length, disabled: await page.locator('[data-testid=division-ballot-create]').isDisabled(), alert: alert.slice(0, 60), cap: /20개/.test(alert) };
+    }
+    out.sizes[name] = s;
+  }
+  return out;
+}
+
+/** 묶음 하나로 투표 만들기. double = 확인 대화상자의 「만들기」를 같은 틱에 두 번 누른다. */
+async function createBatchBallot(page, sizeName, index, { double = false } = {}) {
+  await viewTab(page, '투표 열기').click();
+  await sizeBtn(page, sizeName).click();
+  await batchBtns(page).nth(index).click();
+  const ids = await pickedIds(page);
+  const btnText = (await page.locator('[data-testid=division-ballot-create]').textContent()).trim();
+  await page.locator('[data-testid=division-ballot-create]').click();
+  const dlg = page.getByRole('dialog', { name: '투표 만들기 확인' });
+  const make = dlg.getByRole('button', { name: '만들기', exact: true });
+  if (double) await make.evaluate((b) => { b.click(); b.click(); });
+  else await make.click();
+  await dlg.waitFor({ state: 'detached', timeout: 20000 });
+  await page.waitForTimeout(1200);
+  return { ids, btnText };
+}
+
+async function regionAudit(page, sel) {
+  return page.evaluate((sel) => {
+    const root = document.querySelector(sel);
+    if (!root) return { missing: true };
+    const els = [];
+    for (const el of root.querySelectorAll('*')) {
+      const direct = [...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim());
+      if (!direct && !['BUTTON', 'INPUT'].includes(el.tagName)) continue;
+      const cs = getComputedStyle(el);
+      if (cs.display === 'none' || cs.visibility === 'hidden') continue;
+      const r = el.getBoundingClientRect();
+      if (r.width < 1 || r.height < 1) continue;
+      els.push({ el, r, t: (el.textContent || el.tagName).trim().slice(0, 20) });
+    }
+    const overlaps = [];
+    for (let i = 0; i < els.length; i++)
+      for (let k = i + 1; k < els.length; k++) {
+        const a = els[i];
+        const b = els[k];
+        if (a.el.contains(b.el) || b.el.contains(a.el)) continue;
+        const w = Math.min(a.r.right, b.r.right) - Math.max(a.r.left, b.r.left);
+        const h = Math.min(a.r.bottom, b.r.bottom) - Math.max(a.r.top, b.r.top);
+        if (w > 1 && h > 1) overlaps.push(`${a.t} × ${b.t}`);
+      }
+    const rr = root.getBoundingClientRect();
+    const outside = els.filter((e) => e.r.left < rr.left - 1 || e.r.right > rr.right + 1).map((e) => e.t);
+    const de = document.documentElement;
+    return { n: els.length, overlaps: overlaps.slice(0, 10), nOverlaps: overlaps.length, outside: outside.slice(0, 10), docOverflow: de.scrollWidth > de.clientWidth, rootOverflow: root.scrollWidth > root.clientWidth, sw: de.scrollWidth, cw: de.clientWidth };
+  }, sel);
+}
+
+async function openConsole(name, teamKey, viewport = { width: 1920, height: 1080 }) {
+  const C = await newCtx(name, { viewport });
+  await C.page.goto(`${SITE}/mod?code=${seed.teams[teamKey][1]}`, { waitUntil: 'networkidle' });
+  await C.page.locator('#mod-tab-decision').waitFor({ timeout: 30000 });
+  await C.page.locator('#mod-tab-decision').click();
+  await C.page.locator('[data-testid=division-vote-panel]').waitFor();
+  return C;
+}
+const listIds = (page) => page.locator('[data-ballot-id]').evaluateAll((els) => els.map((e) => e.getAttribute('data-ballot-id')));
+const pickIds = (page) => page.locator('[data-ballot-pick]').evaluateAll((els) => els.map((e) => e.getAttribute('data-ballot-pick')));
+const findBallot = async (token, title) => ((await rpc('ballot_list_v2', { p_token: token })).data ?? []).filter((b) => b.title === title);
+
+/** /b 에서 안마다 찬성(2)/반대(1)를 골라 제출. */
+async function voteUi(page, ballotToken, answersByOrdinal) {
+  await page.goto(`${SITE}/b?t=${ballotToken}`, { waitUntil: 'networkidle' });
+  const groups = page.locator('[role=group][aria-label$="응답"]');
+  await groups.first().waitFor({ timeout: 20000 });
+  const n = await groups.count();
+  for (let k = 0; k < n; k++) await groups.nth(k).getByRole('button', { name: answersByOrdinal[k] === 2 ? '찬성' : '반대', exact: true }).click();
+  await page.getByRole('button', { name: '제출하기' }).first().click();
+  await page.getByRole('dialog').getByRole('button', { name: '제출하기' }).click();
+  return page.getByText('의견이 제출되었습니다').waitFor({ timeout: 15000 }).then(() => n).catch(() => -1);
+}
+
+async function startFromVoteTab(page, id) {
+  await page.locator('#mod-tab-vote').click();
+  await page.waitForTimeout(1500);
+  await ballotCard(page, id).getByRole('button', { name: '투표 시작', exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: '투표 시작', exact: true }).click();
+  await page.waitForTimeout(1500);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+}
+async function voteTabAction(page, id, label) {
+  await page.locator('#mod-tab-vote').click();
+  await page.waitForTimeout(1200);
+  await ballotCard(page, id).getByRole('button', { name: label, exact: true }).click();
+  await page.getByRole('dialog').getByRole('button', { name: label, exact: true }).click();
+  await page.waitForTimeout(1500);
+}
+
+async function phaseBatch() {
+  const B = {};
+  S.batch = B;
+  const XSS_RE = /__xss/;
+  const T = {};
+  for (const k of ['b1', 'b2', 'b3', 'bx']) T[k] = await login(k);
+  const R_IN = 8;
+  const M_IN = 5;
+  const created = {}; // div → [{id, token, title, ids}]
+
+  // ═══ 1·3분과 콘솔 — 의결안 · 묶음 측정 · 묶음 #1 투표 ═══
+  B.measure = {};
+  for (const div of [1, 3]) {
+    const C = await openConsole(`batchMod${div}`, `b${div}`);
+    await importFile(C.page, RECS_FILE);
+    const made = await makeAllMotions(C.page, div);
+    B[`made${div}`] = made.length;
+    B.measure[div] = await measureBatches(C.page, div);
+    const c = await createBatchBallot(C.page, '5개 안팎', 0);
+    const label = expectLabel(c.ids);
+    const rows = await findBallot(T[`b${div}`], `${div}분과 의결 ${label}`);
+    created[div] = rows.map((r) => ({ id: r.id, token: r.token, title: r.title, ids: c.ids }));
+    for (const r of rows) manifest.ballots.push(r.id);
+    saveManifest();
+    await C.page.screenshot({ path: join(SHOTS, `b-mod${div}-batches.png`) });
+    await C.ctx.close();
+  }
+
+  // ═══ 2분과 콘솔 ═══
+  const C2 = await openConsole('batchMod2', 'b2');
+  const pg = C2.page;
+  await importFile(pg, RECS_FILE);
+  B.made2 = (await makeAllMotions(pg, 2)).length;
+  B.measure[2] = await measureBatches(pg, 2);
+
+  // B3 · B4 — 5개 안팎 묶음 #1
+  const ballots = {};
+  {
+    const c = await createBatchBallot(pg, '5개 안팎', 0);
+    const title = `2분과 의결 ${expectLabel(c.ids)}`;
+    const rows = await findBallot(T.b2, title);
+    rows.forEach((r) => manifest.ballots.push(r.id));
+    saveManifest();
+    const row = rows[0];
+    const items = row ? ((await rpc('ballot_get', { p_token: row.token })).data?.items ?? []).sort((a, b) => a.ordinal - b.ordinal) : [];
+    const expStmts = c.ids.map((id) => `${id} 드라이런 ${plannedMotions(2).find((m) => m.id === id).cardNo}`);
+    B.b3 = {
+      title,
+      btnText: c.btnText,
+      btnOk: c.btnText === `「${title}」 투표 만들기 (찬성/반대)`,
+      rows: rows.length,
+      subgroup: row?.subgroup,
+      status: row?.status,
+      itemCount: row?.item_count,
+      batchN: c.ids.length,
+      stmtsMatch: JSON.stringify(items.map((i) => i.statement)) === JSON.stringify(expStmts),
+      stmtIds: items.map((i) => i.statement.split(' ')[0]),
+      scales: items.map((i) => i.scale),
+    };
+    ballots.A = row ? { id: row.id, token: row.token, title, ids: c.ids, items } : null;
+    // B4 — ✓ 와 중복 경고
+    await sizeBtn(pg, '5개 안팎').click();
+    const txt0 = (await batchBtns(pg).nth(0).textContent()).trim();
+    const txt2 = (await batchBtns(pg).nth(2).textContent()).trim();
+    await batchBtns(pg).nth(2).click();
+    const alertOther = await pg.locator('[data-testid=division-vote-panel] p[role=alert]').filter({ hasText: '이미 있습니다' }).count();
+    await batchBtns(pg).nth(0).click();
+    await pg.waitForTimeout(200);
+    const dupAlert = await pg.locator('[data-testid=division-vote-panel] p[role=alert]').filter({ hasText: '이미 있습니다' }).textContent().catch(() => '');
+    await pg.locator('[data-testid=division-batches]').screenshot({ path: join(SHOTS, 'b4-check-and-dup.png') });
+    B.b4 = { check0: / ✓$/.test(txt0), check2: / ✓$/.test(txt2), dupAlert: dupAlert.slice(0, 80), dupHasTitle: dupAlert.includes(title), alertOnOther: alertOther };
+  }
+  // C3 — 묶음 #2 를 두 번 클릭으로
+  {
+    const c = await createBatchBallot(pg, '5개 안팎', 1, { double: true });
+    const title = `2분과 의결 ${expectLabel(c.ids)}`;
+    await pg.waitForTimeout(1500);
+    const rows = await findBallot(T.b2, title);
+    rows.forEach((r) => manifest.ballots.push(r.id));
+    saveManifest();
+    B.c3 = { title, rows: rows.length };
+    const row = rows[0];
+    const items = row ? ((await rpc('ballot_get', { p_token: row.token })).data?.items ?? []).sort((a, b) => a.ordinal - b.ordinal) : [];
+    ballots.B = row ? { id: row.id, token: row.token, title, ids: c.ids, items } : null;
+  }
+  // B6 — 하나씩, 마지막 안
+  {
+    await viewTab(pg, '투표 열기').click();
+    await sizeBtn(pg, '하나씩').click();
+    const n = await batchBtns(pg).count();
+    const c = await createBatchBallot(pg, '하나씩', n - 1);
+    const title = `2분과 의결 ${c.ids[0]}`;
+    const rows = await findBallot(T.b2, title);
+    rows.forEach((r) => manifest.ballots.push(r.id));
+    saveManifest();
+    B.b6 = { title, rows: rows.length, idShape: /^2-\d+-안\d+$/.test(c.ids[0]), items: rows[0]?.item_count, btnText: c.btnText };
+    ballots.C = rows[0] ? { id: rows[0].id, token: rows[0].token, title } : null;
+  }
+  created[2] = Object.values(ballots).filter(Boolean);
+
+  // C4(b) — 열린(마감 전) 투표의 공개 결과는 없다. C6 — 저장소 차단 기기로 /b 제출
+  if (ballots.C) {
+    const op = await rpc('ballot_set_status_v2', { p_token: T.b2, p_ballot_id: ballots.C.id, p_status: 'open' });
+    B.c4open = { status: op.ok ? op.data.status : op.message, publicResults: (await rpc('ballot_results', { p_token: ballots.C.token })).data };
+    const before = (await rpc('ballot_results_v2', { p_ballot_token: ballots.C.token, p_token: T.b2 })).data?.responses;
+    const BV = await newCtx('batchBlockedVoter', { blockStorage: true, viewport: { width: 390, height: 844 } });
+    const sent = [];
+    BV.page.on('request', (rq) => {
+      if (rq.url().includes('/rpc/ballot_submit')) {
+        try {
+          sent.push(JSON.parse(rq.postData()).p_client_id);
+        } catch {
+          /* */
+        }
+      }
+    });
+    const n = await voteUi(BV.page, ballots.C.token, [2]);
+    const after = (await rpc('ballot_results_v2', { p_ballot_token: ballots.C.token, p_token: T.b2 })).data?.responses;
+    const storageBlocked = await BV.page.evaluate(() => {
+      try {
+        void window.localStorage;
+        return false;
+      } catch {
+        return true;
+      }
+    });
+    sent.forEach((x) => manifest.clientIds.push(x));
+    saveManifest();
+    await BV.page.screenshot({ path: join(SHOTS, 'c6-blocked-voter.png') });
+    B.c6 = { storageBlocked, itemsAnswered: n, before, after };
+    await BV.ctx.close();
+  }
+
+  // B5 — A·B 시작(UI) → 브라우저 5대로 제출 → 마감·공개(UI)
+  const VOTERS = 5;
+  const planA = (k) => [4, 3, 5, 2, 4, 3, 5, 2][k % 8];
+  const planB = (k) => [3, 4, 2, 5, 4, 3, 5, 2][k % 8];
+  const ans = (plan, n, v) => Array.from({ length: n }, (_, k) => (v < plan(k) ? 2 : 1));
+  if (ballots.A && ballots.B) {
+    await startFromVoteTab(pg, ballots.A.id);
+    await startFromVoteTab(pg, ballots.B.id);
+    const st = async (id) => ((await rpc('ballot_list_v2', { p_token: T.b2 })).data ?? []).find((x) => x.id === id)?.status;
+    B.b5 = { started: [await st(ballots.A.id), await st(ballots.B.id)], submitted: [] };
+    const xssDialogs = [];
+    for (let v = 0; v < VOTERS; v++) {
+      const V = await newCtx(`batchVoter${v}`, { viewport: { width: 390, height: 844 } });
+      const a = await voteUi(V.page, ballots.A.token, ans(planA, ballots.A.items.length, v));
+      const b = await voteUi(V.page, ballots.B.token, ans(planB, ballots.B.items.length, v));
+      const dev = await V.page.evaluate(() => localStorage.getItem('cv_device'));
+      manifest.clientIds.push(dev);
+      if (v === 0) await V.page.screenshot({ path: join(SHOTS, 'b5-voter-submitted.png') });
+      B.b5.submitted.push([a, b]);
+      xssDialogs.push(...(V.page.__dialogs ?? []));
+      await V.ctx.close();
+    }
+    saveManifest();
+    const dist = async (bl) => ((await rpc('ballot_results_v2', { p_ballot_token: bl.token, p_token: T.b2 })).data?.items ?? []).sort((x, y) => x.ordinal - y.ordinal).map((i) => i.dist?.['2'] ?? 0);
+    B.b5.yeasA = await dist(ballots.A);
+    B.b5.yeasB = await dist(ballots.B);
+    B.b5.expA = ballots.A.items.map((_, k) => planA(k));
+    B.b5.expB = ballots.B.items.map((_, k) => planB(k));
+    await voteTabAction(pg, ballots.A.id, '투표 마감');
+    await voteTabAction(pg, ballots.B.id, '투표 마감');
+    await voteTabAction(pg, ballots.A.id, '결과 공개');
+    await voteTabAction(pg, ballots.B.id, '결과 공개');
+    B.b5.final = [await st(ballots.A.id), await st(ballots.B.id)];
+
+    // 세리머니 — 1920·1280
+    const expByLabel = {};
+    ballots.A.items.forEach((it, k) => (expByLabel[it.statement.split(' ')[0]] = planA(k)));
+    ballots.B.items.forEach((it, k) => (expByLabel[it.statement.split(' ')[0]] = planB(k)));
+    const threshold = Math.ceil((2 * M_IN) / 3);
+    const quorum = M_IN > R_IN / 2;
+    const expPass = Object.values(expByLabel).filter((y) => quorum && y >= threshold).length;
+    B.b5.expect = { threshold, quorum, expPass, total: Object.keys(expByLabel).length };
+    B.b5.cer = {};
+    for (const vp of [
+      { width: 1920, height: 1080 },
+      { width: 1280, height: 720 },
+    ]) {
+      const key = String(vp.width);
+      await pg.setViewportSize(vp);
+      await pg.locator('#mod-tab-decision').click();
+      await divBtn(pg, 2).click();
+      await viewTab(pg, '세리머니').click();
+      await pg.getByLabel('재적 R').fill(String(R_IN));
+      await pg.getByLabel('참석 M').fill(String(M_IN));
+      await pg.getByRole('radio', { name: '실제 투표 결과' }).click();
+      await pg.waitForTimeout(1500);
+      const loadBtn = pg.getByRole('button', { name: '결과 불러오기' });
+      const disabledNone = await loadBtn.isDisabled();
+      await pg.locator(`[data-ballot-pick="${ballots.A.id}"]`).check();
+      await pg.locator(`[data-ballot-pick="${ballots.B.id}"]`).check();
+      await loadBtn.click();
+      const loadRe = /투표 \d+개 · 안 \d+건 · 제출 [\d·]+명을 불러왔습니다/;
+      await pg.getByText(loadRe).waitFor({ timeout: 20000 });
+      const loadMsg = await pg.getByText(loadRe).textContent();
+      await pg.locator('[data-testid=division-ceremony-start]').click();
+      const seen = { disabledNone, loadMsg, verdicts: [] };
+      let n = 0;
+      const status = await runCeremony(pg, async (step) => {
+        if (step === 'intro') {
+          seen.intro = await pg.locator('[data-testid=ceremony-attendance]').getAttribute('data-established');
+          await pg.screenshot({ path: join(SHOTS, `b5-ceremony-${key}-intro.png`) });
+        }
+        if (step === 'verdict') {
+          n++;
+          const all = await pg.locator('[data-testid=division-ceremony]').innerText();
+          const label = /(\d-\d+-안\d+)/.exec(all)?.[1];
+          seen.verdicts.push({ label, yeas: Number((await pg.locator('[data-testid=ceremony-yeas]').textContent()).trim()), stamp: await pg.locator('[data-testid=ceremony-stamp]').getAttribute('data-passed') });
+          if (n === 1) await pg.screenshot({ path: join(SHOTS, `b5-ceremony-${key}-verdict1.png`) });
+        }
+        if (step === 'summary') {
+          seen.summary = (await pg.locator('[data-testid=ceremony-summary]').innerText()).replace(/\s+/g, ' ');
+          await pg.screenshot({ path: join(SHOTS, `b5-ceremony-${key}-summary.png`) });
+        }
+      });
+      seen.status = status;
+      await pg.keyboard.press('Escape');
+      seen.loadedN = Number(/안 (\d+)건/.exec(loadMsg)?.[1]);
+      seen.match = seen.verdicts.map((v) => ({ l: v.label, got: v.yeas, exp: expByLabel[v.label], stamp: v.stamp, expStamp: String(quorum && expByLabel[v.label] >= threshold) }));
+      B.b5.cer[key] = seen;
+    }
+    await pg.setViewportSize({ width: 1920, height: 1080 });
+  }
+
+  // ═══ E1 — 화면 영역 겹침·넘침 ═══
+  B.e1 = {};
+  for (const vp of [
+    { width: 1280, height: 720 },
+    { width: 1920, height: 1080 },
+  ]) {
+    const key = `${vp.width}x${vp.height}`;
+    await pg.setViewportSize(vp);
+    await pg.locator('#mod-tab-decision').click();
+    await divBtn(pg, 2).click();
+    await viewTab(pg, '투표 열기').click();
+    const r = {};
+    for (const [, name] of SIZES) {
+      await sizeBtn(pg, name).click();
+      await pg.waitForTimeout(150);
+      r[`batches-${name}`] = await regionAudit(pg, '[data-testid=division-batches]');
+    }
+    await sizeBtn(pg, '하나씩').click();
+    await pg.locator('[data-testid=division-batches]').screenshot({ path: join(SHOTS, `e1-${key}-batches-one.png`) });
+    await sizeBtn(pg, '5개 안팎').click();
+    await pg.locator('[data-testid=division-batches]').screenshot({ path: join(SHOTS, `e1-${key}-batches-5.png`) });
+    await pg.screenshot({ path: join(SHOTS, `e1-${key}-ballot-view.png`) });
+    await pg.evaluate(() => {
+      const li = document.querySelector('[data-ballot-id]');
+      li?.closest('div.rounded-2xl')?.setAttribute('data-e1', 'list');
+    });
+    r.list = await regionAudit(pg, '[data-e1=list]');
+    await pg.locator('[data-e1=list]').screenshot({ path: join(SHOTS, `e1-${key}-ballot-list.png`) }).catch(() => {});
+    await viewTab(pg, '세리머니').click();
+    await pg.getByRole('radio', { name: '실제 투표 결과' }).click();
+    await pg.waitForTimeout(1500);
+    await pg.evaluate(() => {
+      document.querySelector('[data-ballot-pick]')?.closest('fieldset')?.setAttribute('data-e1', 'picks');
+    });
+    r.picks = await regionAudit(pg, '[data-e1=picks]');
+    await pg.locator('[data-e1=picks]').screenshot({ path: join(SHOTS, `e1-${key}-ceremony-picks.png`) }).catch(() => {});
+    B.e1[key] = r;
+  }
+  await pg.setViewportSize({ width: 1920, height: 1080 });
+
+  // ═══ C1 — 2분과 콘솔에서 1·3분과 묶음 투표 ═══
+  {
+    const foreign = [...(created[1] ?? []), ...(created[3] ?? [])].map((b) => b.id);
+    const own = (created[2] ?? []).map((b) => b.id);
+    const look = async (div) => {
+      await pg.locator('#mod-tab-decision').click();
+      await divBtn(pg, div).click();
+      await viewTab(pg, '투표 열기').click();
+      await pg.getByRole('button', { name: '새로고침' }).click();
+      await pg.waitForTimeout(1500);
+      const list = await listIds(pg);
+      await viewTab(pg, '세리머니').click();
+      await pg.getByRole('radio', { name: '실제 투표 결과' }).click();
+      await pg.waitForTimeout(1500);
+      const picks = await pickIds(pg);
+      return { list, picks };
+    };
+    const sel2 = await look(2);
+    await pg.locator('#mod-tab-vote').click();
+    await pg.waitForTimeout(1500);
+    const voteTab = await listIds(pg);
+    const sel1 = await look(1);
+    await pg.screenshot({ path: join(SHOTS, 'c1-mod2-select-1분과-picks.png') });
+    const sel3 = await look(3);
+    const hit = (arr) => arr.filter((id) => foreign.includes(id)).length;
+    B.c1 = {
+      foreign: foreign.length,
+      div2: { list: hit(sel2.list), picks: hit(sel2.picks), voteTab: hit(voteTab), ownSeen: own.every((id) => sel2.list.includes(id) && sel2.picks.includes(id)) },
+      div1Selected: { list: hit(sel1.list), picks: hit(sel1.picks) },
+      div3Selected: { list: hit(sel3.list), picks: hit(sel3.picks) },
+    };
+    await divBtn(pg, 2).click();
+  }
+
+  // ═══ C5 — 다른 세션 조 ═══
+  {
+    const X = await openConsole('batchModX', 'bx');
+    const xp = X.page;
+    await importFile(xp, RECS_FILE);
+    const seen = new Set();
+    for (const div of [1, 2, 3]) {
+      await divBtn(xp, div).click();
+      await viewTab(xp, '투표 열기').click();
+      await xp.waitForTimeout(1500);
+      (await listIds(xp)).forEach((id) => seen.add(id));
+      await viewTab(xp, '세리머니').click();
+      await xp.getByRole('radio', { name: '실제 투표 결과' }).click();
+      await xp.waitForTimeout(1500);
+      (await pickIds(xp)).forEach((id) => seen.add(id));
+    }
+    await xp.locator('#mod-tab-vote').click();
+    await xp.waitForTimeout(2000);
+    (await listIds(xp)).forEach((id) => seen.add(id));
+    await xp.screenshot({ path: join(SHOTS, 'c5-x-console-vote-tab.png') });
+    await X.ctx.close();
+    const mine = [...Object.values(created).flat()].map((b) => b.id);
+    const tgt = ballots.A ?? ballots.C;
+    const res = await rpc('ballot_results_v2', { p_ballot_token: tgt.token, p_token: T.bx });
+    const setS = await rpc('ballot_set_status_v2', { p_token: T.bx, p_ballot_id: tgt.id, p_status: 'archived' });
+    const lst = ((await rpc('ballot_list_v2', { p_token: T.bx })).data ?? []).map((b) => b.id);
+    B.c5 = {
+      uiSeen: mine.filter((id) => seen.has(id)).length,
+      results: res.ok && res.data ? `ACCEPTED` : `rejected: ${res.message || 'null'}`,
+      setStatus: setS.ok ? `ACCEPTED → ${setS.data?.status}` : `rejected: ${setS.message}`,
+      listLeak: mine.filter((id) => lst.includes(id)).length,
+      note: 'ballot_submit 은 조 토큰이 아니라 투표 토큰을 받는다 — 조 토큰으로 제출하는 경로 자체가 없다',
+    };
+  }
+
+  // ═══ C7 — XSS 묶음 투표 ═══
+  {
+    const A = '2-<img/src=x/onerror=window.__xss=31>';
+    const src = {
+      division: 2,
+      agenda: 'xss 시험',
+      topics: [
+        { no: A, name: '<img src=x onerror="window.__xss=34">', written_by: '', raised_by: '', cards: Array.from({ length: 5 }, (_, i) => ({ no: `2-x-${i + 1}`, title: `<svg/onload=window.__xss=35>`, background: '', effect: '', schedule: '', recs: [{ no: '1', text: 'x' }] })) },
+        { no: '2-98', name: 'normal', written_by: '', raised_by: '', cards: [{ no: '2-98-1', title: 't', background: '', effect: '', schedule: '', recs: [{ no: '1', text: 'x' }] }] },
+      ],
+    };
+    const motions = [
+      ...Array.from({ length: 5 }, (_, i) => ({ id: `${A}-안${i + 1}`, topicNo: A, cardNos: [`2-x-${i + 1}`], title: i % 2 ? '<svg/onload=window.__xss=33>' : '<img src=x onerror="window.__xss=32">', text: '<script>window.__xss=36</script>', criteria: {} })),
+      { id: '2-98-안1', topicNo: '2-98', cardNos: ['2-98-1'], title: 'normal', text: '', criteria: {} },
+    ];
+    const f = join(OUT_DIR, 'c7-xss-prep.json');
+    writeFileSync(f, JSON.stringify({ v: 1, division: 2, source: src, cards: {}, motions }));
+    await pg.locator('#mod-tab-decision').click();
+    await divBtn(pg, 2).click();
+    await viewTab(pg, '준비판').click();
+    await importFile(pg, f);
+    const d0 = (pg.__dialogs ?? []).length;
+    const c = await createBatchBallot(pg, '5개 안팎', 0);
+    const title = `2분과 의결 ${A}`;
+    const rows = await findBallot(T.b2, title);
+    rows.forEach((r) => manifest.ballots.push(r.id));
+    saveManifest();
+    const row = rows[0];
+    const probe = async (page) => page.evaluate(() => ({ flag: window.__xss ?? null, imgs: document.querySelectorAll('img[onerror], svg[onload]').length }));
+    const r = { created: rows.length, picked: c.ids.length };
+    r.consoleAfterCreate = await probe(pg);
+    if (row) {
+      await rpc('ballot_set_status_v2', { p_token: T.b2, p_ballot_id: row.id, p_status: 'open' });
+      await pg.locator('#mod-tab-vote').click();
+      await pg.waitForTimeout(2000);
+      r.voteTab = await probe(pg);
+      await pg.screenshot({ path: join(SHOTS, 'c7-vote-tab.png') });
+      const V = await newCtx('batchXssVoter', { viewport: { width: 390, height: 844 } });
+      const n = await voteUi(V.page, row.token, [2, 2, 1, 2, 1]);
+      r.voter = { ...(await probe(V.page)), answered: n, dialogs: V.page.__dialogs ?? [] };
+      manifest.clientIds.push(await V.page.evaluate(() => localStorage.getItem('cv_device')));
+      saveManifest();
+      await V.page.screenshot({ path: join(SHOTS, 'c7-voter.png') });
+      await V.ctx.close();
+      await rpc('ballot_set_status_v2', { p_token: T.b2, p_ballot_id: row.id, p_status: 'closed' });
+      await pg.locator('#mod-tab-decision').click();
+      await viewTab(pg, '투표 열기').click();
+      await pg.getByRole('button', { name: '새로고침' }).click();
+      await pg.waitForTimeout(1500);
+      r.decisionList = await probe(pg);
+      await viewTab(pg, '세리머니').click();
+      await pg.getByRole('radio', { name: '실제 투표 결과' }).click();
+      await pg.waitForTimeout(1500);
+      await pg.locator(`[data-ballot-pick="${row.id}"]`).check();
+      await pg.getByRole('button', { name: '결과 불러오기' }).click();
+      await pg.waitForTimeout(2500);
+      await pg.locator('[data-testid=division-ceremony-start]').click();
+      await runCeremony(pg, async (step) => {
+        if (step === 'title' && !r.cerShot) {
+          r.cerShot = true;
+          await pg.screenshot({ path: join(SHOTS, 'c7-ceremony-title.png') });
+        }
+      });
+      await pg.screenshot({ path: join(SHOTS, 'c7-ceremony-summary.png') });
+      r.ceremony = await probe(pg);
+      await pg.keyboard.press('Escape');
+    }
+    r.consoleDialogs = (pg.__dialogs ?? []).slice(typeof d0 === 'number' ? d0 : 0);
+    r.consoleErrs = consoleErrors.batchMod2.filter((m) => XSS_RE.test(m));
+    B.c7 = r;
+  }
+  B.created = Object.fromEntries(Object.entries(created).map(([k, v]) => [k, v.map((b) => ({ id: b.id, title: b.title }))]));
+  await C2.ctx.close();
+}
+
+/** DB 없이 미리보기(lab)에서 셀렉터·기대값 계산을 먼저 맞춰 본다(점수 아님). */
+async function phaseLab() {
+  const L = await newCtx('batchLab', { viewport: { width: 1920, height: 1080 } });
+  await L.page.goto(`${SITE}/ko/moderator/insights/division-vote-lab`, { waitUntil: 'networkidle' });
+  await L.page.locator('[data-testid=division-vote-panel]').waitFor({ timeout: 20000 });
+  await importFile(L.page, RECS_FILE);
+  await makeAllMotions(L.page, 1);
+  S.batch = { measure: { 1: await measureBatches(L.page, 1) } };
+  const m = S.batch.measure[1];
+  for (const [name, s] of Object.entries(m.sizes)) record(`LAB-${name}`, s.pressed && s.textsMatch && s.membersMatch && s.union && s.order && !s.split.length, `${s.n}/${s.expN} 묶음 · ${s.labels.join(' ')} ${s.c2 ? JSON.stringify(s.c2) : ''}`);
+  S.labErrors = { page: pageErrors.batchLab, console: consoleErrors.batchLab };
+  await L.ctx.close();
+}
+
+function judgeBatch() {
+  const B = S.batch;
+  if (!B) return;
+  const sizes = (d) => Object.values(B.measure?.[d]?.sizes ?? {});
+  const divs = [1, 2, 3];
+  const okMeasured = divs.every((d) => B.measure?.[d] && sizes(d).length === 4);
+  record('B1', okMeasured && divs.every((d) => B.measure[d].listMatchesPlan && sizes(d).every((s) => s.pressed && s.n === s.expN && s.textsMatch)), `분과별 의결안 ${divs.map((d) => B.measure?.[d]?.screenIds).join('/')} · 묶음 수 ${divs.map((d) => sizes(d).map((s) => s.n).join(',')).join(' | ')} · 불일치 ${JSON.stringify(divs.flatMap((d) => sizes(d).flatMap((s) => s.mismatch)))}`);
+  record('B2', okMeasured && divs.every((d) => sizes(d).every((s) => s.membersMatch && s.union && s.dup === 0 && s.order && s.split.length === 0)), `12조합 — 합집합 ${divs.every((d) => sizes(d).every((s) => s.union))} · 중복 ${divs.reduce((n, d) => n + sizes(d).reduce((m, s) => m + s.dup, 0), 0)} · 순서 ${divs.every((d) => sizes(d).every((s) => s.order))} · 주제 걸침 ${JSON.stringify(divs.flatMap((d) => sizes(d).flatMap((s) => s.split)))}`);
+  const b3 = B.b3;
+  record('B3', !!b3 && b3.rows === 1 && b3.subgroup === '2분과' && b3.itemCount === b3.batchN && b3.stmtsMatch && b3.scales.every((x) => x === 2) && b3.btnOk, b3 ? `「${b3.title}」 ${b3.rows}개 · ${b3.subgroup} · 문항 ${b3.itemCount}/${b3.batchN} · 문장 순서 ${b3.stmtsMatch} · scale ${b3.scales} · 버튼 「${b3.btnText}」` : '미측정');
+  const b4 = B.b4;
+  record('B4', !!b4 && b4.check0 && !b4.check2 && b4.dupHasTitle && b4.alertOnOther === 0, b4 ? `#1 ✓ ${b4.check0} · #3 ✓ ${b4.check2} · 경고 「${b4.dupAlert}」 · 다른 묶음 경고 ${b4.alertOnOther}` : '미측정');
+  const b5 = B.b5;
+  const cerOk = (c) => c && c.status === 'done' && c.loadedN === b5.expect.total && c.verdicts.length === b5.expect.total && c.match.every((m) => m.got === m.exp && m.stamp === m.expStamp) && new RegExp(`의결 ${b5.expect.expPass}건`).test(c.summary) && c.intro === String(b5.expect.quorum);
+  record('B5', !!b5 && JSON.stringify(b5.yeasA) === JSON.stringify(b5.expA) && JSON.stringify(b5.yeasB) === JSON.stringify(b5.expB) && b5.submitted.every(([a, b]) => a > 0 && b > 0) && b5.final.every((s) => s === 'published') && cerOk(b5.cer?.['1920']) && cerOk(b5.cer?.['1280']), b5 ? `기기 ${b5.submitted.length}대 · A 찬성 ${b5.yeasA}(기대 ${b5.expA}) · B ${b5.yeasB}(기대 ${b5.expB}) · R${R_IN_J}/M${M_IN_J} 기준 ${b5.expect.threshold}표 · 불러온 안 ${b5.cer?.['1920']?.loadedN}/${b5.expect.total} · 요약 「${b5.cer?.['1920']?.summary}」 기대 의결 ${b5.expect.expPass}건 · 1280 ${cerOk(b5.cer?.['1280'])}` : '미측정');
+  const b6 = B.b6;
+  record('B6', !!b6 && b6.rows === 1 && b6.idShape && b6.items === 1, b6 ? `「${b6.title}」 ${b6.rows}개 · 문항 ${b6.items}` : '미측정');
+  const c1 = B.c1;
+  record('C1', !!c1 && c1.foreign >= 2 && c1.div2.list === 0 && c1.div2.picks === 0 && c1.div2.voteTab === 0 && c1.div2.ownSeen && c1.div1Selected.list === 0 && c1.div1Selected.picks === 0 && c1.div3Selected.list === 0 && c1.div3Selected.picks === 0, c1 ? `타 분과 투표 ${c1.foreign}개 — 2분과 선택: 목록 ${c1.div2.list}·체크 ${c1.div2.picks}·투표탭 ${c1.div2.voteTab} · 1분과 버튼: 목록 ${c1.div1Selected.list}·체크 ${c1.div1Selected.picks} · 3분과 버튼: 목록 ${c1.div3Selected.list}·체크 ${c1.div3Selected.picks}` : '미측정');
+  const c2 = divs.map((d) => B.measure?.[d]?.sizes?.['전체 한 번']?.c2);
+  record('C2', c2.every((x) => x && x.total > 20 && x.disabled && x.cap), `전체 한 번 — ${c2.map((x, i) => (x ? `${i + 1}분과 ${x.total}안 비활성 ${x.disabled} 「${x.alert}」` : '미측정')).join(' · ')}`);
+  record('C3', !!B.c3 && B.c3.rows === 1, B.c3 ? `「${B.c3.title}」 DB ${B.c3.rows}개` : '미측정');
+  const nonePicked = [B.b5?.cer?.['1920']?.disabledNone, B.b5?.cer?.['1280']?.disabledNone];
+  record('C4', nonePicked.every((x) => x === true) && !!B.c4open && B.c4open.status === 'open' && B.c4open.publicResults === null, `선택 0 「결과 불러오기」 비활성 ${nonePicked} · 열린 투표 공개결과 ${JSON.stringify(B.c4open?.publicResults)}`);
+  const c5 = B.c5;
+  record('C5', !!c5 && c5.uiSeen === 0 && c5.listLeak === 0 && /^rejected/.test(c5.results) && /^rejected/.test(c5.setStatus), c5 ? `x 콘솔 노출 ${c5.uiSeen} · 목록 ${c5.listLeak} · 결과 ${c5.results} · 상태변경 ${c5.setStatus}` : '미측정');
+  const c6 = B.c6;
+  record('C6', !!c6 && c6.storageBlocked && c6.itemsAnswered === 1 && c6.after === c6.before + 1, c6 ? `저장소 차단 ${c6.storageBlocked} · 제출 수 ${c6.before}→${c6.after}` : '미측정');
+  const c7 = B.c7;
+  const clean = (p) => p && p.flag === null && p.imgs === 0;
+  record('C7', !!c7 && c7.created === 1 && ['consoleAfterCreate', 'voteTab', 'voter', 'decisionList', 'ceremony'].every((k) => clean(c7[k])) && (c7.voter?.answered ?? 0) > 0 && c7.consoleDialogs.length === 0 && (c7.voter?.dialogs ?? []).length === 0, c7 ? `투표 ${c7.created}개 · flag ${['consoleAfterCreate', 'voteTab', 'voter', 'decisionList', 'ceremony'].map((k) => `${k}:${c7[k]?.flag ?? '-'}/${c7[k]?.imgs ?? '-'}`).join(' ')} · dialog ${c7.consoleDialogs.length + (c7.voter?.dialogs ?? []).length}` : '미측정');
+  const e1 = Object.values(B.e1 ?? {}).flatMap((r) => Object.values(r));
+  record('E1', Object.keys(B.e1 ?? {}).length === 2 && e1.length > 0 && e1.every((a) => !a.missing && a.nOverlaps === 0 && !a.docOverflow && !a.rootOverflow && a.outside.length === 0), `${e1.length}영역 — 겹침 ${e1.reduce((n, a) => n + (a.nOverlaps ?? 0), 0)} · 문서 가로넘침 ${e1.filter((a) => a.docOverflow).length} · 영역 넘침 ${e1.filter((a) => a.rootOverflow).length} · 누락 ${e1.filter((a) => a.missing).length}`);
+  const names = Object.keys(pageErrors).filter((k) => k.startsWith('batch'));
+  const pe = names.flatMap((k) => pageErrors[k].map((m) => `${k}: ${m}`));
+  const ce = names.flatMap((k) => consoleErrors[k].map((m) => ({ k, m })));
+  const intended = (x) => /status of 4\d\d|Failed to load resource/.test(x.m) || (x.k === 'batchBlockedVoter' && /\[browser storage\]/.test(x.m));
+  const unexpected = ce.filter((x) => !intended(x));
+  S.batchErrors = { pageErrors: pe, consoleIntended: ce.filter(intended).map((x) => `${x.k}: ${x.m}`), consoleUnexpected: unexpected.map((x) => `${x.k}: ${x.m}`), net: Object.fromEntries(names.map((k) => [k, netErrors[k]])) };
+  record('E2', pe.length === 0 && unexpected.length === 0, `pageerror ${pe.length} · console error ${ce.length}(의도된 거부·저장소 차단 ${ce.length - unexpected.length}, 그 외 ${unexpected.length}) ${unexpected.slice(0, 3).map((x) => x.m).join(' | ')}`);
+}
+const R_IN_J = 8;
+const M_IN_J = 5;
+
 // ── 실행 + 판정 ──────────────────────────────────────────────
 try {
   if (PHASE === 'expired') await phaseExpired();
   else if (PHASE === 'p5') await phaseP5();
+  else if (PHASE === 'batch') await phaseBatch();
+  else if (PHASE === 'lab') await phaseLab();
   else await phaseMain();
 } catch (error) {
   record('RUN', false, `중단: ${String(error?.message ?? error).slice(0, 300)}`);
 } finally {
+  if (PHASE === 'main') judgeMain();
+  if (PHASE === 'batch') {
+    try {
+      judgeBatch();
+    } catch (e) {
+      record('JUDGE', false, String(e).slice(0, 200));
+    }
+    for (const k of ['b1', 'b2', 'b3', 'bx']) {
+      const v = manifest.tokens[k];
+      if (v && !v.loggedOut) v.loggedOut = (await logout(v.token)).ok;
+    }
+    saveManifest();
+  }
   if (PHASE === 'main') {
     // 스크립트가 받은 토큰은 x(만료 시험용)를 빼고 모두 로그아웃
     for (const [k, v] of Object.entries(manifest.tokens)) {
