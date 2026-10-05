@@ -135,6 +135,12 @@ export function divisionLabel(division: number): string {
 }
 
 /** 브라우저 저장소 키. 분과마다 따로 둔다. */
+/** 조 분과 「N분과」 → N. 분과가 없거나(운영진) 모양이 다르면 null = 잠그지 않음. */
+export function lockedDivisionOf(subgroup: string | null | undefined): number | null {
+  const m = /^\s*([1-9])분과\s*$/.exec(subgroup ?? '');
+  return m ? Number(m[1]) : null;
+}
+
 export const PREP_STORAGE_PREFIX = 'climate_1017_prep_v1';
 export function prepStorageKey(division: number): string {
   return `${PREP_STORAGE_PREFIX}:${division}`;

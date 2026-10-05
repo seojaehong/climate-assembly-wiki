@@ -12,6 +12,7 @@ import {
   barRatio,
   batchLabel,
   batchMotions,
+  lockedDivisionOf,
   buildDivisionBallot,
   canCombine,
   cardStatusText,
@@ -196,6 +197,17 @@ describe('JSON 내보내기·가져오기', () => {
     expect(prepStorageKey(2)).not.toBe(prepStorageKey(3));
     expect(prepStorageKey(2)).toContain(':2');
     expect(exportFileName(2, new Date(2026, 9, 17, 14, 5))).toBe('1017_의결준비_2분과_20261017-1405.json');
+  });
+});
+
+describe('조 분과 잠금', () => {
+  it('「N분과」 조는 그 분과로 잠그고, 운영진·기타는 잠그지 않는다', () => {
+    expect(lockedDivisionOf('2분과')).toBe(2);
+    expect(lockedDivisionOf(' 3분과 ')).toBe(3);
+    expect(lockedDivisionOf(null)).toBeNull();
+    expect(lockedDivisionOf('')).toBeNull();
+    expect(lockedDivisionOf('운영진')).toBeNull();
+    expect(lockedDivisionOf('12분과')).toBeNull();
   });
 });
 

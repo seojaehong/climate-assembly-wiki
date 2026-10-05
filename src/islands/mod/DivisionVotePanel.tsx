@@ -20,6 +20,7 @@ import {
   PREP_DIVISION_KEY,
   attendanceText,
   ballotCeremonyItems,
+  lockedDivisionOf,
   batchLabel,
   batchMotions,
   buildDivisionBallot,
@@ -79,10 +80,14 @@ const input =
 export default function DivisionVotePanel({
   access,
   fixtureSource,
+  subgroup,
 }: {
   access: WorkshopAuthorization | null;
   fixtureSource?: RecsDivision[];
+  /** 조의 분과(「N분과」). 있으면 그 분과만 보이고 고를 수 있다. 운영진(분과 없음)은 전부. */
+  subgroup?: string | null;
 }) {
+  const lockedDivision = lockedDivisionOf(subgroup);
   const ns = fixtureSource ? 'lab:' : '';
   const keyOf = useCallback((division: number) => `${ns}${prepStorageKey(division)}`, [ns]);
 
@@ -105,7 +110,10 @@ export default function DivisionVotePanel({
   const [notice, setNotice] = useState<{ tone: 'ok' | 'error'; text: string } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const divisions = Object.keys(states).map(Number).sort((a, b) => a - b);
+  const divisions = Object.keys(states)
+    .map(Number)
+    .filter((d) => lockedDivision === null || d === lockedDivision)
+    .sort((a, b) => a - b);
   const activeDivision = division !== null && states[division] ? division : divisions[0] ?? null;
   const state = activeDivision !== null ? states[activeDivision] : null;
 
