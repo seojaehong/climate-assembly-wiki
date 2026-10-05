@@ -510,14 +510,14 @@ async function phaseMain() {
   await pg.locator('#mod-tab-decision').click();
   await pg.locator('[data-testid=division-vote-panel]').waitFor();
   await importFile(pg, RECS_FILE);
-  const realCounts = {};
-  for (const d of [1, 2, 3]) {
-    await divBtn(pg, d).click();
-    realCounts[d] = await panelCounts(pg);
-  }
-  S.p3mod = realCounts;
-  await pg.screenshot({ path: join(SHOTS, 'p3-mod-3분과.png') });
+  // 69b6fae — 분과 조 콘솔은 자기 분과만 보인다. 1·3분과 수는 운영진 콘솔(N15)에서 잰다.
+  // 관찰(69b6fae): 가져온 직후 활성 분과가 파일의 첫 분과(1분과)로 잡히는지 — 버튼은 2분과뿐인데 내용은 1분과
+  const heading = async () => (await pg.locator('[data-testid=division-vote-panel] p.text-\\[16px\\] > span.font-bold').first().textContent().catch(() => '')).trim();
+  S.p3lock = { div1: await divBtn(pg, 1).count(), div2: await divBtn(pg, 2).count(), div3: await divBtn(pg, 3).count(), shownAfterImport: await heading(), btn2Pressed: await divBtn(pg, 2).getAttribute('aria-pressed') };
+  await pg.screenshot({ path: join(SHOTS, 'p3-mod2-locked.png') });
   await divBtn(pg, 2).click();
+  S.p3lock.shownAfterClick = await heading();
+  S.p3mod = { 2: await panelCounts(pg) };
   const d2 = byDiv[2];
   const nonHw = d2.topics.filter((t) => !['2-14', '2-15', '2-16', '2-17'].includes(t.no));
   const mergeTopic = nonHw.find((t) => t.cards.length >= 2);
@@ -630,6 +630,18 @@ async function phaseMain() {
     await MO.page.waitForTimeout(1500);
     const targetsO = await MO.page.locator('button[aria-pressed]').evaluateAll((els) => els.map((e) => `${e.textContent.trim()}${e.getAttribute('aria-pressed') === 'true' ? '*' : ''}`));
     await MO.page.screenshot({ path: join(SHOTS, 'n15-ops-create-targets.png') });
+    // 운영진은 분과 잠금이 없다 — 세 분과 실데이터 수(P3)
+    await MO.page.reload({ waitUntil: 'networkidle' });
+    await MO.page.locator('#mod-tab-decision').waitFor({ timeout: 30000 });
+    await MO.page.locator('#mod-tab-decision').click();
+    await MO.page.locator('[data-testid=division-vote-panel]').waitFor();
+    await importFile(MO.page, RECS_FILE);
+    for (const d of [1, 2, 3]) {
+      if (!(await divBtn(MO.page, d).count())) continue;
+      await divBtn(MO.page, d).click();
+      S.p3mod[`ops${d}`] = await panelCounts(MO.page);
+    }
+    await MO.page.screenshot({ path: join(SHOTS, 'p3-ops-3분과.png') });
     S.opsErrors = [...pageErrors.modOps];
     await MO.ctx.close();
     // 알려진 서버 위험 — 2분과 조 토큰으로 1분과 투표 상태 변경
@@ -639,6 +651,9 @@ async function phaseMain() {
       ops: { main: seenO.includes(mainBallot.id), all: seenO.includes(ball), b1: seenO.includes(b1), b3: seenO.includes(b3), n: seenO.length, targets: targetsO },
       serverRisk: risk.ok ? `ACCEPTED → ${risk.data.status}` : `rejected: ${risk.message}`,
     };
+    // 양성 — 운영진(분과 없음) 토큰은 분과 투표 상태를 바꿀 수 있어야 한다(s24 뒤에도)
+    const opsOpen = await rpc('ballot_set_status_v2', { p_token: TO, p_ballot_id: b3, p_status: 'open' });
+    S.n15.opsChange = opsOpen.ok ? `ACCEPTED → ${opsOpen.data?.status}` : `rejected: ${opsOpen.message}`;
     // 뒤 시험에 끼지 않게 치운다
     for (const id of [b1, b3, ball]) if (id) await rpc('ballot_set_status_v2', { p_token: TO, p_ballot_id: id, p_status: 'archived' });
     await logout(TO);
@@ -1237,7 +1252,9 @@ function judgeMain() {
   };
   const cleanAudit = (a) => a && !a.missing && a.small.length === 0 && a.off.length === 0 && a.overlaps.length === 0 && !a.hScroll;
   j('P2', ['labStatus', 'labRobots', 'labSupabase'], () => S.labStatus === 200 && /noindex/.test(S.labRobots) && S.labSupabase === 0, () => `lab ${S.labStatus} · robots=${S.labRobots} · supabase 요청 ${S.labSupabase}`);
-  j('P3', ['labP3', 'p3mod'], () => S.labP3.ok && [1, 2, 3].every((d) => { const e = counts(byDiv[d]); const c = S.p3mod[d]; return c.topics === e.topics && c.cards === e.cards && c.recs === e.recs; }), () => `lab 1분과 ${JSON.stringify(S.labP3.c1 && [S.labP3.c1.topics, S.labP3.c1.cards, S.labP3.c1.recs])} · mod ${[1, 2, 3].map((d) => `${d}:${S.p3mod[d].topics}/${S.p3mod[d].cards}/${S.p3mod[d].recs}`).join(' ')}`);
+  const sameCounts = (c, d) => { const e = counts(byDiv[d]); return !!c && c.topics === e.topics && c.cards === e.cards && c.recs === e.recs; };
+  const fmt = (c) => (c ? `${c.topics}/${c.cards}/${c.recs}` : '없음');
+  j('P3', ['labP3', 'p3mod', 'p3lock'], () => S.labP3.ok && sameCounts(S.p3mod[2], 2) && [1, 2, 3].every((d) => sameCounts(S.p3mod[`ops${d}`], d)) && S.p3lock.div1 === 0 && S.p3lock.div3 === 0, () => `lab 1분과 ${fmt(S.labP3.c1)} · 2분과 콘솔 ${fmt(S.p3mod[2])} (분과 버튼 1:${S.p3lock.div1} 2:${S.p3lock.div2} 3:${S.p3lock.div3}) · 운영진 ${[1, 2, 3].map((d) => `${d}:${fmt(S.p3mod[`ops${d}`])}`).join(' ')}`);
   j('P4', ['p4create', 'p4qr', 'p4qr2', 'motions'], () => S.p4create.count === 1 && S.p4create.status === 'draft' && S.p4create.items === S.motions.ids.length && JSON.stringify(S.p4create.stmtIds) === JSON.stringify(S.motions.ids) && S.p4create.scales.every((s) => s === 2) && S.p4qr.tokenMatch && S.p4qr2 === true, () => `투표 ${S.p4create.count}개 ${S.p4create.status} 문항 ${S.p4create.stmtIds.join(',')} scale ${S.p4create.scales} · QR ${S.p4qr.tokenMatch}/${S.p4qr2}`);
   j('P5', ['p5ui', 'p5tally', 'p5c'], () => {
     const t = S.p5tally;
@@ -1277,7 +1294,9 @@ function judgeMain() {
   j('N13', ['n13'], () => S.n13.every(([, ok]) => ok), () => `${S.n13.filter(([, ok]) => ok).length}/${S.n13.length}`);
   j('N15', ['n15'], () => S.n15.mod2.main && S.n15.mod2.all && !S.n15.mod2.b1 && !S.n15.mod2.b3 && S.n15.ops.b1 && S.n15.ops.b3 && S.n15.ops.all, () => `2분과 콘솔 b1 ${S.n15.mod2.b1}·b3 ${S.n15.mod2.b3} · 운영진 전부 ${S.n15.ops.b1 && S.n15.ops.b3} (서버: 2분과 토큰으로 1분과 상태변경 ${S.n15.serverRisk})`);
   // 별도 결함 항목 — UI 격리와 섞지 않는다
-  if (S.n15) record('N15-server', !/^ACCEPTED/.test(S.n15.serverRisk), `2분과 조 토큰 → 1분과 투표 ballot_set_status_v2: ${S.n15.serverRisk}`);
+  if (S.p3lock) record('OBS-lock', S.p3lock.shownAfterImport === '2분과', `2분과 콘솔 가져오기 직후 표시 분과 「${S.p3lock.shownAfterImport}」(2분과 버튼 pressed=${S.p3lock.btn2Pressed}) → 2분과 클릭 뒤 「${S.p3lock.shownAfterClick}」`);
+  if (S.n15) record('N15-server', /scope/.test(S.n15.serverRisk) && /^rejected/.test(S.n15.serverRisk), `2분과 조 토큰 → 1분과 투표 ballot_set_status_v2: ${S.n15.serverRisk}`);
+  if (S.n15) record('N15-ops', /^ACCEPTED → open/.test(S.n15.opsChange ?? ''), `운영진 토큰 → 3분과 투표 open: ${S.n15.opsChange}`);
 }
 
 // ── 묶음 투표 ────────────────────────────────────────────────
@@ -1511,6 +1530,22 @@ async function phaseBatch() {
   const C2 = await openConsole('batchMod2', 'b2');
   const pg = C2.page;
   await importFile(pg, RECS_FILE);
+  // 잠금 관찰 — 가져온 직후 어느 분과가 보이고, 투표 만들기 버튼이 어느 분과 제목을 띄우는가
+  {
+    const head = (await pg.locator('[data-testid=division-vote-panel] p.text-\\[16px\\] > span.font-bold').first().textContent().catch(() => '')).trim();
+    await viewTab(pg, '투표 열기').click();
+    const btn = (await pg.locator('[data-testid=division-ballot-create]').textContent().catch(() => '')).trim();
+    await pg.screenshot({ path: join(SHOTS, 'lock-b2-after-import-ballot-view.png') });
+    // 서버 — 2분과 조 토큰으로 1분과 투표 생성이 되는가(되면 바로 보관)
+    const r = await rpc('ballot_create_v3', { p_token: T.b2, p_title: '잠금 시험 1분과', p_instructions: null, p_items: [{ ordinal: 1, statement: '잠금 시험', scale: 2, required: true }], p_subgroup: '1분과', p_idempotency_key: randomUUID() });
+    if (r.ok && r.data?.id) {
+      manifest.ballots.push(r.data.id);
+      saveManifest();
+      const a = await rpc('ballot_set_status_v2', { p_token: T.b2, p_ballot_id: r.data.id, p_status: 'archived' });
+      B.lockCreateArchive = a.ok ? a.data?.status : a.message;
+    }
+    B.lock = { shownAfterImport: head, createBtn: btn, serverCreateOtherDivision: r.ok ? `ACCEPTED (${r.data?.id?.slice(0, 8)})` : `rejected: ${r.message}` };
+  }
   B.made2 = (await makeAllMotions(pg, 2)).length;
   B.measure[2] = await measureBatches(pg, 2);
 
@@ -1766,17 +1801,16 @@ async function phaseBatch() {
     await pg.locator('#mod-tab-vote').click();
     await pg.waitForTimeout(1500);
     const voteTab = await listIds(pg);
-    const sel1 = await look(1);
-    await pg.screenshot({ path: join(SHOTS, 'c1-mod2-select-1분과-picks.png') });
-    const sel3 = await look(3);
+    // 69b6fae — 2분과 콘솔에는 1·3분과 버튼 자체가 없어야 한다(recs 에 세 분과가 다 들어 있어도)
+    await pg.locator('#mod-tab-decision').click();
+    const btns = { div1: await divBtn(pg, 1).count(), div2: await divBtn(pg, 2).count(), div3: await divBtn(pg, 3).count() };
+    await pg.screenshot({ path: join(SHOTS, 'c1-mod2-division-buttons.png') });
     const hit = (arr) => arr.filter((id) => foreign.includes(id)).length;
     B.c1 = {
       foreign: foreign.length,
       div2: { list: hit(sel2.list), picks: hit(sel2.picks), voteTab: hit(voteTab), ownSeen: own.every((id) => sel2.list.includes(id) && sel2.picks.includes(id)) },
-      div1Selected: { list: hit(sel1.list), picks: hit(sel1.picks) },
-      div3Selected: { list: hit(sel3.list), picks: hit(sel3.picks) },
+      btns,
     };
-    await divBtn(pg, 2).click();
   }
 
   // ═══ C5 — 다른 세션 조 ═══
@@ -1786,6 +1820,7 @@ async function phaseBatch() {
     await importFile(xp, RECS_FILE);
     const seen = new Set();
     for (const div of [1, 2, 3]) {
+      if (!(await divBtn(xp, div).count())) continue;
       await divBtn(xp, div).click();
       await viewTab(xp, '투표 열기').click();
       await xp.waitForTimeout(1500);
@@ -1906,6 +1941,7 @@ async function phaseLab() {
 function judgeBatch() {
   const B = S.batch;
   if (!B) return;
+  if (B.lock) record('OBS-lock-batch', B.lock.shownAfterImport === '2분과' && /2분과 의결/.test(B.lock.createBtn) && /^rejected/.test(B.lock.serverCreateOtherDivision), `b2 콘솔 가져오기 직후 「${B.lock.shownAfterImport}」 · 만들기 버튼 「${B.lock.createBtn}」 · 서버 2분과 토큰→1분과 생성 ${B.lock.serverCreateOtherDivision}`);
   const sizes = (d) => Object.values(B.measure?.[d]?.sizes ?? {});
   const divs = [1, 2, 3];
   const okMeasured = divs.every((d) => B.measure?.[d] && sizes(d).length === 4);
@@ -1921,7 +1957,7 @@ function judgeBatch() {
   const b6 = B.b6;
   record('B6', !!b6 && b6.rows === 1 && b6.idShape && b6.items === 1, b6 ? `「${b6.title}」 ${b6.rows}개 · 문항 ${b6.items}` : '미측정');
   const c1 = B.c1;
-  record('C1', !!c1 && c1.foreign >= 2 && c1.div2.list === 0 && c1.div2.picks === 0 && c1.div2.voteTab === 0 && c1.div2.ownSeen && c1.div1Selected.list === 0 && c1.div1Selected.picks === 0 && c1.div3Selected.list === 0 && c1.div3Selected.picks === 0, c1 ? `타 분과 투표 ${c1.foreign}개 — 2분과 선택: 목록 ${c1.div2.list}·체크 ${c1.div2.picks}·투표탭 ${c1.div2.voteTab} · 1분과 버튼: 목록 ${c1.div1Selected.list}·체크 ${c1.div1Selected.picks} · 3분과 버튼: 목록 ${c1.div3Selected.list}·체크 ${c1.div3Selected.picks}` : '미측정');
+  record('C1', !!c1 && c1.foreign >= 2 && c1.div2.list === 0 && c1.div2.picks === 0 && c1.div2.voteTab === 0 && c1.div2.ownSeen && c1.btns.div1 === 0 && c1.btns.div3 === 0 && c1.btns.div2 === 1, c1 ? `타 분과 투표 ${c1.foreign}개 — 의결 목록 ${c1.div2.list}·세리머니 체크 ${c1.div2.picks}·투표 탭 ${c1.div2.voteTab} · 자기 투표 보임 ${c1.div2.ownSeen} · 분과 버튼 1:${c1.btns.div1} 2:${c1.btns.div2} 3:${c1.btns.div3}` : '미측정');
   const c2 = divs.map((d) => B.measure?.[d]?.sizes?.['전체 한 번']?.c2);
   record('C2', c2.every((x) => x && x.total > 20 && x.disabled && x.cap), `전체 한 번 — ${c2.map((x, i) => (x ? `${i + 1}분과 ${x.total}안 비활성 ${x.disabled} 「${x.alert}」` : '미측정')).join(' · ')}`);
   record('C3', !!B.c3 && B.c3.rows === 1, B.c3 ? `「${B.c3.title}」 DB ${B.c3.rows}개` : '미측정');
