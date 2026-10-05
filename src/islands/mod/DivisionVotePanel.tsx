@@ -114,7 +114,8 @@ export default function DivisionVotePanel({
     .map(Number)
     .filter((d) => lockedDivision === null || d === lockedDivision)
     .sort((a, b) => a - b);
-  const activeDivision = division !== null && states[division] ? division : divisions[0] ?? null;
+  // 고른 분과가 잠금 밖이면(가져오기 직후·저장된 옛 선택) 잠긴 분과로 돌아간다.
+  const activeDivision = division !== null && divisions.includes(division) ? division : divisions[0] ?? null;
   const state = activeDivision !== null ? states[activeDivision] : null;
 
   // 바뀔 때마다 저장. 저장소가 막히면 페이지 메모리로 내려가므로 안내를 띄운다.
