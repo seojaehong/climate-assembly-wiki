@@ -772,7 +772,8 @@ function CeremonySetup({ state, access }: { state: PrepState; access: WorkshopAu
 
   // 묶음으로 나눠 연 투표를 여러 개 골라 한 세리머니로 잇는다(목록 순서대로).
   const loadResults = async () => {
-    const chosen = (rows ?? []).filter((r) => ballotIds.includes(r.id));
+    // 체크한 순서대로 공개한다(목록은 최신 먼저라 그대로 쓰면 주제 순서가 뒤집힌다).
+    const chosen = ballotIds.map((id) => (rows ?? []).find((r) => r.id === id)).filter((r): r is BallotListRow => !!r);
     if (!access || chosen.length === 0) return;
     setLoadMsg('불러오는 중…');
     try {
@@ -856,7 +857,7 @@ function CeremonySetup({ state, access }: { state: PrepState; access: WorkshopAu
         <p className="text-[17px] text-[#5A6B73]">실제 결과는 조 코드로 들어온 콘솔에서 불러옵니다.</p>
       ) : (
         <fieldset className="rounded-2xl border border-[#DCE7EE] p-4">
-          <legend className="px-1 text-[16px] font-bold text-[#1F4E79]">{subgroup} 투표 고르기 (여러 개면 순서대로 이어 공개)</legend>
+          <legend className="px-1 text-[16px] font-bold text-[#1F4E79]">{subgroup} 투표 고르기 (체크한 순서대로 이어 공개)</legend>
           <ul className="space-y-1">
             {(rows ?? []).map((b) => (
               <li key={b.id}>
@@ -868,6 +869,9 @@ function CeremonySetup({ state, access }: { state: PrepState; access: WorkshopAu
                     checked={ballotIds.includes(b.id)}
                     onChange={() => setBallotIds((prev) => (prev.includes(b.id) ? prev.filter((x) => x !== b.id) : [...prev, b.id]))}
                   />
+                  <span className="w-8 shrink-0 text-center text-[17px] font-extrabold text-[#135C73]" data-ballot-order={b.id}>
+                    {ballotIds.includes(b.id) ? ballotIds.indexOf(b.id) + 1 : ''}
+                  </span>
                   <span className="font-bold">{b.title}</span>
                   <span className="text-[#5A6B73]">
                     {ballotStatusLabel(b.status)} · 제출 {b.response_count}명

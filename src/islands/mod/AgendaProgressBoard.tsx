@@ -119,6 +119,11 @@ function isAuthorizationError(error: unknown): boolean {
   return /authorization required|unauthori[sz]ed|invalid token|token expired|token required|로그인(?:이|을)? (?:다시|확인)|인증(?:이|이) 만료|세션(?:이|이) 만료/i.test(message);
 }
 
+function isSessionMismatch(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : String(error);
+  return /session mismatch/i.test(message);
+}
+
 function localDraftKey(teamId: string, recommendationId: string): string {
   return `climate_recommendation_draft:${teamId}:${recommendationId}`;
 }
@@ -470,6 +475,8 @@ export default function AgendaProgressBoard({
   const [payload, setPayload] = useState<AgendaBoardPayload | null>(fixturePayload ?? null);
   const [loading, setLoading] = useState(!fixturePayload);
   const [connection, setConnection] = useState<Connection>(fixturePayload ? 'server' : 'retrying');
+  /** 이 세션에 기록판이 없다고 서버가 답하면 다시 묻지 않는다(폴링마다 400 이 쌓이지 않게). */
+  const [unlinked, setUnlinked] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [divisionFilter, setDivisionFilter] = useState(mode === 'team' ? (subgroup ?? '전체') : '전체');
   const [statusFilter, setStatusFilter] = useState<'all' | AgendaStatus>('all');
@@ -513,6 +520,15 @@ export default function AgendaProgressBoard({
       setConnection('server');
       if (!quiet) setMessage(null);
     } catch (error) {
+      // 기록판은 9/12 세션(AGENDA_SESSION_SLUG)에 묶여 있다. 다른 세션(10/17 등)의 조 토큰이면
+      // 서버가 「session mismatch」로 거부한다 — 고장이 아니라 연결 대상이 없는 것이다.
+      if (isSessionMismatch(error)) {
+        console.info('[recommendation board] not linked to this session');
+        setUnlinked(true);
+        setConnection('server');
+        setMessage('이 회차에는 9/12 권고안 기록판이 연결돼 있지 않습니다.');
+        return;
+      }
       console.error('[recommendation board] refresh failed', error);
       setConnection(navigator.onLine ? 'retrying' : 'offline');
       if (!quiet) setMessage('서버 상태를 받지 못했습니다. 마지막 서버 상태와 이 기기의 미전송 초안을 구분해 유지합니다.');
@@ -523,6 +539,7 @@ export default function AgendaProgressBoard({
   }, [fixturePayload, onAuthorizationExpired, token]);
 
   useEffect(() => {
+    if (unlinked) return;
     void refresh();
     if (fixturePayload) return;
     const interval = window.setInterval(() => void refresh(true), POLL_INTERVAL_MS);
@@ -535,7 +552,7 @@ export default function AgendaProgressBoard({
       window.removeEventListener('online', online);
       window.removeEventListener('offline', offline);
     };
-  }, [fixturePayload, refresh]);
+  }, [fixturePayload, refresh, unlinked]);
 
   useEffect(() => {
     if (fixturePayload) return;
