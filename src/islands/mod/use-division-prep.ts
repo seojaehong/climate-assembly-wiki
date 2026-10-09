@@ -227,7 +227,7 @@ export function useDivisionPrep({
     if (!api || mode !== 'server') return undefined;
     let busy = false;
     const id = setInterval(async () => {
-      if (busy || !canPoll(slotsRef.current as Record<number, PrepSlot>)) return;
+      if (busy || !canPoll(slotsRef.current as Record<number, PrepSlot>, serverDivisions.current)) return;
       busy = true;
       try {
         const res = await api.get();

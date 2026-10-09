@@ -85,6 +85,15 @@ describe('서버 줄 읽기', () => {
     expect(canPoll({ 2: { ...emptySlot(s0), version: 2 } })).toBe(true);
   });
 
+  it('서버에 올리지 않는 칸(이 기기 전용·읽기 실패)의 고침은 폴링을 막지 않는다', () => {
+    const clean = { ...emptySlot(s0), version: 2 };
+    const localOnly = slotEdited(emptySlot(s0), withMotion('이 기기 전용'));
+    expect(canPoll({ 2: clean, 3: localOnly }, [2])).toBe(true);
+    expect(canPoll({ 2: clean, 3: localOnly }, [2, 3])).toBe(false);
+    const unreadable = { ...slotEdited(emptySlot(s0), withMotion('x')), unreadable: true };
+    expect(canPoll({ 2: clean, 1: unreadable }, [1, 2])).toBe(true);
+  });
+
   it('같은 판번호면 상태 객체를 바꾸지 않는다(화면이 다시 그려지지 않게)', () => {
     const prev = { ...emptySlot(s0), version: 5 };
     const { slot } = slotFromRow(prev, row(5, JSON.parse(serializePrep(s0))), null);

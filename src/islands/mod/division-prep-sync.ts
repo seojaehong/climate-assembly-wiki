@@ -85,9 +85,14 @@ export function canSave(slot: PrepSlot): boolean {
   return slot.dirty && !slot.saving && !slot.unreadable && !!slot.state;
 }
 
-/** 폴링해도 되는가 — 어느 분과에도 대기 중인 고침·저장이 없을 때. */
-export function canPoll(slots: Record<number, PrepSlot>): boolean {
-  return Object.values(slots).every((s) => !s.dirty && !s.saving);
+/**
+ * 폴링해도 되는가 — 서버에 저장하는 분과(serverDivisions) 중 대기 중인 고침·저장이 없을 때.
+ * 서버에 올리지 않는 칸(이 기기 전용·읽기 실패 줄)은 고침이 남아 있어도 폴링을 막지 않는다 —
+ * 막으면 다른 분과 소식까지 영영 끊긴다.
+ */
+export function canPoll(slots: Record<number, PrepSlot>, serverDivisions?: Iterable<number>): boolean {
+  const only = serverDivisions ? new Set(serverDivisions) : null;
+  return Object.entries(slots).every(([d, s]) => (only && !only.has(Number(d))) || s.unreadable || (!s.dirty && !s.saving));
 }
 
 export function slotSaveStarted(prev: PrepSlot): PrepSlot {
