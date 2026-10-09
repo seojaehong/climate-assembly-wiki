@@ -4,16 +4,15 @@
  *
  * 왜 있는가
  *   /mod 는 조 접속코드 뒤라 자동 검증·시연 화면 확인이 막힌다. 같은 컴포넌트를
- *   가상 데이터로 띄운다. access 를 주지 않으므로 「투표 만들기」·「실제 투표 결과」는
- *   비활성이고 Supabase 를 부르지 않는다. 준비판·세리머니 연습 모드는 그대로 돈다.
+ *   가상 데이터로 띄운다. access 를 주지 않으므로 Supabase 를 부르지 않는다. 투표는 메모리 안
+ *   가짜 서버(division-vote-lab-fake.ts)로 시작·마감·결과까지 돈다. ?ops=1 = 운영팀 현황판 시연.
  *
  * PRIVACY
  *   - ko 단일 라우트 · robots noindex,nofollow
  *   - 데이터는 division-vote-fixture.ts 의 가상 문장뿐이다. 실제 권고안은 「JSON 가져오기」로만 싣는다
  *   - 저장 키는 /mod 와 따로 쓴다(`lab:` 접두사)
  */
-import DivisionVotePanel from '../../../../islands/mod/DivisionVotePanel';
-import { DIVISION_VOTE_FIXTURE } from '../../../../islands/mod/division-vote-fixture';
+import DivisionVoteLab from '../../../../islands/mod/DivisionVoteLab';
 import '../../../../styles/global.css';
 
 export function getStaticPaths() {
@@ -36,6 +35,6 @@ export function getStaticPaths() {
     미리보기 — 가상 데이터. 서버로 나가는 요청이 없습니다 · 외부 공개 금지
   </div>
   <div style="max-width:1024px;margin:0 auto;padding:16px;">
-    <DivisionVotePanel access={null} fixtureSource={DIVISION_VOTE_FIXTURE} client:only="react" />
+    <DivisionVoteLab client:only="react" />
   </div>
 </body></html>
