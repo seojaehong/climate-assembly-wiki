@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>본부 화면 · 100인 공론장</title>
+<style>
+  :root { --bg: #ffffff; --panel: #f3f5f8; --ink: #111821; --muted: #4a5563; --line: #c9d1db;
+          --accent: #1f5fae; --S: #1f5fae; --M: #2e8b57; --LI: #9a6b00; --LR: #b3261e; --barText: #ffffff; }
+  :root[data-theme="dark"] { --bg: #0f1318; --panel: #1a2029; --ink: #f2f5f8; --muted: #b5bfcc; --line: #3a4552;
+          --accent: #6aa8f0; --S: #3d7fd1; --M: #3fa772; --LI: #c08d1a; --LR: #d9534f; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); }
+  body { font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+         font-size: 26px; line-height: 1.4; word-break: keep-all; overflow-wrap: anywhere; display: flex; flex-direction: column; }
+  header { display: flex; align-items: center; gap: 16px; padding: 18px 32px; border-bottom: 3px solid var(--line); }
+  header h1 { font-size: 34px; margin: 0; flex: 1; min-width: 0; }
+  nav { display: flex; gap: 10px; }
+  nav button { font: inherit; font-size: 24px; font-weight: 700; padding: 10px 20px; border-radius: 12px;
+               border: 3px solid var(--line); background: var(--panel); color: var(--ink); }
+  nav button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
+  .stamp { font-size: 24px; color: var(--muted); white-space: nowrap; }
+  .stamp.err { color: var(--LR); font-weight: 700; }
+  #view { flex: 1; min-height: 0; padding: 24px 32px; overflow: hidden; display: flex; flex-direction: column; }
+  .muted { color: var(--muted); }
+  /* 현황 */
+  .counters { display: flex; gap: 24px; margin-bottom: 24px; }
+  .counter { flex: 1; background: var(--panel); border-radius: 16px; padding: 18px 24px; }
+  .counter .n { font-size: 96px; font-weight: 800; line-height: 1; }
+  .counter .l { font-size: 30px; color: var(--muted); }
+  .tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
+  .tile { background: var(--panel); border-radius: 16px; padding: 16px 20px; border: 4px solid transparent; }
+  .tile b { font-size: 44px; display: block; }
+  .tile .st { font-size: 28px; }
+  .tile.full { border-color: var(--M); }
+  .tools { margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .tools button { font: inherit; font-size: 24px; padding: 10px 18px; border-radius: 10px; border: 2px solid var(--line);
+                  background: var(--bg); color: var(--ink); }
+  /* 질문 */
+  .qgrid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 18px; flex: 1; min-height: 0; }
+  .qcol { background: var(--panel); border-radius: 16px; padding: 16px 18px; overflow: hidden; display: flex; flex-direction: column; }
+  .qcol h2 { font-size: 40px; margin: 0 0 10px; }
+  .qcol .q { margin: 0 0 14px; padding-left: 14px; border-left: 6px solid var(--accent); }
+  .qcol .q small { display: block; font-size: 24px; color: var(--muted); font-weight: 700; }
+  .pager { font-size: 24px; color: var(--muted); text-align: right; margin-top: 8px; }
+  /* 우선순위 */
+  .legend { display: flex; gap: 28px; font-size: 24px; margin-bottom: 12px; align-items: center; }
+  .legend i { display: inline-block; width: 28px; height: 28px; border-radius: 6px; vertical-align: -5px; margin-right: 8px; }
+  .prow { display: grid; grid-template-columns: 70px minmax(0, 1fr) 150px minmax(0, 1.25fr); gap: 16px; align-items: center;
+          padding: 4px 0; border-bottom: 2px solid var(--line); }
+  .prow .rk { font-size: 32px; font-weight: 800; text-align: center; }
+  .prow .t { font-size: 27px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .prow .avg { font-size: 32px; font-weight: 800; text-align: right; }
+  .prow .avg span { font-size: 24px; color: var(--muted); font-weight: 400; }
+  .stack { display: flex; height: 40px; border-radius: 8px; overflow: hidden; background: var(--panel); }
+  .stack div { display: grid; place-items: center; color: var(--barText); font-size: 24px; font-weight: 800; min-width: 0; }
+  .phead { font-size: 24px; color: var(--muted); border-bottom: 3px solid var(--line); }
+  /* 설문 */
+  .sgrid { display: grid; grid-template-columns: 320px 1fr; gap: 32px; }
+  .sbig { font-size: 140px; font-weight: 800; line-height: 1; }
+  .srow { margin-bottom: 18px; }
+  .srow .t { font-size: 26px; font-weight: 700; }
+  .srow .v { font-size: 40px; font-weight: 800; }
+  .dist { display: flex; gap: 6px; height: 34px; margin-top: 6px; }
+  .dist div { background: var(--accent); border-radius: 4px; color: #fff; font-size: 24px; display: grid; place-items: center; min-width: 0; }
+  .gate { max-width: 720px; margin: 120px auto; text-align: center; }
+  .gate input { font: inherit; font-size: 28px; padding: 12px; width: 100%; border: 3px solid var(--line); border-radius: 12px; }
+  @media print {
+    header, .tools, .pager { display: none; }
+    body { font-size: 14px; display: block; }
+    #view { overflow: visible; padding: 0; display: block; }
+    .qgrid { display: block; height: auto; }
+    .qcol { background: none; padding: 0 0 12px; break-inside: avoid; }
+    .qcol h2 { font-size: 18px; margin: 8px 0 4px; }
+    .qcol .q small { font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>일하는 시민 100인 공론장</h1>
+  <nav>
+    <button data-v="1">1 현황</button>
+    <button data-v="2">2 질문</button>
+    <button data-v="3">3 우선순위</button>
+    <button data-v="4">4 설문</button>
+  </nav>
+  <span class="stamp" id="stamp"></span>
+</header>
+<div id="view"></div>
+<script src="../lib.js"></script>
+<script>
+(function () {
+  var el = BF.el;
+  var params = new URLSearchParams(location.search);
+  var key = params.get('key') || BF.store('bf_hq_key') || '';
+  var data = null, view = 1, page = 0, failures = 0;
+  var TERM_COLOR = { S: 'var(--S)', M: 'var(--M)', LI: 'var(--LI)', LR: 'var(--LR)' };
+  var TERM_LABEL = { S: '단기', M: '중기', LI: '장기·중요도', LR: '장기·현실제약' };
+  var SURVEY_LABEL = { overall: '전반 만족', info: '발표 이해', talk: '의견 발언', reflect: '정책 반영 기대' };
+
+  var V = document.getElementById('view');
+
+  function gate(msg) {
+    V.innerHTML = '';
+    var inp = el('input', { type: 'text', placeholder: '본부 키' });
+    V.appendChild(el('div', { class: 'gate' }, [
+      el('p', { text: msg || '본부 주소(키)로 들어와 주세요.' }), inp,
+      el('p', null, [el('button', { class: 'tools', text: '들어가기', onclick: function () { key = inp.value.trim(); load(true); } })])
+    ]));
+  }
+
+  function load(first) {
+    if (!key) return gate();
+    BF.rpc('bucheon_hq', { p_key: key }).then(function (d) {
+      data = d; failures = 0; BF.store('bf_hq_key', key);
+      document.getElementById('stamp').textContent = '갱신 ' + BF.hhmm(d.now);
+      document.getElementById('stamp').className = 'stamp';
+      render();
+    }).catch(function (e) {
+      if (e.raw === 'invalid hq key') { BF.store('bf_hq_key', null); key = ''; return gate(e.message); }
+      failures++;
+      var s = document.getElementById('stamp');
+      s.textContent = '연결 끊김 ' + failures + '회 — 마지막 화면 유지 중'; s.className = 'stamp err';
+      if (first && !data) gate(e.message);
+    });
+  }
+
+  function byTeam(list) { var m = {}; (list || []).forEach(function (x) { m[x.team_no] = x; }); return m; }
+
+  function renderStatus() {
+    var q = byTeam(data.questions), p = byTeam(data.priorities), n = data.teams.length;
+    V.appendChild(el('div', { class: 'counters' }, [
+      el('div', { class: 'counter' }, [el('div', { class: 'n', text: data.questions.length + '/' + n }), el('div', { class: 'l', text: '세션1 질문 제출' })]),
+      el('div', { class: 'counter' }, [el('div', { class: 'n', text: data.priorities.length + '/' + n }), el('div', { class: 'l', text: '세션2 우선순위 제출' })]),
+      el('div', { class: 'counter' }, [el('div', { class: 'n', text: String(data.surveys.length) }), el('div', { class: 'l', text: '만족도 설문 응답' })])
+    ]));
+    var tiles = el('div', { class: 'tiles' });
+    data.teams.forEach(function (t) {
+      tiles.appendChild(el('div', { class: 'tile' + (q[t] && p[t] ? ' full' : '') }, [
+        el('b', { text: t + '조' }),
+        el('div', { class: 'st', text: '세션1 ' + (q[t] ? '✔ ' + BF.hhmm(q[t].updated_at) : '—') }),
+        el('div', { class: 'st', text: '세션2 ' + (p[t] ? '✔ ' + BF.hhmm(p[t].updated_at) : '—') })
+      ]));
+    });
+    V.appendChild(tiles);
+    V.appendChild(el('div', { class: 'tools' }, [
+      el('button', { text: '질문 인쇄', onclick: function () { show(2, -1); setTimeout(function () { window.print(); }, 150); } }),
+      el('button', { text: '질문 CSV', onclick: function () { csv('questions'); } }),
+      el('button', { text: '우선순위 CSV', onclick: function () { csv('priorities'); } }),
+      el('button', { text: '설문 CSV', onclick: function () { csv('surveys'); } }),
+      el('button', { text: '밝게/어둡게', onclick: toggleTheme })
+    ]));
+  }
+
+  function renderQuestions() {
+    var q = byTeam(data.questions), teams = data.teams, per = 5;
+    var pages = Math.max(1, Math.ceil(teams.length / per));
+    if (page >= pages) page = 0;
+    var slice = page < 0 ? teams : teams.slice(page * per, page * per + per);
+    var grid = el('div', { class: 'qgrid' });
+    slice.forEach(function (t) {
+      var col = el('div', { class: 'qcol' }, [el('h2', { text: t + '조' })]);
+      if (q[t]) {
+        col.appendChild(el('p', { class: 'q' }, [el('small', { text: '질문 1' }), q[t].q1]));
+        col.appendChild(el('p', { class: 'q' }, [el('small', { text: '질문 2' }), q[t].q2]));
+      } else col.appendChild(el('p', { class: 'muted', text: '제출 전' }));
+      grid.appendChild(col);
+    });
+    V.appendChild(grid);
+    if (page >= 0 && pages > 1) V.appendChild(el('div', { class: 'pager', text: (page + 1) + ' / ' + pages + '  (← → 로 넘김)' }));
+    // 넘치면 글자를 줄이되 24px 밑으로는 내리지 않는다
+    Array.prototype.forEach.call(grid.children, function (col) {
+      var fs = 26;
+      while (col.scrollHeight > col.clientHeight && fs > 24) { fs--; col.style.fontSize = fs + 'px'; }
+    });
+  }
+
+  function aggregate() {
+    return data.policies.map(function (pl) {
+      var counts = { S: 0, M: 0, LI: 0, LR: 0 }, ranks = [];
+      data.priorities.forEach(function (p) {
+        var t = p.terms[String(pl.id)]; if (t) counts[t]++;
+        var r = p.ranking.indexOf(pl.id); if (r >= 0) ranks.push(r + 1);
+      });
+      var avg = ranks.length ? ranks.reduce(function (a, b) { return a + b; }, 0) / ranks.length : null;
+      return { id: pl.id, title: pl.title, counts: counts, avg: avg, n: ranks.length };
+    }).sort(function (a, b) {
+      if (a.avg === null) return 1; if (b.avg === null) return -1;
+      return a.avg - b.avg || b.counts.S - a.counts.S || a.id - b.id;
+    });
+  }
+
+  function renderPriority() {
+    var rows = aggregate(), n = data.priorities.length;
+    var legend = el('div', { class: 'legend' }, [el('b', { text: '제출 ' + n + '/' + data.teams.length + '개 조' })]);
+    ['S', 'M', 'LI', 'LR'].forEach(function (k) {
+      var i = el('i'); i.style.background = TERM_COLOR[k];
+      legend.appendChild(el('span', null, [i, TERM_LABEL[k]]));
+    });
+    V.appendChild(legend);
+    V.appendChild(el('div', { class: 'prow phead' }, [el('span', { text: '순위' }), el('span', { text: '정책과제' }),
+      el('span', { text: '평균 순위', style: 'text-align:right' }), el('span', { text: '시기 분류 (조 수)' })]));
+    var box = el('div');
+    rows.forEach(function (r, i) {
+      var stack = el('div', { class: 'stack' });
+      ['S', 'M', 'LI', 'LR'].forEach(function (k) {
+        if (!r.counts[k]) return;
+        var d = el('div', { text: String(r.counts[k]) });
+        d.style.flex = String(r.counts[k]); d.style.background = TERM_COLOR[k];
+        stack.appendChild(d);
+      });
+      box.appendChild(el('div', { class: 'prow' }, [
+        el('span', { class: 'rk', text: r.avg === null ? '–' : String(i + 1) }),
+        el('span', { class: 't', text: r.title, title: r.title }),
+        el('span', { class: 'avg' }, [r.avg === null ? '–' : r.avg.toFixed(1)]),
+        stack
+      ]));
+    });
+    V.appendChild(box);
+    // 과제가 많으면 행 높이를 화면에 맞춘다
+    var free = V.clientHeight - box.offsetTop + V.offsetTop - 30;
+    if (box.scrollHeight > free) {
+      var h = Math.max(44, Math.floor(free / rows.length));
+      Array.prototype.forEach.call(box.children, function (row) { row.style.padding = '0'; row.style.height = h + 'px'; });
+    }
+  }
+
+  function renderSurvey() {
+    var s = data.surveys, left = el('div'), right = el('div');
+    left.appendChild(el('div', { class: 'sbig', text: String(s.length) }));
+    left.appendChild(el('div', { class: 'muted', text: '명 응답' + (data.survey_open ? '' : ' · 마감') }));
+    Object.keys(SURVEY_LABEL).forEach(function (k) {
+      var vals = s.map(function (a) { return a[k]; }).filter(function (v) { return typeof v === 'number'; });
+      var avg = vals.length ? (vals.reduce(function (a, b) { return a + b; }, 0) / vals.length).toFixed(2) : '–';
+      var dist = el('div', { class: 'dist' });
+      [1, 2, 3, 4, 5].forEach(function (v) {
+        var c = vals.filter(function (x) { return x === v; }).length;
+        var d = el('div', { text: c ? v + '점 ' + c : '' }); d.style.flex = String(Math.max(c, 0.6)); d.style.opacity = c ? '1' : '.25';
+        dist.appendChild(d);
+      });
+      right.appendChild(el('div', { class: 'srow' }, [el('span', { class: 't', text: SURVEY_LABEL[k] + '  ' }), el('span', { class: 'v', text: avg }), dist]));
+    });
+    var again = {}; s.forEach(function (a) { if (a.again) again[a.again] = (again[a.again] || 0) + 1; });
+    right.appendChild(el('div', { class: 'srow' }, [el('div', { class: 't', text: '다음 참여 의사' }),
+      el('div', { text: Object.keys(again).map(function (k) { return k + ' ' + again[k]; }).join(' · ') || '–' })]));
+    V.appendChild(el('div', { class: 'sgrid' }, [left, right]));
+  }
+
+  function render() {
+    if (!data) return;
+    V.innerHTML = '';
+    Array.prototype.forEach.call(document.querySelectorAll('nav button'), function (b) {
+      b.setAttribute('aria-pressed', String(+b.dataset.v === view));
+    });
+    [null, renderStatus, renderQuestions, renderPriority, renderSurvey][view]();
+  }
+
+  function show(v, p) { view = v; page = p === undefined ? 0 : p; render(); }
+
+  function toggleTheme() {
+    var r = document.documentElement;
+    if (r.dataset.theme === 'dark') delete r.dataset.theme; else r.dataset.theme = 'dark';
+  }
+
+  function csv(kind) {
+    var rows;
+    if (kind === 'questions') {
+      rows = [['조', '질문1', '질문2', '참고', '제출시각']].concat(data.questions.map(function (q) {
+        return [q.team_no + '조', q.q1, q.q2, q.note || '', q.updated_at]; }));
+    } else if (kind === 'priorities') {
+      var title = {}; data.policies.forEach(function (p) { title[p.id] = p.title; });
+      rows = [['조', '정책과제', '시기', '순위', '1~3순위 이유', '장기 이유', '의견 갈림']];
+      data.priorities.forEach(function (p) {
+        data.policies.forEach(function (pl) {
+          rows.push([p.team_no + '조', pl.title, TERM_LABEL[p.terms[String(pl.id)]] || '', p.ranking.indexOf(pl.id) + 1,
+                     p.reason_top, p.reason_long || '', p.split || '']);
+        });
+      });
+    } else {
+      var keys = {}; data.surveys.forEach(function (a) { Object.keys(a).forEach(function (k) { keys[k] = 1; }); });
+      keys = Object.keys(keys);
+      rows = [keys].concat(data.surveys.map(function (a) { return keys.map(function (k) { return a[k] === undefined ? '' : a[k]; }); }));
+    }
+    var text = '﻿' + rows.map(function (r) {
+      return r.map(function (c) { c = String(c); return /[",\n]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c; }).join(',');
+    }).join('\r\n');
+    var a = el('a', { href: URL.createObjectURL(new Blob([text], { type: 'text/csv' })), download: 'bucheon_' + kind + '.csv' });
+    document.body.appendChild(a); a.click(); a.remove();
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('nav button'), function (b) {
+    b.onclick = function () { show(+b.dataset.v); };
+  });
+  document.addEventListener('keydown', function (e) {
+    if (e.target.tagName === 'INPUT') return;
+    if (e.key >= '1' && e.key <= '4') show(+e.key);
+    else if (e.key === 'ArrowRight' && view === 2) { page++; render(); }
+    else if (e.key === 'ArrowLeft' && view === 2) { page = Math.max(0, page - 1); render(); }
+    else if (e.key === 'd' || e.key === 'D') toggleTheme();
+  });
+  window.addEventListener('resize', render);
+  load(true);
+  setInterval(load, 5000);
+})();
+</script>
+</body>
+</html>

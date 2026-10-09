@@ -67,11 +67,10 @@
   // 링크는 여기만 고친다. url 이 비어 있으면 「준비 중」으로 보인다.
   var LINKS = {
     fac: [
-      { title: '세션1 · 조별 질문 제출', desc: '조에서 고른 질문 2개', url: '' },
-      { title: '세션2 · 정책과제 우선순위', desc: '시기 분류와 순위, 이유', url: '' }
+      { title: '조별 입력 (세션1 질문 · 세션2 우선순위)', desc: '조 코드 6자리로 들어갑니다. 조별 QR이 있으면 그것을 쓰세요', url: 't/' },
     ],
     cit: [
-      { title: '만족도 설문', desc: '행사를 마치며 3분', url: '' }
+      { title: '만족도 설문', desc: '행사를 마치며 3분 · 이름은 받지 않습니다', url: 's/' }
     ]
   };
 
@@ -80,7 +79,7 @@
     items.forEach(function (it) {
       var el = document.createElement(it.url ? 'a' : 'span');
       el.className = 'btn';
-      if (it.url) { el.href = it.url; el.target = '_blank'; el.rel = 'noopener'; }
+      if (it.url) { el.href = it.url; }
       var t = document.createElement('span'); t.className = 't'; t.textContent = it.title;
       var d = document.createElement('span'); d.className = 'd'; d.textContent = it.desc;
       el.appendChild(t); el.appendChild(d);
