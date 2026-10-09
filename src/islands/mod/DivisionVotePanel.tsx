@@ -481,7 +481,7 @@ const OPERATOR_STEPS = [
   '화면 위 분과 이름이 우리 분과인지 확인합니다. 오른쪽 위 칩이 「저장됨」이면 서버에 저장되고 있습니다.',
   '「1. 준비판」에서 카드마다 처리 상태를 고르고, 카드를 골라 안 제목을 넣은 뒤 [의결안 만들기]를 누릅니다. 시행중-제외 카드는 안에 넣을 수 없습니다.',
   '「2. 투표 진행」 맨 위에 재적과 참석 인원을 넣습니다. 재적 과반수가 참석해야 [투표 시작]이 눌립니다. 가결선이 바로 아래에 나옵니다.',
-  '안마다 [투표 시작]을 누르면 투표가 열리고 QR 화면이 바로 뜹니다. [나가기] 또는 ESC로 돌아오고, [QR 다시 띄우기]로 다시 엽니다.',
+  '안마다 [투표 시작]을 누르고, 버튼이 「투표를 시작합니까?」로 바뀌면 5초 안에 한 번 더 누릅니다. 투표가 열리고 QR 화면이 바로 뜹니다. [나가기] 또는 ESC로 돌아오고, [QR 다시 띄우기]로 다시 엽니다.',
   '투표를 끝낼 때 [마감하고 결과 보기]를 누르고, 버튼이 「정말 마감합니까?」로 바뀌면 5초 안에 한 번 더 누릅니다. 찬성·반대 표, 가결선, 가결·부결이 크게 나옵니다.',
   '손을 든 표가 있으면 거수 찬성·반대 칸에 넣습니다. 온라인 표에 더해 다시 판정합니다. 조별 권고 수준 표와 기타 의견도 그 안 아래에 적습니다.',
   '부결된 안은 [문구 고쳐 2차 투표] 또는 [소수 의견으로 기록]을 고릅니다. 다 끝나면 「3. 세리머니」로 발표하고 [이 분과 결과 CSV]를 내려받습니다.',
@@ -1178,7 +1178,18 @@ function UnitCard({
         <PhaseBadge phase={phase} />
         {ballot ? <span className="text-[16px] text-[#5A6B73]">{ballot.title} · {ballotStatusLabel(ballot.stage === 'creating' ? 'draft' : ballot.stage)}</span> : null}
         <div className="ml-auto flex flex-wrap items-center gap-2">
-          {notStarted || phase === 'starting' ? (
+          {notStarted ? (
+            <TwoStepButton
+              className={`${btnBig} bg-[#135C73] text-white`}
+              armedClassName={`${btnBig} bg-[#0B3A4A] text-white ring-4 ring-[#7FC8DE]`}
+              testId="vote-start"
+              disabled={startDisabled}
+              label={startLabel}
+              armedLabel={`${isRevote ? '2차 투표를' : '투표를'} 시작합니까? (다시 누르면 시작)`}
+              onFire={onStart}
+            />
+          ) : null}
+          {phase === 'starting' ? (
             <button type="button" className={`${btnBig} bg-[#135C73] text-white`} data-testid="vote-start" disabled={startDisabled} onClick={onStart}>
               {startLabel}
             </button>

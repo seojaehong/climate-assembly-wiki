@@ -316,7 +316,15 @@ async function main() {
   await phase('c', async () => {
     await tab(A.page, '2. 투표 진행').click();
     const uP = unitOf(A.page, P);
-    await uP.locator('[data-testid=vote-start]').dblclick(); // 두 번 눌러도 투표는 하나
+    // 한 번만 누르면 무장만 된다(투표는 아직 없다) → 5초 뒤 원래대로 → 두 번 눌러 시작.
+    const startBtn = uP.locator('[data-testid=vote-start]');
+    await startBtn.click();
+    const armedTxt = (await startBtn.textContent())?.trim();
+    await A.page.waitForTimeout(1500);
+    const noBallotYet = !Object.values((await serverRow(TO, 1))?.state?.ballots ?? {}).some((b) => b.motionIds.includes(P));
+    const startReverted = await waitUntil(async () => (await startBtn.getAttribute('data-armed')) === 'false', 8000);
+    record('c0-start-two-step', /다시 누르면 시작/.test(armedTxt ?? '') && noBallotYet && startReverted, `무장 문구="${armedTxt}" · 한 번 누름에 투표 없음=${noBallotYet} · 5초 뒤 원래대로=${startReverted}`);
+    await twoStep(startBtn);
     const qr = await A.page.getByRole('button', { name: 'QR 화면 나가기' }).waitFor({ timeout: 20000 }).then(() => true).catch(() => false);
     await shot(A, 'c-qr.png');
     let state = (await serverRow(TO, 1))?.state;
@@ -389,7 +397,7 @@ async function main() {
 
     // F — 찬성 2 · 반대 5, 거수 찬성 1 → 3 (부결)
     const uF = unitOf(A.page, F);
-    await uF.locator('[data-testid=vote-start]').click();
+    await twoStep(uF.locator('[data-testid=vote-start]'));
     await A.page.getByRole('button', { name: 'QR 화면 나가기' }).waitFor({ timeout: 20000 });
     await A.page.keyboard.press('Escape');
     state = (await serverRow(TO, 1))?.state;
@@ -414,7 +422,7 @@ async function main() {
     const uF = unitOf(A.page, F);
     await uF.locator('[data-testid=revote]').click();
     await A.page.getByLabel(`${F} 2차 투표 제목`).fill('E2E 부결 예정 안(문구 수정)');
-    await unitOf(A.page, F).locator('[data-testid=vote-start]').click();
+    await twoStep(unitOf(A.page, F).locator('[data-testid=vote-start]'));
     await A.page.getByRole('button', { name: 'QR 화면 나가기' }).waitFor({ timeout: 20000 });
     await A.page.keyboard.press('Escape');
     let state = (await serverRow(TO, 1))?.state;
