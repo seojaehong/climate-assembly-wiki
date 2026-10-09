@@ -46,6 +46,10 @@
   X-Robots-Tag: noindex, nofollow, noarchive
   Cache-Control: no-cache
 
+/bucheon/*
+  X-Robots-Tag: noindex, nofollow, noarchive
+  Cache-Control: no-cache
+
 /lecture/*
   X-Robots-Tag: noindex, nofollow
   Cache-Control: no-cache

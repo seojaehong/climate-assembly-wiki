@@ -36,3 +36,4 @@ Sitemap: https://climate-assembly-wiki.pages.dev/sitemap-index.xml
 
 # 2026-09-07 숙의 지도(접속 암호 필요)
 Disallow: /m-7k2p9qv4x8wd/
+Disallow: /bucheon/

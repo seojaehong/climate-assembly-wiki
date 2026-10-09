@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>일하는 시민 100인 공론장</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --ink: #1b2430; --muted: #5b6675;
+    --line: #dde2e8; --accent: #1f5fae; --accent-ink: #ffffff; --off: #c4cbd4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12161c; --card: #1b2129; --ink: #e8ecf1; --muted: #9aa5b3;
+      --line: #2c3540; --accent: #5b9bea; --accent-ink: #0d1117; --off: #3a4450;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+    line-height: 1.5; word-break: keep-all;
+  }
+  main { max-width: 560px; margin: 0 auto; padding: 28px 16px 48px; }
+  header { margin-bottom: 24px; }
+  .kicker { font-size: 14px; color: var(--muted); margin: 0 0 4px; }
+  h1 { font-size: 26px; margin: 0 0 8px; }
+  .meta { font-size: 15px; color: var(--muted); margin: 0; }
+  section { margin-top: 20px; }
+  h2 { font-size: 15px; color: var(--muted); font-weight: 600; margin: 0 0 8px; }
+  a.btn, span.btn {
+    display: block; padding: 18px 18px; margin-bottom: 10px; border-radius: 12px;
+    background: var(--card); border: 1px solid var(--line); color: var(--ink);
+    text-decoration: none;
+  }
+  a.btn { border-left: 6px solid var(--accent); }
+  a.btn:active { transform: translateY(1px); }
+  .t { display: block; font-size: 19px; font-weight: 700; }
+  .d { display: block; font-size: 14px; color: var(--muted); margin-top: 2px; }
+  span.btn { border-left: 6px solid var(--off); opacity: .7; }
+  span.btn .t::after { content: " · 준비 중"; font-weight: 400; font-size: 14px; color: var(--muted); }
+  footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <p class="kicker">부천시 노동정책 연구</p>
+    <h1>일하는 시민 100인 공론장</h1>
+    <p class="meta">2026. 11. 18.(수) 14:00~18:00 · 부천상공회의소 4층 강당</p>
+  </header>
+
+  <section>
+    <h2>퍼실리테이터 입력</h2>
+    <div id="fac"></div>
+  </section>
+
+  <section>
+    <h2>시민참여단</h2>
+    <div id="cit"></div>
+  </section>
+
+  <footer>운영: (사)한국갈등해결센터</footer>
+</main>
+<script>
+  // 링크는 여기만 고친다. url 이 비어 있으면 「준비 중」으로 보인다.
+  var LINKS = {
+    fac: [
+      { title: '세션1 · 조별 질문 제출', desc: '조에서 고른 질문 2개', url: '' },
+      { title: '세션2 · 정책과제 우선순위', desc: '시기 분류와 순위, 이유', url: '' }
+    ],
+    cit: [
+      { title: '만족도 설문', desc: '행사를 마치며 3분', url: '' }
+    ]
+  };
+
+  function render(id, items) {
+    var box = document.getElementById(id);
+    items.forEach(function (it) {
+      var el = document.createElement(it.url ? 'a' : 'span');
+      el.className = 'btn';
+      if (it.url) { el.href = it.url; el.target = '_blank'; el.rel = 'noopener'; }
+      var t = document.createElement('span'); t.className = 't'; t.textContent = it.title;
+      var d = document.createElement('span'); d.className = 'd'; d.textContent = it.desc;
+      el.appendChild(t); el.appendChild(d);
+      box.appendChild(el);
+    });
+  }
+  render('fac', LINKS.fac);
+  render('cit', LINKS.cit);
+</script>
+</body>
+</html>
