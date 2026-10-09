@@ -1,0 +1,223 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>조별 입력 · 100인 공론장</title>
+<style>
+  :root {
+    --bg: #f6f7f9; --card: #ffffff; --ink: #1b2430; --muted: #5b6675; --line: #d5dbe2;
+    --accent: #1f5fae; --accent-ink: #ffffff; --soft: #e8f0fa; --ok: #1d7a46; --err: #b3261e;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12161c; --card: #1b2129; --ink: #e8ecf1; --muted: #9aa5b3; --line: #313b47;
+      --accent: #5b9bea; --accent-ink: #0d1117; --soft: #1f2d40; --ok: #4cc38a; --err: #ff8a80;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body { font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+         line-height: 1.5; word-break: keep-all; overflow-wrap: anywhere; }
+  main { width: 100%; max-width: 640px; margin: 0 auto; padding: 16px 16px 120px; }
+  h1 { font-size: 24px; margin: 4px 0 2px; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0 0 14px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tabs button { flex: 1; min-width: 0; padding: 12px 8px; font-size: 16px; font-weight: 700; border-radius: 10px;
+                 border: 2px solid var(--line); background: var(--card); color: var(--ink); }
+  .tabs button[aria-selected="true"] { border-color: var(--accent); background: var(--soft); color: var(--accent); }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
+  label.f { display: block; font-weight: 700; margin: 0 0 6px; }
+  .help { color: var(--muted); font-size: 14px; margin: -2px 0 8px; }
+  textarea, input[type=text] { width: 100%; font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 10px;
+             border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+  textarea { min-height: 96px; resize: vertical; }
+  .count { text-align: right; font-size: 13px; color: var(--muted); }
+  h2 { font-size: 18px; margin: 20px 0 8px; }
+  .pt { font-weight: 700; margin-bottom: 8px; }
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .seg button { min-width: 0; padding: 10px 6px; font-size: 15px; border-radius: 8px; border: 1px solid var(--line);
+                background: var(--bg); color: var(--ink); }
+  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+  .rank button.item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 12px;
+                margin-bottom: 6px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font-size: 16px; }
+  .rank .badge { flex: 0 0 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 800;
+                 background: var(--bg); color: var(--muted); border: 1px dashed var(--line); }
+  .rank button.on .badge { background: var(--accent); color: var(--accent-ink); border: 0; }
+  .rank button.on { border-color: var(--accent); }
+  .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; margin: 6px 0 10px; }
+  .ghost { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font-size: 14px; }
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--line); padding: 12px 16px; }
+  .bar .in { max-width: 640px; margin: 0 auto; }
+  .primary { width: 100%; padding: 15px; font-size: 18px; font-weight: 800; border: 0; border-radius: 12px;
+             background: var(--accent); color: var(--accent-ink); }
+  .primary:disabled { opacity: .55; }
+  .msg { font-size: 15px; margin: 0 0 8px; min-height: 1.2em; }
+  .msg.ok { color: var(--ok); } .msg.err { color: var(--err); }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<main id="app">
+  <p class="sub">일하는 시민 100인 공론장 · 퍼실리테이터 입력</p>
+  <div id="gate" class="card hidden">
+    <label class="f" for="code">조 코드</label>
+    <p class="help">받은 링크로 들어오면 자동으로 채워집니다.</p>
+    <input id="code" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" maxlength="6" placeholder="6자리">
+    <p class="msg err" id="gateMsg"></p>
+    <button class="primary" id="enter">들어가기</button>
+  </div>
+  <div id="main" class="hidden">
+    <h1 id="teamTitle"></h1>
+    <div class="tabs" role="tablist">
+      <button role="tab" id="tab1" aria-selected="true">세션1 · 질문</button>
+      <button role="tab" id="tab2" aria-selected="false">세션2 · 우선순위</button>
+    </div>
+    <section id="s1"></section>
+    <section id="s2" class="hidden"></section>
+  </div>
+</main>
+<div class="bar hidden" id="bar"><div class="in">
+  <p class="msg" id="msg"></p>
+  <button class="primary" id="submit">제출</button>
+</div></div>
+<script src="../lib.js"></script>
+<script>
+(function () {
+  var el = BF.el, st = BF.store;
+  var params = new URLSearchParams(location.search);
+  var code = (params.get('code') || st('bf_code') || '').toUpperCase().trim();
+  var team = null, policies = [], tab = 1;
+  var draft = { q1: '', q2: '', note: '', terms: {}, ranking: [], top: '', long: '', split: '' };
+
+  function saveDraft() { st('bf_draft_' + code, draft); }
+  function msg(t, kind) { var m = document.getElementById('msg'); m.textContent = t || ''; m.className = 'msg' + (kind ? ' ' + kind : ''); }
+
+  function showGate(err) {
+    document.getElementById('gate').classList.remove('hidden');
+    document.getElementById('main').classList.add('hidden');
+    document.getElementById('bar').classList.add('hidden');
+    document.getElementById('code').value = code;
+    document.getElementById('gateMsg').textContent = err || '';
+  }
+
+  function join() {
+    if (!code) return showGate('');
+    BF.rpc('bucheon_join', { p_code: code }).then(function (d) {
+      team = d.team_no; policies = d.policies || [];
+      st('bf_code', code);
+      var saved = st('bf_draft_' + code);
+      if (saved) draft = Object.assign(draft, saved);
+      if (d.question && !saved) { draft.q1 = d.question.q1; draft.q2 = d.question.q2; draft.note = d.question.note || ''; }
+      if (d.priority && !(saved && saved.ranking && saved.ranking.length)) {
+        draft.terms = d.priority.terms || {}; draft.ranking = d.priority.ranking || [];
+        draft.top = d.priority.reason_top || ''; draft.long = d.priority.reason_long || ''; draft.split = d.priority.split || '';
+      }
+      // 과제 목록이 바뀌었으면 사라진 과제는 걸러낸다
+      var ids = policies.map(function (p) { return p.id; });
+      draft.ranking = draft.ranking.filter(function (id) { return ids.indexOf(id) >= 0; });
+      Object.keys(draft.terms).forEach(function (k) { if (ids.indexOf(+k) < 0) delete draft.terms[k]; });
+      document.getElementById('gate').classList.add('hidden');
+      document.getElementById('main').classList.remove('hidden');
+      document.getElementById('bar').classList.remove('hidden');
+      document.getElementById('teamTitle').textContent = team + '조';
+      document.title = team + '조 · 100인 공론장';
+      var stamp = [];
+      if (d.question) stamp.push('세션1 제출 ' + BF.hhmm(d.question.updated_at));
+      if (d.priority) stamp.push('세션2 제출 ' + BF.hhmm(d.priority.updated_at));
+      msg(stamp.join(' · '), stamp.length ? 'ok' : '');
+      render();
+    }).catch(function (e) { showGate(e.message); });
+  }
+
+  function area(id, label, help, max, key, required) {
+    var t = el('textarea', { id: id, maxlength: String(max) });
+    t.value = draft[key] || '';
+    var c = el('div', { class: 'count', text: t.value.length + ' / ' + max });
+    t.addEventListener('input', function () { draft[key] = t.value; c.textContent = t.value.length + ' / ' + max; saveDraft(); });
+    return el('div', { class: 'card' }, [
+      el('label', { class: 'f', for: id, text: label + (required ? '' : ' (선택)') }),
+      help ? el('p', { class: 'help', text: help }) : null, t, c
+    ]);
+  }
+
+  function renderS1() {
+    var s = document.getElementById('s1'); s.innerHTML = '';
+    s.appendChild(area('q1', '질문 1', '스티커를 가장 많이 받은 질문', 500, 'q1', true));
+    s.appendChild(area('q2', '질문 2', '스티커를 두 번째로 많이 받은 질문', 500, 'q2', true));
+    s.appendChild(area('note', '참고', '질문 배경 등 연구진이 알면 좋을 내용', 1000, 'note', false));
+  }
+
+  function renderS2() {
+    var s = document.getElementById('s2'); s.innerHTML = '';
+    s.appendChild(el('h2', { text: '1. 시기 분류 (' + Object.keys(draft.terms).length + ' / ' + policies.length + ')' }));
+    policies.forEach(function (p) {
+      var seg = el('div', { class: 'seg' });
+      BF.TERMS.forEach(function (t) {
+        seg.appendChild(el('button', { type: 'button', 'aria-pressed': String(draft.terms[p.id] === t.k), text: t.label,
+          onclick: function () { draft.terms[p.id] = t.k; saveDraft(); renderS2(); } }));
+      });
+      s.appendChild(el('div', { class: 'card' }, [el('div', { class: 'pt', text: p.title }), seg]));
+    });
+
+    s.appendChild(el('h2', { text: '2. 우선순위 (' + draft.ranking.length + ' / ' + policies.length + ')' }));
+    s.appendChild(el('div', { class: 'row' }, [
+      el('span', { class: 'help', text: '1순위부터 차례로 누르세요. 다시 누르면 빠집니다.' }),
+      el('button', { type: 'button', class: 'ghost', text: '처음부터', onclick: function () { draft.ranking = []; saveDraft(); renderS2(); } })
+    ]));
+    var box = el('div', { class: 'rank' });
+    var ordered = draft.ranking.map(function (id) { return policies.filter(function (p) { return p.id === id; })[0]; })
+      .concat(policies.filter(function (p) { return draft.ranking.indexOf(p.id) < 0; }));
+    ordered.forEach(function (p) {
+      var r = draft.ranking.indexOf(p.id);
+      box.appendChild(el('button', { type: 'button', class: 'item' + (r >= 0 ? ' on' : ''),
+        onclick: function () {
+          var i = draft.ranking.indexOf(p.id);
+          if (i >= 0) draft.ranking.splice(i, 1); else draft.ranking.push(p.id);
+          saveDraft(); renderS2();
+        } }, [el('span', { class: 'badge', text: r >= 0 ? String(r + 1) : '' }), el('span', { text: p.title })]));
+    });
+    s.appendChild(box);
+
+    s.appendChild(el('h2', { text: '3. 이유' }));
+    s.appendChild(area('top', '1~3순위를 고른 이유', '', 2000, 'top', true));
+    s.appendChild(area('long', '장기로 분류한 과제와 그 이유', '「중요도가 낮아서」인지 「현실 제약 때문에」인지 함께', 2000, 'long', false));
+    s.appendChild(area('split', '조 안에서 의견이 갈린 과제', '', 2000, 'split', false));
+  }
+
+  function render() {
+    document.getElementById('tab1').setAttribute('aria-selected', String(tab === 1));
+    document.getElementById('tab2').setAttribute('aria-selected', String(tab === 2));
+    document.getElementById('s1').classList.toggle('hidden', tab !== 1);
+    document.getElementById('s2').classList.toggle('hidden', tab !== 2);
+    document.getElementById('submit').textContent = tab === 1 ? '세션1 질문 제출' : '세션2 우선순위 제출';
+    if (tab === 1) renderS1(); else renderS2();
+  }
+
+  function submit() {
+    var b = document.getElementById('submit'); b.disabled = true; msg('저장 중…');
+    var p = tab === 1
+      ? BF.rpc('bucheon_submit_questions', { p_code: code, p_q1: draft.q1, p_q2: draft.q2, p_note: draft.note })
+      : (function () {
+          var terms = {}; policies.forEach(function (x) { if (draft.terms[x.id]) terms[x.id] = draft.terms[x.id]; });
+          return BF.rpc('bucheon_submit_priority', { p_code: code, p_terms: terms, p_ranking: draft.ranking,
+            p_reason_top: draft.top, p_reason_long: draft.long, p_split: draft.split });
+        })();
+    p.then(function (r) {
+      msg((tab === 1 ? '세션1' : '세션2') + ' 제출 완료 ' + BF.hhmm(r.updated_at) + ' · 다시 제출하면 고쳐집니다', 'ok');
+    }).catch(function (e) { msg(e.message, 'err'); })
+      .then(function () { b.disabled = false; });
+  }
+
+  document.getElementById('tab1').onclick = function () { tab = 1; render(); };
+  document.getElementById('tab2').onclick = function () { tab = 2; render(); };
+  document.getElementById('submit').onclick = submit;
+  document.getElementById('enter').onclick = function () {
+    code = document.getElementById('code').value.toUpperCase().trim(); join();
+  };
+  join();
+})();
+</script>
+</body>
+</html>

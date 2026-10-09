@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>만족도 설문 · 100인 공론장</title>
+<style>
+  :root { --bg: #f6f7f9; --card: #ffffff; --ink: #1b2430; --muted: #5b6675; --line: #d5dbe2;
+          --accent: #1f5fae; --accent-ink: #ffffff; --ok: #1d7a46; --err: #b3261e; }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #12161c; --card: #1b2129; --ink: #e8ecf1; --muted: #9aa5b3; --line: #313b47;
+            --accent: #5b9bea; --accent-ink: #0d1117; --ok: #4cc38a; --err: #ff8a80; }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body { font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+         line-height: 1.5; word-break: keep-all; overflow-wrap: anywhere; }
+  main { width: 100%; max-width: 640px; margin: 0 auto; padding: 20px 16px 48px; }
+  h1 { font-size: 24px; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 15px; margin: 0 0 18px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+  .q { font-weight: 700; font-size: 17px; margin: 0 0 10px; }
+  .opts { display: grid; gap: 6px; }
+  .opts.five { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .opts button { min-width: 0; padding: 12px 4px; font-size: 15px; border-radius: 10px; border: 1px solid var(--line);
+                 background: var(--bg); color: var(--ink); }
+  .opts button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
+  .ends { display: flex; justify-content: space-between; font-size: 13px; color: var(--muted); margin-top: 4px; }
+  textarea { width: 100%; min-height: 110px; font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 10px;
+             border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
+  .primary { width: 100%; padding: 16px; font-size: 18px; font-weight: 800; border: 0; border-radius: 12px;
+             background: var(--accent); color: var(--accent-ink); }
+  .primary:disabled { opacity: .55; }
+  .msg { min-height: 1.4em; margin: 10px 0; font-size: 15px; } .msg.ok { color: var(--ok); } .msg.err { color: var(--err); }
+  .done { text-align: center; padding: 48px 12px; }
+  .done b { display: block; font-size: 24px; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>만족도 설문</h1>
+  <p class="sub">일하는 시민 100인 공론장 · 이름은 받지 않습니다</p>
+  <div id="form"></div>
+  <p class="msg" id="msg"></p>
+  <button class="primary" id="send">제출</button>
+</main>
+<script src="../lib.js"></script>
+<script>
+(function () {
+  // ★ 문항 초안 — 연구진 문항을 받으면 이 배열만 바꾼다(DB 는 id 별 jsonb 로 받는다)
+  var QUESTIONS = [
+    { id: 'overall', type: 'scale', text: '오늘 공론장에 전반적으로 만족하십니까?', required: true },
+    { id: 'info', type: 'scale', text: '연구 결과 발표는 이해하기 쉬웠습니까?', required: true },
+    { id: 'talk', type: 'scale', text: '조별 토의에서 내 의견을 충분히 말할 수 있었습니까?', required: true },
+    { id: 'reflect', type: 'scale', text: '오늘 논의가 부천시 노동정책에 반영될 것이라 기대하십니까?', required: true },
+    { id: 'again', type: 'choice', text: '다음에도 이런 공론장에 참여하시겠습니까?', options: ['참여하겠다', '잘 모르겠다', '참여하지 않겠다'], required: true },
+    { id: 'free', type: 'text', text: '하고 싶은 말씀 (선택)', required: false }
+  ];
+  var el = BF.el, ans = {};
+  var DONE = 'bf_survey_done';
+
+  function done() {
+    document.querySelector('main').innerHTML = '';
+    document.querySelector('main').appendChild(el('div', { class: 'done' }, [
+      el('b', { text: '응답해 주셔서 감사합니다' }),
+      el('span', { text: '결과보고서는 홈페이지 게재와 책자로 안내드립니다.' })
+    ]));
+  }
+  if (BF.store(DONE)) return done();
+
+  var form = document.getElementById('form');
+  function draw() {
+    form.innerHTML = '';
+    QUESTIONS.forEach(function (q, i) {
+      var body;
+      if (q.type === 'scale' || q.type === 'choice') {
+        var opts = q.type === 'scale' ? ['1', '2', '3', '4', '5'] : q.options;
+        body = el('div', { class: 'opts' + (q.type === 'scale' ? ' five' : '') });
+        opts.forEach(function (o) {
+          var v = q.type === 'scale' ? +o : o;
+          body.appendChild(el('button', { type: 'button', 'aria-pressed': String(ans[q.id] === v), text: o,
+            onclick: function () { ans[q.id] = v; draw(); } }));
+        });
+        if (q.type === 'scale') body = el('div', null, [body, el('div', { class: 'ends' }, [el('span', { text: '전혀 아니다' }), el('span', { text: '매우 그렇다' })])]);
+      } else {
+        body = el('textarea', { maxlength: '1000' });
+        body.value = ans[q.id] || '';
+        body.addEventListener('input', function () { ans[q.id] = body.value; });
+      }
+      form.appendChild(el('div', { class: 'card' }, [el('p', { class: 'q', text: (i + 1) + '. ' + q.text }), body]));
+    });
+  }
+  draw();
+
+  document.getElementById('send').onclick = function () {
+    var m = document.getElementById('msg');
+    var miss = QUESTIONS.filter(function (q) { return q.required && ans[q.id] === undefined; });
+    if (miss.length) { m.textContent = (QUESTIONS.indexOf(miss[0]) + 1) + '번에 답해 주세요.'; m.className = 'msg err'; return; }
+    var out = {}; QUESTIONS.forEach(function (q) {
+      var v = ans[q.id]; if (typeof v === 'string') v = v.trim();
+      if (v !== undefined && v !== '') out[q.id] = v;
+    });
+    var b = this; b.disabled = true; m.textContent = '보내는 중…'; m.className = 'msg';
+    BF.rpc('bucheon_submit_survey', { p_answers: out })
+      .then(function () { BF.store(DONE, true); done(); })
+      .catch(function (e) { m.textContent = e.message; m.className = 'msg err'; b.disabled = false; });
+  };
+})();
+</script>
+</body>
+</html>
