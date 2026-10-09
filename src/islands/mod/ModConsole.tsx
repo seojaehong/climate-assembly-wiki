@@ -1061,7 +1061,8 @@ function HomeScreen({
     <div className="min-h-screen bg-[#F5F8FB]">
       <TopBar right={<TeamBadge name={teamName} tableNo={tableNo} live />} onExit={onExit} />
 
-      <div className="max-w-5xl mx-auto p-6 sm:p-8">
+      {/* 10/17 의결 탭만 넓게 — 오퍼레이터 노트북·운영팀 3열 현황판(다른 탭은 그대로) */}
+      <div className={`${tab === 'decision' ? 'max-w-[1240px]' : 'max-w-5xl'} mx-auto p-6 sm:p-8`}>
         {/*
           마감 배너는 **탭 바 위·탭 렌더 바깥**이다. 조의 기본 탭이 `submission` 이라
           (`mod-tabs.ts:24-28`) `timer` 탭 안에 두면 8.29처럼 아무도 보지 않는다(설계 B-D2).

@@ -95,6 +95,7 @@ import {
   type VoteUnit,
 } from './division-vote-flow';
 import { downloadBlob } from './svg-to-png';
+import { TWO_STEP_MS, twoStepPress, type TwoStepArm } from './two-step';
 import { useDivisionPrep, type DivisionPrep, type PrepApi } from './use-division-prep';
 
 /**
@@ -326,7 +327,7 @@ export default function DivisionVotePanel({
           <h3 className="text-[22px] font-extrabold text-[#1F4E79]">
             10/17 분과 의결{isOps ? ' · 운영팀' : ''}
           </h3>
-          <p className="text-[15px] text-[#5A6B73]">
+          <p className="text-[16px] text-[#5A6B73]">
             {preview ? '미리보기 — 가상 데이터, 이 기기에만 저장합니다.' : '준비 내용과 투표 결과는 서버에 저장되어 같은 분과 화면끼리 함께 봅니다.'}
           </p>
         </div>
@@ -373,7 +374,7 @@ export default function DivisionVotePanel({
             }`}
           >
             <span className="min-w-0 flex-1">{notice.text}</span>
-            <button type="button" className="min-h-10 rounded-lg px-3 text-[15px] underline" onClick={() => setNotice(null)}>
+            <button type="button" className="min-h-11 rounded-lg px-3 text-[16px] underline" onClick={() => setNotice(null)}>
               닫기
             </button>
           </p>
@@ -481,7 +482,7 @@ const OPERATOR_STEPS = [
   '「1. 준비판」에서 카드마다 처리 상태를 고르고, 카드를 골라 안 제목을 넣은 뒤 [의결안 만들기]를 누릅니다. 시행중-제외 카드는 안에 넣을 수 없습니다.',
   '「2. 투표 진행」 맨 위에 재적과 참석 인원을 넣습니다. 재적 과반수가 참석해야 [투표 시작]이 눌립니다. 가결선이 바로 아래에 나옵니다.',
   '안마다 [투표 시작]을 누르면 투표가 열리고 QR 화면이 바로 뜹니다. [나가기] 또는 ESC로 돌아오고, [QR 다시 띄우기]로 다시 엽니다.',
-  '투표를 끝낼 때 [마감하고 결과 보기]를 누릅니다. 찬성·반대 표, 가결선, 가결·부결이 크게 나옵니다.',
+  '투표를 끝낼 때 [마감하고 결과 보기]를 누르고, 버튼이 「정말 마감합니까?」로 바뀌면 5초 안에 한 번 더 누릅니다. 찬성·반대 표, 가결선, 가결·부결이 크게 나옵니다.',
   '손을 든 표가 있으면 거수 찬성·반대 칸에 넣습니다. 온라인 표에 더해 다시 판정합니다. 조별 권고 수준 표와 기타 의견도 그 안 아래에 적습니다.',
   '부결된 안은 [문구 고쳐 2차 투표] 또는 [소수 의견으로 기록]을 고릅니다. 다 끝나면 「3. 세리머니」로 발표하고 [이 분과 결과 CSV]를 내려받습니다.',
 ];
@@ -589,7 +590,7 @@ function OpsBoard({
                       </ul>
                     )}
                   </div>
-                  <p className="text-[15px] text-[#5A6B73] tr-num">
+                  <p className="text-[16px] text-[#5A6B73] tr-num">
                     마지막 저장 {slot?.updatedAt ? hhmmss(slot.updatedAt) : '-'}
                     {slot?.updatedBy ? ` · ${slot.updatedBy}` : ''}
                     {slot?.unreadable ? ' · 서버 내용 읽기 실패' : ''}
@@ -663,7 +664,7 @@ function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepS
           <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-[#DCE7EE] bg-[#F5F8FB] px-4 py-3">
             <span className="text-[18px] font-extrabold text-[#135C73]">{topic.no}</span>
             <span className="min-w-0 text-[18px] font-extrabold text-[#1F2933]">{topic.name}</span>
-            <span className="text-[15px] text-[#5A6B73]">작성 {topic.written_by || '—'}</span>
+            <span className="text-[16px] text-[#5A6B73]">작성 {topic.written_by || '—'}</span>
           </div>
           <ul className="divide-y divide-[#EEF3F6]">
             {topic.cards.map((card) => {
@@ -686,7 +687,7 @@ function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepS
                     </label>
                     <span className={`min-w-0 flex-1 text-[17px] font-bold ${isExcluded ? 'text-[#7A8790] line-through' : 'text-[#1F2933]'}`}>
                       {isUntitled(card) ? (
-                        <span className="rounded-md bg-[#FFF1D6] px-2 py-0.5 text-[15px] text-[#8A5A00] no-underline">제목 없음</span>
+                        <span className="rounded-md bg-[#FFF1D6] px-2 py-0.5 text-[16px] text-[#8A5A00] no-underline">제목 없음</span>
                       ) : (
                         card.title
                       )}
@@ -721,12 +722,12 @@ function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepS
                       </select>
                     ) : null}
                     {st.status === 'merged' ? (
-                      <span className="text-[15px] font-bold text-[#5A6B73]">→ {st.target ?? '안 번호 없음'}</span>
+                      <span className="text-[16px] font-bold text-[#5A6B73]">→ {st.target ?? '안 번호 없음'}</span>
                     ) : null}
                   </div>
                   <details className="mt-1 pl-8">
-                    <summary className="min-h-9 cursor-pointer text-[15px] font-bold text-[#2E75B6]">권고 {card.recs.length}건</summary>
-                    <ol className="mt-1 space-y-1 text-[15px] text-[#1F2933]">
+                    <summary className="min-h-11 cursor-pointer text-[16px] font-bold text-[#2E75B6]">권고 {card.recs.length}건</summary>
+                    <ol className="mt-1 space-y-1 text-[16px] text-[#1F2933]">
                       {card.recs.map((r) => (
                         <li key={r.no}>
                           <span className="mr-2 font-bold text-[#5A6B73] tr-num">{r.no}</span>
@@ -830,8 +831,8 @@ function MotionEditor({ motion, state, update }: { motion: Motion; state: PrepSt
       <div className="flex flex-wrap items-center gap-3">
         <span className="rounded-lg bg-[#1F4E79] px-3 py-1 text-[16px] font-extrabold text-white">{motion.id}</span>
         <PhaseBadge phase={phase} />
-        <span className="text-[15px] text-[#5A6B73]">원 카드 {motion.cardNos.join(', ')}</span>
-        <span className="text-[15px] font-bold text-[#135C73]">권고 수준 충족 {criteriaCount(motion)}/5</span>
+        <span className="text-[16px] text-[#5A6B73]">원 카드 {motion.cardNos.join(', ')}</span>
+        <span className="text-[16px] font-bold text-[#135C73]">권고 수준 충족 {criteriaCount(motion)}/5</span>
         {canDeleteMotion(motion) ? (
           <button
             type="button"
@@ -843,7 +844,7 @@ function MotionEditor({ motion, state, update }: { motion: Motion; state: PrepSt
             안 지우기
           </button>
         ) : (
-          <span className="ml-auto text-[15px] text-[#5A6B73]">투표를 시작한 안은 지울 수 없습니다.</span>
+          <span className="ml-auto text-[16px] text-[#5A6B73]">투표를 시작한 안은 지울 수 없습니다.</span>
         )}
       </div>
       <input
@@ -1175,7 +1176,7 @@ function UnitCard({
           {motions.length > 1 ? `묶음 투표 · 안 ${motions.length}건` : roundLabel(motions[0].id, isRevote ? motions[0].rounds.length + 1 : currentRound(motions[0])?.round ?? 1)}
         </span>
         <PhaseBadge phase={phase} />
-        {ballot ? <span className="text-[15px] text-[#5A6B73]">{ballot.title} · {ballotStatusLabel(ballot.stage === 'creating' ? 'draft' : ballot.stage)}</span> : null}
+        {ballot ? <span className="text-[16px] text-[#5A6B73]">{ballot.title} · {ballotStatusLabel(ballot.stage === 'creating' ? 'draft' : ballot.stage)}</span> : null}
         <div className="ml-auto flex flex-wrap items-center gap-2">
           {notStarted || phase === 'starting' ? (
             <button type="button" className={`${btnBig} bg-[#135C73] text-white`} data-testid="vote-start" disabled={startDisabled} onClick={onStart}>
@@ -1190,9 +1191,15 @@ function UnitCard({
               <button type="button" className={btnGhost} onClick={onQr} data-testid="vote-qr">
                 QR 다시 띄우기
               </button>
-              <button type="button" className={`${btnBig} bg-[#B45309] text-white`} data-testid="vote-close" disabled={!canNetwork || !!busy} onClick={onClose}>
-                {busy === 'close' ? '마감하는 중…' : '마감하고 결과 보기'}
-              </button>
+              <TwoStepButton
+                className={`${btnBig} bg-[#B45309] text-white`}
+                armedClassName={`${btnBig} bg-[#7F1D1D] text-white ring-4 ring-[#FCA5A5]`}
+                testId="vote-close"
+                disabled={!canNetwork || !!busy}
+                label={busy === 'close' ? '마감하는 중…' : '마감하고 결과 보기'}
+                armedLabel="정말 마감합니까? (다시 누르면 마감)"
+                onFire={onClose}
+              />
             </>
           ) : null}
           {phase === 'counting' ? (
@@ -1226,21 +1233,15 @@ function MotionVoteBlock({ motion, state, update }: { motion: Motion; state: Pre
   const earlier = withTotals.slice(0, -1);
   const rejected = phase === 'failed' || phase === 'revote' || phase === 'minority';
 
-  const onMinority = () => {
-    const r = markMinority(state, motion.id);
-    if (r.ok) {
-      update(() => r.state);
-      return;
-    }
-    if ('needsConfirm' in r) {
-      if (window.confirm('소수 의견 칸이 비어 있습니다. 내용 없이 「소수 의견」으로 기록할까요?')) {
-        update((s) => {
-          const f = markMinority(s, motion.id, true);
-          return f.ok ? f.state : s;
-        });
-      }
-    }
-  };
+  // 두 번째 누름에서만 부른다(TwoStepButton). 칸이 비어 있으면 무장 문구가 그 사실을 알린다.
+  const onMinority = () =>
+    update((s) => {
+      const f = markMinority(s, motion.id, true);
+      return f.ok ? f.state : s;
+    });
+  const minorityArmed = motion.minorityOpinion.trim()
+    ? '정말 기록합니까? (다시 누르면 기록)'
+    : '소수 의견 칸이 비었습니다. 그래도 기록하려면 다시 누르십시오';
 
   return (
     <div data-testid="motion-vote" data-motion-id={motion.id} data-phase={phase} className="space-y-4 p-4">
@@ -1256,7 +1257,7 @@ function MotionVoteBlock({ motion, state, update }: { motion: Motion; state: Pre
         ) : (
           <span className="min-w-0 flex-1 text-[20px] font-extrabold text-[#1F2933]">{motion.title}</span>
         )}
-        <span className="text-[15px] text-[#5A6B73]">원 카드 {motion.cardNos.join(', ')}</span>
+        <span className="text-[16px] text-[#5A6B73]">원 카드 {motion.cardNos.join(', ')}</span>
       </div>
 
       {earlier.map((r) => (
@@ -1274,9 +1275,14 @@ function MotionVoteBlock({ motion, state, update }: { motion: Motion; state: Pre
               문구 고쳐 2차 투표
             </button>
           ) : null}
-          <button type="button" className={`${btnBig} border-2 border-[#5B21B6] bg-white text-[#5B21B6]`} data-testid="minority" onClick={onMinority}>
-            소수 의견으로 기록
-          </button>
+          <TwoStepButton
+            className={`${btnBig} border-2 border-[#5B21B6] bg-white text-[#5B21B6]`}
+            armedClassName={`${btnBig} border-2 border-[#5B21B6] bg-[#5B21B6] text-white`}
+            testId="minority"
+            label="소수 의견으로 기록"
+            armedLabel={minorityArmed}
+            onFire={onMinority}
+          />
         </div>
       ) : null}
       {phase === 'revote' ? (
@@ -1285,9 +1291,14 @@ function MotionVoteBlock({ motion, state, update }: { motion: Motion; state: Pre
           <button type="button" className={btnGhost} onClick={() => update((s) => cancelRevote(s, motion.id))}>
             2차 투표 그만두기
           </button>
-          <button type="button" className={btnGhost} onClick={onMinority}>
-            소수 의견으로 기록
-          </button>
+          <TwoStepButton
+            className={btnGhost}
+            armedClassName={`${btn} border-2 border-[#5B21B6] bg-[#5B21B6] text-white`}
+            testId="minority"
+            label="소수 의견으로 기록"
+            armedLabel={minorityArmed}
+            onFire={onMinority}
+          />
         </div>
       ) : null}
       {phase === 'minority' ? (
@@ -1329,6 +1340,53 @@ function MotionVoteBlock({ motion, state, update }: { motion: Motion; state: Pre
         </label>
       ) : null}
     </div>
+  );
+}
+
+/**
+ * 되돌릴 수 없는 버튼 — 첫 누름은 무장(문구가 바뀜), 5초 안에 다시 눌러야 실행. 5초가 지나면 원래대로.
+ * 시간 판단은 two-step.ts(순수, 시험됨).
+ */
+function TwoStepButton({
+  label,
+  armedLabel,
+  onFire,
+  className,
+  armedClassName,
+  disabled,
+  testId,
+}: {
+  label: string;
+  armedLabel: string;
+  onFire: () => void;
+  className: string;
+  armedClassName: string;
+  disabled?: boolean;
+  testId?: string;
+}) {
+  const [arm, setArm] = useState<TwoStepArm>(null);
+  useEffect(() => {
+    if (!arm) return undefined;
+    const t = setTimeout(() => setArm(null), TWO_STEP_MS);
+    return () => clearTimeout(t);
+  }, [arm]);
+  const armed = arm !== null;
+  return (
+    <button
+      type="button"
+      data-testid={testId}
+      data-armed={armed ? 'true' : 'false'}
+      aria-live="polite"
+      className={armed ? armedClassName : className}
+      disabled={disabled}
+      onClick={() => {
+        const r = twoStepPress(arm, 'b', Date.now());
+        setArm(r.next);
+        if (r.action === 'fire') onFire();
+      }}
+    >
+      {armed ? armedLabel : label}
+    </button>
   );
 }
 
@@ -1504,14 +1562,14 @@ function CriteriaGrid({ motion, update }: { motion: Motion; update: (fn: (s: Pre
                   <select
                     aria-label={`${CRITERION_LABELS[c]} 최종 판정`}
                     value={o}
-                    className="min-h-11 w-full rounded-lg border border-[#C4D8E4] bg-white px-1 text-[15px] font-bold"
+                    className="min-h-11 w-full rounded-lg border border-[#C4D8E4] bg-white px-1 text-[16px] font-bold"
                     onChange={(e) => update((s) => setCriterionOverride(s, motion.id, c as Criterion, (e.target.value || null) as Mark | null))}
                   >
                     <option value="">다수결 따름</option>
                     <option value="met">충족</option>
                     <option value="unmet">미충족</option>
                   </select>
-                  <span data-final={c} data-direct={f.direct ? 'true' : 'false'} className={`mt-1 block text-[15px] font-extrabold ${f.value === 'tie' ? 'text-[#8A5A00]' : 'text-[#1F2933]'}`}>
+                  <span data-final={c} data-direct={f.direct ? 'true' : 'false'} className={`mt-1 block text-[16px] font-extrabold ${f.value === 'tie' ? 'text-[#8A5A00]' : 'text-[#1F2933]'}`}>
                     {CRITERION_RESULT_LABELS[f.value]}
                     {f.direct ? ' · 직접 정함' : ''}
                   </span>
