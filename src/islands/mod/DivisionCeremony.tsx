@@ -6,7 +6,7 @@ import {
   attendanceText,
   barRatio,
   ceremonyReveal,
-  decideMotion,
+  ceremonyVerdict,
   divisionLabel,
   rewindCeremony,
   summarizeCeremony,
@@ -116,7 +116,10 @@ export default function DivisionCeremony({
   }, [back, next, onExit]);
 
   const current = step.phase === 'intro' || step.phase === 'summary' ? null : items[step.index] ?? null;
-  const verdict = current ? decideMotion(enrolled, present, current.yeas) : null;
+  const verdict = current ? ceremonyVerdict(current, enrolled, present) : null;
+  // 저장된 결과는 안마다 그 투표의 재적·참석을 들고 온다(마감 때 값).
+  const itemEnrolled = current?.enrolled ?? enrolled;
+  const itemPresent = current?.present ?? present;
 
   // 가결 도장이 찍히는 순간에만 색종이
   const firedRef = useRef<string | null>(null);
@@ -185,14 +188,14 @@ export default function DivisionCeremony({
         ) : step.phase === 'summary' ? (
           <SummaryView label={label} summary={summary} total={total} />
         ) : current && verdict ? (
-          <MotionView item={current} verdict={verdict} present={present} reveal={ceremonyReveal(step.phase)} />
+          <MotionView item={current} verdict={verdict} present={itemPresent} reveal={ceremonyReveal(step.phase)} />
         ) : null}
       </main>
 
       {/* 발판 */}
       <footer className="flex shrink-0 items-center justify-between gap-6">
         <p className="min-w-0 text-[clamp(24px,1.6vw,30px)] font-bold" style={{ color: C.sub }}>
-          재적 {enrolled}명 · 참석 {present}명 · 참석자 3분의 2 이상 찬성 시 가결
+          재적 {itemEnrolled}명 · 참석 {itemPresent}명 · 참석자 3분의 2 이상 찬성 시 가결
         </p>
         {step.phase === 'summary' ? (
           <button
@@ -260,7 +263,7 @@ function MotionView({
   reveal,
 }: {
   item: CeremonyItem;
-  verdict: ReturnType<typeof decideMotion>;
+  verdict: ReturnType<typeof ceremonyVerdict>;
   present: number;
   reveal: { bar: boolean; line: boolean; stamp: boolean };
 }) {
@@ -297,6 +300,7 @@ function MotionView({
             </span>
             <span className="text-[clamp(32px,2.6vw,52px)] font-extrabold" style={{ color: C.sub }}>
               / 참석 {present}
+              {item.nays !== undefined ? ` · 반대 ${item.nays}` : ''}
             </span>
           </div>
           <div className="relative mt-4 w-full rounded-2xl" style={{ height: 'clamp(56px,7vh,96px)', background: C.track }}>
@@ -335,7 +339,7 @@ function MotionView({
   );
 }
 
-function StampBox({ verdict, show }: { verdict: ReturnType<typeof decideMotion>; show: boolean }) {
+function StampBox({ verdict, show }: { verdict: ReturnType<typeof ceremonyVerdict>; show: boolean }) {
   const size = 'clamp(220px,19vw,360px)';
   let body: React.ReactNode = null;
   if (show) {
@@ -401,6 +405,10 @@ function SummaryView({
         <p className="text-[clamp(28px,2.2vw,44px)] font-extrabold tr-num" style={{ color: C.sub }}>
           상정 {total}건 · 부결 {summary.failed.length}건
           {summary.invalid.length > 0 ? ` · 판정 불가 ${summary.invalid.length}건` : ''}
+          {(() => {
+            const second = [...summary.passed, ...summary.failed, ...summary.invalid].filter((i) => (i.round ?? 1) > 1).length;
+            return second > 0 ? ` · 그중 2차 투표 ${second}건` : '';
+          })()}
         </p>
       </div>
       {shown.length > 0 ? (

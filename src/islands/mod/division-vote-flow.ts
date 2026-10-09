@@ -170,6 +170,27 @@ export function reapplyAttendance(state: PrepState, motionId: string, roundNo: n
   );
 }
 
+/**
+ * 재적·참석 입력. 칸 글자 그대로 받는다 — 빈칸은 null(미입력), 0 이상 정수만 숫자로 받고
+ * 그 밖(음수·소수·글자)은 무시한다(원래 값 유지).
+ */
+export function setAttendanceField(state: PrepState, field: 'enrolled' | 'present', raw: string): PrepState {
+  const t = raw.trim();
+  let value: number | null;
+  if (t === '') value = null;
+  else if (/^\d{1,5}$/.test(t)) value = Number(t);
+  else return state;
+  if (state.attendance[field] === value) return state;
+  return { ...state, attendance: { ...state.attendance, [field]: value } };
+}
+
+/** 거수 칸 글자 → 수. 빈칸은 0, 0 이상 정수가 아니면 null(무시). */
+export function parseHandInput(raw: string): number | null {
+  const t = raw.trim();
+  if (t === '') return 0;
+  return /^\d{1,5}$/.test(t) ? Number(t) : null;
+}
+
 // ── 투표 시작 ─────────────────────────────────────────────────
 
 export type BeginVoteResult = { ok: true; state: PrepState; requestId: string; resumed: boolean } | { ok: false; error: string };

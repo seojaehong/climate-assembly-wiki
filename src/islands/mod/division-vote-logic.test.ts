@@ -27,6 +27,7 @@ import {
   initialCardStatus,
   isUntitled,
   motionStatement,
+  newMotionFields,
   nextMotionId,
   openDivisionBallot,
   parseImport,
@@ -224,7 +225,7 @@ describe('투표 묶음 — 주제를 쪼개지 않는다', () => {
     cardNos: [],
     title: `${topicNo} 안${k}`,
     text: '',
-    criteria: { effectiveness: false, equity: false, acceptability: false, sustainability: false, feasibility: false },
+    ...newMotionFields(),
   });
   const sizes: Array<[string, number]> = [['1-1', 3], ['1-2', 1], ['1-3', 1], ['1-4', 4], ['1-5', 2]];
   const all = sizes.flatMap(([t, n]) => Array.from({ length: n }, (_, i) => m(t, i + 1)));
@@ -261,7 +262,7 @@ describe('투표 열기 — ballot_create_v3 페이로드', () => {
       cardNos: ['2-1-1'],
       title: `안 ${i + 1}`,
       text: '',
-      criteria: { effectiveness: false, equity: false, acceptability: false, sustainability: false, feasibility: false },
+      ...newMotionFields(),
     }));
 
   it('분과 한정 · 2점 척도(반대/찬성) · 안 번호를 문장 앞에 붙인다', () => {

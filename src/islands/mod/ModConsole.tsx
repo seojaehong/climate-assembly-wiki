@@ -1212,7 +1212,7 @@ function HomeScreen({
             <AttendancePanel teamId={teamId} teamName={teamName} accessToken={access?.accessToken} />
           )}
           {tab === 'vote' && <BallotPanel access={access} subgroup={subgroup ?? null} />}
-          {tab === 'decision' && <DivisionVotePanel access={access} subgroup={subgroup ?? null} />}
+          {tab === 'decision' && <DivisionVotePanel access={access} subgroup={subgroup ?? null} teamName={teamName} />}
           {tab === 'submission' && (
             <SubmissionPanel
               access={access}

@@ -43,6 +43,8 @@ import {
   markBallotOpened,
   markMinority,
   motionPhase,
+  parseHandInput,
+  setAttendanceField,
   qrRowOf,
   reapplyAttendance,
   requestRevote,
@@ -191,6 +193,22 @@ describe('참석 — 비어서 시작하고, 재적 과반수 참석이어야 �
     expect(passLineText(60, 45)).toBe('가결선: 찬성 30표 이상 (참석 45명의 3분의 2)');
     expect(passLineText(60, 30)).toContain('정족수 미달');
     expect(passLineText(60, 61)).toContain('재적보다 많습니다');
+  });
+
+  it('입력 칸: 빈칸은 미입력, 0 이상 정수만 받는다', () => {
+    let s = initPrepState(div2);
+    s = setAttendanceField(s, 'enrolled', '60');
+    s = setAttendanceField(s, 'present', ' 45 ');
+    expect(s.attendance).toEqual({ enrolled: 60, present: 45 });
+    expect(setAttendanceField(s, 'present', '-3')).toBe(s);
+    expect(setAttendanceField(s, 'present', '4.5')).toBe(s);
+    expect(setAttendanceField(s, 'present', '사십')).toBe(s);
+    expect(setAttendanceField(s, 'present', '45')).toBe(s);
+    expect(setAttendanceField(s, 'present', '').attendance.present).toBeNull();
+    expect(parseHandInput('')).toBe(0);
+    expect(parseHandInput('3')).toBe(3);
+    expect(parseHandInput('-1')).toBeNull();
+    expect(parseHandInput('1.5')).toBeNull();
   });
 
   it('투표 시작 가능 여부', () => {
