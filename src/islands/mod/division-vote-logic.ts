@@ -94,11 +94,38 @@ export const CRITERION_LABELS: Record<Criterion, string> = {
   feasibility: '실행가능성',
 };
 
-export function emptyCriteria(): Record<Criterion, boolean> {
-  return { effectiveness: false, equity: false, acceptability: false, sustainability: false, feasibility: false };
-}
+/** 조별 판정 한 칸. 빈칸은 키 자체를 두지 않는다. */
+export type Mark = 'met' | 'unmet';
+export const MARK_LABELS: Record<Mark, string> = { met: '충족', unmet: '미충족' };
+
+/** 권고 수준 표의 줄 — 조1~조5. 저장 키는 '1'..'5'. */
+export const TEAM_NOS = ['1', '2', '3', '4', '5'] as const;
+export type TeamNo = (typeof TEAM_NOS)[number];
+
+/** 조 → 기준 → 충족/미충족. */
+export type CriteriaGrid = Partial<Record<TeamNo, Partial<Record<Criterion, Mark>>>>;
 
 // ── 준비판 상태 ──────────────────────────────────────────────
+
+/**
+ * 안 하나의 투표 한 차례(1차·2차). 투표 자체의 진행 상태는 PrepState.ballots[requestId] 에 있고
+ * 여기는 이 안의 결과만 둔다. 재적·참석은 마감 때 값을 박아 둔다(뒤에 참석이 바뀌어도 판정이 흔들리지 않게).
+ */
+export type MotionRound = {
+  round: number;
+  /** PrepState.ballots 의 키 = ballot_create_v3 멱등키. */
+  requestId: string;
+  /** 이 차수에 쓴 안 제목(2차에서 문구를 고쳐도 1차 제목이 남는다). */
+  title: string;
+  onlineYes: number | null;
+  onlineNo: number | null;
+  handYes: number;
+  handNo: number;
+  enrolled: number | null;
+  present: number | null;
+  verdict: 'passed' | 'failed' | 'invalid' | null;
+  closedAt: string | null;
+};
 
 export type Motion = {
   /** `${topicNo}-안${k}`. k 는 주제 안에서 1부터, 지운 번호를 다시 쓰지 않는다. */
@@ -108,10 +135,42 @@ export type Motion = {
   cardNos: string[];
   title: string;
   text: string;
-  criteria: Record<Criterion, boolean>;
+  /** 조별 권고 수준 판정(5×5). */
+  grid: CriteriaGrid;
+  /** 기준별 「최종 판정」 직접 지정. 있으면 다수결보다 앞선다. */
+  override: Partial<Record<Criterion, Mark>>;
+  otherOpinion: string;
+  minorityOpinion: string;
+  /** 'minority' = 부결 뒤 소수 의견으로 기록하고 닫음. */
+  resolution: 'minority' | null;
+  /** 부결 뒤 「문구 고쳐 2차 투표」를 고른 상태. 2차 투표가 시작되면 false 로 돌아간다. */
+  revote: boolean;
+  rounds: MotionRound[];
 };
 
-export const PREP_VERSION = 1;
+export type BallotStage = 'creating' | 'draft' | 'open' | 'closed';
+
+/** 운영 서버에 만든(또는 만드는 중인) 투표 하나. 키 = 멱등키. */
+export type BallotRecord = {
+  requestId: string;
+  /** create 에 보낸 내용 그대로 — 재시도는 같은 키·같은 내용이어야 서버가 같은 투표를 돌려준다. */
+  title: string;
+  instructions: string;
+  subgroup: string;
+  statements: string[];
+  /** statements 와 같은 순서(문항 번호 = 자리 + 1). */
+  motionIds: string[];
+  round: number;
+  stage: BallotStage;
+  ballotId: string | null;
+  token: string | null;
+  openedAt: string | null;
+  closedAt: string | null;
+};
+
+export type Attendance = { enrolled: number | null; present: number | null };
+
+export const PREP_VERSION = 2;
 
 /** 내보내기 파일 한 개로 다른 기기에서 그대로 이어 쓸 수 있게 원천 사본까지 담는다. */
 export type PrepState = {
@@ -120,6 +179,8 @@ export type PrepState = {
   source: RecsDivision;
   cards: Record<string, CardState>;
   motions: Motion[];
+  attendance: Attendance;
+  ballots: Record<string, BallotRecord>;
 };
 
 export function initPrepState(source: RecsDivision): PrepState {
@@ -127,7 +188,19 @@ export function initPrepState(source: RecsDivision): PrepState {
   for (const topic of source.topics) {
     for (const card of topic.cards) cards[card.no] = { status: initialCardStatus(topic.no) };
   }
-  return { v: PREP_VERSION, division: source.division, source, cards, motions: [] };
+  return {
+    v: PREP_VERSION,
+    division: source.division,
+    source,
+    cards,
+    motions: [],
+    attendance: { enrolled: null, present: null },
+    ballots: {},
+  };
+}
+
+export function newMotionFields(): Pick<Motion, 'grid' | 'override' | 'otherOpinion' | 'minorityOpinion' | 'resolution' | 'revote' | 'rounds'> {
+  return { grid: {}, override: {}, otherOpinion: '', minorityOpinion: '', resolution: null, revote: false, rounds: [] };
 }
 
 export function divisionLabel(division: number): string {
@@ -218,6 +291,10 @@ export function createMotion(
 ): CreateMotionResult {
   const check = canCombine(state.source, input.cardNos);
   if (!check.ok) return { ok: false, error: combineFailureText(check) ?? '' };
+  const excluded = input.cardNos.filter((no) => state.cards[no]?.status === 'excluded');
+  if (excluded.length > 0) {
+    return { ok: false, error: `시행중-제외 카드(${excluded.join(', ')})는 의결안에 넣을 수 없습니다.` };
+  }
   const title = input.title.trim();
   if (!title) return { ok: false, error: '안 제목을 입력하십시오.' };
   const cardNos = orderCardNos(state.source, input.cardNos);
@@ -227,7 +304,7 @@ export function createMotion(
     cardNos,
     title,
     text: input.text.trim(),
-    criteria: emptyCriteria(),
+    ...newMotionFields(),
   };
   let cards = state.cards;
   if (cardNos.length > 1) {
@@ -249,7 +326,7 @@ export function sortMotions(source: RecsDivision, motions: Motion[]): Motion[] {
 export function updateMotion(
   state: PrepState,
   id: string,
-  patch: Partial<Pick<Motion, 'title' | 'text' | 'criteria'>>,
+  patch: Partial<Pick<Motion, 'title' | 'text' | 'otherOpinion' | 'minorityOpinion'>>,
 ): PrepState {
   return {
     ...state,
@@ -257,8 +334,15 @@ export function updateMotion(
   };
 }
 
-/** 안을 지우면 「통합 → 그 안」 이던 카드를 「유지」로 되돌린다. */
+/** 투표를 한 번이라도 시작한 안은 지우지 않는다(결과·투표 기록이 사라진다). */
+export function canDeleteMotion(motion: Pick<Motion, 'rounds'>): boolean {
+  return motion.rounds.length === 0;
+}
+
+/** 안을 지우면 「통합 → 그 안」 이던 카드를 「유지」로 되돌린다. 투표가 시작된 안은 그대로 둔다. */
 export function deleteMotion(state: PrepState, id: string): PrepState {
+  const target = state.motions.find((m) => m.id === id);
+  if (!target || !canDeleteMotion(target)) return state;
   const cards = { ...state.cards };
   for (const [no, card] of Object.entries(cards)) {
     if (card.status === 'merged' && card.target === id) cards[no] = { status: 'keep' };
@@ -266,8 +350,90 @@ export function deleteMotion(state: PrepState, id: string): PrepState {
   return { ...state, cards, motions: state.motions.filter((motion) => motion.id !== id) };
 }
 
-export function criteriaCount(motion: Motion): number {
-  return CRITERIA.filter((key) => motion.criteria[key]).length;
+// ── 권고 수준 표(조1~조5 × 5개 기준) ─────────────────────────
+
+export type CriterionResult = 'met' | 'unmet' | 'tie' | 'none';
+export const CRITERION_RESULT_LABELS: Record<CriterionResult, string> = {
+  met: '충족',
+  unmet: '미충족',
+  tie: '동수',
+  none: '-',
+};
+
+/** 칸 하나 바꾸기. mark=null 이면 빈칸으로. 없는 조·기준은 무시한다. */
+export function setGridMark(state: PrepState, motionId: string, team: TeamNo, criterion: Criterion, mark: Mark | null): PrepState {
+  if (!TEAM_NOS.includes(team) || !CRITERIA.includes(criterion)) return state;
+  return {
+    ...state,
+    motions: state.motions.map((m) => {
+      if (m.id !== motionId) return m;
+      const row = { ...(m.grid[team] ?? {}) };
+      if (mark) row[criterion] = mark;
+      else delete row[criterion];
+      const grid = { ...m.grid };
+      if (Object.keys(row).length > 0) grid[team] = row;
+      else delete grid[team];
+      return { ...m, grid };
+    }),
+  };
+}
+
+/** 최종 판정 직접 지정. mark=null 이면 지정을 지우고 다수결로 돌아간다. */
+export function setCriterionOverride(state: PrepState, motionId: string, criterion: Criterion, mark: Mark | null): PrepState {
+  if (!CRITERIA.includes(criterion)) return state;
+  return {
+    ...state,
+    motions: state.motions.map((m) => {
+      if (m.id !== motionId) return m;
+      const override = { ...m.override };
+      if (mark) override[criterion] = mark;
+      else delete override[criterion];
+      return { ...m, override };
+    }),
+  };
+}
+
+/** 다수결 줄 — 채운 칸 중 충족이 많으면 충족, 미충족이 많으면 미충족, 같으면 동수, 다 비면 「-」. */
+export function teamMajority(grid: CriteriaGrid, criterion: Criterion): CriterionResult {
+  let met = 0;
+  let unmet = 0;
+  for (const team of TEAM_NOS) {
+    const v = grid[team]?.[criterion];
+    if (v === 'met') met += 1;
+    else if (v === 'unmet') unmet += 1;
+  }
+  if (met === 0 && unmet === 0) return 'none';
+  if (met > unmet) return 'met';
+  if (unmet > met) return 'unmet';
+  return 'tie';
+}
+
+/** 기준 하나의 최종 판정. 직접 정한 값이 있으면 그것이 이긴다. */
+export function finalCriterion(motion: Pick<Motion, 'grid' | 'override'>, criterion: Criterion): { value: CriterionResult; direct: boolean } {
+  const direct = motion.override[criterion];
+  if (direct) return { value: direct, direct: true };
+  return { value: teamMajority(motion.grid, criterion), direct: false };
+}
+
+/** 최종 판정이 「충족」인 기준 수. */
+export function criteriaCount(motion: Pick<Motion, 'grid' | 'override'>): number {
+  return CRITERIA.filter((key) => finalCriterion(motion, key).value === 'met').length;
+}
+
+// ── 시행중-제외 ──────────────────────────────────────────────
+
+/** 안의 원 카드가 전부 「시행중-제외」면 그 안은 제외 — 투표에 올리지 않는다. */
+export function motionExcluded(state: Pick<PrepState, 'cards'>, motion: Pick<Motion, 'cardNos'>): boolean {
+  return motion.cardNos.length > 0 && motion.cardNos.every((no) => state.cards[no]?.status === 'excluded');
+}
+
+/** 시행중-제외 카드 번호(원천 자리 순서). */
+export function excludedCardNos(state: Pick<PrepState, 'source' | 'cards'>): string[] {
+  const out: string[] = [];
+  for (const topic of state.source.topics) {
+    for (const card of topic.cards) if (state.cards[card.no]?.status === 'excluded') out.push(card.no);
+  }
+  return out;
 }
 
 /** 상태별 카드 수(6종 전부, 0도 자리를 지킨다). */
@@ -323,18 +489,157 @@ function readDivision(x: unknown): RecsDivision | null {
   return { division: x.division as number, agenda: x.agenda, topics: topics as RecsTopic[] };
 }
 
-function readMotion(x: unknown, source: RecsDivision): Motion | null {
+const isMark = (x: unknown): x is Mark => x === 'met' || x === 'unmet';
+const optCount = (x: unknown): number | null | undefined =>
+  x === null || x === undefined ? null : typeof x === 'number' && Number.isInteger(x) && x >= 0 ? x : undefined;
+const optIso = (x: unknown): string | null | undefined => (x === null || x === undefined ? null : isStr(x) ? x : undefined);
+
+function readGrid(x: unknown): CriteriaGrid | null {
+  if (x === undefined) return {};
+  if (!isObj(x)) return null;
+  const grid: CriteriaGrid = {};
+  for (const [team, row] of Object.entries(x)) {
+    if (!TEAM_NOS.includes(team as TeamNo) || !isObj(row)) return null;
+    const clean: Partial<Record<Criterion, Mark>> = {};
+    for (const [k, v] of Object.entries(row)) {
+      if (!CRITERIA.includes(k as Criterion)) return null;
+      if (v === null || v === undefined) continue;
+      if (!isMark(v)) return null;
+      clean[k as Criterion] = v;
+    }
+    if (Object.keys(clean).length > 0) grid[team as TeamNo] = clean;
+  }
+  return grid;
+}
+
+function readOverride(x: unknown): Partial<Record<Criterion, Mark>> | null {
+  if (x === undefined) return {};
+  if (!isObj(x)) return null;
+  const out: Partial<Record<Criterion, Mark>> = {};
+  for (const [k, v] of Object.entries(x)) {
+    if (!CRITERIA.includes(k as Criterion)) return null;
+    if (v === null || v === undefined) continue;
+    if (!isMark(v)) return null;
+    out[k as Criterion] = v;
+  }
+  return out;
+}
+
+function readRound(x: unknown): MotionRound | null {
+  if (!isObj(x) || !Number.isInteger(x.round) || (x.round as number) < 1) return null;
+  if (!isStr(x.requestId) || !isStr(x.title)) return null;
+  const onlineYes = optCount(x.onlineYes);
+  const onlineNo = optCount(x.onlineNo);
+  const handYes = optCount(x.handYes);
+  const handNo = optCount(x.handNo);
+  const enrolled = optCount(x.enrolled);
+  const present = optCount(x.present);
+  const closedAt = optIso(x.closedAt);
+  if ([onlineYes, onlineNo, handYes, handNo, enrolled, present, closedAt].some((v) => v === undefined)) return null;
+  const verdict = x.verdict ?? null;
+  if (verdict !== null && verdict !== 'passed' && verdict !== 'failed' && verdict !== 'invalid') return null;
+  return {
+    round: x.round as number,
+    requestId: x.requestId,
+    title: x.title,
+    onlineYes: onlineYes as number | null,
+    onlineNo: onlineNo as number | null,
+    handYes: (handYes as number | null) ?? 0,
+    handNo: (handNo as number | null) ?? 0,
+    enrolled: enrolled as number | null,
+    present: present as number | null,
+    verdict: verdict as MotionRound['verdict'],
+    closedAt: closedAt as string | null,
+  };
+}
+
+/**
+ * v1 → v2: 기준 체크칸(true/false 5개)은 「최종 판정 직접 지정」으로 옮긴다.
+ * ★ true 만 「충족」으로 옮기고 false 는 빈칸으로 둔다 — v1 은 처음부터 전부 false 였으므로
+ *   false 를 「미충족」으로 옮기면 손대지 않은 안이 전부 「직접 정함 미충족」이 된다.
+ */
+function readMotion(x: unknown, source: RecsDivision, v: 1 | 2): Motion | null {
   if (!isObj(x) || !isStr(x.id) || !isStr(x.topicNo) || !isStr(x.title) || !isStr(x.text)) return null;
-  if (!Array.isArray(x.cardNos) || !x.cardNos.every(isStr) || !isObj(x.criteria)) return null;
+  if (!Array.isArray(x.cardNos) || !x.cardNos.every(isStr)) return null;
   const check = canCombine(source, x.cardNos as string[]);
   if (!check.ok || check.topicNo !== x.topicNo) return null;
-  const criteria = emptyCriteria();
-  for (const key of CRITERIA) criteria[key] = x.criteria[key] === true;
-  return { id: x.id, topicNo: x.topicNo, cardNos: [...(x.cardNos as string[])], title: x.title, text: x.text, criteria };
+  const base = { id: x.id, topicNo: x.topicNo, cardNos: [...(x.cardNos as string[])], title: x.title, text: x.text };
+  if (v === 1) {
+    if (!isObj(x.criteria)) return null;
+    const override: Partial<Record<Criterion, Mark>> = {};
+    for (const key of CRITERIA) if (x.criteria[key] === true) override[key] = 'met';
+    return { ...base, ...newMotionFields(), override };
+  }
+  const grid = readGrid(x.grid);
+  const override = readOverride(x.override);
+  const other = optStr(x.otherOpinion);
+  const minority = optStr(x.minorityOpinion);
+  if (!grid || !override || other === null || minority === null) return null;
+  const resolution = x.resolution ?? null;
+  if (resolution !== null && resolution !== 'minority') return null;
+  if (x.revote !== undefined && typeof x.revote !== 'boolean') return null;
+  const rawRounds = x.rounds ?? [];
+  if (!Array.isArray(rawRounds)) return null;
+  const rounds = rawRounds.map(readRound);
+  if (rounds.some((r) => r === null)) return null;
+  return {
+    ...base,
+    grid,
+    override,
+    otherOpinion: other,
+    minorityOpinion: minority,
+    resolution: resolution as Motion['resolution'],
+    revote: x.revote === true,
+    rounds: rounds as MotionRound[],
+  };
+}
+
+const BALLOT_STAGES: readonly BallotStage[] = ['creating', 'draft', 'open', 'closed'];
+
+function readBallot(key: string, x: unknown): BallotRecord | null {
+  if (!isObj(x) || x.requestId !== key || !isStr(x.title) || !isStr(x.subgroup)) return null;
+  const instructions = optStr(x.instructions);
+  if (instructions === null) return null;
+  if (!Array.isArray(x.statements) || !x.statements.every(isStr)) return null;
+  if (!Array.isArray(x.motionIds) || !x.motionIds.every(isStr)) return null;
+  if (x.statements.length !== x.motionIds.length || x.motionIds.length === 0) return null;
+  if (!Number.isInteger(x.round) || (x.round as number) < 1) return null;
+  if (!BALLOT_STAGES.includes(x.stage as BallotStage)) return null;
+  const ballotId = optIso(x.ballotId);
+  const token = optIso(x.token);
+  const openedAt = optIso(x.openedAt);
+  const closedAt = optIso(x.closedAt);
+  if ([ballotId, token, openedAt, closedAt].some((v) => v === undefined)) return null;
+  // 서버가 투표를 돌려준 뒤 단계(draft 이후)에는 id·token 이 꼭 있어야 한다.
+  if (x.stage !== 'creating' && (!ballotId || !token)) return null;
+  return {
+    requestId: key,
+    title: x.title,
+    instructions,
+    subgroup: x.subgroup,
+    statements: [...(x.statements as string[])],
+    motionIds: [...(x.motionIds as string[])],
+    round: x.round as number,
+    stage: x.stage as BallotStage,
+    ballotId: ballotId as string | null,
+    token: token as string | null,
+    openedAt: openedAt as string | null,
+    closedAt: closedAt as string | null,
+  };
+}
+
+function readAttendance(x: unknown): Attendance | null {
+  if (x === undefined) return { enrolled: null, present: null };
+  if (!isObj(x)) return null;
+  const enrolled = optCount(x.enrolled);
+  const present = optCount(x.present);
+  if (enrolled === undefined || present === undefined) return null;
+  return { enrolled, present };
 }
 
 function readPrep(x: Record<string, unknown>): PrepState | null {
-  if (x.v !== PREP_VERSION || !Number.isInteger(x.division)) return null;
+  if ((x.v !== 1 && x.v !== PREP_VERSION) || !Number.isInteger(x.division)) return null;
+  const v = x.v as 1 | 2;
   const source = readDivision(x.source);
   if (!source || source.division !== x.division) return null;
   if (!isObj(x.cards) || !Array.isArray(x.motions)) return null;
@@ -346,11 +651,39 @@ function readPrep(x: Record<string, unknown>): PrepState | null {
     if (raw.target !== undefined && !isStr(raw.target)) return null;
     cards[no] = raw.target ? { status: raw.status as CardStatus, target: raw.target as string } : { status: raw.status as CardStatus };
   }
-  const motions = x.motions.map((m) => readMotion(m, source));
+  const motions = x.motions.map((m) => readMotion(m, source, v));
   if (motions.some((m) => m === null)) return null;
   const ids = (motions as Motion[]).map((m) => m.id);
   if (new Set(ids).size !== ids.length) return null;
-  return { v: PREP_VERSION, division: source.division, source, cards, motions: sortMotions(source, motions as Motion[]) };
+  const attendance = v === 1 ? base.attendance : readAttendance(x.attendance);
+  if (!attendance) return null;
+  const ballots: Record<string, BallotRecord> = {};
+  if (v === 2 && x.ballots !== undefined) {
+    if (!isObj(x.ballots)) return null;
+    for (const [key, raw] of Object.entries(x.ballots)) {
+      const b = readBallot(key, raw);
+      if (!b || b.motionIds.some((id) => !ids.includes(id))) return null;
+      ballots[key] = b;
+    }
+  }
+  // 안의 차수가 가리키는 투표가 있어야 한다(없으면 진행 상태를 알 수 없다).
+  for (const m of motions as Motion[]) {
+    if (m.rounds.some((r) => !ballots[r.requestId])) return null;
+  }
+  return {
+    v: PREP_VERSION,
+    division: source.division,
+    source,
+    cards,
+    motions: sortMotions(source, motions as Motion[]),
+    attendance,
+    ballots,
+  };
+}
+
+/** 모양이 무엇이든(서버 줄·저장소·파일) 준비판으로 읽는다. v1 은 v2 로 옮긴다. 못 읽으면 null. */
+export function migratePrep(x: unknown): PrepState | null {
+  return isObj(x) ? readPrep(x) : null;
 }
 
 export type ParsedImport =
@@ -523,6 +856,38 @@ export function decideMotion(enrolled: number, present: number, yeas: number): V
   return { kind: 'decided', passed: q.passed === true, yeas, present, threshold: q.decisionThreshold ?? 0 };
 }
 
+/**
+ * 찬성·반대를 함께 받는 판정(온라인 + 거수 합계). 찬성+반대가 참석보다 많으면 판정하지 않는다 —
+ * 참석 인원을 잘못 넣었거나 표가 겹친 것이다. 나머지는 decideMotion 과 같다.
+ */
+export function decideVote(enrolled: number, present: number, yeas: number, nays: number): Verdict {
+  const base = decideMotion(enrolled, present, yeas);
+  if (base.kind !== 'decided') return base;
+  if (!isCount(nays)) return { kind: 'invalid', message: '반대 수를 0 이상으로 입력하십시오.' };
+  if (yeas + nays > present) {
+    return { kind: 'invalid', message: `찬성·반대 합계(${yeas + nays})가 참석 인원(${present})보다 많습니다. 참석 인원을 확인하십시오.` };
+  }
+  return base;
+}
+
+/** 「가결선: 찬성 N표 이상 (참석 M명의 3분의 2)」. 정족수가 안 되면 그 사유. */
+export function passLineText(enrolled: number | null, present: number | null): string {
+  if (enrolled === null || present === null) return '재적과 참석 인원을 넣으십시오.';
+  const att = attendanceCheck(enrolled, present);
+  if (att.kind === 'invalid') return att.message;
+  if (!att.established) {
+    return `정족수 미달 — 재적 ${enrolled}명의 과반수인 ${att.establishThreshold}명 이상이 참석해야 합니다(${att.shortfall}명 부족).`;
+  }
+  return `가결선: 찬성 ${att.decisionThreshold}표 이상 (참석 ${present}명의 3분의 2)`;
+}
+
+/** 투표를 시작해도 되는 참석 상태인가 — 둘 다 넣었고 재적 과반수가 참석. */
+export function attendanceReady(att: Attendance): boolean {
+  if (att.enrolled === null || att.present === null) return false;
+  const c = attendanceCheck(att.enrolled, att.present);
+  return c.kind === 'ok' && c.established;
+}
+
 export function attendanceText(enrolled: number, present: number): string {
   const att = attendanceCheck(enrolled, present);
   if (att.kind === 'invalid') return att.message;
@@ -540,7 +905,19 @@ export type CeremonyItem = {
   label: string;
   title: string;
   yeas: number;
+  /** 저장된 결과로 공개할 때만 — 반대 합계·그 투표의 재적/참석·차수. 없으면 세리머니 전체 값을 쓴다. */
+  nays?: number;
+  enrolled?: number;
+  present?: number;
+  round?: number;
 };
+
+/** 세리머니 항목 하나의 판정. 항목에 재적·참석이 박혀 있으면 그것을 쓴다. */
+export function ceremonyVerdict(item: CeremonyItem, enrolled: number, present: number): Verdict {
+  const e = item.enrolled ?? enrolled;
+  const p = item.present ?? present;
+  return item.nays === undefined ? decideMotion(e, p, item.yeas) : decideVote(e, p, item.yeas, item.nays);
+}
 
 export type CeremonyPhase = 'intro' | 'title' | 'bar' | 'line' | 'verdict' | 'summary';
 export type CeremonyStep = { phase: CeremonyPhase; index: number };
@@ -588,7 +965,7 @@ export type CeremonySummary = {
 export function summarizeCeremony(items: readonly CeremonyItem[], enrolled: number, present: number): CeremonySummary {
   const out: CeremonySummary = { passed: [], failed: [], invalid: [] };
   for (const item of items) {
-    const v = decideMotion(enrolled, present, item.yeas);
+    const v = ceremonyVerdict(item, enrolled, present);
     if (v.kind !== 'decided') out.invalid.push(item);
     else if (v.passed) out.passed.push(item);
     else out.failed.push(item);

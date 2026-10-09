@@ -16,6 +16,7 @@ import {
   buildDivisionBallot,
   canCombine,
   cardStatusText,
+  criteriaCount,
   ceremonyReveal,
   createMotion,
   decideMotion,
@@ -146,14 +147,18 @@ describe('의결안 — 같은 주제 안에서만 묶는다', () => {
     expect(s.motions).toHaveLength(0);
   });
 
-  it('5개 기준 체크칸은 운영규정 §17② 순서이고 처음엔 비어 있다', () => {
+  // (2단계에서 바뀜) 기준 체크칸 5개 → 조1~조5 × 5개 기준 표 + 최종 판정 직접 지정.
+  it('5개 기준은 운영규정 §17② 순서이고 새 안의 권고 수준 표는 비어 있다', () => {
     expect(CRITERIA.map((k) => CRITERION_LABELS[k])).toEqual([
       '효과성', '형평성', '사회적 수용성', '지속가능성', '실행가능성',
     ]);
     const r = mustCreate(fresh(), ['2-1-1']);
-    expect(Object.values(r.motion.criteria).every((v) => v === false)).toBe(true);
-    const s = updateMotion(r.state, r.motion.id, { criteria: { ...r.motion.criteria, equity: true } });
-    expect(s.motions[0].criteria.equity).toBe(true);
+    expect(r.motion.grid).toEqual({});
+    expect(r.motion.override).toEqual({});
+    expect(r.motion.rounds).toEqual([]);
+    expect(criteriaCount(r.motion)).toBe(0);
+    const s = updateMotion(r.state, r.motion.id, { otherOpinion: '기타' });
+    expect(s.motions[0].otherOpinion).toBe('기타');
   });
 });
 
