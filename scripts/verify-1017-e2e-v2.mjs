@@ -425,8 +425,10 @@ async function main() {
     record('d1-round2-linked', r2?.round === 2 && b2?.round === 2 && /2차$/.test(b2?.title ?? '') && state.motions.find((m) => m.id === F).rounds.length === 2, `차수 ${r2?.round} · 제목 「${b2?.title}」`);
     for (let v = 0; v < 3; v++) await voteUi(voters[v], b2.token, 2);
     await twoStep(unitOf(A.page, F).locator('[data-testid=vote-close]'));
-    await unitOf(A.page, F).locator('[data-testid=result-bar]').waitFor({ timeout: 30000 });
+    // 1차 결과 막대가 이미 떠 있어서 result-bar 만 기다리면 2차 집계가 오기 전에 센다 → 1차 줄이 생길 때까지 기다린다.
+    await unitOf(A.page, F).locator('[data-testid=round-history]').first().waitFor({ timeout: 30000 }).catch(() => undefined);
     const hist = await unitOf(A.page, F).locator('[data-testid=round-history]').count();
+    await unitOf(A.page, F).screenshot({ path: join(SHOTS, 'd-round-history.png') }).catch(() => undefined);
     record('d2-round1-kept', hist === 1, `1차 결과 줄 ${hist}`);
     await A.page.getByLabel(`${F} 소수 의견`).fill('E2E 소수 의견');
     await twoStep(unitOf(A.page, F).locator('[data-testid=minority]'));
