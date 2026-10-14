@@ -120,6 +120,7 @@ import {
   runStrayClose,
   strayOpenBallot,
   startStuck,
+  elsewhereHint,
   runVoteVoid,
   titleHead,
   setAttendanceField,
@@ -1416,13 +1417,18 @@ function VoteBoard({
   }, [prep, d]);
   const nowIso = () => new Date(Date.now() + prep.serverOffsetMs).toISOString();
 
+  /** QR 띄우기 — 이 화면에서 한 번 띄운 투표는 「다른 화면에서 연 투표」 안내를 다시 보이지 않는다(안내를 따른 것이므로). */
+  const showQr = (requestId: string) => {
+    openedHere.current.add(requestId);
+    setQrKey(requestId);
+  };
+
   // 10/14 operator-6 — 새로고침 뒤 들어왔을 때 열린 투표의 QR 을 바로 띄운다(한 번).
   useEffect(() => {
     if (!entryQr) return;
     if (state.ballots[entryQr]?.stage === 'open') {
       // 이 PC 가 띄우던 투표로 본다 — 「다른 화면에서 연 투표」 안내를 띄우지 않게.
-      openedHere.current.add(entryQr);
-      setQrKey(entryQr);
+      showQr(entryQr);
     }
     onEntryQrUsed();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1591,7 +1597,7 @@ function VoteBoard({
           const label = ballotLabel(b);
           const responses = b.ballotId ? counts[b.ballotId] ?? null : null;
           // 운영팀 노트북은 큰 화면에 연결하지 않으므로 이 안내는 분과 PC 에만.
-          const elsewhere = !isOps && b.stage === 'open' && !openedHere.current.has(b.requestId) && qrKey !== b.requestId;
+          const elsewhere = elsewhereHint(isOps, b.stage, openedHere.current.has(b.requestId), qrKey === b.requestId);
           const isBusy = unit ? !!busy[unit.key] : false;
           // 10/14 — 여는 중은 30초가 지나야 「멈춤」으로 본다(정상 시작마다 무효를 권하지 않게). 시각 없는 옛 기록은 멈춤으로.
           const stuck = startStuck(b, isBusy, now);
@@ -1617,7 +1623,7 @@ function VoteBoard({
                       type="button"
                       data-testid="band-qr"
                       className="min-h-12 rounded-xl bg-white px-4 text-[17px] font-extrabold text-[#0B3A4A]"
-                      onClick={() => setQrKey(b.requestId)}
+                      onClick={() => showQr(b.requestId)}
                     >
                       QR 띄우기
                     </button>
@@ -1688,7 +1694,7 @@ function VoteBoard({
                 onStart={() => void start(unit)}
                 onClose={() => void close(unit)}
                 onVoid={() => void voidVote(unit)}
-                onQr={() => unit.requestId && setQrKey(unit.requestId)}
+                onQr={() => unit.requestId && showQr(unit.requestId)}
               />
             ))}
           </ol>

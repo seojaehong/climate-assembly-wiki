@@ -35,6 +35,7 @@ import {
   setHandCount,
   storedCeremonyItems,
   startStuck,
+  elsewhereHint,
   strayOpenBallot,
   voidBallot,
   voteUnits,
@@ -444,5 +445,21 @@ describe('critical — 이 화면이 여는 중에는 무효·이어서 하기�
     const stuck = render(null, later);
     expect(stuck).toContain('data-testid="vote-void"');
     expect(disabledOf(stuck, 'vote-void')).toBe(false);
+  });
+});
+
+describe('10/15 E2E h3b — 운영팀이 대신 연 투표를 분과 PC 가 [QR 띄우기]로 한 번 띄우면 「다른 화면에서 연 투표」 안내가 다시 나오지 않는다', () => {
+  it('elsewhereHint — 운영팀 화면 · 열린 투표만 · 이 화면에서 띄운 적 있음 · 지금 QR 이 떠 있음', () => {
+    // 분과 PC, 다른 화면이 연 투표, 아직 띄운 적 없음 → 안내
+    expect(elsewhereHint(false, 'open', false, false)).toBe(true);
+    // [QR 띄우기]로 띄운 뒤 나가기(ESC) — 띄운 적 있음 → 안내 없음(이전에는 다시 나왔다)
+    expect(elsewhereHint(false, 'open', true, false)).toBe(false);
+    // QR 이 떠 있는 동안
+    expect(elsewhereHint(false, 'open', false, true)).toBe(false);
+    // 운영팀 화면은 큰 화면에 연결하지 않는다
+    expect(elsewhereHint(true, 'open', false, false)).toBe(false);
+    // 여는 중·마감은 안내 대상 아님
+    expect(elsewhereHint(false, 'creating', false, false)).toBe(false);
+    expect(elsewhereHint(false, 'closed', false, false)).toBe(false);
   });
 });

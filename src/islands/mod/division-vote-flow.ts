@@ -1033,6 +1033,15 @@ export function startStuck(b: Pick<BallotRecord, 'stage' | 'createdAt'>, busyHer
   return b.createdAt ? overdue(b.createdAt, nowMs, STUCK_START_MS) : true;
 }
 
+/**
+ * 분과 PC 화면 띠의 「다른 화면에서 연 투표입니다 … [QR 띄우기]」 안내를 보일까(10/14 ops-5).
+ * 운영팀 화면은 큰 화면에 연결하지 않으므로 보이지 않는다. 이 화면이 연 투표이거나, 이 화면에서 한 번이라도 QR 을 띄운
+ * 투표(새로고침 뒤 자동 QR · [QR 띄우기] · [QR 다시 띄우기])는 안내를 따른 것이라 다시 보이지 않는다(10/15 E2E h3b).
+ */
+export function elsewhereHint(isOps: boolean, stage: BallotRecord['stage'], shownHere: boolean, qrOpenNow: boolean): boolean {
+  return !isOps && stage === 'open' && !shownHere && !qrOpenNow;
+}
+
 export function overdue(since: string | null, nowMs: number, limitMs: number): boolean {
   if (!since) return false;
   const t = Date.parse(since);
