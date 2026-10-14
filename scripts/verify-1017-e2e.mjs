@@ -2128,7 +2128,8 @@ async function phaseNeg() {
     // 10/14 밤(167cb29) — 안에 들어간 카드는 잠그지 않는다(유사 묶음이 카드를 함께 쓴다). 「→ ○ 에 들어감」 표시만.
     const freeA = !(await pg.locator(`li[data-card-no="${a}"] input[type=checkbox]`).isDisabled());
     const inA = (await pg.locator(`li[data-card-no="${a}"]`).getAttribute('data-in-motion')) ?? '';
-    const badgeA = (await pg.locator(`li[data-card-no="${a}"] [data-testid=card-in-motions]`).count()) === 1;
+    // 안 하나에만 들어간 통합 카드는 「→ 안 번호」, 둘 이상이면 card-in-motions 배지로 적는다.
+    const badgeA = ((await pg.locator(`li[data-card-no="${a}"]`).textContent()) ?? '').includes(`→ ${made}`);
     // 원상 — 지우기(확인 대화상자는 newCtx 가 수락)
     if (made) await pg.locator(`[data-testid=motion-card][data-motion-id="${made}"]`).getByRole('button', { name: '안 지우기' }).click();
     await pg.waitForTimeout(500);
@@ -2321,4 +2322,6 @@ try {
   await browser.close().catch(() => {});
   writeFileSync(RESULTS, JSON.stringify({ S, results, pageErrors }, null, 2));
   console.log(`\nS 요약 → ${RESULTS}`);
+  // FAIL 이 있으면 종료 코드 1(10/15 — 전에는 FAIL 이 나도 0 이었다)
+  process.exitCode = results.length > 0 && results.every((r) => r.ok) ? 0 : 1;
 }
