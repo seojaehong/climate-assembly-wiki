@@ -10,6 +10,8 @@ import {
 import { getDeviceToken, isDeviceTokenPersistent } from '../../lib/mod-console';
 import {
   answeredCount,
+  ballotChoices,
+  decisionChoiceOf,
   getLocalSubmit,
   isComplete,
   isLocalSubmitStoragePersistent,
@@ -21,6 +23,7 @@ import {
   subgroupVoteBadge,
   SURVEY_EVIDENCE_BOUNDARY,
   voterCopy,
+  type BallotChoice,
 } from './ballot-logic';
 import { isDivisionDecisionBallot, parseMotionStatement } from '../../lib/division-ballot-format';
 import { useModalDialog } from '../mod/use-modal-dialog';
@@ -237,13 +240,19 @@ function DoneScreen({
   );
 }
 
-function ClosedScreen({
+export function ClosedScreen({
   decision,
+  ballotTitle,
+  late = false,
   onRefresh,
   refreshing,
   refreshNotice,
 }: {
   decision: boolean;
+  /** 어느 투표가 마감됐는지(10/14 voter-4) — 옛 QR 로 들어온 사람이 「지금 투표가 끝났다」고 오해하지 않게. */
+  ballotTitle?: string | null;
+  /** 제출을 눌렀는데 이미 마감돼 표가 들어가지 않았다(10/14 voter-4). */
+  late?: boolean;
   onRefresh: () => void;
   refreshing: boolean;
   refreshNotice: string | null;
@@ -256,6 +265,20 @@ function ClosedScreen({
       body="집계는 운영진 확인을 거쳐 공개됩니다."
       color="#2E75B6"
     >
+      {ballotTitle ? (
+        <p data-testid="closed-ballot-title" className="mt-3 text-[16px] font-bold text-[#1F4E79] tr-num">
+          마감된 투표: {ballotTitle}
+        </p>
+      ) : null}
+      {late ? (
+        <p
+          role="alert"
+          data-testid="closed-late"
+          className="mt-4 rounded-2xl border-2 border-[#B91C1C] bg-[#FEF2F2] px-4 py-3 text-[19px] font-extrabold leading-snug text-[#B91C1C]"
+        >
+          마감 뒤에 제출되어 이 표는 반영되지 않았습니다. 손을 들어 알려 주십시오.
+        </p>
+      ) : null}
       <RefreshButton onRefresh={onRefresh} refreshing={refreshing} refreshNotice={refreshNotice} />
     </CenterMessage>
   );
@@ -277,8 +300,9 @@ export function ItemBlock({
   /** 분과 의결 투표 — 안 제목을 크게, 안 번호는 작게. */
   decision?: boolean;
 }) {
-  const labels = scaleLabels(item.scale);
   const motion = decision ? parseMotionStatement(item.statement) : null;
+  // 10/14 voter-2 — 분과 의결은 찬성을 위로, 고르면 찬성 초록·반대 빨강(저장값 1=반대·2=찬성은 그대로).
+  const choices = ballotChoices(item.scale, !!motion && item.scale === 2);
   return (
     <section className="pt-6 first:pt-0" aria-label={motion ? `${motion.id} 투표` : `의제 ${item.ordinal}`}>
       {motion ? (
@@ -312,9 +336,9 @@ export function ItemBlock({
       )}
 
       <div className="space-y-2" role="group" aria-label={motion ? `${motion.id} 찬반 응답` : `의제 ${item.ordinal} 응답`}>
-        {labels.map((label, i) => {
-          const v = i + 1;
+        {choices.map(({ value: v, label, tone }) => {
           const active = value === v;
+          const on = CHOICE_TONE[tone];
           return (
             <button
               key={v}
@@ -322,14 +346,14 @@ export function ItemBlock({
               onClick={() => onSelect(v)}
               disabled={disabled}
               aria-pressed={active}
+              data-choice={v}
+              data-tone={tone}
               className={`w-full min-h-[56px] rounded-2xl border-2 px-4 py-3 text-left text-[17px] font-bold flex items-center gap-3 transition disabled:opacity-50 ${
-                active ? 'border-[#23B2C3] bg-[#23B2C3]/8 text-[#135C73]' : 'border-[#DCE7EE] bg-white text-[#1F2933]'
+                active ? on.active : 'border-[#DCE7EE] bg-white text-[#1F2933]'
               }`}
             >
               <span
-                className={`w-6 h-6 shrink-0 rounded-full border-2 grid place-items-center ${
-                  active ? 'border-[#23B2C3] bg-[#23B2C3]' : 'border-[#C4D8E4] bg-white'
-                }`}
+                className={`w-6 h-6 shrink-0 rounded-full border-2 grid place-items-center ${active ? on.dot : 'border-[#C4D8E4] bg-white'}`}
                 aria-hidden="true"
               >
                 {active ? <span className="w-2 h-2 rounded-full bg-white" /> : null}
@@ -343,15 +367,24 @@ export function ItemBlock({
   );
 }
 
-function ConfirmDialog({
+const CHOICE_TONE: Record<BallotChoice['tone'], { active: string; dot: string; text: string; box: string }> = {
+  neutral: { active: 'border-[#23B2C3] bg-[#23B2C3]/8 text-[#135C73]', dot: 'border-[#23B2C3] bg-[#23B2C3]', text: 'text-[#135C73]', box: 'border-[#23B2C3] bg-[#23B2C3]/8' },
+  yes: { active: 'border-[#2F6F25] bg-[#2F6F25]/10 text-[#2F6F25]', dot: 'border-[#2F6F25] bg-[#2F6F25]', text: 'text-[#2F6F25]', box: 'border-[#2F6F25] bg-[#EAF6EE]' },
+  no: { active: 'border-[#B91C1C] bg-[#B91C1C]/8 text-[#B91C1C]', dot: 'border-[#B91C1C] bg-[#B91C1C]', text: 'text-[#B91C1C]', box: 'border-[#B91C1C] bg-[#FEF2F2]' },
+};
+
+export function ConfirmDialog({
   answered,
   total,
+  choice = null,
   onCancel,
   onConfirm,
   submitting,
 }: {
   answered: number;
   total: number;
+  /** 분과 의결 — 고른 값을 크게 보인다(10/14 voter-2). 확인 창이 버튼을 덮어도 무엇을 골랐는지 보이게. */
+  choice?: BallotChoice | null;
   onCancel: () => void;
   onConfirm: () => void;
   submitting: boolean;
@@ -376,9 +409,19 @@ function ConfirmDialog({
         >
           답변을 제출할까요?
         </h2>
-        <p className="text-[15px] leading-relaxed text-[#5A6B73] mb-1">
-          {answered}/{total} 문항에 응답하셨습니다.
-        </p>
+        {choice ? (
+          <p
+            data-testid="confirm-choice"
+            data-tone={choice.tone}
+            className={`my-3 rounded-2xl border-2 px-4 py-3 text-[26px] font-black ${CHOICE_TONE[choice.tone].box} ${CHOICE_TONE[choice.tone].text}`}
+          >
+            선택: {choice.label}
+          </p>
+        ) : (
+          <p className="text-[15px] leading-relaxed text-[#5A6B73] mb-1">
+            {answered}/{total} 문항에 응답하셨습니다.
+          </p>
+        )}
         <p className="text-[15px] font-bold text-[#B91C1C] mb-6">제출 후에는 수정할 수 없습니다.</p>
         <button
           type="button"
@@ -594,6 +637,8 @@ export default function BallotCard() {
   const [ballot, setBallot] = useState<Ballot | null | undefined>(undefined);
   const [answers, setAnswers] = useState<Record<string, number>>({});
   const [submitState, setSubmitState] = useState<'idle' | 'submitted' | 'duplicate'>('idle');
+  /** 제출했는데 이미 마감 — 표가 들어가지 않았다(10/14 voter-4). */
+  const [lateClosed, setLateClosed] = useState(false);
   const [locallySubmitted, setLocallySubmitted] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -685,6 +730,8 @@ export default function BallotCard() {
         setSubmitState('duplicate');
       } else {
         // 제출 시점에 이미 마감됨 — 최신 상태(closed/published)를 다시 받아 화면 전환.
+        // 마감 화면에 「이 표는 반영되지 않았습니다」를 붉게 띄운다(손을 들어 알리도록, 10/14 voter-4).
+        setLateClosed(true);
         void load({ preserveCurrent: true });
       }
     } catch (submitError: unknown) {
@@ -750,7 +797,16 @@ export default function BallotCard() {
     return <ResultsScreen results={results} />;
   }
   if (screen === 'closed') {
-    return <ClosedScreen decision={decisionBallot} onRefresh={handleRefresh} refreshing={refreshing} refreshNotice={refreshNotice} />;
+    return (
+      <ClosedScreen
+        decision={decisionBallot}
+        ballotTitle={ballot?.title ?? null}
+        late={lateClosed}
+        onRefresh={handleRefresh}
+        refreshing={refreshing}
+        refreshNotice={refreshNotice}
+      />
+    );
   }
   if (screen === 'done') {
     return (
@@ -778,6 +834,7 @@ export default function BallotCard() {
           <ConfirmDialog
             answered={answeredCount(ballot.items, answers)}
             total={ballot.items.length}
+            choice={decisionChoiceOf(ballot.items, answers, decisionBallot)}
             onCancel={() => setConfirmOpen(false)}
             onConfirm={handleSubmit}
             submitting={submitting}

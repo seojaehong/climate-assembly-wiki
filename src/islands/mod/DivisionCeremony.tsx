@@ -36,7 +36,8 @@ const C = {
   gold: '#FFD25A',
   yes: '#35C27A',
   track: '#284A63',
-  pass: '#FF5A5A',
+  // 10/14 moderator-3 — 가결은 초록(운영 화면 배지·권고 수준 표와 같은 뜻). 빨강은 부결·경고에만.
+  pass: '#35C27A',
   fail: '#9FB3C2',
   warn: '#FFB4B4',
 };
@@ -79,6 +80,7 @@ export default function DivisionCeremony({
   enrolled,
   present,
   items,
+  motionCount,
   sourceLabel,
   onExit,
 }: {
@@ -86,12 +88,15 @@ export default function DivisionCeremony({
   enrolled: number;
   present: number;
   items: CeremonyItem[];
+  /** 분과 안 수(제외 안 빼고). 공개할 안 수와 다르면 「상정 N건(분과 안 M건 중)」으로 밝힌다(10/14 moderator-5). */
+  motionCount?: number;
   /** 「연습 모드」·「실제 투표 결과」 — 화면 구석에 작게 남겨 캡처해도 출처가 보이게 한다. */
   sourceLabel: string;
   onExit: () => void;
 }) {
   const [step, setStep] = useState<CeremonyStep>(CEREMONY_START);
   const total = items.length;
+  const totalText = motionCount !== undefined && motionCount !== total ? `상정 ${total}건(분과 안 ${motionCount}건 중)` : `상정 ${total}건`;
   const att = attendanceCheck(enrolled, present);
   const established = att.kind === 'ok' && att.established;
   const label = divisionLabel(division);
@@ -197,9 +202,9 @@ export default function DivisionCeremony({
       {/* 본문 */}
       <main className="flex min-h-0 flex-1 flex-col justify-center" style={{ gap: 'clamp(12px,2.4vh,36px)' }}>
         {step.phase === 'intro' ? (
-          <IntroView label={label} total={total} enrolled={enrolled} present={present} established={established} />
+          <IntroView label={label} totalText={totalText} enrolled={enrolled} present={present} established={established} />
         ) : step.phase === 'summary' ? (
-          <SummaryView label={label} summary={summary} total={total} />
+          <SummaryView label={label} summary={summary} totalText={totalText} />
         ) : current && verdict ? (
           <MotionView item={current} verdict={verdict} present={itemPresent} reveal={ceremonyReveal(step.phase)} />
         ) : null}
@@ -238,13 +243,13 @@ export default function DivisionCeremony({
 
 function IntroView({
   label,
-  total,
+  totalText,
   enrolled,
   present,
   established,
 }: {
   label: string;
-  total: number;
+  totalText: string;
   enrolled: number;
   present: number;
   established: boolean;
@@ -254,8 +259,8 @@ function IntroView({
       <h1 className="text-[clamp(80px,8vw,150px)] font-black leading-none" style={{ letterSpacing: '-.03em', color: C.text }}>
         {label} 의결
       </h1>
-      <p className="text-[clamp(32px,2.6vw,52px)] font-extrabold tr-num" style={{ color: C.sub }}>
-        상정 {total}건
+      <p data-testid="ceremony-total" className="text-[clamp(32px,2.6vw,52px)] font-extrabold tr-num" style={{ color: C.sub }}>
+        {totalText}
       </p>
       <p
         data-testid="ceremony-attendance"
@@ -400,11 +405,11 @@ function StampBox({ verdict, show }: { verdict: ReturnType<typeof ceremonyVerdic
 function SummaryView({
   label,
   summary,
-  total,
+  totalText,
 }: {
   label: string;
   summary: ReturnType<typeof summarizeCeremony>;
-  total: number;
+  totalText: string;
 }) {
   const MAX_ROWS = 16;
   const shown = summary.passed.slice(0, MAX_ROWS);
@@ -416,7 +421,7 @@ function SummaryView({
           {label} 의결 <span className="tr-num" style={{ color: C.gold, fontSize: 'clamp(80px,8vw,150px)' }}>{summary.passed.length}</span>건
         </h1>
         <p className="text-[clamp(28px,2.2vw,44px)] font-extrabold tr-num" style={{ color: C.sub }}>
-          상정 {total}건 · 부결 {summary.failed.length}건
+          {totalText} · 부결 {summary.failed.length}건
           {summary.invalid.length > 0 ? ` · 판정 불가 ${summary.invalid.length}건` : ''}
           {(() => {
             const second = [...summary.passed, ...summary.failed, ...summary.invalid].filter((i) => (i.round ?? 1) > 1).length;

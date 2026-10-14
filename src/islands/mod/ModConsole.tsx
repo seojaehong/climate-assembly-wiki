@@ -996,13 +996,16 @@ function HomeScreen({
 }) {
   // 탭 — 8.29는 조별 산출물이 본 과업이라 그것이 기본이다(mod-tabs.ts).
   // 새로고침해도 보던 탭에 머물도록 sessionStorage에 남긴다.
+  // 10/14 — 탭을 닫았다 다시 열어도(노트북 재시작 포함) 보던 탭으로: localStorage 에도 남긴다.
+  // 10/17 의결 중 탭을 닫으면 「의제·권고안 기록」으로 돌아가 QR 을 못 찾던 문제. 옛 sessionStorage 값도 읽는다.
   const [tab, setTab] = useState<ModTabId>(() =>
-    normalizeTabId(workshopSessionStorage.getItem(MOD_TAB_KEY))
+    normalizeTabId(workshopLocalStorage.getItem(MOD_TAB_KEY) ?? workshopSessionStorage.getItem(MOD_TAB_KEY))
   );
   const sessionState = useWorkshopSessionState({ access });
   const selectTab = (next: ModTabId) => {
     setTab(next);
     try {
+      workshopLocalStorage.setItem(MOD_TAB_KEY, next);
       workshopSessionStorage.setItem(MOD_TAB_KEY, next);
     } catch (error) {
       console.warn('[moderator tabs] preference storage unavailable', error);
@@ -2663,6 +2666,7 @@ export default function ModConsole() {
 
     try {
       workshopSessionStorage.removeItem(MOD_TAB_KEY);
+      workshopLocalStorage.removeItem(MOD_TAB_KEY);
     } catch (error) {
       console.error('[workshop access] failed to clear tab preference', error);
     }

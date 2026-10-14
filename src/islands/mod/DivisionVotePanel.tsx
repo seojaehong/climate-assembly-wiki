@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import {
   ballotCreate,
   ballotList,
@@ -27,6 +28,7 @@ import {
   ballotCeremonyItems,
   canCombine,
   canDeleteMotion,
+  canEditMotionTitle,
   cardsInMotions,
   combineFailureText,
   combineWarningText,
@@ -43,6 +45,7 @@ import {
   finalCriterion,
   initPrepState,
   isUntitled,
+  liveRounds,
   lockedDivisionOf,
   motionExcluded,
   parseImport,
@@ -50,6 +53,7 @@ import {
   practiceItems,
   prepStorageKey,
   readStoredPrep,
+  replaceStateProblem,
   serializePrep,
   setCardStatus,
   setCriterionOverride,
@@ -57,6 +61,7 @@ import {
   statusTally,
   teamMajority,
   updateMotion,
+  type BallotRecord,
   type CardStatus,
   type CeremonyItem,
   type Criterion,
@@ -68,15 +73,26 @@ import {
   type TeamNo,
 } from './division-vote-logic';
 import {
+  LONG_OPEN_MS,
   PHASE_LABELS,
+  STUCK_START_MS,
+  armedText,
+  ballotLabel,
   beginVote,
   boardSummary,
+  canEditRoundCounts,
   canRevote,
+  canVoidRound,
   cancelRevote,
+  ceremonyGaps,
+  confirmHandCount,
   currentRound,
   elapsedText,
+  handPending,
+  liveBallots,
   markMinority,
   motionPhase,
+  overdue,
   parseHandInput,
   qrHeadlineOf,
   qrRowOf,
@@ -90,6 +106,8 @@ import {
   roundVerdict,
   runVoteClose,
   runVoteStart,
+  runVoteVoid,
+  titleHead,
   setAttendanceField,
   setHandCount,
   storedCeremonyItems,
@@ -145,6 +163,13 @@ const btnGhost = `${btn} border border-[#C4D8E4] bg-white text-[#1F4E79]`;
 const btnBig = 'min-h-16 rounded-2xl px-7 text-[22px] font-extrabold focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#1F4E79] disabled:cursor-not-allowed disabled:opacity-40';
 const input =
   'w-full min-w-0 rounded-xl border border-[#C4D8E4] px-3 text-[17px] text-[#1F2933] outline-none focus:border-[#23B2C3] focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#1F4E79]';
+
+/** 운영팀 화면의 「지금 고치는 분과」 띠 색 — 분과마다 다르게(10/14 ops-6). */
+const DIVISION_BAND: Record<number, string> = {
+  1: 'bg-[#1F4E79]',
+  2: 'bg-[#6B3FA0]',
+  3: 'bg-[#0F6B4F]',
+};
 
 const newRequestId = (): string => {
   try {
@@ -226,11 +251,18 @@ export default function DivisionVotePanel({
   });
 
   const [division, setDivision] = useState<number | null>(() => {
+    // 운영팀은 처음에 분과를 열지 않는다(10/14 ops-6) — 현황판만 보이고 [N분과 화면 열기]로 고른다.
+    if (isOps) return null;
     const saved = Number(storage.getItem(`${ns}${PREP_DIVISION_KEY}`));
     if (Number.isInteger(saved) && saved > 0) return saved;
     return fixtureSource?.[0]?.division ?? null;
   });
   const [view, setView] = useState<View>('prep');
+  /** 들어왔을 때 열린 투표가 있으면 띄울 QR(10/14 operator-6). VoteBoard 가 한 번 받아 쓴다. */
+  const [entryQr, setEntryQr] = useState<string | null>(null);
+  const entryChecked = useRef(false);
+  /** 「지금 투표 중」 띠를 붙일 자리 — 알림과 같은 붙박이 칸 안(겹치지 않게). */
+  const [bandSlot, setBandSlot] = useState<HTMLDivElement | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const { notice, setNotice } = prep;
 
@@ -239,13 +271,26 @@ export default function DivisionVotePanel({
     .map(([d]) => Number(d))
     .filter((d) => lockedDivision === null || d === lockedDivision)
     .sort((a, b) => a - b);
-  // 고른 분과가 잠금 밖이면(가져오기 직후·저장된 옛 선택) 잠긴 분과로 돌아간다.
-  const activeDivision = division !== null && divisions.includes(division) ? division : divisions[0] ?? null;
+  // 고른 분과가 잠금 밖이면(가져오기 직후·저장된 옛 선택) 잠긴 분과로 돌아간다. 운영팀은 고르기 전까지 비워 둔다.
+  const activeDivision =
+    division !== null && divisions.includes(division) ? division : isOps ? null : divisions[0] ?? null;
   const state = activeDivision !== null ? prep.slots[activeDivision]?.state ?? null : null;
 
   useEffect(() => {
     if (activeDivision !== null) storage.setItem(`${ns}${PREP_DIVISION_KEY}`, String(activeDivision));
   }, [activeDivision, ns]);
+
+  // 10/14 operator-6 — 새로고침·노트북 재시작 뒤 들어왔을 때 열린 투표가 있으면 「투표 진행」과 그 QR 로 바로 연다.
+  // 서버에서 읽기를 마친 뒤(연결 중이 아닐 때) 한 번만 본다. 운영팀 화면은 건드리지 않는다.
+  useEffect(() => {
+    if (entryChecked.current || isOps || !state || prep.mode === 'connecting') return;
+    entryChecked.current = true;
+    const open = Object.values(state.ballots).find((b) => b.stage === 'open');
+    if (open) {
+      setView('vote');
+      setEntryQr(open.requestId);
+    }
+  }, [isOps, state, prep.mode]);
 
   const update = useCallback(
     (fn: (s: PrepState) => PrepState) => {
@@ -266,7 +311,21 @@ export default function DivisionVotePanel({
         setNotice({ tone: 'error', text: `이 조는 ${divisionLabel(lockedDivision)}만 다룹니다. ${divisionLabel(s.division)} 파일은 가져오지 않았습니다.` });
         return;
       }
-      if (prep.slots[s.division]?.state && !window.confirm(`${divisionLabel(s.division)} 준비 내용을 가져온 파일로 바꿉니다.`)) return;
+      // 10/14 — 옛 백업 파일이 마감한 투표 기록을 지우고 같은 안을 다시 열게 만든다. 투표 기록이 줄면 거절.
+      const current = prep.slots[s.division]?.state ?? null;
+      const problem = replaceStateProblem(current, s);
+      if (problem) {
+        setNotice({ tone: 'error', text: problem });
+        return;
+      }
+      const voted = current ? current.motions.filter((m) => m.rounds.length > 0).length : 0;
+      if (
+        current &&
+        !window.confirm(
+          `${divisionLabel(s.division)} 준비 내용 전체(카드 상태·의결안·참석 인원·투표 기록 ${voted}건)를 가져온 파일 내용으로 바꿉니다. 같은 분과의 다른 화면에도 바로 퍼집니다. 바꿀까요?`,
+        )
+      )
+        return;
       prep.replace(s.division, s);
       setDivision(s.division);
       setNotice({ tone: 'ok', text: `${divisionLabel(s.division)} 준비 내용을 가져왔습니다(의결안 ${s.motions.length}건).` });
@@ -367,28 +426,48 @@ export default function DivisionVotePanel({
       </div>
 
       <div className="space-y-5 p-4 sm:p-6">
-        {notice ? (
-          <p
-            role={notice.tone === 'ok' ? 'status' : 'alert'}
-            data-testid="division-notice"
-            className={`flex flex-wrap items-center gap-3 rounded-xl px-4 py-3 text-[17px] font-bold ${
-              notice.tone === 'error'
-                ? 'border border-[#DC2626]/30 bg-[#FEF2F2] text-[#B91C1C]'
-                : notice.tone === 'warn'
-                  ? 'border border-[#F5A623]/50 bg-[#FFF7E6] text-[#8A5A00]'
-                  : 'bg-[#EAF6EE] text-[#2F6F25]'
-            }`}
-          >
-            <span className="min-w-0 flex-1">{notice.text}</span>
-            <button type="button" className="min-h-11 rounded-lg px-3 text-[16px] underline" onClick={() => setNotice(null)}>
-              닫기
-            </button>
-          </p>
+        {/* 10/14 — 알림·운영팀 분과 띠는 화면 위에 붙어 있다. 아래 안 블록에서 일하는 중에도 보인다(operator-4·ops-6). */}
+        {notice || (state && (isOps || view === 'vote')) ? (
+          <div data-testid="division-sticky" className="sticky top-2 z-30 space-y-2">
+            {isOps && state ? (
+              <p
+                data-testid="ops-division-band"
+                data-division={state.division}
+                className={`rounded-xl px-4 py-2 text-[20px] font-black text-white shadow-md ${DIVISION_BAND[state.division] ?? 'bg-[#1F4E79]'}`}
+              >
+                지금 고치는 분과: {divisionLabel(state.division)}
+                <span className="ml-3 text-[16px] font-bold opacity-90">(운영팀 · 여기서 누르는 버튼은 {divisionLabel(state.division)}에 바로 적용됩니다)</span>
+              </p>
+            ) : null}
+            {notice ? (
+              <p
+                role={notice.tone === 'ok' ? 'status' : 'alert'}
+                data-testid="division-notice"
+                data-tone={notice.tone}
+                className={`flex flex-wrap items-center gap-3 rounded-xl px-4 py-3 text-[17px] font-bold shadow-md ${
+                  notice.tone === 'error'
+                    ? 'border border-[#DC2626]/30 bg-[#FEF2F2] text-[#B91C1C]'
+                    : notice.tone === 'warn'
+                      ? 'border-2 border-[#F5A623] bg-[#FFF7E6] text-[#8A5A00]'
+                      : 'bg-[#EAF6EE] text-[#2F6F25]'
+                }`}
+              >
+                <span className="min-w-0 flex-1">{notice.text}</span>
+                <button type="button" className="min-h-11 rounded-lg px-3 text-[16px] underline" onClick={() => setNotice(null)}>
+                  닫기
+                </button>
+              </p>
+            ) : null}
+            {state && view === 'vote' ? <div ref={setBandSlot} data-testid="live-vote-slot" /> : null}
+          </div>
         ) : null}
-        {prep.mode === 'local' && !preview ? (
+        {(prep.mode === 'local' || prep.lastSaveFailed) && !preview ? (
           <p role="alert" data-testid="division-local-banner" className="rounded-xl border-2 border-[#F5A623] bg-[#FFF3C4] px-4 py-3 text-[18px] font-extrabold text-[#7A4B00]">
             서버 저장 안 됨 — 이 기기에만 저장 중
             {prep.localReason ? <span className="ml-2 text-[16px] font-bold">({prep.localReason} 30초마다 다시 연결합니다.)</span> : null}
+            <span className="mt-1 block text-[16px] font-bold">
+              운영팀에 바로 알리십시오. 브라우저를 닫지 말고, 안을 마감할 때마다 [이 분과 결과 CSV]와 [JSON 내보내기]로 이 기기 내용을 받아 두십시오.
+            </span>
           </p>
         ) : null}
         {!storage.isPersistent() ? (
@@ -412,7 +491,11 @@ export default function DivisionVotePanel({
           />
         ) : null}
 
-        {!state ? (
+        {!state && isOps && divisions.length > 0 ? (
+          <p data-testid="ops-pick-division" className="rounded-xl border border-dashed border-[#C4D8E4] p-6 text-[18px] font-bold text-[#1F4E79]">
+            위 현황판에서 [N분과 화면 열기]를 누르면 그 분과 화면이 여기에 열립니다.
+          </p>
+        ) : !state ? (
           <div className="rounded-xl border border-dashed border-[#C4D8E4] p-6 text-[17px] text-[#1F2933]">
             <p className="font-bold">
               {prep.mode === 'connecting' ? '서버에서 준비 내용을 읽는 중입니다…' : '권고안 파일(recs_1017.json)을 「JSON 가져오기」로 불러오십시오.'}
@@ -468,10 +551,14 @@ export default function DivisionVotePanel({
                 prep={prep}
                 api={vApi}
                 preview={preview}
+                isOps={isOps}
+                entryQr={entryQr}
+                onEntryQrUsed={() => setEntryQr(null)}
+                bandSlot={bandSlot}
                 onCsv={() => downloadCsv(state.division)}
               />
             ) : null}
-            {view === 'ceremony' ? <CeremonySetup state={state} api={vApi} /> : null}
+            {view === 'ceremony' ? <CeremonySetup state={state} api={vApi} isOps={isOps} preview={preview} /> : null}
           </>
         )}
       </div>
@@ -489,17 +576,19 @@ const OPERATOR_STEPS = [
   '같은 분과 안이면 주제가 다른 카드도 한 안으로 합칠 수 있습니다(주황 경고만 뜹니다). 이미 다른 안에 들어간 카드와 시행중-제외 카드는 고를 수 없습니다. 다른 분과 카드와의 통합은 이 화면에서 하지 않습니다(현장 수기).',
   '안 제목은 큰 QR 화면과 투표자 휴대폰에 그대로 크게 나옵니다. 안 번호 포함 300자까지이며, 칸 아래에 남은 글자 수가 나옵니다.',
   '「2. 투표 진행」 맨 위에 재적과 참석 인원을 넣습니다. 재적 과반수가 참석해야 [투표 시작]이 눌립니다. 가결선이 바로 아래에 나옵니다.',
-  '투표는 안 하나씩 엽니다. [투표 시작]을 누르고, 버튼이 「투표를 시작합니까?」로 바뀌면 5초 안에 한 번 더 누릅니다. 투표가 열리고 QR 화면이 바로 뜹니다. [나가기] 또는 ESC로 돌아오고, [QR 다시 띄우기]로 다시 엽니다.',
-  '휴대폰이 없는 분은 손을 들어 찬반을 표시합니다. 책임 모더레이터가 찬성·반대 인원을 따로 세어 오퍼레이터에게 알려 줍니다.',
-  '투표를 끝낼 때 [마감하고 결과 보기]를 누르고, 버튼이 「정말 마감합니까?」로 바뀌면 5초 안에 한 번 더 누릅니다. 찬성·반대 표, 가결선, 가결·부결이 크게 나옵니다.',
-  '결과 아래 「거수 찬성」·「거수 반대」 칸에 책임 모더레이터가 센 인원을 넣습니다. 온라인 표에 더해 다시 판정합니다. 조별 권고 수준 표와 기타 의견도 그 안 아래에 적습니다.',
-  '부결된 안은 [문구 고쳐 2차 투표] 또는 [소수 의견으로 기록]을 고릅니다. 다 끝나면 「3. 세리머니」로 발표하고 [이 분과 결과 CSV]를 내려받습니다.',
+  '투표는 안 하나씩 엽니다. 한 안이 열려 있으면 다른 안의 [투표 시작]은 눌리지 않습니다. [투표 시작]을 누르면 버튼에 「N분과 안 번호 「제목…」 투표를 시작합니까?」가 뜹니다. 모더레이터가 부른 안 번호와 같은지 소리 내어 확인하고 5초 안에 한 번 더 누릅니다. 투표가 열리고 QR 화면이 바로 뜹니다. [나가기] 또는 ESC로 돌아오고, 화면 위 「지금 투표 중」 띠의 [QR 띄우기]로 다시 엽니다.',
+  '안을 잘못 열었으면 마감하지 말고 그 안의 [잘못 연 투표 무효]를 두 번 누릅니다. 투표가 닫히고 안이 「투표 전」으로 돌아가며 차수도 쓰지 않습니다. 기록에는 「무효」로 남습니다.',
+  '휴대폰이 없거나 제출이 안 된 분은 손을 들어 찬반을 표시합니다. 책임 모더레이터가 찬성·반대 인원을 따로 세어 오퍼레이터에게 알려 줍니다.',
+  '투표를 끝낼 때 [마감하고 결과 보기]를 누르고, 버튼이 「… 투표를 마감합니까?」로 바뀌면 5초 안에 한 번 더 누릅니다. 찬성·반대 표와 가결선, 잠정 판정이 나옵니다.',
+  '결과 아래 「거수 찬성」·「거수 반대」 칸에 책임 모더레이터가 센 인원을 넣고 [거수 입력 완료]를 누릅니다(거수가 없으면 [거수 없음]). 그 전까지 판정은 「잠정」이고 2차 투표·소수 의견 버튼이 나오지 않습니다. 모더레이터는 이 버튼을 누른 뒤에 판정을 읽습니다.',
+  '투표를 시작한 안의 제목은 고칠 수 없습니다(QR·휴대폰·기록은 보낸 문장 그대로입니다). 투표 전 오타는 준비판 안 카드 제목 칸에서 고치고, 부결 뒤에는 [문구 고쳐 2차 투표]의 제목 칸에서 고칩니다.',
+  '부결된 안은 [문구 고쳐 2차 투표] 또는 [소수 의견으로 기록]을 고릅니다. 다 끝나면 「3. 세리머니」로 발표하고 [이 분과 결과 CSV]를 내려받습니다. 세리머니는 「마감한 결과(○건)」로 시작합니다.',
 ];
 
 const OPS_STEPS = [
-  '맨 위 현황판이 세 분과의 후보안·진행 중 투표·가결·부결·소수 의견을 5초마다 새로 보여 줍니다. 빨간 글씨는 참석 인원이 비어 있다는 뜻입니다.',
-  '[N분과 화면 열기]를 누르면 그 분과 오퍼레이터와 같은 화면이 아래에 열립니다. 여기서 고친 내용은 그 분과에 「운영팀」 이름으로 저장됩니다.',
-  '어느 분과 투표든 그 화면에서 시작하고 마감할 수 있습니다. 순서는 분과 오퍼레이터 사용법과 같습니다.',
+  '맨 위 현황판이 세 분과의 후보안·진행 중 투표·가결·부결·소수 의견을 5초마다 새로 보여 줍니다. 빨간 글씨는 참석 인원이 비어 있다는 뜻입니다. 주황·빨강 줄(시작 멈춤·집계 실패·판정 불가·거수 확인 전·오래 열린 투표)이 보이면 그 분과에 연락합니다.',
+  '[N분과 화면 열기]를 누르면 그 분과 오퍼레이터와 같은 화면이 아래에 열리고, 화면 위에 「지금 고치는 분과」 띠가 붙습니다. 여기서 고친 내용은 그 분과에 「운영팀」 이름으로 저장됩니다.',
+  '어느 분과 투표든 그 화면에서 시작하고 마감할 수 있지만, 분과 PC가 응답하지 않을 때만 대신 엽니다. 대신 열면 QR은 이 노트북에만 뜹니다 — 그 분과 PC-A에 「화면 위 [QR 띄우기]를 누르십시오」라고 바로 알립니다. 결과가 나온 뒤 무효 처리는 운영팀 화면에서만 할 수 있습니다.',
   '[전체 결과 CSV]는 세 분과 결과를 한 파일로 내려받습니다(엑셀에서 바로 열립니다).',
 ];
 
@@ -587,20 +676,57 @@ function OpsBoard({
                     <dd className="font-extrabold">{sum.pending}</dd>
                   </dl>
                   <div className="min-h-[2.5rem]">
-                    {sum.open.length === 0 ? (
+                    {sum.open.length + sum.starting.length === 0 ? (
                       <p className="text-[16px] text-[#5A6B73]">진행 중 투표 없음</p>
-                    ) : (
-                      <ul className="space-y-1">
-                        {sum.open.map((o) => (
-                          <li key={o.label} className="rounded-lg bg-[#135C73] px-3 py-1 text-[17px] font-extrabold text-white tr-num">
+                    ) : null}
+                    <ul className="space-y-1" data-testid="ops-alerts">
+                      {sum.open.map((o) => {
+                        const long = overdue(o.openedAt, now, LONG_OPEN_MS);
+                        return (
+                          <li
+                            key={o.label}
+                            data-alert="open"
+                            data-overdue={long ? 'true' : 'false'}
+                            className={`rounded-lg px-3 py-1 text-[17px] font-extrabold tr-num ${long ? 'bg-[#F5A623] text-[#3A2400]' : 'bg-[#135C73] text-white'}`}
+                          >
                             투표 중 {o.label} · {elapsedText(o.openedAt, now)}
+                            {long ? ' · 마감 확인' : ''}
                           </li>
-                        ))}
-                      </ul>
-                    )}
+                        );
+                      })}
+                      {sum.starting.map((o) => {
+                        const stuck = overdue(o.since, now, STUCK_START_MS);
+                        return (
+                          <li
+                            key={o.label}
+                            data-alert="starting"
+                            data-overdue={stuck ? 'true' : 'false'}
+                            className={`rounded-lg px-3 py-1 text-[17px] font-extrabold tr-num ${stuck ? 'bg-[#B91C1C] text-white' : 'bg-[#FFF1D6] text-[#8A5A00]'}`}
+                          >
+                            시작 멈춤 {o.label}
+                            {o.since ? ` · ${elapsedText(o.since, now)}` : ''} — 분과 PC에서 [투표 시작 이어서 하기]
+                          </li>
+                        );
+                      })}
+                      {sum.counting.map((l) => (
+                        <li key={`c-${l}`} data-alert="counting" className="rounded-lg bg-[#FFF1D6] px-3 py-1 text-[17px] font-extrabold text-[#8A5A00]">
+                          집계 실패 {l} — [결과 다시 불러오기]
+                        </li>
+                      ))}
+                      {sum.undecided.map((l) => (
+                        <li key={`u-${l}`} data-alert="undecided" className="rounded-lg bg-[#FFF1D6] px-3 py-1 text-[17px] font-extrabold text-[#8A5A00]">
+                          판정 불가 {l} — 참석 인원 확인
+                        </li>
+                      ))}
+                      {sum.handPending.map((l) => (
+                        <li key={`h-${l}`} data-alert="hand" className="rounded-lg bg-[#FFF1D6] px-3 py-1 text-[17px] font-extrabold text-[#8A5A00]">
+                          거수 확인 전 {l}
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                   <p className="text-[16px] text-[#5A6B73] tr-num">
-                    마지막 저장 {slot?.updatedAt ? hhmmss(slot.updatedAt) : '-'}
+                    마지막 저장 {slot?.updatedAt ? `${hhmmss(slot.updatedAt)} (${elapsedText(slot.updatedAt, now)} 전)` : '-'}
                     {slot?.updatedBy ? ` · ${slot.updatedBy}` : ''}
                     {slot?.unreadable ? ' · 서버 내용 읽기 실패' : ''}
                   </p>
@@ -674,7 +800,12 @@ function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepS
       setError(r.error);
       return;
     }
-    update(() => r.state);
+    // 충돌하면 서버 최신 위에 다시 적용하므로(use-division-prep) 만든 상태를 통째로 넣지 않고 그 위에서 다시 만든다.
+    const spec = { cardNos: selected, title, text };
+    update((s) => {
+      const again = createMotion(s, spec);
+      return again.ok ? again.state : s;
+    });
     setSelected([]);
     setTitle('');
     autoTitle.current = null;
@@ -892,8 +1023,9 @@ function TitleRoom({ id, room }: { id: string; room: number }) {
   );
 }
 
-function MotionEditor({ motion, state, update }: { motion: Motion; state: PrepState; update: (fn: (s: PrepState) => PrepState) => void }) {
+export function MotionEditor({ motion, state, update }: { motion: Motion; state: PrepState; update: (fn: (s: PrepState) => PrepState) => void }) {
   const phase = motionPhase(state, motion);
+  const titleLocked = !canEditMotionTitle(motion);
   const combined = canCombine(state.source, motion.cardNos);
   const topics = combined.ok ? combined.topics : [];
   return (
@@ -921,13 +1053,24 @@ function MotionEditor({ motion, state, update }: { motion: Motion; state: PrepSt
         )}
       </div>
       <textarea
-        className={`${input} mt-3 min-h-14 py-2 font-bold`}
+        className={`${input} mt-3 min-h-14 py-2 font-bold ${titleLocked ? 'cursor-not-allowed bg-[#F4F4F4] text-[#4B5563]' : ''}`}
         rows={titleRows(motion.title)}
         value={motion.title}
+        readOnly={titleLocked}
+        aria-readonly={titleLocked}
+        data-locked={titleLocked ? 'true' : 'false'}
         aria-label={`${motion.id} 제목`}
-        onChange={(e) => update((s) => updateMotion(s, motion.id, { title: e.target.value }))}
+        onChange={(e) => {
+          if (!titleLocked) update((s) => updateMotion(s, motion.id, { title: e.target.value }));
+        }}
       />
-      <TitleRoom id={motion.id} room={motionTitleRoom(motion.id, motion.title)} />
+      {titleLocked ? (
+        <p data-testid="title-locked" className="text-[16px] font-bold text-[#8A5A00]">
+          투표를 시작한 안은 제목을 고칠 수 없습니다(큰 화면·휴대폰·기록은 보낸 문장 그대로입니다). 부결이면 [문구 고쳐 2차 투표]에서 고칩니다.
+        </p>
+      ) : (
+        <TitleRoom id={motion.id} room={motionTitleRoom(motion.id, motion.title)} />
+      )}
       <textarea
         className={`${input} mt-2 min-h-20 py-2`}
         value={motion.text}
@@ -981,6 +1124,10 @@ function VoteBoard({
   prep,
   api,
   preview,
+  isOps,
+  entryQr,
+  onEntryQrUsed,
+  bandSlot,
   onCsv,
 }: {
   state: PrepState;
@@ -988,17 +1135,26 @@ function VoteBoard({
   prep: DivisionPrep;
   api: DivisionBallotApi | null;
   preview: boolean;
+  isOps: boolean;
+  /** 들어왔을 때 열린 투표가 있으면 그 멱등키 — 한 번 QR 로 띄우고 onEntryQrUsed 로 돌려준다. */
+  entryQr: string | null;
+  onEntryQrUsed: () => void;
+  /** 「지금 투표 중」 띠를 붙일 자리(패널 위 붙박이 칸). 없으면 이 자리에 그린다. */
+  bandSlot: HTMLElement | null;
   onCsv: () => void;
 }) {
   const d = state.division;
-  const [busy, setBusy] = useState<Record<string, 'start' | 'close'>>({});
+  const [busy, setBusy] = useState<Record<string, 'start' | 'close' | 'void'>>({});
   const inflight = useRef<Set<string>>(new Set());
   const [msg, setMsg] = useState<{ key: string; tone: 'ok' | 'error'; text: string } | null>(null);
   const [qrKey, setQrKey] = useState<string | null>(null);
+  /** 이 기기에서 연 투표. 다른 화면(운영팀·PC-B)이 연 투표는 띠에서 따로 알린다(10/14 ops-5). */
+  const openedHere = useRef<Set<string>>(new Set());
 
   // 10/7·10/14 결정 — 투표는 안 하나씩. 묶음 버튼(5개·10개 안팎·전체 한 번)은 화면에서 뺐다.
   const units = voteUnits(state, ONE_AT_A_TIME);
-  const anyOpen = Object.values(state.ballots).some((b) => b.stage === 'open');
+  const live = liveBallots(state);
+  const anyOpen = live.some((b) => b.stage === 'open');
   const counts = useBallotCounts(api, anyOpen || qrKey !== null);
   const ready = attendanceReady(state.attendance);
   const excludedMotions = state.motions.filter((m) => motionExcluded(state, m));
@@ -1012,7 +1168,21 @@ function VoteBoard({
   }, [prep, d]);
   const nowIso = () => new Date(Date.now() + prep.serverOffsetMs).toISOString();
 
-  const lock = (key: string, kind: 'start' | 'close') => {
+  // 10/14 operator-6 — 새로고침 뒤 들어왔을 때 열린 투표의 QR 을 바로 띄운다(한 번).
+  useEffect(() => {
+    if (!entryQr) return;
+    if (state.ballots[entryQr]?.stage === 'open') setQrKey(entryQr);
+    onEntryQrUsed();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entryQr]);
+
+  // 10/14 ops-5 — QR 의 투표가 다른 화면에서 마감·무효되면 QR 을 내린다(마감된 QR 이 결과를 가리지 않게).
+  const qrStage = qrKey ? state.ballots[qrKey]?.stage ?? null : null;
+  useEffect(() => {
+    if (qrKey && qrStage !== 'open') setQrKey(null);
+  }, [qrKey, qrStage]);
+
+  const lock = (key: string, kind: 'start' | 'close' | 'void') => {
     if (inflight.current.has(key)) return false;
     inflight.current.add(key);
     setBusy((b) => ({ ...b, [key]: kind }));
@@ -1034,8 +1204,9 @@ function VoteBoard({
       let requestId: string | null = null;
       let error: string | null = null;
       const fresh = newRequestId();
+      const at = nowIso();
       await commit((s) => {
-        const r = beginVote(s, unit.motionIds, fresh);
+        const r = beginVote(s, unit.motionIds, fresh, at);
         if (!r.ok) {
           error = r.error;
           return s;
@@ -1048,6 +1219,7 @@ function VoteBoard({
         return;
       }
       const id: string = requestId;
+      openedHere.current.add(id);
       await runVoteStart(api, commit, getState, id, nowIso);
       setMsg(null);
       setQrKey(id);
@@ -1075,11 +1247,105 @@ function VoteBoard({
     }
   };
 
+  /** 10/14 operator-2·ops-1 — 잘못 연 투표를 무효로(서버 투표를 닫고 그 차수를 판정·차수 계산에서 뺀다). */
+  const voidVote = async (unit: VoteUnit) => {
+    if (!api || !unit.requestId) return;
+    if (!lock(unit.key, 'void')) return;
+    const requestId = unit.requestId;
+    const labels = unit.motionIds.join(', ');
+    try {
+      const out = await runVoteVoid(api, commit, getState, requestId, nowIso);
+      if (qrKey === requestId) setQrKey(null);
+      setMsg(
+        out.ok
+          ? { key: unit.key, tone: 'ok', text: `${labels} 투표를 무효로 했습니다. 안이 앞 단계로 돌아갔습니다(기록에는 「무효」로 남습니다).` }
+          : { key: unit.key, tone: 'error', text: out.error },
+      );
+    } catch (e) {
+      console.error('[division vote] void failed', e);
+      setMsg({ key: unit.key, tone: 'error', text: '서버 투표를 닫지 못해 무효로 하지 않았습니다(아직 표를 받는 중일 수 있습니다). 다시 누르거나 운영팀에 알리십시오.' });
+    } finally {
+      unlock(unit.key);
+    }
+  };
+
   const qrRecord = qrKey ? state.ballots[qrKey] : null;
-  const qrRow = qrRecord ? qrRowOf(qrRecord, qrRecord.ballotId ? counts[qrRecord.ballotId] ?? 0 : 0) : null;
+  const qrRow = qrRecord && qrRecord.stage === 'open' ? qrRowOf(qrRecord, qrRecord.ballotId ? counts[qrRecord.ballotId] ?? 0 : 0) : null;
+  const unitOf = (requestId: string) => units.find((u) => u.requestId === requestId) ?? null;
+
+  // 10/14 operator-3·operator-6·ops-5 — 열린 투표는 화면 위 띠에 늘 보인다(스크롤하지 않고 QR·마감).
+  const band =
+    live.length > 0 ? (
+      <div data-testid="live-vote-band" className="space-y-2">
+        {live.map((b) => {
+          const unit = unitOf(b.requestId);
+          const m = state.motions.find((x) => x.id === b.motionIds[0]);
+          const title = currentRound(m ?? { rounds: [] })?.title ?? m?.title ?? '';
+          const label = ballotLabel(b);
+          const responses = b.ballotId ? counts[b.ballotId] ?? null : null;
+          const elsewhere = b.stage === 'open' && !openedHere.current.has(b.requestId) && qrKey !== b.requestId;
+          const isBusy = unit ? !!busy[unit.key] : false;
+          return (
+            <div
+              key={b.requestId}
+              data-band-request={b.requestId}
+              data-stage={b.stage}
+              className={`rounded-2xl border-2 px-4 py-3 shadow-md ${b.stage === 'open' ? 'border-[#135C73] bg-[#0B3A4A] text-white' : 'border-[#F5A623] bg-[#FFF3C4] text-[#7A4B00]'}`}
+            >
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="min-w-0 flex-1 text-[20px] font-extrabold tr-num">
+                  {b.stage === 'open' ? '지금 투표 중' : '투표 여는 중(멈춤)'}: {divisionLabel(d)} {label} 「{titleHead(title, 24)}」
+                  {b.stage === 'open' ? (
+                    <span className="ml-2 text-[18px] font-bold opacity-90">
+                      · 제출 {responses ?? '…'}명 · {elapsedText(b.openedAt, now)}
+                    </span>
+                  ) : null}
+                </span>
+                {b.stage === 'open' ? (
+                  <>
+                    <button
+                      type="button"
+                      data-testid="band-qr"
+                      className="min-h-12 rounded-xl bg-white px-4 text-[17px] font-extrabold text-[#0B3A4A]"
+                      onClick={() => setQrKey(b.requestId)}
+                    >
+                      QR 띄우기
+                    </button>
+                    {unit ? (
+                      <TwoStepButton
+                        className={`${btn} bg-[#B45309] text-white`}
+                        armedClassName={`${btn} bg-[#7F1D1D] text-white ring-4 ring-[#FCA5A5]`}
+                        testId="band-close"
+                        disabled={!api || isBusy}
+                        label={busy[unit.key] === 'close' ? '마감하는 중…' : '마감하고 결과 보기'}
+                        armedLabel={armedText('close', d, label, title)}
+                        onFire={() => void close(unit)}
+                      />
+                    ) : null}
+                  </>
+                ) : unit ? (
+                  <button type="button" data-testid="band-resume" className={`${btn} bg-[#135C73] text-white`} disabled={!api || isBusy} onClick={() => void start(unit)}>
+                    투표 시작 이어서 하기
+                  </button>
+                ) : null}
+              </div>
+              {elsewhere ? (
+                <p data-testid="band-elsewhere" className="mt-2 rounded-lg bg-[#F5A623] px-3 py-1 text-[17px] font-extrabold text-[#3A2400]">
+                  다른 화면에서 연 투표입니다. 이 PC가 큰 화면에 연결돼 있으면 [QR 띄우기]를 누르십시오.
+                </p>
+              ) : null}
+              {b.stage !== 'open' ? (
+                <p className="mt-1 text-[16px] font-bold">투표를 여는 중에 멈췄습니다. [투표 시작 이어서 하기]를 누르거나, 잘못 연 것이면 아래 안 카드에서 [잘못 연 투표 무효]를 누릅니다.</p>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    ) : null;
 
   return (
     <div className="space-y-5">
+      {band ? (bandSlot ? createPortal(band, bandSlot) : band) : null}
       <AttendanceBox state={state} update={update} />
 
       {state.motions.length === 0 ? (
@@ -1099,6 +1365,8 @@ function VoteBoard({
                 state={state}
                 update={update}
                 ready={ready}
+                isOps={isOps}
+                otherLive={live.find((b) => b.requestId !== unit.requestId) ?? null}
                 canNetwork={!!api}
                 busy={busy[unit.key] ?? null}
                 msg={msg?.key === unit.key ? msg : null}
@@ -1109,6 +1377,7 @@ function VoteBoard({
                 nowMs={now}
                 onStart={() => void start(unit)}
                 onClose={() => void close(unit)}
+                onVoid={() => void voidVote(unit)}
                 onQr={() => unit.requestId && setQrKey(unit.requestId)}
               />
             ))}
@@ -1192,11 +1461,13 @@ function AttendanceBox({ state, update }: { state: PrepState; update: (fn: (s: P
   );
 }
 
-function UnitCard({
+export function UnitCard({
   unit,
   state,
   update,
   ready,
+  isOps,
+  otherLive,
   canNetwork,
   busy,
   msg,
@@ -1204,36 +1475,46 @@ function UnitCard({
   nowMs,
   onStart,
   onClose,
+  onVoid,
   onQr,
 }: {
   unit: VoteUnit;
   state: PrepState;
   update: (fn: (s: PrepState) => PrepState) => void;
   ready: boolean;
+  isOps: boolean;
+  /** 이 단위가 아닌, 열려 있거나 여는 중인 투표. 있으면 [투표 시작]을 막는다(10/14 operator-3). */
+  otherLive: BallotRecord | null;
   canNetwork: boolean;
-  busy: 'start' | 'close' | null;
+  busy: 'start' | 'close' | 'void' | null;
   msg: { tone: 'ok' | 'error'; text: string } | null;
   responses: number | null;
   nowMs: number;
   onStart: () => void;
   onClose: () => void;
+  onVoid: () => void;
   onQr: () => void;
 }) {
   const motions = unit.motionIds.map((id) => state.motions.find((m) => m.id === id)).filter((m): m is Motion => !!m);
   if (motions.length === 0) return null;
+  const d = state.division;
   const phase = motionPhase(state, motions[0]);
   const ballot = unit.requestId ? state.ballots[unit.requestId] : null;
   const isRevote = phase === 'revote';
   const notStarted = phase === 'ready' || isRevote;
-  const startDisabled = !canNetwork || !!busy || (notStarted && !ready);
+  const blockedByOther = notStarted && otherLive !== null;
+  const startDisabled = !canNetwork || !!busy || (notStarted && !ready) || blockedByOther;
   const startLabel = busy === 'start' ? '여는 중…' : phase === 'starting' ? '투표 시작 이어서 하기' : isRevote ? '2차 투표 시작' : '투표 시작';
+  const roundNo = isRevote ? liveRounds(motions[0].rounds).length + 1 : currentRound(motions[0])?.round ?? 1;
+  const label = motions.length > 1 ? `${motions[0].id} 외 ${motions.length - 1}건` : roundLabel(motions[0].id, roundNo);
+  // 무장 문구의 제목 — 시작 전에는 지금 칸의 제목(보낼 문구), 시작 뒤에는 그 차수에 보낸 제목.
+  const title = notStarted ? motions[0].title : currentRound(motions[0])?.title ?? motions[0].title;
+  const voidable = !!unit.requestId && canVoidRound(state, motions[0], isOps);
 
   return (
     <li data-testid="vote-unit" data-unit-key={unit.key} data-phase={phase} className="rounded-2xl border-2 border-[#C4D8E4] bg-white">
       <div className="flex flex-wrap items-center gap-3 border-b border-[#DCE7EE] bg-[#F5F8FB] px-4 py-3">
-        <span className="text-[18px] font-extrabold text-[#1F4E79]">
-          {motions.length > 1 ? `묶음 투표 · 안 ${motions.length}건` : roundLabel(motions[0].id, isRevote ? motions[0].rounds.length + 1 : currentRound(motions[0])?.round ?? 1)}
-        </span>
+        <span className="text-[18px] font-extrabold text-[#1F4E79]">{motions.length > 1 ? `묶음 투표 · 안 ${motions.length}건` : label}</span>
         <PhaseBadge phase={phase} />
         {ballot ? <span className="text-[16px] text-[#5A6B73]">{ballot.title} · {ballotStatusLabel(ballot.stage === 'creating' ? 'draft' : ballot.stage)}</span> : null}
         <div className="ml-auto flex flex-wrap items-center gap-2">
@@ -1244,12 +1525,12 @@ function UnitCard({
               testId="vote-start"
               disabled={startDisabled}
               label={startLabel}
-              armedLabel={`${isRevote ? '2차 투표를' : '투표를'} 시작합니까? (다시 누르면 시작)`}
+              armedLabel={armedText('start', d, label, title)}
               onFire={onStart}
             />
           ) : null}
           {phase === 'starting' ? (
-            <button type="button" className={`${btnBig} bg-[#135C73] text-white`} data-testid="vote-start" disabled={startDisabled} onClick={onStart}>
+            <button type="button" className={`${btnBig} bg-[#135C73] text-white`} data-testid="vote-start" disabled={!canNetwork || !!busy} onClick={onStart}>
               {startLabel}
             </button>
           ) : null}
@@ -1267,7 +1548,7 @@ function UnitCard({
                 testId="vote-close"
                 disabled={!canNetwork || !!busy}
                 label={busy === 'close' ? '마감하는 중…' : '마감하고 결과 보기'}
-                armedLabel="정말 마감합니까? (다시 누르면 마감)"
+                armedLabel={armedText('close', d, label, title)}
                 onFire={onClose}
               />
             </>
@@ -1277,10 +1558,31 @@ function UnitCard({
               {busy === 'close' ? '불러오는 중…' : '결과 다시 불러오기'}
             </button>
           ) : null}
+          {voidable ? (
+            <TwoStepButton
+              className={`${btn} border-2 border-[#B91C1C] bg-white text-[#B91C1C]`}
+              armedClassName={`${btn} border-2 border-[#7F1D1D] bg-[#B91C1C] text-white ring-4 ring-[#FCA5A5]`}
+              testId="vote-void"
+              disabled={!canNetwork || !!busy}
+              label={busy === 'void' ? '무효 처리 중…' : '잘못 연 투표 무효'}
+              armedLabel={armedText('void', d, label, title)}
+              onFire={onVoid}
+            />
+          ) : null}
         </div>
       </div>
       {notStarted && !ready ? (
         <p className="px-4 pt-3 text-[16px] font-bold text-[#B91C1C]">참석 인원을 위에 넣으면 [투표 시작]이 눌립니다.</p>
+      ) : null}
+      {blockedByOther && otherLive ? (
+        <p data-testid="vote-blocked" className="px-4 pt-3 text-[17px] font-extrabold text-[#B45309]">
+          {ballotLabel(otherLive)} 투표가 열려 있습니다. 먼저 마감하십시오(화면 위 「지금 투표 중」 띠).
+        </p>
+      ) : null}
+      {phase === 'open' || phase === 'starting' ? (
+        <p className="px-4 pt-3 text-[16px] font-bold text-[#5A6B73]">
+          엉뚱한 안을 열었으면 마감하지 말고 [잘못 연 투표 무효]를 누릅니다 — 안이 앞 단계로 돌아가고 차수를 쓰지 않습니다.
+        </p>
       ) : null}
       {msg ? (
         <p role={msg.tone === 'error' ? 'alert' : 'status'} className={`mx-4 mt-3 rounded-xl px-4 py-3 text-[17px] font-bold ${msg.tone === 'error' ? 'bg-[#FEF2F2] text-[#B91C1C]' : 'bg-[#EAF6EE] text-[#2F6F25]'}`}>
@@ -1296,12 +1598,22 @@ function UnitCard({
   );
 }
 
-function MotionVoteBlock({ motion, state, update }: { motion: Motion; state: PrepState; update: (fn: (s: PrepState) => PrepState) => void }) {
+export function MotionVoteBlock({ motion, state, update }: { motion: Motion; state: PrepState; update: (fn: (s: PrepState) => PrepState) => void }) {
   const phase = motionPhase(state, motion);
-  const withTotals = motion.rounds.filter((r) => roundTotals(r) !== null);
+  const live = liveRounds(motion.rounds);
+  const withTotals = live.filter((r) => roundTotals(r) !== null);
   const last = withTotals[withTotals.length - 1] ?? null;
   const earlier = withTotals.slice(0, -1);
+  const voided = motion.rounds.filter((r) => r.voidedAt);
   const rejected = phase === 'failed' || phase === 'revote' || phase === 'minority';
+  const cur = currentRound(motion);
+  const pending = handPending(cur);
+  // 10/14 moderator-1 — 결과 막대가 지금 차수가 아니면(2차 준비·2차 투표 중) 그 막대의 거수 칸은 잠근다.
+  const newerRound = !!last && (phase === 'revote' || cur !== last);
+  const editable = !!last && canEditRoundCounts(motion, last.round);
+  const heading = last ? (last.round > 1 || newerRound ? `${last.round}차 투표 결과` : '투표 결과') : '';
+  // 투표 진행 화면의 제목 = 지금 차수에 보낸 문장(10/14 operator-5). 2차 준비 중에만 고치는 칸.
+  const shownTitle = cur?.title ?? motion.title;
 
   // 두 번째 누름에서만 부른다(TwoStepButton). 칸이 비어 있으면 무장 문구가 그 사실을 알린다.
   const onMinority = () =>
@@ -1325,21 +1637,41 @@ function MotionVoteBlock({ motion, state, update }: { motion: Motion; state: Pre
             onChange={(e) => update((s) => updateMotion(s, motion.id, { title: e.target.value }))}
           />
         ) : (
-          <span className="min-w-0 flex-1 text-[20px] font-extrabold text-[#1F2933]">{motion.title}</span>
+          <span data-testid="motion-vote-title" className="min-w-0 flex-1 text-[20px] font-extrabold text-[#1F2933]">
+            {shownTitle}
+          </span>
         )}
         <span className="text-[16px] text-[#5A6B73]">원 카드 {motion.cardNos.join(', ')}</span>
       </div>
       {phase === 'revote' ? <TitleRoom id={motion.id} room={motionTitleRoom(motion.id, motion.title)} /> : null}
 
+      {voided.map((r) => (
+        <p key={r.requestId} className="rounded-lg bg-[#F4F4F4] px-3 py-2 text-[16px] text-[#4B5563] line-through" data-testid="round-voided">
+          {r.round}차 「{titleHead(r.title, 30)}」 · 무효(잘못 열림)
+        </p>
+      ))}
       {earlier.map((r) => (
-        <p key={r.round} className="rounded-lg bg-[#F5F8FB] px-3 py-2 text-[16px] text-[#1F2933] tr-num" data-testid="round-history">
+        <p key={r.requestId} className="rounded-lg bg-[#F5F8FB] px-3 py-2 text-[16px] text-[#1F2933] tr-num" data-testid="round-history">
           {r.round}차 「{r.title}」 · 찬성 {roundTotals(r)?.yes} · 반대 {roundTotals(r)?.no} · {r.verdict === 'passed' ? '가결' : r.verdict === 'failed' ? '부결' : '판정 불가'}
         </p>
       ))}
 
-      {last ? <ResultBar motion={motion} round={last} state={state} update={update} /> : null}
+      {last ? <ResultBar motion={motion} round={last} state={state} update={update} editable={editable} heading={heading} /> : null}
+      {last && (phase === 'starting' || phase === 'open' || phase === 'counting') ? (
+        <p data-testid="hand-wait" className="rounded-xl border-2 border-dashed border-[#F5A623] bg-[#FFF7E6] px-4 py-3 text-[18px] font-extrabold text-[#8A5A00]">
+          {cur?.round ?? last.round + 1}차 투표 중 — 거수는 마감 뒤 새로 나오는 「{cur?.round ?? last.round + 1}차 투표 결과」 아래 칸에 넣습니다. 위 {last.round}차 칸은 고칠 수 없습니다.
+        </p>
+      ) : null}
+      {phase === 'revote' && last ? (
+        <p className="text-[16px] font-bold text-[#5A6B73]">{last.round}차 거수를 고쳐야 하면 [2차 투표 그만두기]를 먼저 누릅니다.</p>
+      ) : null}
 
-      {phase === 'failed' ? (
+      {phase === 'failed' && pending ? (
+        <p data-testid="hand-first" className="text-[17px] font-bold text-[#8A5A00]">
+          거수를 넣고 [거수 입력 완료](거수가 없으면 [거수 없음])를 누르면 [문구 고쳐 2차 투표]·[소수 의견으로 기록]이 나옵니다.
+        </p>
+      ) : null}
+      {phase === 'failed' && !pending ? (
         <div className="flex flex-wrap gap-3">
           {canRevote(state, motion) ? (
             <button type="button" className={`${btnBig} border-2 border-[#135C73] bg-white text-[#135C73]`} data-testid="revote" onClick={() => update((s) => requestRevote(s, motion.id))}>
@@ -1461,17 +1793,25 @@ function TwoStepButton({
   );
 }
 
-/** 결과 막대 — 프로젝터에 그대로 비친다. 숫자 96px · 이름표 36px · 본문 24px 이상. */
+/**
+ * 결과 막대 — 프로젝터에 그대로 비친다. 숫자 96px · 이름표 36px · 본문 24px 이상.
+ * 10/14: 가결 = 초록(배지·권고 수준 표와 같은 뜻), 부결 = 회색. 빨강은 부결·미충족·경고에만 쓴다(moderator-3).
+ * 거수 확인 전에는 판정을 「잠정」으로 흐리게 보인다(moderator-2). editable=false 면 거수 칸을 그리지 않는다(moderator-1).
+ */
 function ResultBar({
   motion,
   round,
   state,
   update,
+  editable,
+  heading,
 }: {
   motion: Motion;
   round: MotionRound;
   state: PrepState;
   update: (fn: (s: PrepState) => PrepState) => void;
+  editable: boolean;
+  heading: string;
 }) {
   const totals = roundTotals(round);
   const verdict = roundVerdict(round);
@@ -1483,21 +1823,39 @@ function ResultBar({
   const lineAt = present > 0 && threshold !== null ? Math.min(threshold / present, 1) : null;
   const passed = verdict?.kind === 'decided' && verdict.passed;
   const decided = verdict?.kind === 'decided';
+  const provisional = handPending(round);
   const attendanceChanged = round.enrolled !== state.attendance.enrolled || round.present !== state.attendance.present;
+  const word = decided ? (passed ? '가결' : '부결') : '판정 불가';
+  const stampTone = !decided
+    ? 'border-[#FFB4B4] text-[#FFB4B4]'
+    : passed
+      ? 'border-[#35C27A] text-[#7FE0A8]'
+      : 'border-[#9FB3C2] text-[#C9D8E3]';
 
   return (
-    <div data-testid="result-bar" data-verdict={round.verdict ?? ''} className="rounded-2xl bg-[#0B2233] p-5 text-white sm:p-7">
+    <div
+      data-testid="result-bar"
+      data-verdict={round.verdict ?? ''}
+      data-provisional={provisional ? 'true' : 'false'}
+      data-round={round.round}
+      className="rounded-2xl bg-[#0B2233] p-5 text-white sm:p-7"
+    >
       <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
-        <span className="text-[36px] font-black leading-tight">{round.round > 1 ? `${round.round}차 투표 결과` : '투표 결과'}</span>
+        <span data-testid="result-heading" className="text-[36px] font-black leading-tight">
+          {heading}
+        </span>
         <span
           data-testid="result-verdict"
-          className={`ml-auto rounded-2xl border-[6px] px-6 py-1 text-[64px] font-black leading-tight ${
-            decided ? (passed ? 'border-[#FF5A5A] text-[#FF8A8A]' : 'border-[#9FB3C2] text-[#C9D8E3]') : 'border-[#FFB4B4] text-[#FFB4B4]'
-          }`}
+          className={`ml-auto rounded-2xl border-[6px] px-6 py-1 text-[64px] font-black leading-tight ${stampTone} ${provisional ? 'border-dashed opacity-60' : ''}`}
         >
-          {decided ? (passed ? '가결' : '부결') : '판정 불가'}
+          {provisional && decided ? `잠정 ${word}` : word}
         </span>
       </div>
+      {provisional ? (
+        <p data-testid="result-provisional" className="mt-2 text-[26px] font-extrabold text-[#FFD25A]">
+          거수 확인 전 — 거수를 더한 뒤 [거수 입력 완료]를 누르면 판정이 확정됩니다.
+        </p>
+      ) : null}
       <div className="mt-4 grid gap-4 sm:grid-cols-2">
         <div className="min-w-0">
           <p className="text-[36px] font-extrabold text-[#C9D8E3]">찬성</p>
@@ -1524,19 +1882,47 @@ function ResultBar({
       {verdict && verdict.kind === 'invalid' ? <p className="mt-2 text-[24px] font-extrabold text-[#FFB4B4]">{verdict.message}</p> : null}
       {verdict && verdict.kind === 'no-quorum' ? <p className="mt-2 text-[24px] font-extrabold text-[#FFB4B4]">정족수 미달입니다.</p> : null}
 
-      <div className="mt-5 flex flex-wrap items-end gap-4 rounded-xl bg-white/10 p-4">
-        <HandInput label="거수 찬성" value={round.handYes} onCommit={(v) => update((s) => setHandCount(s, motion.id, round.round, { handYes: v }))} />
-        <HandInput label="거수 반대" value={round.handNo} onCommit={(v) => update((s) => setHandCount(s, motion.id, round.round, { handNo: v }))} />
-        {attendanceChanged ? (
-          <button
-            type="button"
-            className="min-h-14 rounded-xl border-2 border-[#FFD25A] px-4 text-[18px] font-bold text-[#FFD25A]"
-            onClick={() => update((s) => reapplyAttendance(s, motion.id, round.round))}
-          >
-            지금 참석 인원({state.attendance.present ?? '-'}명)으로 다시 판정
-          </button>
-        ) : null}
-      </div>
+      {editable ? (
+        <div className="mt-5 flex flex-wrap items-end gap-4 rounded-xl bg-white/10 p-4">
+          <HandInput label="거수 찬성" value={round.handYes} onCommit={(v) => update((s) => setHandCount(s, motion.id, round.round, { handYes: v }))} />
+          <HandInput label="거수 반대" value={round.handNo} onCommit={(v) => update((s) => setHandCount(s, motion.id, round.round, { handNo: v }))} />
+          {provisional ? (
+            <>
+              <button
+                type="button"
+                data-testid="hand-confirm"
+                className="min-h-14 rounded-xl bg-[#FFD25A] px-5 text-[20px] font-extrabold text-[#0B2233]"
+                onClick={() => update((s) => confirmHandCount(s, motion.id, round.round, 'entered'))}
+              >
+                거수 입력 완료
+              </button>
+              {round.handYes === 0 && round.handNo === 0 ? (
+                <button
+                  type="button"
+                  data-testid="hand-none"
+                  className="min-h-14 rounded-xl border-2 border-[#FFD25A] px-5 text-[20px] font-extrabold text-[#FFD25A]"
+                  onClick={() => update((s) => confirmHandCount(s, motion.id, round.round, 'none'))}
+                >
+                  거수 없음
+                </button>
+              ) : null}
+            </>
+          ) : null}
+          {attendanceChanged ? (
+            <button
+              type="button"
+              className="min-h-14 rounded-xl border-2 border-[#FFD25A] px-4 text-[18px] font-bold text-[#FFD25A]"
+              onClick={() => update((s) => reapplyAttendance(s, motion.id, round.round))}
+            >
+              지금 참석 인원({state.attendance.present ?? '-'}명)으로 다시 판정
+            </button>
+          ) : null}
+        </div>
+      ) : (
+        <p data-testid="hand-locked" className="mt-5 rounded-xl bg-white/10 p-4 text-[22px] font-bold text-[#C9D8E3]">
+          이 결과의 거수 칸은 잠겨 있습니다. 고쳐야 하면 [2차 투표 그만두기]·[기록 취소]로 먼저 되돌립니다.
+        </p>
+      )}
     </div>
   );
 }
@@ -1660,7 +2046,7 @@ function CriteriaGrid({ motion, update }: { motion: Motion; update: (fn: (s: Pre
 
 type CeremonyMode = 'stored' | 'practice' | 'ballot';
 
-function CeremonySetup({ state, api }: { state: PrepState; api: DivisionBallotApi | null }) {
+function CeremonySetup({ state, api, isOps, preview }: { state: PrepState; api: DivisionBallotApi | null; isOps: boolean; preview: boolean }) {
   const subgroup = divisionLabel(state.division);
   const enrolled = state.attendance.enrolled ?? Number.NaN;
   const present = state.attendance.present ?? Number.NaN;
@@ -1673,6 +2059,11 @@ function CeremonySetup({ state, api }: { state: PrepState; api: DivisionBallotAp
   const [running, setRunning] = useState<CeremonyItem[] | null>(null);
   const votable = state.motions.filter((m) => !motionExcluded(state, m));
   const stored = useMemo(() => storedCeremonyItems(state), [state]);
+  // 10/14 moderator-5 — 세리머니에서 빠지거나 잠정인 안. 투표가 아직 돌면 [세리머니 시작]을 두 번 눌러야 한다.
+  const gaps = useMemo(() => ceremonyGaps(state), [state]);
+  const blocking = gaps.some((g) => g.blocking);
+  // 10/14 moderator-4 — 「투표 목록에서 불러오기」는 거수 표가 빠지고 1·2차가 따로 나와 공표용이 아니다. 운영팀·미리보기에만.
+  const ballotModeAllowed = isOps || preview;
 
   useEffect(() => {
     if (mode !== 'ballot' || !api) return;
@@ -1737,10 +2128,29 @@ function CeremonySetup({ state, api }: { state: PrepState; api: DivisionBallotAp
         <button type="button" role="radio" aria-checked={mode === 'practice'} className={mode === 'practice' ? btnPrimary : btnGhost} onClick={() => setMode('practice')}>
           연습 모드(수기·무작위)
         </button>
-        <button type="button" role="radio" aria-checked={mode === 'ballot'} className={mode === 'ballot' ? btnPrimary : btnGhost} onClick={() => setMode('ballot')}>
-          투표 목록에서 불러오기
-        </button>
+        {ballotModeAllowed ? (
+          <button type="button" role="radio" aria-checked={mode === 'ballot'} className={mode === 'ballot' ? btnPrimary : btnGhost} onClick={() => setMode('ballot')}>
+            투표 목록에서 불러오기(확인용)
+          </button>
+        ) : null}
       </div>
+
+      {gaps.length > 0 ? (
+        <div data-testid="ceremony-gaps" data-blocking={blocking ? 'true' : 'false'} className="rounded-2xl border-2 border-[#B91C1C] bg-[#FEF2F2] p-4">
+          <p className="text-[18px] font-extrabold text-[#B91C1C]">
+            세리머니에서 빠지거나 잠정인 안 {gaps.length}건 — 「상정 {stored.length}건(분과 안 {votable.length}건 중)」으로 나옵니다
+          </p>
+          <ul className="mt-2 space-y-1 text-[17px] font-bold text-[#7F1D1D]">
+            {gaps.map((g) => (
+              <li key={g.id} data-gap={g.id} data-blocking={g.blocking ? 'true' : 'false'}>
+                {g.id} · {g.status}
+                {g.blocking ? ' — 투표가 아직 끝나지 않았습니다' : ''}
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-[16px] font-bold text-[#7F1D1D]">「2. 투표 진행」에서 마감·거수 확인을 마친 뒤 시작하십시오.</p>
+        </div>
+      ) : null}
 
       {mode === 'stored' ? (
         stored.length === 0 ? (
@@ -1791,6 +2201,9 @@ function CeremonySetup({ state, api }: { state: PrepState; api: DivisionBallotAp
         <p className="text-[17px] text-[#5A6B73]">투표 목록은 조 코드로 들어온 콘솔에서 불러옵니다.</p>
       ) : (
         <fieldset className="rounded-2xl border border-[#DCE7EE] p-4">
+          <p data-testid="ceremony-ballot-warning" className="mb-3 rounded-xl border-2 border-[#B91C1C] bg-[#FEF2F2] px-3 py-2 text-[17px] font-extrabold text-[#B91C1C]">
+            공표용 아님 — 거수 표가 빠지고 1·2차가 따로 나옵니다. 발표는 「마감한 결과」로 합니다.
+          </p>
           <legend className="px-1 text-[16px] font-bold text-[#1F4E79]">{subgroup} 투표 고르기 (체크한 순서대로 이어 공개)</legend>
           <ul className="space-y-1">
             {(rows ?? []).map((b) => (
@@ -1824,15 +2237,27 @@ function CeremonySetup({ state, api }: { state: PrepState; api: DivisionBallotAp
         </fieldset>
       )}
 
-      <button
-        type="button"
-        data-testid="division-ceremony-start"
-        className={`${btnPrimary} min-h-14 px-6 text-[20px]`}
-        disabled={items.length === 0}
-        onClick={() => setRunning(items)}
-      >
-        세리머니 시작 (전체 화면)
-      </button>
+      {mode === 'stored' && blocking ? (
+        <TwoStepButton
+          testId="division-ceremony-start"
+          className={`${btnPrimary} min-h-14 px-6 text-[20px]`}
+          armedClassName={`${btn} min-h-14 bg-[#B91C1C] px-6 text-[20px] text-white ring-4 ring-[#FCA5A5]`}
+          disabled={items.length === 0}
+          label="세리머니 시작 (전체 화면)"
+          armedLabel="투표 중인 안이 있습니다. 그래도 시작하려면 다시 누르십시오"
+          onFire={() => setRunning(items)}
+        />
+      ) : (
+        <button
+          type="button"
+          data-testid="division-ceremony-start"
+          className={`${btnPrimary} min-h-14 px-6 text-[20px]`}
+          disabled={items.length === 0}
+          onClick={() => setRunning(items)}
+        >
+          세리머니 시작 (전체 화면)
+        </button>
+      )}
 
       {running ? (
         <DivisionCeremony
@@ -1840,6 +2265,7 @@ function CeremonySetup({ state, api }: { state: PrepState; api: DivisionBallotAp
           enrolled={enrolled}
           present={present}
           items={running}
+          motionCount={mode === 'practice' ? undefined : votable.length}
           sourceLabel={mode === 'stored' ? '투표 결과' : mode === 'practice' ? '연습' : '투표 목록'}
           onExit={() => setRunning(null)}
         />

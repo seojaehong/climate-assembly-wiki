@@ -42,6 +42,32 @@ export function scaleLabels(scale: number): string[] {
   }
 }
 
+export type ChoiceTone = 'yes' | 'no' | 'neutral';
+export type BallotChoice = { value: number; label: string; tone: ChoiceTone };
+
+/**
+ * 화면에 보일 선택지 순서(10/14 voter-2). 분과 의결(2점 척도)은 안내문 「찬성 또는 반대」·세리머니와 같게
+ * 찬성을 위로 올린다. 저장값은 그대로(1=반대, 2=찬성) — 집계·세리머니가 그 값에 기대고 있다.
+ */
+export function ballotChoices(scale: number, decision: boolean): BallotChoice[] {
+  const labels = scaleLabels(scale);
+  const list = labels.map((label, i) => ({ value: i + 1, label, tone: 'neutral' as ChoiceTone }));
+  if (decision && scale === 2) {
+    return [
+      { value: 2, label: labels[1], tone: 'yes' },
+      { value: 1, label: labels[0], tone: 'no' },
+    ];
+  }
+  return list;
+}
+
+/** 확인 창에 보일 「선택: 찬성」 — 분과 의결 1문항일 때만. 아니면 null(개수 문구만). */
+export function decisionChoiceOf(items: readonly BallotItem[], answers: Record<string, number>, decision: boolean): BallotChoice | null {
+  if (!decision || items.length !== 1 || items[0].scale !== 2) return null;
+  const v = answers[items[0].id];
+  return ballotChoices(2, true).find((c) => c.value === v) ?? null;
+}
+
 /**
  * /b 참여자 헤더의 분과 뱃지 문구. subgroup 있으면 '1분과 의견조사', 없으면 null(표시 없음).
  * S4 미적용 DB에서는 subgroup 키 자체가 없다(undefined) — 그때도 null이라 기존 화면 그대로다.
