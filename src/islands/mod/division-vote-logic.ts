@@ -157,7 +157,14 @@ export type Motion = {
   /** 부결 뒤 「문구 고쳐 2차 투표」를 고른 상태. 2차 투표가 시작되면 false 로 돌아간다. */
   revote: boolean;
   rounds: MotionRound[];
+  /**
+   * 「유사 묶음 파일」에서 만든 안(10/14 추진계획안5). 묶음 이름(공통 취지)·세부 번호·제안 조를 참고로 보여 준다.
+   * 묶음 이름은 공개 번들에 넣지 않는다 — 파일 가져오기로만 들어와 준비판(서버·이 기기)에만 있다.
+   */
+  group?: MotionGroup;
 };
+
+export type MotionGroup = { id: string; name: string; recs: string[]; teams: string[] };
 
 export type BallotStage = 'creating' | 'draft' | 'open' | 'closed';
 
@@ -288,10 +295,26 @@ export function combineWarningText(check: CombineCheck): string | null {
   return `다른 주제(${check.topics.join(' · ')})의 카드가 섞였습니다. 안 번호는 ${check.topicNo} 주제로 붙습니다. 맞으면 그대로 만드십시오.`;
 }
 
-/** 이미 어느 안에 들어간 카드 → 그 안 번호. 카드 1개짜리 안은 카드 상태를 바꾸지 않으므로 안 목록에서 직접 찾는다. */
-export function cardsInMotions(state: Pick<PrepState, 'motions'>): Map<string, string> {
-  const out = new Map<string, string>();
-  for (const motion of state.motions) for (const no of motion.cardNos) if (!out.has(no)) out.set(no, motion.id);
+/**
+ * 이미 어느 안에 들어간 카드 → 그 안 번호들(안 순서). 카드 1개짜리 안은 카드 상태를 바꾸지 않으므로 안 목록에서 직접 찾는다.
+ * 10/14 — 유사 묶음이 카드를 함께 쓰므로(1-9-1 은 네 묶음) 한 카드가 여러 안에 들어갈 수 있다. 막지 않고 경고만 한다.
+ */
+export function cardsInMotions(state: Pick<PrepState, 'motions'>): Map<string, string[]> {
+  const out = new Map<string, string[]>();
+  for (const motion of state.motions) {
+    for (const no of motion.cardNos) out.set(no, [...(out.get(no) ?? []), motion.id]);
+  }
+  return out;
+}
+
+/** 고른 카드 가운데 이미 다른 안에 들어 있는 것 — 한 줄씩 「이 카드는 2-1-안1 에도 들어 있습니다」. 막지 않는다. */
+export function sharedCardWarnings(state: Pick<PrepState, 'motions'>, cardNos: readonly string[], exceptId?: string): string[] {
+  const used = cardsInMotions(state);
+  const out: string[] = [];
+  for (const no of cardNos) {
+    const ids = (used.get(no) ?? []).filter((id) => id !== exceptId);
+    if (ids.length > 0) out.push(`이 카드(${no})는 ${ids.join(' · ')} 에도 들어 있습니다.`);
+  }
   return out;
 }
 
@@ -313,11 +336,14 @@ function orderCardNos(source: RecsDivision, cardNos: readonly string[]): string[
   return [...new Set(cardNos)].sort((a, b) => order.indexOf(a) - order.indexOf(b));
 }
 
-export type CreateMotionResult = { ok: true; state: PrepState; motion: Motion } | { ok: false; error: string };
+export type CreateMotionResult =
+  | { ok: true; state: PrepState; motion: Motion; warnings: string[] }
+  | { ok: false; error: string };
 
 /**
  * 의결안 만들기. 카드가 2개 이상이면 그 카드들의 상태를 「통합 → 안 번호」로 바꾼다.
  * 1개짜리 안은 카드 상태를 건드리지 않는다(유지·미완성-선채택 등 그대로).
+ * 이미 다른 안에 들어간 카드도 넣을 수 있다(10/14 — 유사 묶음이 카드를 함께 쓴다). warnings 로 알린다.
  */
 export function createMotion(
   state: PrepState,
@@ -329,11 +355,7 @@ export function createMotion(
   if (excluded.length > 0) {
     return { ok: false, error: `시행중-제외 카드(${excluded.join(', ')})는 의결안에 넣을 수 없습니다.` };
   }
-  const used = cardsInMotions(state);
-  const taken = input.cardNos.filter((no) => used.has(no));
-  if (taken.length > 0) {
-    return { ok: false, error: `이미 다른 안에 들어간 카드입니다(${taken.map((no) => `${no} → ${used.get(no)}`).join(', ')}).` };
-  }
+  const warnings = sharedCardWarnings(state, orderCardNos(state.source, input.cardNos));
   const title = input.title.trim();
   if (!title) return { ok: false, error: '안 제목을 입력하십시오.' };
   const id = nextMotionId(state, check.topicNo);
@@ -354,16 +376,137 @@ export function createMotion(
     cards = { ...cards };
     for (const no of cardNos) cards[no] = { status: 'merged', target: motion.id };
   }
-  return { ok: true, motion, state: { ...state, cards, motions: sortMotions(state.source, [...state.motions, motion]) } };
+  return { ok: true, motion, warnings, state: { ...state, cards, motions: sortMotions(state.source, [...state.motions, motion]) } };
 }
 
-/** 주제 순서 → 같은 주제 안에서는 안 번호 순. */
+// ── 카드 없는 안건(10/14) ────────────────────────────────────
+
+/**
+ * 카드와 무관한 안건(「분과별 최종 권고안 의결」·「최종 권고안 문구 작성 위임 의결」)의 주제 번호.
+ * 안 번호 = `${N}-최종-안${k}` — 투표 문장 모양(`…-안k 제목`)을 그대로 따라 휴대폰·세리머니·CSV 가 같은 규칙으로 읽는다.
+ */
+export function agendaTopicNo(division: number): string {
+  return `${division}-최종`;
+}
+
+/** 자주 쓰는 카드 없는 안건 제목(누르면 제목 칸에 들어간다. 고쳐 써도 된다). */
+export const AGENDA_PRESETS: readonly string[] = ['분과별 최종 권고안 의결', '최종 권고안 문구 작성 위임 의결'];
+
+export function isAgendaMotion(motion: Pick<Motion, 'cardNos'>): boolean {
+  return motion.cardNos.length === 0;
+}
+
+export function createAgendaMotion(state: PrepState, input: { title: string; text: string }): CreateMotionResult {
+  const title = input.title.trim();
+  if (!title) return { ok: false, error: '안건 제목을 입력하십시오.' };
+  const topicNo = agendaTopicNo(state.division);
+  const id = nextMotionId(state, topicNo);
+  if (motionTitleRoom(id, title) < 0) {
+    return { ok: false, error: `안 제목이 너무 깁니다(안 번호 포함 ${MAX_STATEMENT_LENGTH}자 이하).` };
+  }
+  const motion: Motion = { id, topicNo, cardNos: [], title, text: input.text.trim(), ...newMotionFields() };
+  return { ok: true, motion, warnings: [], state: { ...state, motions: sortMotions(state.source, [...state.motions, motion]) } };
+}
+
+// ── 유사 묶음 파일(10/14 추진계획안5) ─────────────────────────
+
+/** similar_groups_1017.json 의 한 줄. division 은 파일에 「1분과」로 적혀 있다. */
+export type SimilarGroup = { id: string; division: number; name: string; recs: string[]; cards: string[]; teams: string[] };
+
+export type ImportGroupsResult = {
+  state: PrepState;
+  /** 새로 만든 안 번호(묶음 순서). */
+  created: { groupId: string; motionId: string }[];
+  /** 이미 안이 있어 건너뛴 묶음(같은 파일을 두 번 가져온 경우). */
+  skipped: string[];
+  /** 카드가 이 분과 원천에 없어 만들지 못한 묶음. */
+  failed: { groupId: string; reason: string }[];
+};
+
+/**
+ * 자기 분과 묶음을 안으로 한꺼번에 만든다. 제목은 비워 둔다 — 모더레이터가 합친 문구를 친다(빈 제목은 투표를 열 수 없다).
+ * 카드 상태는 건드리지 않는다(묶음은 카드가 아니라 세부 권고 몇 개를 합친다). 같은 묶음 번호의 안이 있으면 건너뛴다.
+ * 저장 충돌 때 서버 최신 위에 다시 적용되므로(use-division-prep) 몇 번을 돌려도 결과가 같아야 한다.
+ */
+export function importSimilarGroups(state: PrepState, groups: readonly SimilarGroup[]): ImportGroupsResult {
+  const out: ImportGroupsResult = { state, created: [], skipped: [], failed: [] };
+  let s = state;
+  for (const g of groups) {
+    if (g.division !== state.division) continue;
+    if (s.motions.some((m) => m.group?.id === g.id)) {
+      out.skipped.push(g.id);
+      continue;
+    }
+    const check = canCombine(s.source, g.cards);
+    if (!check.ok) {
+      out.failed.push({ groupId: g.id, reason: check.reason === 'empty' ? '카드가 없습니다' : `이 분과에 없는 카드(${g.cards.filter((no) => !topicOfCard(s.source, no)).join(', ')})` });
+      continue;
+    }
+    const id = nextMotionId(s, check.topicNo);
+    const motion: Motion = {
+      id,
+      topicNo: check.topicNo,
+      cardNos: orderCardNos(s.source, g.cards),
+      title: '',
+      text: '',
+      ...newMotionFields(),
+      group: { id: g.id, name: g.name, recs: [...g.recs], teams: [...g.teams] },
+    };
+    s = { ...s, motions: sortMotions(s.source, [...s.motions, motion]) };
+    out.created.push({ groupId: g.id, motionId: id });
+  }
+  out.state = s;
+  return out;
+}
+
+/** 묶음의 세부 권고 문구 — 원천에서 세부 번호로 찾는다. 원천에 없는 번호는 text=null. */
+export function groupRecTexts(source: RecsDivision, recNos: readonly string[]): { no: string; cardNo: string | null; text: string | null }[] {
+  const index = new Map<string, { cardNo: string; text: string }>();
+  for (const topic of source.topics) for (const card of topic.cards) for (const r of card.recs) index.set(r.no, { cardNo: card.no, text: r.text });
+  return recNos.map((no) => {
+    const hit = index.get(no);
+    return { no, cardNo: hit?.cardNo ?? null, text: hit?.text ?? null };
+  });
+}
+
+function readGroupRow(x: unknown): SimilarGroup | null {
+  if (!isObj(x) || !isStr(x.id) || !x.id.trim() || !isStr(x.name)) return null;
+  const division = typeof x.division === 'number' && Number.isInteger(x.division) ? x.division : lockedDivisionOf(isStr(x.division) ? x.division : null);
+  if (!division || division < 1) return null;
+  const list = (v: unknown): string[] | null => (Array.isArray(v) && v.every(isStr) ? [...v] : null);
+  const recs = list(x.recs);
+  const cards = list(x.cards);
+  const teams = x.teams === undefined ? [] : list(x.teams);
+  if (!recs || !cards || !teams || cards.length === 0) return null;
+  return { id: x.id.trim(), division, name: x.name, recs, cards, teams };
+}
+
+/** 유사 묶음 파일 판독 — `{ groups: [...] }` 또는 배열. 한 줄이라도 모양이 틀리면 통째로 거절한다. */
+export function parseSimilarGroups(text: string): { ok: true; groups: SimilarGroup[] } | { ok: false; message: string } {
+  let raw: unknown;
+  try {
+    raw = JSON.parse(text);
+  } catch {
+    return { ok: false, message: 'JSON 파일이 아닙니다.' };
+  }
+  const rows = Array.isArray(raw) ? raw : isObj(raw) && Array.isArray(raw.groups) ? raw.groups : null;
+  if (!rows || rows.length === 0) return { ok: false, message: '유사 묶음 파일이 아닙니다(groups 목록이 없습니다).' };
+  const groups = rows.map(readGroupRow);
+  if (groups.some((g) => g === null)) return { ok: false, message: '유사 묶음 파일의 모양이 맞지 않습니다.' };
+  const ids = (groups as SimilarGroup[]).map((g) => g.id);
+  if (new Set(ids).size !== ids.length) return { ok: false, message: '같은 묶음 번호가 두 번 들어 있습니다.' };
+  return { ok: true, groups: groups as SimilarGroup[] };
+}
+
+/** 주제 순서 → 같은 주제 안에서는 안 번호 순. 원천에 없는 주제(카드 없는 안건)는 맨 뒤. */
 export function sortMotions(source: RecsDivision, motions: Motion[]): Motion[] {
   const topicOrder = source.topics.map((topic) => topic.no);
+  const t = (motion: Motion) => {
+    const i = topicOrder.indexOf(motion.topicNo);
+    return i < 0 ? topicOrder.length : i;
+  };
   const k = (motion: Motion) => Number(motion.id.slice(`${motion.topicNo}-안`.length)) || 0;
-  return [...motions].sort(
-    (a, b) => topicOrder.indexOf(a.topicNo) - topicOrder.indexOf(b.topicNo) || k(a) - k(b),
-  );
+  return [...motions].sort((a, b) => t(a) - t(b) || k(a) - k(b));
 }
 
 export function updateMotion(
@@ -413,11 +556,15 @@ export function canDeleteMotion(motion: Pick<Motion, 'rounds'>): boolean {
 export function deleteMotion(state: PrepState, id: string): PrepState {
   const target = state.motions.find((m) => m.id === id);
   if (!target || !canDeleteMotion(target)) return state;
+  const motions = state.motions.filter((motion) => motion.id !== id);
   const cards = { ...state.cards };
   for (const [no, card] of Object.entries(cards)) {
-    if (card.status === 'merged' && card.target === id) cards[no] = { status: 'keep' };
+    if (card.status !== 'merged' || card.target !== id) continue;
+    // 같은 카드가 다른 합친 안(카드 2장 이상)에도 들어 있으면 그 안을 가리키게 한다(10/14 카드 공유).
+    const other = motions.find((m) => m.cardNos.length > 1 && m.cardNos.includes(no) && !m.group);
+    cards[no] = other ? { status: 'merged', target: other.id } : { status: 'keep' };
   }
-  return { ...state, cards, motions: state.motions.filter((motion) => motion.id !== id) };
+  return { ...state, cards, motions };
 }
 
 // ── 권고 수준 표(조1~조5 × 5개 기준) ─────────────────────────
@@ -635,9 +782,31 @@ function readRound(x: unknown): MotionRound | null {
 function readMotion(x: unknown, source: RecsDivision, v: 1 | 2): Motion | null {
   if (!isObj(x) || !isStr(x.id) || !isStr(x.topicNo) || !isStr(x.title) || !isStr(x.text)) return null;
   if (!Array.isArray(x.cardNos) || !x.cardNos.every(isStr)) return null;
-  const check = canCombine(source, x.cardNos as string[]);
-  if (!check.ok || check.topicNo !== x.topicNo) return null;
-  const base = { id: x.id, topicNo: x.topicNo, cardNos: [...(x.cardNos as string[])], title: x.title, text: x.text };
+  if (x.cardNos.length === 0) {
+    // 카드 없는 안건(10/14) — 주제 번호는 「N-최종」로 정해져 있다.
+    if (x.topicNo !== agendaTopicNo(source.division)) return null;
+  } else {
+    const check = canCombine(source, x.cardNos as string[]);
+    if (!check.ok || check.topicNo !== x.topicNo) return null;
+  }
+  let group: MotionGroup | undefined;
+  if (x.group !== undefined) {
+    const g = x.group;
+    const list = (v: unknown): string[] | null => (Array.isArray(v) && v.every(isStr) ? [...v] : null);
+    if (!isObj(g) || !isStr(g.id) || !isStr(g.name)) return null;
+    const recs = list(g.recs);
+    const teams = list(g.teams);
+    if (!recs || !teams) return null;
+    group = { id: g.id, name: g.name, recs, teams };
+  }
+  const base = {
+    id: x.id,
+    topicNo: x.topicNo,
+    cardNos: [...(x.cardNos as string[])],
+    title: x.title,
+    text: x.text,
+    ...(group ? { group } : {}),
+  };
   if (v === 1) {
     if (!isObj(x.criteria)) return null;
     const override: Partial<Record<Criterion, Mark>> = {};
@@ -792,6 +961,9 @@ export function parseImport(text: string): ParsedImport {
   if (isObj(raw) && 'v' in raw) {
     const state = readPrep(raw);
     return state ? { kind: 'state', state } : { kind: 'error', message: '준비판 파일의 모양이 맞지 않습니다.' };
+  }
+  if (isObj(raw) && Array.isArray(raw.groups)) {
+    return { kind: 'error', message: '유사 묶음 파일입니다. 준비판의 [유사 묶음 파일 가져오기]로 가져오십시오.' };
   }
   return { kind: 'error', message: '알 수 없는 파일입니다.' };
 }

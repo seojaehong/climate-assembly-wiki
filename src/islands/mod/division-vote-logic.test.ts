@@ -121,15 +121,29 @@ describe('의결안 — 같은 주제 안에서만 묶는다', () => {
     expect(readStoredPrep(serializePrep(r.state))).toEqual(r.state);
   });
 
-  it('★ 이미 다른 안에 들어간 카드는 또 넣을 수 없다(카드 1개짜리 안 포함)', () => {
+  it('★ (10/14 잠금 해제) 이미 다른 안에 들어간 카드도 넣는다 — 막지 않고 「에도 들어 있습니다」 경고', () => {
     const s = mustCreate(fresh(), ['2-4-6'], '하나짜리').state; // 1개짜리 = 카드 상태는 그대로
     expect(s.cards['2-4-6'].status).toBe('keep');
-    expect(cardsInMotions(s).get('2-4-6')).toBe('2-4-안1');
+    expect(cardsInMotions(s).get('2-4-6')).toEqual(['2-4-안1']);
     const r = createMotion(s, { cardNos: ['2-4-1', '2-4-6'], title: '또', text: '' });
-    expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error).toContain('2-4-6 → 2-4-안1');
-    // 안을 지우면 다시 고를 수 있다
-    expect(createMotion(deleteMotion(s, '2-4-안1'), { cardNos: ['2-4-1', '2-4-6'], title: '또', text: '' }).ok).toBe(true);
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.motion.id).toBe('2-4-안2');
+    expect(r.warnings).toEqual(['이 카드(2-4-6)는 2-4-안1 에도 들어 있습니다.']);
+    expect(cardsInMotions(r.state).get('2-4-6')).toEqual(['2-4-안1', '2-4-안2']);
+    // 세 번째 안 — 경고에 앞의 두 안이 다 나온다
+    const r3 = createMotion(r.state, { cardNos: ['2-4-6'], title: '셋째', text: '' });
+    expect(r3.ok && r3.warnings).toEqual(['이 카드(2-4-6)는 2-4-안1 · 2-4-안2 에도 들어 있습니다.']);
+  });
+
+  it('★ 공유 카드 — 나중 안을 지워도 카드가 앞 안에 「통합」으로 남는다', () => {
+    const a = mustCreate(fresh(), ['2-1-1', '2-1-2'], 'A').state; // 2-1-안1
+    const b = mustCreate(a, ['2-1-2', '2-1-3'], 'B').state; // 2-1-안2 — 2-1-2 공유
+    expect(b.cards['2-1-2']).toEqual({ status: 'merged', target: '2-1-안2' });
+    const del = deleteMotion(b, '2-1-안2');
+    expect(del.cards['2-1-2']).toEqual({ status: 'merged', target: '2-1-안1' });
+    expect(del.cards['2-1-3']).toEqual({ status: 'keep' });
+    expect(deleteMotion(del, '2-1-안1').cards['2-1-2']).toEqual({ status: 'keep' });
   });
 
   it('★ 안 제목 길이 — 안 번호·띄어쓰기 포함 300자까지', () => {

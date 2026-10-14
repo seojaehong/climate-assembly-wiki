@@ -24,7 +24,15 @@ import {
   PREP_DIVISION_KEY,
   TEAM_NOS,
   attendanceReady,
+  AGENDA_PRESETS,
   attendanceText,
+  agendaTopicNo,
+  createAgendaMotion,
+  groupRecTexts,
+  importSimilarGroups,
+  isAgendaMotion,
+  parseSimilarGroups,
+  sharedCardWarnings,
   ballotCeremonyItems,
   canCombine,
   canDeleteMotion,
@@ -272,6 +280,7 @@ export default function DivisionVotePanel({
   /** 「지금 투표 중」 띠를 붙일 자리 — 알림과 같은 붙박이 칸 안(겹치지 않게). */
   const [bandSlot, setBandSlot] = useState<HTMLDivElement | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const groupsFileRef = useRef<HTMLInputElement>(null);
   const { notice, setNotice } = prep;
   // 알림은 화면 위에 붙어 있으므로 「됐습니다」류(ok)는 6초 뒤 스스로 닫는다. 경고·오류는 닫을 때까지 둔다.
   useEffect(() => {
@@ -367,6 +376,42 @@ export default function DivisionVotePanel({
         ]
           .filter(Boolean)
           .join(' ') || '불러올 분과가 없습니다.',
+    });
+  };
+
+  /**
+   * 유사 묶음 파일(similar_groups_1017.json) — 분과 오퍼레이터는 자기 분과만, 운영팀은 준비 내용이 있는 세 분과 모두.
+   * 저장 충돌 때 서버 최신 위에 다시 적용되므로 함수는 묶음 번호로 중복을 거른다(importSimilarGroups).
+   */
+  const onImportGroups = async (file: File) => {
+    const parsed = parseSimilarGroups(await file.text());
+    if (!parsed.ok) {
+      setNotice({ tone: 'error', text: parsed.message });
+      return;
+    }
+    const targets = isOps ? [1, 2, 3] : lockedDivision !== null ? [lockedDivision] : activeDivision !== null ? [activeDivision] : [];
+    const lines: string[] = [];
+    let failed = false;
+    for (const d of targets) {
+      const current = prep.slots[d]?.state;
+      if (!current) continue;
+      const mine = parsed.groups.filter((g) => g.division === d);
+      if (mine.length === 0) continue;
+      const dry = importSimilarGroups(current, mine);
+      if (dry.created.length > 0) prep.edit(d, (s) => importSimilarGroups(s, mine).state);
+      const parts = [`${divisionLabel(d)} 묶음 ${mine.length}개 — 새 안 ${dry.created.length}건`];
+      if (dry.skipped.length) parts.push(`이미 있어 건너뜀 ${dry.skipped.length}건`);
+      if (dry.failed.length) {
+        failed = true;
+        parts.push(`못 만듦 ${dry.failed.map((x) => `${x.groupId}(${x.reason})`).join(', ')}`);
+      }
+      lines.push(parts.join(' · '));
+    }
+    setNotice({
+      tone: failed ? 'warn' : 'ok',
+      text: lines.length
+        ? `${lines.join(' / ')}. 안 제목은 비어 있습니다 — 합친 문구를 넣어야 [투표 시작]이 눌립니다.`
+        : '이 화면에서 다루는 분과의 묶음이 파일에 없습니다(또는 권고안 파일을 먼저 가져오십시오).',
     });
   };
 
@@ -556,7 +601,31 @@ export default function DivisionVotePanel({
               {isOps ? <span className="ml-2 text-[16px] font-bold text-[#135C73]">(운영팀이 이 분과 화면을 열었습니다 · 고친 내용은 이 분과에 저장됩니다)</span> : null}
             </p>
 
-            {view === 'prep' ? <PrepBoard state={state} update={update} /> : null}
+            {view === 'prep' ? (
+              <>
+                <div data-testid="groups-import" className="flex flex-wrap items-center gap-3 rounded-2xl border border-[#C4D8E4] bg-[#F5F8FB] px-4 py-3">
+                  <input
+                    ref={groupsFileRef}
+                    type="file"
+                    accept="application/json,.json"
+                    className="hidden"
+                    data-testid="groups-import-input"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      e.target.value = '';
+                      if (f) void onImportGroups(f);
+                    }}
+                  />
+                  <button type="button" className={btnPrimary} onClick={() => groupsFileRef.current?.click()}>
+                    유사 묶음 파일 가져오기
+                  </button>
+                  <span className="min-w-0 flex-1 text-[16px] text-[#5A6B73]">
+                    similar_groups 파일의 {isOps ? '세 분과' : divisionLabel(state.division)} 묶음을 안으로 한꺼번에 만듭니다. 제목은 비워 둡니다. 두 번 가져와도 안이 겹치지 않습니다.
+                  </span>
+                </div>
+                <PrepBoard state={state} update={update} />
+              </>
+            ) : null}
             {view === 'vote' ? (
               <VoteBoard
                 key={state.division}
@@ -587,7 +656,9 @@ export default function DivisionVotePanel({
 const OPERATOR_STEPS = [
   '화면 위 분과 이름이 우리 분과인지 확인합니다. 오른쪽 위 칩이 「저장됨」이면 서버에 저장되고 있습니다.',
   '「1. 준비판」에서 카드마다 처리 상태를 고릅니다. 모더레이터가 합친 카드들을 고르고, 합친 문구를 안 제목 칸에 친 뒤 [의결안 만들기]를 누릅니다. 카드를 1장만 고르면 그 카드 제목이 미리 들어갑니다.',
-  '같은 분과 안이면 주제가 다른 카드도 한 안으로 합칠 수 있습니다(주황 경고만 뜹니다). 이미 다른 안에 들어간 카드와 시행중-제외 카드는 고를 수 없습니다. 다른 분과 카드와의 통합은 이 화면에서 하지 않습니다(현장 수기).',
+  '같은 분과 안이면 주제가 다른 카드도 한 안으로 합칠 수 있습니다(주황 경고만 뜹니다). 이미 다른 안에 들어간 카드도 고를 수 있고, 「이 카드는 ○-○-안○ 에도 들어 있습니다」 경고만 뜹니다. 시행중-제외 카드는 고를 수 없습니다. 다른 분과 카드와의 통합은 이 화면에서 하지 않습니다(현장 수기).',
+  '유사 묶음(추진계획안 붙임)은 준비판 위 [유사 묶음 파일 가져오기]로 similar_groups 파일을 고르면 우리 분과 묶음이 안으로 한꺼번에 생깁니다. 안 카드에 묶음 번호·공통 취지·세부 번호·제안 조가 나오고 [세부 권고 문구 보기]로 원문을 펼칩니다. 안 제목 칸은 비어 있습니다 — 모더레이터가 합친 문구를 치십시오. 제목이 빈 안은 [투표 시작]이 눌리지 않습니다. 같은 파일을 두 번 가져와도 안이 겹치지 않습니다.',
+  '카드와 무관한 안건(분과별 최종 권고안 의결 · 최종 권고안 문구 작성 위임 의결)은 준비판 맨 아래 「카드 없는 안건」에서 만듭니다. 안 번호는 「N-최종-안1」처럼 붙고 투표 진행 맨 뒤에 놓입니다.',
   '안 제목은 큰 QR 화면과 투표자 휴대폰에 그대로 크게 나옵니다. 안 번호 포함 300자까지이며, 칸 아래에 남은 글자 수가 나옵니다.',
   '「2. 투표 진행」 맨 위에 재적과 참석 인원을 넣습니다. 재적 과반수가 참석해야 [투표 시작]이 눌립니다. 가결선이 바로 아래에 나옵니다.',
   '투표는 안 하나씩 엽니다. 한 안이 열려 있으면 다른 안의 [투표 시작]은 눌리지 않습니다. [투표 시작]을 누르면 버튼에 「N분과 안 번호 「제목…」 투표를 시작합니까?」가 뜹니다. 모더레이터가 부른 안 번호와 같은지 소리 내어 확인하고 5초 안에 한 번 더 누릅니다. 투표가 열리고 QR 화면이 바로 뜹니다. [나가기] 또는 ESC로 돌아오고, 화면 위 「지금 투표 중」 띠의 [QR 띄우기]로 다시 엽니다.',
@@ -595,7 +666,7 @@ const OPERATOR_STEPS = [
   '휴대폰이 없거나 제출이 안 된 분은 손을 들어 찬반을 표시합니다. 책임 모더레이터가 찬성·반대 인원을 따로 세어 오퍼레이터에게 알려 줍니다.',
   '투표를 끝낼 때 [마감하고 결과 보기]를 누르고, 버튼이 「… 투표를 마감합니까?」로 바뀌면 5초 안에 한 번 더 누릅니다. 찬성·반대 표와 가결선, 잠정 판정이 나옵니다.',
   '결과 아래 「거수 찬성」·「거수 반대」 칸에 책임 모더레이터가 센 인원을 넣고 [거수 입력 완료]를 누릅니다(거수가 없으면 [거수 없음]). 그 전까지 판정은 「잠정」이고 2차 투표·소수 의견 버튼이 나오지 않습니다. 모더레이터는 이 버튼을 누른 뒤에 판정을 읽습니다.',
-  '투표를 시작한 안의 제목은 고칠 수 없습니다(QR·휴대폰·기록은 보낸 문장 그대로입니다). 투표 전 오타는 준비판 안 카드 제목 칸에서 고치고, 부결 뒤에는 [문구 고쳐 2차 투표]의 제목 칸에서 고칩니다.',
+  '투표를 시작한 안의 제목은 고칠 수 없습니다(QR·휴대폰·기록은 보낸 문장 그대로입니다). 투표 전 오타는 준비판 안 카드 제목 칸에서 고치되, 칸 왼쪽의 큰 안 번호가 모더레이터가 부른 번호인지 먼저 봅니다. 부결 뒤에는 [문구 고쳐 2차 투표]의 제목 칸에서 고칩니다.',
   '부결된 안은 [문구 고쳐 2차 투표] 또는 [소수 의견으로 기록]을 고릅니다. 다 끝나면 「3. 세리머니」로 발표하고 [이 분과 결과 CSV]를 내려받습니다. 세리머니는 「마감한 결과(○건)」로 시작합니다.',
 ];
 
@@ -761,7 +832,7 @@ function OpsBoard({
 // 준비판
 // ============================================================
 
-function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepState) => PrepState) => void }) {
+export function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepState) => PrepState) => void }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
@@ -787,6 +858,29 @@ function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepS
   }, [state.motions]);
   const excluded = excludedCardNos(state);
   const selectedExcluded = selected.filter((no) => state.cards[no]?.status === 'excluded');
+  /** 10/14 — 이미 다른 안에 들어간 카드는 막지 않고 경고만. */
+  const shared = sharedCardWarnings(state, selected);
+  /** 방금 만든 안의 공유 경고(만든 뒤에도 한 번 보여 준다). */
+  const [madeNote, setMadeNote] = useState<string | null>(null);
+  const agendaTopic = agendaTopicNo(state.division);
+  const agendaMotions = state.motions.filter((m) => isAgendaMotion(m));
+  const [agendaTitle, setAgendaTitle] = useState('');
+  const [agendaError, setAgendaError] = useState<string | null>(null);
+  const agendaNextId = nextMotionId(state, agendaTopic);
+  const makeAgenda = () => {
+    const spec = { title: agendaTitle, text: '' };
+    const r = createAgendaMotion(state, spec);
+    if (!r.ok) {
+      setAgendaError(r.error);
+      return;
+    }
+    update((s) => {
+      const again = createAgendaMotion(s, spec);
+      return again.ok ? again.state : s;
+    });
+    setAgendaTitle('');
+    setAgendaError(null);
+  };
 
   const toggle = (no: string) => {
     const next = selected.includes(no) ? selected.filter((x) => x !== no) : [...selected, no];
@@ -820,6 +914,7 @@ function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepS
       const again = createMotion(s, spec);
       return again.ok ? again.state : s;
     });
+    setMadeNote(r.warnings.length ? `${r.motion.id}을 만들었습니다. ${r.warnings.join(' ')}` : null);
     setSelected([]);
     setTitle('');
     autoTitle.current = null;
@@ -836,6 +931,11 @@ function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepS
           </span>
         ))}
         <span className="rounded-lg bg-[#1F4E79] px-3 py-1 font-bold text-white">의결안 {state.motions.length}</span>
+        {state.motions.some((m) => !m.title.trim()) ? (
+          <span data-testid="empty-title-count" className="rounded-lg bg-[#FEF2F2] px-3 py-1 font-bold text-[#B91C1C]">
+            제목 빈 안 {state.motions.filter((m) => !m.title.trim()).length}
+          </span>
+        ) : null}
       </div>
 
       {state.source.topics.map((topic) => (
@@ -850,8 +950,10 @@ function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepS
               const st = state.cards[card.no];
               const isSel = selected.includes(card.no);
               const isExcluded = st.status === 'excluded';
-              const inMotion = used.get(card.no) ?? null;
-              const locked = (isExcluded || inMotion !== null) && !isSel;
+              const inMotions = used.get(card.no) ?? [];
+              const inMotion = inMotions.length ? inMotions.join(' · ') : null;
+              // 10/14 — 다른 안에 들어간 카드도 고를 수 있다(유사 묶음이 카드를 함께 쓴다). 막는 것은 시행중-제외뿐.
+              const locked = isExcluded && !isSel;
               return (
                 <li key={card.no} data-card-no={card.no} data-excluded={isExcluded ? 'true' : undefined} data-in-motion={inMotion ?? undefined} className={`px-4 py-3 ${isSel ? 'bg-[#E6F5F7]' : isExcluded ? 'bg-[#F4F4F4]' : ''}`}>
                   <div className="flex flex-wrap items-center gap-3">
@@ -861,7 +963,7 @@ function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepS
                         className="h-6 w-6"
                         checked={isSel}
                         disabled={locked}
-                        title={inMotion ? `이미 ${inMotion}에 들어간 카드입니다` : undefined}
+                        title={inMotion ? `${inMotion}에 들어 있는 카드입니다(또 넣을 수 있습니다)` : undefined}
                         aria-label={`${card.no} 고르기`}
                         onChange={() => toggle(card.no)}
                       />
@@ -903,10 +1005,12 @@ function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepS
                           ))}
                       </select>
                     ) : null}
-                    {st.status === 'merged' ? (
+                    {st.status === 'merged' && inMotions.length <= 1 ? (
                       <span className="text-[16px] font-bold text-[#5A6B73]">→ {st.target ?? '안 번호 없음'}</span>
                     ) : inMotion ? (
-                      <span className="text-[16px] font-bold text-[#5A6B73]">→ {inMotion}에 들어감</span>
+                      <span data-testid="card-in-motions" className={`text-[16px] font-bold ${inMotions.length > 1 ? 'rounded-md bg-[#FFF6E0] px-2 py-0.5 text-[#7A4B00]' : 'text-[#5A6B73]'}`}>
+                        → {inMotion}에 들어감
+                      </span>
                     ) : null}
                   </div>
                   <details className="mt-1 pl-8">
@@ -934,11 +1038,66 @@ function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepS
         </div>
       ))}
 
+      <div data-testid="agenda-section" className="rounded-2xl border-2 border-[#1F4E79]/30">
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 border-b border-[#DCE7EE] bg-[#F5F8FB] px-4 py-3">
+          <span className="text-[18px] font-extrabold text-[#135C73]">{agendaTopic}</span>
+          <span className="min-w-0 text-[18px] font-extrabold text-[#1F2933]">카드 없는 안건</span>
+          <span className="text-[16px] text-[#5A6B73]">분과별 최종 권고안 의결 · 최종 권고안 문구 작성 위임 의결처럼 카드와 무관한 안건. 투표 진행 맨 뒤에 놓입니다.</span>
+        </div>
+        <div className="space-y-3 p-4">
+          <div className="flex flex-wrap gap-2">
+            {AGENDA_PRESETS.map((p) => (
+              <button key={p} type="button" className={btnGhost} onClick={() => setAgendaTitle(p)}>
+                「{p}」 넣기
+              </button>
+            ))}
+          </div>
+          <textarea
+            className={`${input} min-h-14 py-2 font-bold`}
+            rows={titleRows(agendaTitle)}
+            placeholder="안건 제목 — 큰 QR 화면과 투표자 휴대폰에 그대로 나옵니다"
+            value={agendaTitle}
+            onChange={(e) => setAgendaTitle(e.target.value)}
+            aria-label="카드 없는 안건 제목"
+          />
+          <TitleRoom id={agendaNextId} room={motionTitleRoom(agendaNextId, agendaTitle)} />
+          {agendaError ? (
+            <p role="alert" className="text-[16px] font-bold text-[#B91C1C]">
+              {agendaError}
+            </p>
+          ) : null}
+          <button
+            type="button"
+            className={btnPrimary}
+            data-testid="agenda-make"
+            disabled={!agendaTitle.trim() || motionTitleRoom(agendaNextId, agendaTitle) < 0}
+            onClick={makeAgenda}
+          >
+            {agendaNextId} 안건 만들기
+          </button>
+        </div>
+        {agendaMotions.length > 0 ? (
+          <div className="space-y-3 border-t border-[#DCE7EE] bg-[#FBFDFE] p-4">
+            {agendaMotions.map((m) => (
+              <MotionEditor key={m.id} motion={m} state={state} update={update} />
+            ))}
+          </div>
+        ) : null}
+      </div>
+
       <div data-testid="excluded-list" className="rounded-2xl border border-[#DCE7EE] bg-[#F7F7F7] p-4">
         <p className="text-[17px] font-extrabold text-[#5A6B73]">시행중-제외 카드 {excluded.length}장</p>
         <p className="mt-1 text-[16px] text-[#5A6B73]">{excluded.length ? excluded.join(', ') : '없습니다.'}</p>
       </div>
 
+      {selected.length === 0 && madeNote ? (
+        <p data-testid="made-note" className="sticky bottom-2 z-20 flex flex-wrap items-center gap-3 rounded-xl border-2 border-[#E8B44C] bg-[#FFF6E0] px-4 py-3 text-[16px] font-bold text-[#7A4B00] shadow-lg">
+          <span className="min-w-0 flex-1">⚠ {madeNote}</span>
+          <button type="button" className="min-h-11 rounded-lg px-3 underline" onClick={() => setMadeNote(null)}>
+            닫기
+          </button>
+        </p>
+      ) : null}
       {/* 의결안 만들기 — 카드를 고르면 아래에 붙는다 */}
       {selected.length > 0 ? (
         <div data-testid="motion-builder" className="sticky bottom-2 z-20 space-y-3 rounded-2xl border-2 border-[#135C73] bg-white p-4 shadow-lg">
@@ -954,6 +1113,13 @@ function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepS
             <p data-testid="combine-warning" className="rounded-xl border border-[#E8B44C] bg-[#FFF6E0] px-3 py-2 text-[16px] font-bold text-[#7A4B00]">
               ⚠ {warning}
             </p>
+          ) : null}
+          {shared.length > 0 ? (
+            <ul data-testid="shared-card-warning" className="space-y-1 rounded-xl border border-[#E8B44C] bg-[#FFF6E0] px-3 py-2 text-[16px] font-bold text-[#7A4B00]">
+              {shared.map((w) => (
+                <li key={w}>⚠ {w} 맞으면 그대로 만드십시오.</li>
+              ))}
+            </ul>
           ) : null}
           {selectedExcluded.length > 0 ? (
             <p role="alert" className="text-[16px] font-bold text-[#B91C1C]">
@@ -1037,6 +1203,42 @@ function TitleRoom({ id, room }: { id: string; room: number }) {
   );
 }
 
+/** 안 카드의 원 카드 표기. 카드 없는 안건은 그렇다고 적는다. */
+function cardsText(motion: Pick<Motion, 'cardNos'>): string {
+  return isAgendaMotion(motion) ? '카드 없는 안건' : `원 카드 ${motion.cardNos.join(', ')}`;
+}
+
+/**
+ * 유사 묶음 참고(10/14) — 묶음 번호·공통 취지·세부 번호·제안 조, 그리고 세부 권고 원문(펼쳐 보기).
+ * 모더레이터가 문구를 합칠 때 분과 PC 화면에서 바로 본다. 원문은 준비판 원천(가져온 권고안 파일)에서 찾는다.
+ */
+export function GroupReference({ group, source }: { group: NonNullable<Motion['group']>; source: RecsDivision }) {
+  const recs = groupRecTexts(source, group.recs);
+  return (
+    <div data-testid="group-reference" className="mt-3 rounded-xl border border-[#C4D8E4] bg-[#F5F8FB] px-4 py-3">
+      <p className="text-[17px] text-[#1F2933]">
+        <span className="mr-2 font-extrabold text-[#1F4E79]">{group.id}</span>
+        <span className="font-bold">공통 취지:</span> {group.name || '—'}
+      </p>
+      <p className="mt-1 text-[16px] text-[#5A6B73] tr-num">
+        세부 {group.recs.length}건 {group.recs.join(', ')}
+        {group.teams.length ? ` · 제안 ${group.teams.join(' ')}` : ''}
+      </p>
+      <details className="mt-1" data-testid="group-recs">
+        <summary className="min-h-11 cursor-pointer text-[16px] font-bold text-[#2E75B6]">세부 권고 문구 보기 ({recs.length}건)</summary>
+        <ol className="mt-1 space-y-2 text-[17px] leading-relaxed text-[#1F2933]">
+          {recs.map((r) => (
+            <li key={r.no} data-rec-no={r.no}>
+              <span className="mr-2 font-bold text-[#135C73] tr-num">{r.no}</span>
+              {r.text ?? <span className="font-bold text-[#B91C1C]">권고안 파일에서 찾지 못했습니다</span>}
+            </li>
+          ))}
+        </ol>
+      </details>
+    </div>
+  );
+}
+
 export function MotionEditor({ motion, state, update }: { motion: Motion; state: PrepState; update: (fn: (s: PrepState) => PrepState) => void }) {
   const phase = motionPhase(state, motion);
   const titleLocked = !canEditMotionTitle(motion);
@@ -1047,7 +1249,12 @@ export function MotionEditor({ motion, state, update }: { motion: Motion; state:
       <div className="flex flex-wrap items-center gap-3">
         <span className="rounded-lg bg-[#1F4E79] px-3 py-1 text-[16px] font-extrabold text-white">{motion.id}</span>
         <PhaseBadge phase={phase} />
-        <span className="text-[16px] text-[#5A6B73]">원 카드 {motion.cardNos.join(', ')}</span>
+        <span className="text-[16px] text-[#5A6B73]">{cardsText(motion)}</span>
+        {motion.group ? (
+          <span data-testid="motion-group-id" className="rounded-lg bg-[#E6F0F8] px-2 py-0.5 text-[16px] font-extrabold text-[#1F4E79]">
+            {motion.group.id}
+          </span>
+        ) : null}
         {topics.length > 1 ? (
           <span className="rounded-lg bg-[#FFF6E0] px-2 py-0.5 text-[16px] font-bold text-[#7A4B00]">주제 섞임 {topics.join(' · ')}</span>
         ) : null}
@@ -1066,18 +1273,35 @@ export function MotionEditor({ motion, state, update }: { motion: Motion; state:
           <span className="ml-auto text-[16px] text-[#5A6B73]">투표를 시작한 안은 지울 수 없습니다.</span>
         )}
       </div>
-      <textarea
-        className={`${input} mt-3 min-h-14 py-2 font-bold ${titleLocked ? 'cursor-not-allowed bg-[#F4F4F4] text-[#4B5563]' : ''}`}
-        rows={titleRows(motion.title)}
-        value={motion.title}
-        readOnly={titleLocked}
-        aria-readonly={titleLocked}
-        data-locked={titleLocked ? 'true' : 'false'}
-        aria-label={`${motion.id} 제목`}
-        onChange={(e) => {
-          if (!titleLocked) update((s) => updateMotion(s, motion.id, { title: e.target.value }));
-        }}
-      />
+      {motion.group ? <GroupReference group={motion.group} source={state.source} /> : null}
+      {/* 10/14 operator-5 — 제목 칸 바로 왼쪽에 안 번호를 크게. 다른 안 칸을 고치는 착각을 막는다. */}
+      <div className="mt-3 flex items-stretch gap-3">
+        <span
+          data-testid="title-id-tag"
+          className="flex w-36 shrink-0 flex-col justify-center rounded-xl bg-[#1F4E79] px-2 py-2 text-center text-white"
+        >
+          <span className="text-[14px] font-bold opacity-80">안 번호</span>
+          <span className="break-all text-[24px] font-black leading-tight tr-num">{motion.id}</span>
+        </span>
+        <textarea
+          className={`${input} min-h-14 flex-1 py-2 font-bold ${titleLocked ? 'cursor-not-allowed bg-[#F4F4F4] text-[#4B5563]' : ''} ${!motion.title.trim() && !titleLocked ? 'border-2 border-[#DC2626] bg-[#FFF8F8]' : ''}`}
+          rows={titleRows(motion.title)}
+          value={motion.title}
+          readOnly={titleLocked}
+          aria-readonly={titleLocked}
+          data-locked={titleLocked ? 'true' : 'false'}
+          aria-label={`${motion.id} 제목`}
+          placeholder={`${motion.id} 제목 — 합친 문구를 칩니다. 큰 QR 화면과 투표자 휴대폰에 그대로 나옵니다`}
+          onChange={(e) => {
+            if (!titleLocked) update((s) => updateMotion(s, motion.id, { title: e.target.value }));
+          }}
+        />
+      </div>
+      {!motion.title.trim() && !titleLocked ? (
+        <p data-testid="title-empty" className="mt-1 text-[16px] font-bold text-[#B91C1C]">
+          {motion.id} 제목이 비어 있습니다. 제목을 넣어야 [투표 시작]이 눌립니다.
+        </p>
+      ) : null}
       {titleLocked ? (
         <p data-testid="title-locked" className="text-[16px] font-bold text-[#8A5A00]">
           투표를 시작한 안은 제목을 고칠 수 없습니다(큰 화면·휴대폰·기록은 보낸 문장 그대로입니다). 부결이면 [문구 고쳐 2차 투표]에서 고칩니다.
@@ -1410,7 +1634,7 @@ function VoteBoard({
           <ul className="mt-2 space-y-1 text-[16px] text-[#4B5563]">
             {excludedMotions.map((m) => (
               <li key={m.id}>
-                <span className="font-bold">{m.id}</span> {m.title} <span className="text-[#7A8790]">(원 카드 {m.cardNos.join(', ')})</span>
+                <span className="font-bold">{m.id}</span> {m.title} <span className="text-[#7A8790]">({cardsText(m)})</span>
               </li>
             ))}
           </ul>
@@ -1522,7 +1746,9 @@ export function UnitCard({
   const isRevote = phase === 'revote';
   const notStarted = phase === 'ready' || isRevote;
   const blockedByOther = notStarted && otherLive !== null;
-  const startDisabled = !canNetwork || !!busy || (notStarted && !ready) || blockedByOther;
+  /** 10/14 — 제목이 빈 안(유사 묶음에서 막 만든 안)은 투표를 열지 않는다. 빈 문장이 휴대폰에 나가는 실수. */
+  const emptyTitle = notStarted && motions.some((m) => !m.title.trim());
+  const startDisabled = !canNetwork || !!busy || (notStarted && !ready) || blockedByOther || emptyTitle;
   const startLabel = busy === 'start' ? '여는 중…' : phase === 'starting' ? '투표 시작 이어서 하기' : isRevote ? '2차 투표 시작' : '투표 시작';
   const roundNo = isRevote ? liveRounds(motions[0].rounds).length + 1 : currentRound(motions[0])?.round ?? 1;
   const label = motions.length > 1 ? `${motions[0].id} 외 ${motions.length - 1}건` : roundLabel(motions[0].id, roundNo);
@@ -1593,6 +1819,11 @@ export function UnitCard({
       {notStarted && !ready ? (
         <p className="px-4 pt-3 text-[16px] font-bold text-[#B91C1C]">참석 인원을 위에 넣으면 [투표 시작]이 눌립니다.</p>
       ) : null}
+      {emptyTitle ? (
+        <p data-testid="vote-empty-title" className="px-4 pt-3 text-[17px] font-extrabold text-[#B91C1C]">
+          안 제목이 비어 있어 [투표 시작]이 눌리지 않습니다. 「1. 준비판」의 {motions.find((m) => !m.title.trim())?.id} 제목 칸에 합친 문구를 넣으십시오.
+        </p>
+      ) : null}
       {blockedByOther && otherLive ? (
         <p data-testid="vote-blocked" className="px-4 pt-3 text-[17px] font-extrabold text-[#B45309]">
           {ballotLabel(otherLive)} 투표가 열려 있습니다. 먼저 마감하십시오(화면 위 「지금 투표 중」 띠).
@@ -1660,7 +1891,7 @@ export function MotionVoteBlock({ motion, state, update }: { motion: Motion; sta
             {shownTitle}
           </span>
         )}
-        <span className="text-[16px] text-[#5A6B73]">원 카드 {motion.cardNos.join(', ')}</span>
+        <span className="text-[16px] text-[#5A6B73]">{cardsText(motion)}{motion.group ? ` · ${motion.group.id}` : ''}</span>
       </div>
       {phase === 'revote' ? <TitleRoom id={motion.id} room={motionTitleRoom(motion.id, motion.title)} /> : null}
 

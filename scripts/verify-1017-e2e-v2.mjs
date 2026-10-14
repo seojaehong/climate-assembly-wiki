@@ -315,9 +315,10 @@ async function main() {
     const pg = A.page;
     const box = (no) => pg.locator(`li[data-card-no="${no}"] input[type=checkbox]`);
     const titleBox = pg.getByLabel('안 제목', { exact: true });
+    // 10/14 밤 — 잠금 해제: 다른 안에 들어간 카드도 고를 수 있고(유사 묶음이 카드를 공유) 들어간 안 번호를 적는다.
     const lockP = await box(CARD_P.no).isDisabled();
     const inP = await pg.locator(`li[data-card-no="${CARD_P.no}"]`).getAttribute('data-in-motion');
-    record('a3b-card-locked', lockP && inP === P, `${CARD_P.no} 체크 불가=${lockP} · 들어간 안=${inP}`);
+    record('a3b-card-shared-ok', !lockP && inP === P, `${CARD_P.no} 체크 가능=${!lockP} · 들어간 안=${inP}`);
     // 1장 → 그 카드 제목이 미리 들어간다
     await box(M1.no).check();
     const auto1 = await titleBox.inputValue();
