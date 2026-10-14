@@ -221,7 +221,7 @@ async function voteUi(V, token, answer) {
   await groups.first().getByRole('button', { name: answer === 2 ? '찬성' : '반대', exact: true }).click();
   await V.page.getByRole('button', { name: '제출하기' }).first().click();
   await V.page.getByRole('dialog').getByRole('button', { name: '제출하기' }).click();
-  await V.page.getByText('의견이 제출되었습니다').waitFor({ timeout: 20000 });
+  await V.page.getByText('투표가 제출되었습니다').waitFor({ timeout: 20000 });
   const dev = await V.page.evaluate(() => localStorage.getItem('cv_device')).catch(() => null);
   if (dev && !manifest.voterDevices.includes(dev)) manifest.voterDevices.push(dev);
 }

@@ -2433,7 +2433,8 @@ export default function ModConsole() {
       dispatch({
         type: 'JOIN_FAILURE',
         message: /two active devices/i.test(message)
-          ? '이 조는 이미 두 대의 기기에서 접속 중입니다. 본부에 기기 해제를 요청해 주세요.'
+          ? // s27(10/10) 이후 서버가 기기 수를 막지 않아 보통은 나오지 않는다. 옛 서버 응답일 때만.
+            '이 조 코드로 더 들어올 수 없습니다. 예비 코드로 들어오세요.'
           : /invalid|response is invalid|not found/i.test(message)
             ? '존재하지 않는 접속코드입니다. 다시 확인해 주세요.'
             : '연결에 실패했습니다 — 네트워크(와이파이)를 확인해 주세요.',

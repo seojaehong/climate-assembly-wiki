@@ -45,6 +45,7 @@ import {
   motionPhase,
   parseHandInput,
   setAttendanceField,
+  qrHeadlineOf,
   qrRowOf,
   reapplyAttendance,
   requestRevote,
@@ -334,6 +335,15 @@ describe('투표 단위 — 기본은 하나씩', () => {
     const b = beginVote(s, [id], 'long');
     if (!b.ok) throw new Error(b.error);
     expect(b.state.ballots.long.statements[0]).toHaveLength(300);
+    // QR 큰 제목 = 합친 문구 전체(잘리지 않음), 곁글 = 안 번호
+    expect(qrHeadlineOf(b.state.ballots.long)).toEqual({ main: long, sub: id, eyebrow: '분과 의결' });
+  });
+
+  it('QR 큰 제목 — 보낸 문장에서 가르고, 2차는 곁글에 차수 · 옛 묶음 투표는 투표 제목', () => {
+    expect(qrHeadlineOf({ title: '2분과 의결 2-1-안1 2차', statements: ['2-1-안1 고친 문구'], motionIds: ['2-1-안1'], round: 2 }))
+      .toEqual({ main: '고친 문구', sub: '2-1-안1 2차', eyebrow: '분과 의결' });
+    expect(qrHeadlineOf({ title: '2분과 의결 2-1', statements: ['2-1-안1 가', '2-1-안2 나'], motionIds: ['2-1-안1', '2-1-안2'], round: 1 }))
+      .toEqual({ main: '2분과 의결 2-1', sub: '안 2건 묶음 투표', eyebrow: '분과 의결' });
   });
 });
 

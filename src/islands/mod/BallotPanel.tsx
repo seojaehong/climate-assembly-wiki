@@ -83,12 +83,26 @@ function statusBadgeClass(status: BallotListRow['status']): string {
 // 풀스크린 — 참가용 QR (대형 스크린: QR 최대, 안내 24px+)
 // ============================================================
 
+/** 큰 제목 글자 크기 — 길수록 줄여 QR 자리를 남긴다(300자도 1920×1080 에서 QR 이 화면 ⅓ 이상). */
+function headlineSize(text: string): string {
+  const n = [...text].length;
+  if (n <= 40) return 'text-[clamp(30px,4vw,72px)]';
+  if (n <= 120) return 'text-[clamp(26px,2.8vw,52px)]';
+  return 'text-[clamp(22px,2vw,40px)]';
+}
+
 export function BallotQrFullscreen({
   ballot,
   onExit,
+  headline,
 }: {
   ballot: BallotListRow;
   onExit: () => void;
+  /**
+   * 분과 의결: 투표 제목 대신 크게 보일 안 제목(오퍼레이터가 친 합친 문구)과 작은 곁글(안 번호·차수).
+   * 없으면 지금처럼 투표 제목을 보인다(일반 다의제 투표).
+   */
+  headline?: { main: string; sub: string; eyebrow?: string };
 }) {
   const [qr, setQr] = useState<string | null>(null);
   const url = ballotUrl(typeof window !== 'undefined' ? window.location.origin : '', ballot.token);
@@ -120,14 +134,29 @@ export function BallotQrFullscreen({
       <div className="w-full shrink-0 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <Eyebrow className="text-[#135C73] mb-1">
-            다의제 투표 · {subgroupBadgeLabel(ballot.subgroup)}
+            {headline?.eyebrow ?? '다의제 투표'} · {subgroupBadgeLabel(ballot.subgroup)}
           </Eyebrow>
-          <h1
-            className="text-[clamp(24px,3vw,44px)] font-extrabold text-[#1F4E79] leading-tight truncate"
-            style={{ letterSpacing: '-.022em' }}
-          >
-            {ballot.title}
-          </h1>
+          {headline ? (
+            <>
+              <p data-testid="qr-headline-sub" className="text-[clamp(20px,1.8vw,30px)] font-bold text-[#5A6B73] tr-num">
+                {headline.sub}
+              </p>
+              <h1
+                data-testid="qr-headline"
+                className={`${headlineSize(headline.main)} font-extrabold text-[#1F4E79] leading-snug break-words whitespace-pre-line`}
+                style={{ letterSpacing: '-.022em', wordBreak: 'keep-all', overflowWrap: 'anywhere' }}
+              >
+                {headline.main}
+              </h1>
+            </>
+          ) : (
+            <h1
+              className="text-[clamp(24px,3vw,44px)] font-extrabold text-[#1F4E79] leading-tight break-words"
+              style={{ letterSpacing: '-.022em', wordBreak: 'keep-all', overflowWrap: 'anywhere' }}
+            >
+              {ballot.title}
+            </h1>
+          )}
         </div>
         <button
           type="button"

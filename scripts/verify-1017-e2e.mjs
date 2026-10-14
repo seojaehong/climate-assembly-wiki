@@ -678,7 +678,7 @@ async function phaseMain() {
     }
     await V.page.getByRole('button', { name: '제출하기' }).first().click();
     await V.page.getByRole('dialog').getByRole('button', { name: '제출하기' }).click();
-    await V.page.getByText('의견이 제출되었습니다').waitFor({ timeout: 15000 });
+    await V.page.getByText('투표가 제출되었습니다').waitFor({ timeout: 15000 });
     const dev = await V.page.evaluate(() => localStorage.getItem('cv_device'));
     if (v === 0) await V.page.screenshot({ path: join(SHOTS, 'p5-voter-submitted.png') });
     voters.push({ ...V, dev });
@@ -689,7 +689,7 @@ async function phaseMain() {
   // N6 — 같은 기기 두 번
   {
     await voters[0].page.reload({ waitUntil: 'networkidle' });
-    const uiDup = await voters[0].page.getByText(/이미 제출|의견이 제출되었습니다/).count();
+    const uiDup = await voters[0].page.getByText(/이미 제출|투표가 제출되었습니다/).count();
     const r = await vote(mainBallot.token, voters[0].dev, { [i1]: 2, [i2]: 2 });
     const after = await rpc('ballot_results_v2', { p_ballot_token: mainBallot.token, p_token: T2 });
     S.n6 = { rpc: r.message.slice(0, 40), responses: after.data?.responses, uiShowsSubmitted: uiDup > 0 };
@@ -1119,7 +1119,7 @@ async function phaseP5() {
     if (v === 0) await V.page.screenshot({ path: join(SHOTS, 'p5-voter-form.png') });
     await V.page.getByRole('button', { name: '제출하기' }).first().click();
     await V.page.getByRole('dialog').getByRole('button', { name: '제출하기' }).click();
-    await V.page.getByText('의견이 제출되었습니다').waitFor({ timeout: 15000 });
+    await V.page.getByText('투표가 제출되었습니다').waitFor({ timeout: 15000 });
     const dev = await V.page.evaluate(() => localStorage.getItem('cv_device'));
     if (v === 0) await V.page.screenshot({ path: join(SHOTS, 'p5-voter-submitted.png') });
     voters.push({ ...V, dev });
@@ -1128,7 +1128,7 @@ async function phaseP5() {
   saveManifest();
   {
     await voters[0].page.reload({ waitUntil: 'networkidle' });
-    const uiDup = await voters[0].page.getByText(/이미 제출|의견이 제출되었습니다/).count();
+    const uiDup = await voters[0].page.getByText(/이미 제출|투표가 제출되었습니다/).count();
     const r = await vote(mainBallot.token, voters[0].dev, { [i1]: 2, [i2]: 2 });
     const after = await rpc('ballot_results_v2', { p_ballot_token: mainBallot.token, p_token: T3 });
     S.n6 = { rpc: r.message.slice(0, 40), responses: after.data?.responses, uiShowsSubmitted: uiDup > 0 };
@@ -1498,7 +1498,7 @@ async function voteUi(page, ballotToken, answersByOrdinal) {
   for (let k = 0; k < n; k++) await groups.nth(k).getByRole('button', { name: answersByOrdinal[k] === 2 ? '찬성' : '반대', exact: true }).click();
   await page.getByRole('button', { name: '제출하기' }).first().click();
   await page.getByRole('dialog').getByRole('button', { name: '제출하기' }).click();
-  return page.getByText('의견이 제출되었습니다').waitFor({ timeout: 15000 }).then(() => n).catch(() => -1);
+  return page.getByText('투표가 제출되었습니다').waitFor({ timeout: 15000 }).then(() => n).catch(() => -1);
 }
 
 async function startFromVoteTab(page, id) {

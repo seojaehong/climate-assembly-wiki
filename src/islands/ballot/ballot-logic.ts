@@ -46,9 +46,48 @@ export function scaleLabels(scale: number): string[] {
  * /b 참여자 헤더의 분과 뱃지 문구. subgroup 있으면 '1분과 의견조사', 없으면 null(표시 없음).
  * S4 미적용 DB에서는 subgroup 키 자체가 없다(undefined) — 그때도 null이라 기존 화면 그대로다.
  */
-export function subgroupVoteBadge(subgroup: string | null | undefined): string | null {
+export function subgroupVoteBadge(subgroup: string | null | undefined, decision = false): string | null {
   const s = subgroup?.trim();
-  return s ? `${s} 의견조사` : null;
+  return s ? `${s} ${decision ? '의결' : '의견조사'}` : null;
+}
+
+/**
+ * /b 화면 문구. 10/17 분과 의결 투표(isDivisionDecisionBallot)면 「의견조사」 대신 「투표」로 쓴다.
+ * 일반 다의제 투표는 지금 문구 그대로다.
+ */
+export type VoterCopy = {
+  eyebrow: string;
+  doneTitle: string;
+  doneBody: string;
+  closedTitle: string;
+  resultsEyebrow: string;
+  evidence: string;
+};
+
+export const SURVEY_EVIDENCE_BOUNDARY =
+  '이름·개인정보는 저장하지 않으며, 브라우저 기기 식별값으로 중복을 줄이는 비구속 현장 의견조사입니다. 공식 의사결정이나 참여 인원 산정의 단독 근거로 사용할 수 없습니다.';
+export const DECISION_EVIDENCE_BOUNDARY =
+  '무기명 투표입니다. 이름·개인정보는 저장하지 않으며, 같은 기기에서는 한 번만 제출됩니다.';
+
+export function voterCopy(decision: boolean): VoterCopy {
+  if (decision) {
+    return {
+      eyebrow: '분과 의결 투표',
+      doneTitle: '투표가 제출되었습니다',
+      doneBody: '참여해 주셔서 감사합니다. 결과는 투표 마감 후 현장에서 발표합니다.',
+      closedTitle: '투표가 마감되었습니다',
+      resultsEyebrow: '투표 마감됨 · 결과',
+      evidence: DECISION_EVIDENCE_BOUNDARY,
+    };
+  }
+  return {
+    eyebrow: '다의제 현장 의견조사',
+    doneTitle: '의견이 제출되었습니다',
+    doneBody: '참여해 주셔서 감사합니다. 결과는 의견조사 마감 후 공개됩니다.',
+    closedTitle: '의견조사가 마감되었습니다',
+    resultsEyebrow: '의견조사 마감됨 · 결과',
+    evidence: SURVEY_EVIDENCE_BOUNDARY,
+  };
 }
 
 /** 유효 범위(1..scale) 안의 답변인지. */

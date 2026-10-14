@@ -19,11 +19,13 @@ import {
   resolveBallotScreen,
   scaleLabels,
   subgroupVoteBadge,
+  SURVEY_EVIDENCE_BOUNDARY,
+  voterCopy,
 } from './ballot-logic';
+import { isDivisionDecisionBallot, parseMotionStatement } from '../../lib/division-ballot-format';
 import { useModalDialog } from '../mod/use-modal-dialog';
 
-export const BALLOT_EVIDENCE_BOUNDARY =
-  '이름·개인정보는 저장하지 않으며, 브라우저 기기 식별값으로 중복을 줄이는 비구속 현장 의견조사입니다. 공식 의사결정이나 참여 인원 산정의 단독 근거로 사용할 수 없습니다.';
+export const BALLOT_EVIDENCE_BOUNDARY = SURVEY_EVIDENCE_BOUNDARY;
 
 export function ballotResponseCountLabel(count: number): string {
   return `기기 응답 ${count}건`;
@@ -205,24 +207,27 @@ function RefreshButton({
 
 function DoneScreen({
   duplicate,
+  decision,
   onRefresh,
   refreshing,
   refreshNotice,
 }: {
   duplicate: boolean;
+  decision: boolean;
   onRefresh: () => void;
   refreshing: boolean;
   refreshNotice: string | null;
 }) {
+  const copy = voterCopy(decision);
   return (
     <CenterMessage
       icon={duplicate ? '!' : '✓'}
       eyebrow="제출 완료"
-      title={duplicate ? '이미 제출하셨습니다' : '의견이 제출되었습니다'}
+      title={duplicate ? '이미 제출하셨습니다' : copy.doneTitle}
       body={
         duplicate
           ? '이 기기의 답변은 정상적으로 제출되어 있습니다.'
-          : '참여해 주셔서 감사합니다. 결과는 의견조사 마감 후 공개됩니다.'
+          : copy.doneBody
       }
       color={duplicate ? '#8A4B08' : '#2D6A24'}
     >
@@ -233,10 +238,12 @@ function DoneScreen({
 }
 
 function ClosedScreen({
+  decision,
   onRefresh,
   refreshing,
   refreshNotice,
 }: {
+  decision: boolean;
   onRefresh: () => void;
   refreshing: boolean;
   refreshNotice: string | null;
@@ -245,7 +252,7 @@ function ClosedScreen({
     <CenterMessage
       icon="⏱"
       eyebrow="마감"
-      title="의견조사가 마감되었습니다"
+      title={voterCopy(decision).closedTitle}
       body="집계는 운영진 확인을 거쳐 공개됩니다."
       color="#2E75B6"
     >
@@ -261,15 +268,30 @@ function ItemBlock({
   value,
   onSelect,
   disabled,
+  decision = false,
 }: {
   item: BallotItem;
   value: number | undefined;
   onSelect: (v: number) => void;
   disabled: boolean;
+  /** 분과 의결 투표 — 안 제목을 크게, 안 번호는 작게. */
+  decision?: boolean;
 }) {
   const labels = scaleLabels(item.scale);
+  const motion = decision ? parseMotionStatement(item.statement) : null;
   return (
-    <section className="pt-6 first:pt-0" aria-label={`의제 ${item.ordinal}`}>
+    <section className="pt-6 first:pt-0" aria-label={motion ? `${motion.id} 투표` : `의제 ${item.ordinal}`}>
+      {motion ? (
+        <div className="mb-4" data-testid="ballot-motion">
+          <p className="text-[14px] font-bold text-[#5A6B73] tr-num mb-1">안 번호 {motion.id}</p>
+          <h2
+            className="text-[24px] font-extrabold text-[#1F2933] leading-snug whitespace-pre-line"
+            style={{ letterSpacing: '-.015em', wordBreak: 'keep-all', overflowWrap: 'anywhere' }}
+          >
+            {motion.title}
+          </h2>
+        </div>
+      ) : (
       <div className="flex items-start gap-3 mb-1.5">
         <span
           className="w-8 h-8 shrink-0 rounded-lg grid place-items-center text-[14px] font-extrabold text-white bg-[#1F4E79]"
@@ -282,13 +304,14 @@ function ItemBlock({
           {!item.required ? <span className="ml-1.5 text-[13px] font-semibold text-[#5A6B73]">(선택)</span> : null}
         </h2>
       </div>
-      {item.description ? (
+      )}
+      {motion ? null : item.description ? (
         <p className="ml-11 mb-3 text-[14px] leading-relaxed text-[#5A6B73]">{item.description}</p>
       ) : (
         <div className="mb-3" />
       )}
 
-      <div className="space-y-2" role="group" aria-label={`의제 ${item.ordinal} 응답`}>
+      <div className="space-y-2" role="group" aria-label={motion ? `${motion.id} 찬반` : `의제 ${item.ordinal} 응답`}>
         {labels.map((label, i) => {
           const v = i + 1;
           const active = value === v;
@@ -397,6 +420,8 @@ function VotingScreen({
   const total = ballot.items.length;
   const answered = answeredCount(ballot.items, answers);
   const complete = isComplete(ballot.items, answers);
+  const decision = isDivisionDecisionBallot(ballot);
+  const copy = voterCopy(decision);
 
   return (
     <Shell align="top">
@@ -404,10 +429,10 @@ function VotingScreen({
       <div className="sticky top-0 z-10 bg-white/95 backdrop-blur border-b border-[#DCE7EE] px-6 py-3">
         <div className="flex items-baseline justify-between mb-1.5">
           <span className="flex items-center gap-2">
-            <Eyebrow className="text-[#5A6B73]">다의제 현장 의견조사</Eyebrow>
-            {subgroupVoteBadge(ballot.subgroup) ? (
+            <Eyebrow className="text-[#5A6B73]">{copy.eyebrow}</Eyebrow>
+            {subgroupVoteBadge(ballot.subgroup, decision) ? (
               <span className="rounded-full bg-[#135C73] px-2.5 py-0.5 text-[13px] font-bold text-white">
-                {subgroupVoteBadge(ballot.subgroup)}
+                {subgroupVoteBadge(ballot.subgroup, decision)}
               </span>
             ) : null}
           </span>
@@ -424,14 +449,21 @@ function VotingScreen({
       </div>
 
       <div className="px-6 pt-6 pb-8">
-        <h1 className="text-[24px] font-extrabold text-[#1F4E79] leading-snug mb-2" style={{ letterSpacing: '-.022em' }}>
-          {ballot.title}
-        </h1>
-        {ballot.instructions ? (
+        {decision ? (
+          // 분과 의결: 투표 제목(「N분과 의결 안 번호」)은 작게. 크게 보일 것은 아래 안 제목이다.
+          <h1 className="text-[15px] font-bold text-[#5A6B73] leading-snug mb-3 tr-num">{ballot.title}</h1>
+        ) : (
+          <h1 className="text-[24px] font-extrabold text-[#1F4E79] leading-snug mb-2" style={{ letterSpacing: '-.022em' }}>
+            {ballot.title}
+          </h1>
+        )}
+        {ballot.instructions && !decision ? (
           <p className="text-[15px] leading-relaxed text-[#5A6B73] mb-2">{ballot.instructions}</p>
         ) : null}
         <p className="text-[13px] text-[#5A6B73] mb-4">
-          모든 문항에 답한 뒤 맨 아래에서 한 번에 제출합니다.
+          {decision
+            ? '찬성 또는 반대를 고른 뒤 맨 아래 [제출하기]를 누릅니다.'
+            : '모든 문항에 답한 뒤 맨 아래에서 한 번에 제출합니다.'}
         </p>
 
         <div className="divide-y divide-[#DCE7EE]">
@@ -442,6 +474,7 @@ function VotingScreen({
               value={answers[item.id]}
               onSelect={(v) => onSelect(item.id, v)}
               disabled={submitting}
+              decision={decision}
             />
           ))}
         </div>
@@ -462,7 +495,7 @@ function VotingScreen({
           {complete ? '제출하기' : `남은 문항 ${total - answered}개에 답해 주세요`}
         </button>
 
-        <p className="text-[13px] leading-relaxed text-[#5A6B73] text-center mt-6">{BALLOT_EVIDENCE_BOUNDARY}</p>
+        <p className="text-[13px] leading-relaxed text-[#5A6B73] text-center mt-6">{copy.evidence}</p>
       </div>
     </Shell>
   );
@@ -472,15 +505,17 @@ function VotingScreen({
 
 function ResultsScreen({ results }: { results: BallotResults | null }) {
   if (!results) return <LoadingScreen />;
+  const decision = isDivisionDecisionBallot(results);
+  const rcopy = voterCopy(decision);
 
   return (
     <Shell align="top">
       <div className="px-6 pt-8 pb-8">
         <div className="flex items-center gap-2 mb-2">
-          <Eyebrow className="text-[#5A6B73]">의견조사 마감됨 · 결과</Eyebrow>
-          {subgroupVoteBadge(results.subgroup) ? (
+          <Eyebrow className="text-[#5A6B73]">{rcopy.resultsEyebrow}</Eyebrow>
+          {subgroupVoteBadge(results.subgroup, decision) ? (
             <span className="rounded-full bg-[#135C73] px-2.5 py-0.5 text-[13px] font-bold text-white">
-              {subgroupVoteBadge(results.subgroup)}
+              {subgroupVoteBadge(results.subgroup, decision)}
             </span>
           ) : null}
         </div>
@@ -488,7 +523,7 @@ function ResultsScreen({ results }: { results: BallotResults | null }) {
           {results.title}
         </h1>
         <p className="text-[#5A6B73] text-[14px] mb-2">{ballotResponseCountLabel(results.responses)}</p>
-        <p className="text-[#5A6B73] text-[13px] leading-relaxed mb-6">{BALLOT_EVIDENCE_BOUNDARY}</p>
+        <p className="text-[#5A6B73] text-[13px] leading-relaxed mb-6">{rcopy.evidence}</p>
 
         <div className="space-y-8">
           {results.items.map((item) => {
@@ -597,6 +632,8 @@ export default function BallotCard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
+  // 10/17 분과 의결 투표면 「의견조사」 대신 「투표」 문구(일반 다의제 투표는 그대로).
+  const decisionBallot = !!ballot && isDivisionDecisionBallot(ballot);
   const screen = resolveBallotScreen({
     hasToken: !!token,
     ballot,
@@ -713,12 +750,13 @@ export default function BallotCard() {
     return <ResultsScreen results={results} />;
   }
   if (screen === 'closed') {
-    return <ClosedScreen onRefresh={handleRefresh} refreshing={refreshing} refreshNotice={refreshNotice} />;
+    return <ClosedScreen decision={decisionBallot} onRefresh={handleRefresh} refreshing={refreshing} refreshNotice={refreshNotice} />;
   }
   if (screen === 'done') {
     return (
       <DoneScreen
         duplicate={submitState === 'duplicate'}
+        decision={decisionBallot}
         onRefresh={handleRefresh}
         refreshing={refreshing}
         refreshNotice={refreshNotice}

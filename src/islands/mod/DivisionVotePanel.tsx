@@ -10,7 +10,7 @@ import {
 import { divisionPrepGet, divisionPrepSave } from '../../lib/division-prep';
 import { createSafeBrowserStorage } from '../../lib/safe-browser-storage';
 import { BallotQrFullscreen } from './BallotPanel';
-import { ballotStatusLabel } from './ballot-panel-logic';
+import { MAX_STATEMENT_LENGTH, ballotStatusLabel } from './ballot-panel-logic';
 import DivisionCeremony from './DivisionCeremony';
 import { chipText, hhmmss } from './division-prep-sync';
 import {
@@ -27,8 +27,13 @@ import {
   ballotCeremonyItems,
   canCombine,
   canDeleteMotion,
+  cardsInMotions,
   combineFailureText,
+  combineWarningText,
   createMotion,
+  motionTitleRoom,
+  nextMotionId,
+  topicOfCard,
   criteriaCount,
   deleteMotion,
   divisionLabel,
@@ -73,6 +78,7 @@ import {
   markMinority,
   motionPhase,
   parseHandInput,
+  qrHeadlineOf,
   qrRowOf,
   reapplyAttendance,
   requestRevote,
@@ -479,11 +485,14 @@ export default function DivisionVotePanel({
 
 const OPERATOR_STEPS = [
   '화면 위 분과 이름이 우리 분과인지 확인합니다. 오른쪽 위 칩이 「저장됨」이면 서버에 저장되고 있습니다.',
-  '「1. 준비판」에서 카드마다 처리 상태를 고르고, 카드를 골라 안 제목을 넣은 뒤 [의결안 만들기]를 누릅니다. 시행중-제외 카드는 안에 넣을 수 없습니다.',
+  '「1. 준비판」에서 카드마다 처리 상태를 고릅니다. 모더레이터가 합친 카드들을 고르고, 합친 문구를 안 제목 칸에 친 뒤 [의결안 만들기]를 누릅니다. 카드를 1장만 고르면 그 카드 제목이 미리 들어갑니다.',
+  '같은 분과 안이면 주제가 다른 카드도 한 안으로 합칠 수 있습니다(주황 경고만 뜹니다). 이미 다른 안에 들어간 카드와 시행중-제외 카드는 고를 수 없습니다. 다른 분과 카드와의 통합은 이 화면에서 하지 않습니다(현장 수기).',
+  '안 제목은 큰 QR 화면과 투표자 휴대폰에 그대로 크게 나옵니다. 안 번호 포함 300자까지이며, 칸 아래에 남은 글자 수가 나옵니다.',
   '「2. 투표 진행」 맨 위에 재적과 참석 인원을 넣습니다. 재적 과반수가 참석해야 [투표 시작]이 눌립니다. 가결선이 바로 아래에 나옵니다.',
-  '안마다 [투표 시작]을 누르고, 버튼이 「투표를 시작합니까?」로 바뀌면 5초 안에 한 번 더 누릅니다. 투표가 열리고 QR 화면이 바로 뜹니다. [나가기] 또는 ESC로 돌아오고, [QR 다시 띄우기]로 다시 엽니다.',
+  '투표는 안 하나씩 엽니다. [투표 시작]을 누르고, 버튼이 「투표를 시작합니까?」로 바뀌면 5초 안에 한 번 더 누릅니다. 투표가 열리고 QR 화면이 바로 뜹니다. [나가기] 또는 ESC로 돌아오고, [QR 다시 띄우기]로 다시 엽니다.',
+  '휴대폰이 없는 분은 손을 들어 찬반을 표시합니다. 책임 모더레이터가 찬성·반대 인원을 따로 세어 오퍼레이터에게 알려 줍니다.',
   '투표를 끝낼 때 [마감하고 결과 보기]를 누르고, 버튼이 「정말 마감합니까?」로 바뀌면 5초 안에 한 번 더 누릅니다. 찬성·반대 표, 가결선, 가결·부결이 크게 나옵니다.',
-  '손을 든 표가 있으면 거수 찬성·반대 칸에 넣습니다. 온라인 표에 더해 다시 판정합니다. 조별 권고 수준 표와 기타 의견도 그 안 아래에 적습니다.',
+  '결과 아래 「거수 찬성」·「거수 반대」 칸에 책임 모더레이터가 센 인원을 넣습니다. 온라인 표에 더해 다시 판정합니다. 조별 권고 수준 표와 기타 의견도 그 안 아래에 적습니다.',
   '부결된 안은 [문구 고쳐 2차 투표] 또는 [소수 의견으로 기록]을 고릅니다. 다 끝나면 「3. 세리머니」로 발표하고 [이 분과 결과 CSV]를 내려받습니다.',
 ];
 
@@ -624,6 +633,12 @@ function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepS
   }, [state.division]);
 
   const check = canCombine(state.source, selected);
+  const warning = combineWarningText(check);
+  const used = cardsInMotions(state);
+  const nextId = check.ok ? nextMotionId(state, check.topicNo) : null;
+  const room = nextId ? motionTitleRoom(nextId, title) : null;
+  /** 카드 1장을 고를 때 안 제목 칸에 미리 넣은 값. 오퍼레이터가 고쳐 쓴 값은 덮지 않는다. */
+  const autoTitle = useRef<string | null>(null);
   const tally = statusTally(state);
   const motionsByTopic = useMemo(() => {
     const map = new Map<string, Motion[]>();
@@ -633,7 +648,21 @@ function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepS
   const excluded = excludedCardNos(state);
   const selectedExcluded = selected.filter((no) => state.cards[no]?.status === 'excluded');
 
-  const toggle = (no: string) => setSelected((prev) => (prev.includes(no) ? prev.filter((x) => x !== no) : [...prev, no]));
+  const toggle = (no: string) => {
+    const next = selected.includes(no) ? selected.filter((x) => x !== no) : [...selected, no];
+    setSelected(next);
+    // 카드 1장 = 그 카드 제목을 안 제목 칸에 미리 넣는다(빈칸이거나 아직 미리 넣은 값 그대로일 때만).
+    const untouched = !title.trim() || title === autoTitle.current;
+    if (next.length === 1 && untouched) {
+      const topic = state.source.topics.find((t) => t.no === topicOfCard(state.source, next[0]));
+      const cardTitle = topic?.cards.find((c) => c.no === next[0])?.title.trim() ?? '';
+      autoTitle.current = cardTitle;
+      setTitle(cardTitle);
+    } else if (next.length === 0 && untouched) {
+      autoTitle.current = null;
+      setTitle('');
+    }
+  };
 
   const make = () => {
     const r = createMotion(state, { cardNos: selected, title, text });
@@ -644,6 +673,7 @@ function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepS
     update(() => r.state);
     setSelected([]);
     setTitle('');
+    autoTitle.current = null;
     setText('');
     setError(null);
   };
@@ -671,15 +701,18 @@ function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepS
               const st = state.cards[card.no];
               const isSel = selected.includes(card.no);
               const isExcluded = st.status === 'excluded';
+              const inMotion = used.get(card.no) ?? null;
+              const locked = (isExcluded || inMotion !== null) && !isSel;
               return (
-                <li key={card.no} data-card-no={card.no} data-excluded={isExcluded ? 'true' : undefined} className={`px-4 py-3 ${isSel ? 'bg-[#E6F5F7]' : isExcluded ? 'bg-[#F4F4F4]' : ''}`}>
+                <li key={card.no} data-card-no={card.no} data-excluded={isExcluded ? 'true' : undefined} data-in-motion={inMotion ?? undefined} className={`px-4 py-3 ${isSel ? 'bg-[#E6F5F7]' : isExcluded ? 'bg-[#F4F4F4]' : ''}`}>
                   <div className="flex flex-wrap items-center gap-3">
-                    <label className={`flex min-h-11 items-center gap-2 ${isExcluded ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                    <label className={`flex min-h-11 items-center gap-2 ${locked ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                       <input
                         type="checkbox"
                         className="h-6 w-6"
                         checked={isSel}
-                        disabled={isExcluded && !isSel}
+                        disabled={locked}
+                        title={inMotion ? `이미 ${inMotion}에 들어간 카드입니다` : undefined}
                         aria-label={`${card.no} 고르기`}
                         onChange={() => toggle(card.no)}
                       />
@@ -723,6 +756,8 @@ function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepS
                     ) : null}
                     {st.status === 'merged' ? (
                       <span className="text-[16px] font-bold text-[#5A6B73]">→ {st.target ?? '안 번호 없음'}</span>
+                    ) : inMotion ? (
+                      <span className="text-[16px] font-bold text-[#5A6B73]">→ {inMotion}에 들어감</span>
                     ) : null}
                   </div>
                   <details className="mt-1 pl-8">
@@ -766,18 +801,24 @@ function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepS
               {combineFailureText(check)}
             </p>
           ) : null}
+          {warning ? (
+            <p data-testid="combine-warning" className="rounded-xl border border-[#E8B44C] bg-[#FFF6E0] px-3 py-2 text-[16px] font-bold text-[#7A4B00]">
+              ⚠ {warning}
+            </p>
+          ) : null}
           {selectedExcluded.length > 0 ? (
             <p role="alert" className="text-[16px] font-bold text-[#B91C1C]">
               시행중-제외 카드({selectedExcluded.join(', ')})는 의결안에 넣을 수 없습니다. 선택을 풀어 주십시오.
             </p>
           ) : null}
-          <input
-            className={`${input} h-12`}
-            placeholder="안 제목"
+          <textarea
+            className={`${input} min-h-16 py-2 font-bold`}
+            placeholder="안 제목 — 합친 문구. 큰 QR 화면과 투표자 휴대폰에 그대로 크게 나옵니다"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             aria-label="안 제목"
           />
+          {nextId ? <TitleRoom id={nextId} room={room ?? 0} /> : null}
           <textarea
             className={`${input} min-h-24 py-2`}
             placeholder="안 문안"
@@ -791,10 +832,18 @@ function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepS
             </p>
           ) : null}
           <div className="flex flex-wrap gap-2">
-            <button type="button" className={btnPrimary} disabled={!check.ok || !title.trim() || selectedExcluded.length > 0} onClick={make}>
+            <button type="button" className={btnPrimary} disabled={!check.ok || !title.trim() || selectedExcluded.length > 0 || (room ?? 0) < 0} onClick={make}>
               의결안 만들기
             </button>
-            <button type="button" className={btnGhost} onClick={() => setSelected([])}>
+            <button
+              type="button"
+              className={btnGhost}
+              onClick={() => {
+                setSelected([]);
+                if (title === autoTitle.current) setTitle('');
+                autoTitle.current = null;
+              }}
+            >
               선택 해제
             </button>
           </div>
@@ -824,14 +873,28 @@ function PhaseBadge({ phase }: { phase: MotionPhase }) {
   );
 }
 
+/** 안 제목 칸 아래 「남은 글자」. 투표 문항 = 안 번호 + 띄어쓰기 + 제목, 300자까지. */
+function TitleRoom({ id, room }: { id: string; room: number }) {
+  return (
+    <p data-testid="title-room" className={`text-[16px] font-bold tr-num ${room < 0 ? 'text-[#B91C1C]' : room <= 30 ? 'text-[#8A5A00]' : 'text-[#5A6B73]'}`}>
+      {room < 0 ? `${-room}자 넘쳤습니다` : `남은 글자 ${room}자`} · 안 번호 「{id}」 포함 {MAX_STATEMENT_LENGTH}자까지
+    </p>
+  );
+}
+
 function MotionEditor({ motion, state, update }: { motion: Motion; state: PrepState; update: (fn: (s: PrepState) => PrepState) => void }) {
   const phase = motionPhase(state, motion);
+  const combined = canCombine(state.source, motion.cardNos);
+  const topics = combined.ok ? combined.topics : [];
   return (
     <div data-testid="motion-card" data-motion-id={motion.id} className="rounded-xl border border-[#C4D8E4] bg-white p-4">
       <div className="flex flex-wrap items-center gap-3">
         <span className="rounded-lg bg-[#1F4E79] px-3 py-1 text-[16px] font-extrabold text-white">{motion.id}</span>
         <PhaseBadge phase={phase} />
         <span className="text-[16px] text-[#5A6B73]">원 카드 {motion.cardNos.join(', ')}</span>
+        {topics.length > 1 ? (
+          <span className="rounded-lg bg-[#FFF6E0] px-2 py-0.5 text-[16px] font-bold text-[#7A4B00]">주제 섞임 {topics.join(' · ')}</span>
+        ) : null}
         <span className="text-[16px] font-bold text-[#135C73]">권고 수준 충족 {criteriaCount(motion)}/5</span>
         {canDeleteMotion(motion) ? (
           <button
@@ -847,12 +910,13 @@ function MotionEditor({ motion, state, update }: { motion: Motion; state: PrepSt
           <span className="ml-auto text-[16px] text-[#5A6B73]">투표를 시작한 안은 지울 수 없습니다.</span>
         )}
       </div>
-      <input
-        className={`${input} mt-3 h-12 font-bold`}
+      <textarea
+        className={`${input} mt-3 min-h-14 py-2 font-bold`}
         value={motion.title}
         aria-label={`${motion.id} 제목`}
         onChange={(e) => update((s) => updateMotion(s, motion.id, { title: e.target.value }))}
       />
+      <TitleRoom id={motion.id} room={motionTitleRoom(motion.id, motion.title)} />
       <textarea
         className={`${input} mt-2 min-h-20 py-2`}
         value={motion.text}
@@ -871,13 +935,11 @@ function MotionEditor({ motion, state, update }: { motion: Motion; state: PrepSt
 // 투표 진행
 // ============================================================
 
-/** [묶음 크기, 버튼 이름]. 1 = 안 하나씩(기본), Infinity = 분과 전체 한 번. */
-const BATCH_SIZES: ReadonlyArray<readonly [number, string]> = [
-  [1, '하나씩'],
-  [5, '5개 안팎'],
-  [10, '10개 안팎'],
-  [Number.POSITIVE_INFINITY, '전체 한 번'],
-];
+/**
+ * 투표 단위 = 안 하나(10/7·10/14 결정). 묶음 로직(batchMotions)은 남아 있지만 화면에서는 고를 수 없다.
+ * 이미 묶어 시작한 옛 투표가 있으면 voteUnits 가 그 투표끼리 그대로 보여 준다.
+ */
+const ONE_AT_A_TIME = 1;
 
 function useBallotCounts(api: DivisionBallotApi | null, active: boolean): Record<string, number> {
   const [counts, setCounts] = useState<Record<string, number>>({});
@@ -918,13 +980,13 @@ function VoteBoard({
   onCsv: () => void;
 }) {
   const d = state.division;
-  const [batchSize, setBatchSize] = useState<number>(1);
   const [busy, setBusy] = useState<Record<string, 'start' | 'close'>>({});
   const inflight = useRef<Set<string>>(new Set());
   const [msg, setMsg] = useState<{ key: string; tone: 'ok' | 'error'; text: string } | null>(null);
   const [qrKey, setQrKey] = useState<string | null>(null);
 
-  const units = voteUnits(state, batchSize);
+  // 10/7·10/14 결정 — 투표는 안 하나씩. 묶음 버튼(5개·10개 안팎·전체 한 번)은 화면에서 뺐다.
+  const units = voteUnits(state, ONE_AT_A_TIME);
   const anyOpen = Object.values(state.ballots).some((b) => b.stage === 'open');
   const counts = useBallotCounts(api, anyOpen || qrKey !== null);
   const ready = attendanceReady(state.attendance);
@@ -1013,20 +1075,6 @@ function VoteBoard({
         <p className="text-[18px] text-[#5A6B73]">「1. 준비판」에서 의결안을 먼저 만드십시오.</p>
       ) : (
         <>
-          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-[#DCE7EE] p-3" data-testid="division-batches">
-            <span className="text-[16px] font-bold text-[#1F4E79]">한 번에 투표할 안</span>
-            {BATCH_SIZES.map(([size, lbl]) => (
-              <button
-                key={lbl}
-                type="button"
-                aria-pressed={batchSize === size}
-                className={batchSize === size ? btnPrimary : btnGhost}
-                onClick={() => setBatchSize(size)}
-              >
-                {lbl}
-              </button>
-            ))}
-          </div>
           {!api ? (
             <p className="rounded-xl bg-[#F5F8FB] px-4 py-3 text-[16px] text-[#5A6B73]">
               {preview ? '미리보기에는 투표 서버가 없습니다.' : '조 코드로 들어온 콘솔에서 투표를 열 수 있습니다.'}
@@ -1077,7 +1125,7 @@ function VoteBoard({
         <span className="text-[16px] text-[#5A6B73]">엑셀에서 바로 열리는 파일로 내려받습니다(안·차수마다 한 줄).</span>
       </div>
 
-      {qrRow ? <BallotQrFullscreen ballot={qrRow} onExit={() => setQrKey(null)} /> : null}
+      {qrRow ? <BallotQrFullscreen ballot={qrRow} headline={qrRecord ? qrHeadlineOf(qrRecord) : undefined} onExit={() => setQrKey(null)} /> : null}
     </div>
   );
 }
@@ -1270,6 +1318,7 @@ function MotionVoteBlock({ motion, state, update }: { motion: Motion; state: Pre
         )}
         <span className="text-[16px] text-[#5A6B73]">원 카드 {motion.cardNos.join(', ')}</span>
       </div>
+      {phase === 'revote' ? <TitleRoom id={motion.id} room={motionTitleRoom(motion.id, motion.title)} /> : null}
 
       {earlier.map((r) => (
         <p key={r.round} className="rounded-lg bg-[#F5F8FB] px-3 py-2 text-[16px] text-[#1F2933] tr-num" data-testid="round-history">

@@ -10,6 +10,7 @@ import {
   resolveBallotScreen,
   scaleLabels,
   subgroupVoteBadge,
+  voterCopy,
 } from './ballot-logic';
 import type { Ballot, BallotItem } from '../../lib/ballot';
 import { createElement } from 'react';
@@ -52,6 +53,20 @@ describe('subgroupVoteBadge — /b 헤더 분과 뱃지(S4)', () => {
     expect(subgroupVoteBadge('')).toBeNull();
     // openBallot에는 subgroup 키가 없다 — 미적용 DB 응답 형태 그대로 안전해야 한다.
     expect(subgroupVoteBadge(openBallot.subgroup)).toBeNull();
+  });
+
+  it('(10/14) 분과 의결 투표면 「N분과 의결」, 문구는 「투표」 — 일반 투표 문구는 그대로', () => {
+    expect(subgroupVoteBadge('2분과', true)).toBe('2분과 의결');
+    const d = voterCopy(true);
+    expect(d.eyebrow).toBe('분과 의결 투표');
+    expect(d.doneTitle).toBe('투표가 제출되었습니다');
+    expect(d.closedTitle).toBe('투표가 마감되었습니다');
+    expect(d.evidence).not.toContain('의견조사');
+    const s = voterCopy(false);
+    expect(s.eyebrow).toBe('다의제 현장 의견조사');
+    expect(s.doneTitle).toBe('의견이 제출되었습니다');
+    expect(s.closedTitle).toBe('의견조사가 마감되었습니다');
+    expect(s.evidence).toBe(BALLOT_EVIDENCE_BOUNDARY);
   });
 });
 

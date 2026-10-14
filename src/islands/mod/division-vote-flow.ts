@@ -18,6 +18,7 @@ import type {
   BallotStatus,
 } from '../../lib/deliberation';
 import { MAX_BALLOT_ITEMS, MAX_STATEMENT_LENGTH } from './ballot-panel-logic';
+import { parseMotionStatement } from '../../lib/division-ballot-format';
 import {
   CRITERIA,
   CRITERION_LABELS,
@@ -537,6 +538,21 @@ export function qrRowOf(record: BallotRecord, responseCount: number): BallotList
     response_count: responseCount,
     created_at: record.openedAt ?? '',
   };
+}
+
+/**
+ * QR 화면 큰 제목(10/14 결정) — 오퍼레이터가 친 안 제목(합친 문구)을 크게, 안 번호·차수는 작게.
+ * 투표 기록에 보낸 문장 그대로에서 가른다(그 뒤 준비판에서 제목을 고쳐도 투표 내용과 같게).
+ * 옛 묶음 투표(문항 여럿)는 투표 제목을 크게 두고 안 수를 곁글로.
+ */
+export function qrHeadlineOf(record: Pick<BallotRecord, 'title' | 'statements' | 'motionIds' | 'round'>): { main: string; sub: string; eyebrow: string } {
+  const eyebrow = '분과 의결';
+  if (record.statements.length === 1) {
+    const parsed = parseMotionStatement(record.statements[0]);
+    const id = parsed?.id ?? record.motionIds[0] ?? '';
+    return { main: parsed?.title ?? record.statements[0], sub: roundLabel(id, record.round), eyebrow };
+  }
+  return { main: record.title, sub: `안 ${record.statements.length}건 묶음 투표`, eyebrow };
 }
 
 // ── 세리머니 — 저장된 결과 ───────────────────────────────────
