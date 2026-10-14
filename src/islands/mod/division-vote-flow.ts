@@ -573,8 +573,9 @@ export async function runVoteVoid(api: VoteApi, commit: CommitFact, getState: ()
       if (st !== 'draft' && st !== 'closed' && st !== 'published' && st !== 'archived') throw error;
     }
   }
+  const closedBefore = !!record.ballotId && record.stage !== 'closed';
   let failure: string | null = null;
-  const saved = await commit((s) => {
+  let saved = await commit((s) => {
     const r = voidBallot(s, requestId, now());
     if (!r.ok) {
       failure = r.error;
@@ -582,7 +583,32 @@ export async function runVoteVoid(api: VoteApi, commit: CommitFact, getState: ()
     }
     return r.state;
   });
-  return failure ? { ok: false, error: failure } : { ok: true, state: saved };
+  if (failure) return { ok: false, error: failure };
+  // 10/14 재검 — 이 화면이 본 기록은 번호 전(만드는 중)이었는데, 저장해 보니 다른 화면이 그새 투표를 만들어(열어) 두었다.
+  // 무효는 적혔지만 서버 투표는 아직 열려 있을 수 있으니 여기서 닫는다. 닫지 못했고 서버가 열려 있으면(또는 모르면)
+  // 기록을 「무효인데 열림」으로 되돌려 화면 띠에 [서버 투표 닫기]가 뜨게 한다.
+  const after = saved.ballots[requestId];
+  if (!closedBefore && after?.ballotId) {
+    try {
+      await setStatusSafely(api, after.ballotId, 'closed');
+    } catch {
+      let st: BallotStatus | null = null;
+      try {
+        st = await api.statusOf(after.ballotId);
+      } catch {
+        st = null;
+      }
+      if (st !== 'draft' && st !== 'closed' && st !== 'published' && st !== 'archived') {
+        saved = await commit((s) => markBallotStrayOpen(s, requestId));
+      }
+    }
+  }
+  return { ok: true, state: saved };
+}
+
+/** 무효로 적었지만 서버 투표를 닫지 못한 기록 — 「열림」으로 되돌려 띠의 [서버 투표 닫기]가 닫게 한다(strayOpenBallot). */
+export function markBallotStrayOpen(state: PrepState, requestId: string): PrepState {
+  return mapBallot(state, requestId, (b) => (b.voidedAt && b.ballotId && b.token && b.stage !== 'open' ? { ...b, stage: 'open', closedAt: null } : b));
 }
 
 // ── 투표 단위(화면의 [투표 시작] 묶음) ───────────────────────
@@ -681,7 +707,11 @@ export async function runVoteStart(api: VoteApi, commit: CommitFact, getState: (
   }
   // 열기 직전에 최신 기록을 다시 본다 — 만든 뒤·열기 전에 다른 화면(운영팀)이 무효로 했을 수 있다.
   const fresh = getState().ballots[requestId];
-  if (fresh?.voidedAt) return fresh;
+  if (fresh?.voidedAt) {
+    // 열기 전(draft)이라 표는 받지 않는다 — 닫아 두기만(실패해도 그만).
+    if (fresh.ballotId) await api.setStatus(fresh.ballotId, 'closed').catch(() => undefined);
+    return fresh;
+  }
   if (record.stage === 'draft') {
     await setStatusSafely(api, record.ballotId as string, 'open');
     const saved = await commit((s) => markBallotOpened(s, requestId, now()));

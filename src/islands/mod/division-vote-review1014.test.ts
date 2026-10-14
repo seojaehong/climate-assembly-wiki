@@ -31,6 +31,7 @@ import {
   motionPhase,
   runStrayClose,
   runVoteStart,
+  runVoteVoid,
   setHandCount,
   storedCeremonyItems,
   startStuck,
@@ -172,8 +173,9 @@ describe('critical — 여는 중에 무효로 하면 열지 않는다', () => {
     };
     const { api, calls } = fakeApi();
     const record = await runVoteStart(api, commit, getState, 'a', () => LATER);
-    // 무효 쪽(runVoteVoid)이 번호를 보고 서버를 닫는다 — 이 화면은 열지 않는다
-    expect(calls).toEqual(['create:a']);
+    // 이 화면은 열지 않고, 열기 전 투표를 닫아 둔다(무효 쪽 runVoteVoid 도 번호를 보고 닫는다)
+    expect(calls).toEqual(['create:a', 'B-a:closed']);
+    expect(calls).not.toContain('B-a:open');
     expect(record.voidedAt).toBe(LATER);
     expect(liveBallots(state)).toEqual([]);
   });
@@ -221,6 +223,54 @@ describe('critical — 여는 중에 무효로 하면 열지 않는다', () => {
     expect(calls).toEqual(['B-a:closed']);
     expect(liveBallots(state)).toEqual([]);
     expect(beginVote(state, ['2-1-안2'], 'b').ok).toBe(true);
+  });
+});
+
+describe('critical — 운영팀 화면(묵은 기록)에서 무효로 해도 다른 화면이 연 서버 투표를 닫는다', () => {
+  async function race(closeFails: boolean, status: string | null) {
+    // 운영팀 화면은 아직 「만드는 중(번호 없음)」으로 본다
+    const b = beginVote(base(), ['2-1-안1'], 'a', NOW);
+    if (!b.ok) throw new Error(b.error);
+    const stale = b.state;
+    // 서버 최신: 분과 PC 가 이미 만들고 열었다
+    let server = open(stale, '2-1-안1', 'a');
+    const commit = async (fn: (x: PrepState) => PrepState) => (server = fn(server));
+    const calls: string[] = [];
+    const api: VoteApi = {
+      create: async () => ({ id: 'x', token: 'y' }),
+      setStatus: async (id, st) => {
+        calls.push(`${id}:${st}`);
+        if (closeFails) throw new Error('net');
+        return {};
+      },
+      statusOf: async () => status as never,
+      results: async () => null,
+    };
+    const out = await runVoteVoid(api, commit, () => stale, 'a', () => LATER);
+    return { out, calls, server };
+  }
+
+  it('무효를 적은 뒤 번호가 보이면 서버 투표를 닫는다', async () => {
+    const { out, calls, server } = await race(false, null);
+    expect(out.ok).toBe(true);
+    expect(calls).toEqual(['B-a:closed']);
+    expect(server.ballots.a).toMatchObject({ stage: 'closed', voidedAt: LATER });
+    expect(liveBallots(server)).toEqual([]);
+  });
+
+  it('닫지 못했고 서버가 열려 있으면 「무효인데 열림」으로 남겨 [서버 투표 닫기]가 뜬다', async () => {
+    const { out, server } = await race(true, 'open');
+    expect(out.ok).toBe(true);
+    expect(server.ballots.a).toMatchObject({ stage: 'open', voidedAt: LATER });
+    expect(strayOpenBallot(server.ballots.a)).toBe(true);
+    expect(liveBallots(server).map((x) => x.requestId)).toEqual(['a']);
+    expect(motionPhase(server, motion(server, '2-1-안1'))).toBe('ready');
+    expect(migratePrep(JSON.parse(serializePrep(server)))).not.toBeNull();
+  });
+
+  it('닫지 못했어도 서버가 이미 닫혀 있으면 그대로 마감', async () => {
+    const { server } = await race(true, 'closed');
+    expect(server.ballots.a.stage).toBe('closed');
   });
 });
 
@@ -360,12 +410,12 @@ describe('critical — 이 화면이 여는 중에는 무효·이어서 하기�
     expect(startStuck({ stage: 'open', createdAt: NOW }, false, t + 999_999)).toBe(false);
   });
 
-  it('시작 중 단위 카드 — busy 가 멱등키로 걸려 있으면 [잘못 연 투표 무효]·[이어서 하기]가 눌리지 않는다', () => {
+  it('시작 중 단위 카드 — 이 화면이 여는 중이면 [이어서 하기]가 눌리지 않고 [잘못 연 투표 무효]는 30초 멈춘 뒤에만 보인다', () => {
     const b = beginVote(base(), ['2-1-안1'], 'req1', NOW);
     if (!b.ok) throw new Error(b.error);
     const unit = voteUnits(b.state, 1).find((u) => u.motionIds.includes('2-1-안1'))!;
     expect(unit.key).toBe('req1');
-    const render = (busy: 'start' | null) =>
+    const render = (busy: 'start' | null, nowMs = Date.parse(NOW)) =>
       renderToStaticMarkup(
         createElement(UnitCard, {
           unit,
@@ -378,7 +428,7 @@ describe('critical — 이 화면이 여는 중에는 무효·이어서 하기�
           busy,
           msg: null,
           responses: 0,
-          nowMs: Date.parse(NOW),
+          nowMs,
           onStart: () => undefined,
           onClose: () => undefined,
           onVoid: () => undefined,
@@ -386,10 +436,13 @@ describe('critical — 이 화면이 여는 중에는 무효·이어서 하기�
         }),
       );
     const disabledOf = (html: string, testId: string) => new RegExp(`<button[^>]*data-testid="${testId}"[^>]*disabled=""|<button[^>]*disabled=""[^>]*data-testid="${testId}"`).test(html);
-    const busyHtml = render('start');
-    expect(disabledOf(busyHtml, 'vote-void')).toBe(true);
+    const later = Date.parse(NOW) + 31_000;
+    const busyHtml = render('start', later);
+    expect(busyHtml).not.toContain('data-testid="vote-void"');
     expect(disabledOf(busyHtml, 'vote-start')).toBe(true);
-    const idle = render(null);
-    expect(disabledOf(idle, 'vote-void')).toBe(false);
+    expect(render(null)).not.toContain('data-testid="vote-void"'); // 누른 지 30초 전
+    const stuck = render(null, later);
+    expect(stuck).toContain('data-testid="vote-void"');
+    expect(disabledOf(stuck, 'vote-void')).toBe(false);
   });
 });

@@ -1821,7 +1821,9 @@ export function UnitCard({
   const label = motions.length > 1 ? `${motions[0].id} 외 ${motions.length - 1}건` : roundLabel(motions[0].id, roundNo);
   // 무장 문구의 제목 — 시작 전에는 지금 칸의 제목(보낼 문구), 시작 뒤에는 그 차수에 보낸 제목.
   const title = notStarted ? motions[0].title : currentRound(motions[0])?.title ?? motions[0].title;
-  const voidable = !!unit.requestId && canVoidRound(state, motions[0], isOps);
+  // 10/14 재검 — 여는 중(시작 중)에는 30초가 지나 멈춘 것으로 보일 때만 무효를 보인다(여는 중에 누르는 실수).
+  const voidable =
+    !!unit.requestId && canVoidRound(state, motions[0], isOps) && (phase !== 'starting' || (!!ballot && startStuck(ballot, !!busy, nowMs)));
 
   return (
     <li data-testid="vote-unit" data-unit-key={unit.key} data-phase={phase} className="rounded-2xl border-2 border-[#C4D8E4] bg-white">
