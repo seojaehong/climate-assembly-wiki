@@ -263,7 +263,7 @@ function ClosedScreen({
 
 // ── 투표 화면 ─────────────────────────────────────────────────────────
 
-function ItemBlock({
+export function ItemBlock({
   item,
   value,
   onSelect,

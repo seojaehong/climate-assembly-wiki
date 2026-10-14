@@ -18,6 +18,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import {
   BALLOT_EVIDENCE_BOUNDARY,
   ballotResponseCountLabel,
+  ItemBlock,
   LoadErrorScreen,
 } from './BallotCard';
 
@@ -263,5 +264,25 @@ describe('공개 ballot 증거 경계', () => {
     expect(BALLOT_EVIDENCE_BOUNDARY).toContain('비구속 현장 의견조사');
     expect(BALLOT_EVIDENCE_BOUNDARY).toContain('공식 의사결정');
     expect(ballotResponseCountLabel(3)).toBe('기기 응답 3건');
+  });
+});
+
+describe('ItemBlock — 분과 의결 투표는 안 제목을 크게, 안 번호는 작게(10/14)', () => {
+  const noop = () => undefined;
+  it('decision=true: 안 번호·제목을 가르고 「응답」 접미 aria 를 지킨다', () => {
+    const html = renderToStaticMarkup(
+      createElement(ItemBlock, { item: item({ statement: '2-1-안1 합친 긴 제목', scale: 2, ordinal: 1 }), value: undefined, onSelect: noop, disabled: false, decision: true }),
+    );
+    expect(html).toContain('안 번호 2-1-안1');
+    expect(html).toContain('합친 긴 제목');
+    expect(html).toContain('2-1-안1 찬반 응답');
+    expect(html).not.toContain('의제 1');
+  });
+  it('decision=false: 일반 투표 화면 그대로', () => {
+    const html = renderToStaticMarkup(
+      createElement(ItemBlock, { item: item({ statement: '2-1-안1 합친 긴 제목', scale: 2, ordinal: 1 }), value: undefined, onSelect: noop, disabled: false }),
+    );
+    expect(html).toContain('의제 1 응답');
+    expect(html).not.toContain('안 번호');
   });
 });
