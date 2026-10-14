@@ -9,8 +9,13 @@
  * ★ 실데이터(recs_1017.json)는 공표 전 자료다. 브라우저 「JSON 가져오기」로만 넣는다.
  *   로그에 권고 문장을 찍지 않는다. 표본은 번호로만 남긴다.
  *
+ * ★ 2026-10-14 — 흐름 E2E 의 정본은 scripts/verify-1017-e2e-v2.mjs 다. 이 파일은 독립 네거티브·회귀(--phase=neg, 기본값)만
+ *   돈다. main/p5/batch/lab 은 1단계 화면(「투표 열기」 탭·묶음 버튼·주제 섞기 차단) 기준이라 실행하면 바로 멈춘다(코드는 기록으로 남김).
+ *   SEED_FILE 은 v2 와 같은 모양(teams 1·2·3·o)을 쓴다.
+ *
  * 사용
- *   SEED_FILE=... RECS_FILE=... OUT_DIR=... node scripts/verify-1017-e2e.mjs             # 본 시험
+ *   SITE=... SEED_FILE=... RECS_FILE=... OUT_DIR=... node scripts/verify-1017-e2e.mjs     # neg(N1·N9·P7·N11·N12)
+ *   (옛) ... node scripts/verify-1017-e2e.mjs --phase=main                                 # 본 시험 — 5f9920b 에서 멈춤
  *   ... node scripts/verify-1017-e2e.mjs --phase=expired                                   # 만료 토큰(SQL 로 만료시킨 뒤)
  *   PLAYWRIGHT_MODULE=file:///.../playwright/index.mjs 로 Playwright 위치를 준다.
  */
@@ -22,12 +27,12 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SITE = process.env.SITE ?? 'https://climate-assembly.org';
-const EXPECT_COMMIT = process.env.EXPECT_COMMIT ?? '64d87dfd832c8df53808819346c148df56dce5af';
+const EXPECT_COMMIT = process.env.EXPECT_COMMIT ?? '5f9920b6ee65046fa004e8f5c80b89b6591ffecb';
 const SEED_FILE = process.env.SEED_FILE;
 const RECS_FILE = process.env.RECS_FILE;
 const OUT_DIR = process.env.OUT_DIR;
 const SHOTS = process.env.SHOTS_DIR ?? join(OUT_DIR ?? '.', 'shots');
-const PHASE = (process.argv.find((a) => a.startsWith('--phase=')) ?? '--phase=main').slice(8);
+const PHASE = (process.argv.find((a) => a.startsWith('--phase=')) ?? '--phase=neg').slice(8);
 if (!SEED_FILE || !RECS_FILE || !OUT_DIR) {
   console.error('SEED_FILE, RECS_FILE, OUT_DIR 가 필요합니다.');
   process.exit(2);
@@ -2074,9 +2079,194 @@ function judgeBatch() {
 const R_IN_J = 8;
 const M_IN_J = 5;
 
+/**
+ * neg — 2026-10-14 판(5f9920b)에 맞춘 독립 네거티브·회귀. main/p5/batch/lab 은 옛 「투표 열기」 탭·묶음 버튼을 누르는
+ * 1단계 화면 기준이라 더 돌지 않는다(흐름 검사는 verify-1017-e2e-v2.mjs 가 맡는다).
+ * 필요한 조 = seed.teams 1·2·o (v2 와 같은 SEED_FILE). 운영팀 토큰으로 2분과 시험 투표 1개를 만들고 끝에 보관한다.
+ *   N1  같은 분과의 다른 주제 카드 섞기 → 막지 않고 주황 경고 · [의결안 만들기] 활성 · 안 번호 = 첫 카드 주제 → 지워서 원상
+ *   N9  무작위·형식 틀림·빈·폐기 토큰으로 투표 생성·상태 변경 → 전부 거절
+ *   P7  1분과 조 /mod 기존 탭 4개 회귀 · 공개 경로 HTTP 200
+ *   N11 저장소 차단 기기 — 미리보기·/b 제출·/mod 입장
+ *   N12 운영 번들에 실제 권고 문구가 없는가
+ */
+async function phaseNeg() {
+  const rev = await (await fetch(`${SITE}/deployment-revision.json`, { cache: 'no-store' })).json();
+  record('P1', rev.sourceCommit === EXPECT_COMMIT, `sourceCommit=${String(rev.sourceCommit).slice(0, 7)} 기대=${EXPECT_COMMIT.slice(0, 7)}`);
+
+  // ── N1 ──
+  {
+    const C = await newCtx('negMod2');
+    const pg = C.page;
+    await pg.goto(`${SITE}/mod?code=${seed.teams['2'][1]}`, { waitUntil: 'domcontentloaded' });
+    await pg.locator('#mod-tab-decision').waitFor({ timeout: 40000 });
+    await pg.locator('#mod-tab-decision').click();
+    await pg.locator('[data-testid=division-vote-panel]').waitFor();
+    await importFile(pg, RECS_FILE); // 이미 준비 중이면 그대로 둔다
+    await pg.waitForTimeout(1500);
+    await viewTab(pg, '1. 준비판').click();
+    const d2 = byDiv[2];
+    const free = await pg.locator('li[data-card-no]').evaluateAll((els) =>
+      els.filter((e) => !e.getAttribute('data-in-motion') && !e.getAttribute('data-excluded')).map((e) => e.getAttribute('data-card-no')),
+    );
+    const topicOf = (no) => d2.topics.find((t) => t.cards.some((c) => c.no === no))?.no;
+    const a = free.find((no) => !['2-14', '2-15', '2-16', '2-17'].includes(topicOf(no)));
+    const b = free.find((no) => topicOf(no) && topicOf(no) !== topicOf(a) && !['2-14', '2-15', '2-16', '2-17'].includes(topicOf(no)));
+    const before = await pg.locator('[data-testid=motion-card]').count();
+    await pg.locator(`li[data-card-no="${a}"] input[type=checkbox]`).check();
+    await pg.locator(`li[data-card-no="${b}"] input[type=checkbox]`).check();
+    await pg.getByLabel('안 제목', { exact: true }).fill('N1 섞인 안');
+    const warn = await pg.locator('[data-testid=combine-warning]').isVisible().catch(() => false);
+    const blockAlert = await pg.locator('[data-testid=motion-builder] [role=alert]').count();
+    const enabled = await pg.getByRole('button', { name: '의결안 만들기' }).isEnabled();
+    await pg.screenshot({ path: join(SHOTS, 'neg-n1-mixed-warning.png') });
+    await pg.getByRole('button', { name: '의결안 만들기' }).click();
+    await pg.waitForTimeout(500);
+    const ids = await pg.locator('[data-testid=motion-card]').evaluateAll((els) => els.map((e) => e.getAttribute('data-motion-id')));
+    const firstTopic = d2.topics.map((t) => t.no).find((no) => no === topicOf(a) || no === topicOf(b));
+    const made = ids.find((id) => id.startsWith(`${firstTopic}-안`) && (ids.length > before));
+    const lockedA = await pg.locator(`li[data-card-no="${a}"] input[type=checkbox]`).isDisabled();
+    // 원상 — 지우기(확인 대화상자는 newCtx 가 수락)
+    if (made) await pg.locator(`[data-testid=motion-card][data-motion-id="${made}"]`).getByRole('button', { name: '안 지우기' }).click();
+    await pg.waitForTimeout(500);
+    const after = await pg.locator('[data-testid=motion-card]').count();
+    record(
+      'N1',
+      warn && blockAlert === 0 && enabled && !!made && lockedA && after === before,
+      `${a}+${b} 섞기 → 경고 ${warn} · 차단 문구 ${blockAlert} · 버튼 활성 ${enabled} · 만든 안 ${made}(첫 주제 ${firstTopic}) · 카드 잠금 ${lockedA} · 지운 뒤 안 수 ${before}→${after}`,
+    );
+    S.negMod2Errors = [...pageErrors.negMod2];
+    await C.ctx.close();
+  }
+
+  // ── 시험 투표(운영팀 토큰, 2분과) ──
+  const TO = await login('o');
+  const cr = await rpc('ballot_create_v3', {
+    p_token: TO,
+    p_title: '2분과 의결 neg-시험',
+    p_instructions: null,
+    p_items: [{ ordinal: 1, statement: '2-1-안99 neg 시험 안', scale: 2, required: true }],
+    p_subgroup: '2분과',
+    p_idempotency_key: randomUUID(),
+  });
+  const nb = cr.ok ? { id: cr.data.id, token: cr.data.token ?? null } : null;
+  if (nb) manifest.ballots.push(nb.id);
+  saveManifest();
+  if (nb && !nb.token) nb.token = ((await rpc('ballot_list_v2', { p_token: TO })).data ?? []).find((x) => x.id === nb.id)?.token ?? null;
+  const opened = nb ? await rpc('ballot_set_status_v2', { p_token: TO, p_ballot_id: nb.id, p_status: 'open' }) : { ok: false, message: cr.message };
+  record('NEG-setup', !!nb?.token && opened.ok, `운영팀 토큰으로 2분과 시험 투표 생성·열기 ${opened.ok ? 'OK' : opened.message}`);
+
+  // ── N9 ──
+  if (nb) {
+    const rand = randomUUID().replace(/-/g, '') + randomUUID().replace(/-/g, '');
+    const create = (tok, sub = '2분과') =>
+      rpc('ballot_create_v3', { p_token: tok, p_title: 'N9', p_instructions: null, p_items: [{ ordinal: 1, statement: 'x', scale: 2, required: true }], p_subgroup: sub, p_idempotency_key: randomUUID() });
+    const rows = [];
+    const push = (name, r) => {
+      if (r.ok && r.data?.id) manifest.ballots.push(r.data.id);
+      rows.push({ name, rejected: !r.ok || r.data === null, msg: r.ok ? JSON.stringify(r.data)?.slice(0, 40) : r.message.slice(0, 50) });
+    };
+    push('무작위64hex 생성', await create(rand));
+    push('무작위64hex 마감', await rpc('ballot_set_status_v2', { p_token: rand, p_ballot_id: nb.id, p_status: 'closed' }));
+    push('형식 틀림 생성', await create('not-a-token'));
+    push('빈 토큰 생성', await create(''));
+    const T1 = await login('1');
+    await logout(T1);
+    manifest.tokens['1'].loggedOut = true;
+    push('폐기 토큰 생성', await create(T1, '1분과'));
+    push('폐기 토큰 마감', await rpc('ballot_set_status_v2', { p_token: T1, p_ballot_id: nb.id, p_status: 'closed' }));
+    saveManifest();
+    record('N9', rows.every((x) => x.rejected), `거절 ${rows.filter((x) => x.rejected).length}/${rows.length} · ${rows.filter((x) => !x.rejected).map((x) => x.name).join(',') || '새는 곳 없음'}`);
+  }
+
+  // ── P7 ──
+  {
+    const M1 = await newCtx('negMod1');
+    await M1.page.goto(`${SITE}/mod?code=${seed.teams['1'][1]}`, { waitUntil: 'domcontentloaded' });
+    await M1.page.locator('#mod-tab-progress').waitFor({ timeout: 40000 });
+    const def = await M1.page.locator('[role=tab][aria-selected=true]').first().getAttribute('id');
+    const tabs = [];
+    for (const id of ['progress', 'submission', 'vote', 'timer', 'decision']) {
+      await M1.page.locator(`#mod-tab-${id}`).click();
+      await M1.page.waitForTimeout(800);
+      tabs.push({ id, selected: (await M1.page.locator(`#mod-tab-${id}`).getAttribute('aria-selected')) === 'true' });
+    }
+    const http = {};
+    for (const p of ['/hq', '/v', '/b', '/mod-help', '/mod', '/ko/moderator/insights/division-vote-lab']) http[p] = (await fetch(`${SITE}${p}`, { redirect: 'follow' })).status;
+    const errs = [...pageErrors.negMod1];
+    record('P7', tabs.every((t) => t.selected) && Object.values(http).every((s) => s === 200) && errs.length === 0, `기본 탭 ${def} · 탭 ${tabs.filter((t) => t.selected).length}/${tabs.length} · HTTP ${JSON.stringify(http)} · 오류 ${errs.length}`);
+    await M1.ctx.close();
+  }
+
+  // ── N11 ──
+  {
+    const B1 = await newCtx('negBlockLab', { blockStorage: true });
+    await B1.page.goto(`${SITE}/ko/moderator/insights/division-vote-lab`, { waitUntil: 'domcontentloaded' });
+    const labPanel = await B1.page.locator('[data-testid=division-vote-panel]').waitFor({ timeout: 30000 }).then(() => true).catch(() => false);
+    const labWarn = await B1.page.getByText('저장소를 쓸 수 없어').count();
+    await B1.page.screenshot({ path: join(SHOTS, 'neg-n11-lab.png') });
+    await B1.ctx.close();
+    let bSubmitted = false;
+    let bCount = null;
+    if (nb?.token) {
+      const B2 = await newCtx('negBlockVote', { blockStorage: true, viewport: { width: 390, height: 844 } });
+      const vp = B2.page;
+      await vp.goto(`${SITE}/b?t=${nb.token}`, { waitUntil: 'domcontentloaded' });
+      const g = vp.locator('[role=group][aria-label$="응답"]');
+      if (await g.first().waitFor({ timeout: 30000 }).then(() => true).catch(() => false)) {
+        await g.first().getByRole('button', { name: '찬성', exact: true }).click();
+        await vp.getByRole('button', { name: '제출하기' }).first().click();
+        await vp.getByRole('dialog').getByRole('button', { name: '제출하기' }).click();
+        bSubmitted = await vp.getByText('투표가 제출되었습니다').waitFor({ timeout: 20000 }).then(() => true).catch(() => false);
+      }
+      bCount = (await rpc('ballot_results_v2', { p_ballot_token: nb.token, p_token: TO })).data?.responses ?? null;
+      await vp.screenshot({ path: join(SHOTS, 'neg-n11-b.png') });
+      await B2.ctx.close();
+    }
+    const B3 = await newCtx('negBlockMod', { blockStorage: true });
+    await B3.page.goto(`${SITE}/mod?code=${seed.teams['2'][1]}`, { waitUntil: 'domcontentloaded' });
+    const joined = await B3.page.locator('#mod-tab-decision').waitFor({ timeout: 40000 }).then(() => true).catch(() => false);
+    let modPanel = false;
+    if (joined) {
+      await B3.page.locator('#mod-tab-decision').click();
+      modPanel = await B3.page.locator('[data-testid=division-vote-panel]').waitFor({ timeout: 20000 }).then(() => true).catch(() => false);
+    }
+    await B3.page.screenshot({ path: join(SHOTS, 'neg-n11-mod.png') });
+    await B3.ctx.close();
+    const errs = [...pageErrors.negBlockLab, ...(pageErrors.negBlockVote ?? []), ...pageErrors.negBlockMod];
+    record('N11', labPanel && labWarn > 0 && (!nb || (bSubmitted && bCount === 1)) && joined && modPanel && errs.length === 0, `미리보기 ${labPanel}/경고 ${labWarn} · /b 제출 ${bSubmitted}(서버 ${bCount}) · /mod 입장 ${joined}/의결 탭 ${modPanel} · 오류 ${errs.length}`);
+  }
+
+  // ── N12 ──
+  {
+    const html = await (await fetch(`${SITE}/mod/`)).text();
+    for (const m of html.matchAll(/\/_astro\/[A-Za-z0-9_.-]+\.js/g)) {
+      const u = `${SITE}${m[0]}`;
+      if (!bundles.has(u)) bundles.set(u, await (await fetch(u)).text());
+    }
+    const all = [...bundles.values()];
+    const hits = SAMPLE_IDX.filter((idx) => {
+      const probe = allRecTexts[idx % allRecTexts.length].replace(/\s+/g, ' ').trim().slice(0, 20);
+      return all.some((b) => b.includes(probe));
+    });
+    const control = all.some((b) => b.includes('10/17 분과 의결'));
+    record('N12', hits.length === 0 && control, `번들 ${all.length}개 · 표본 ${SAMPLE_IDX.length} 적중 ${hits.length} · 대조군 ${control}`);
+  }
+
+  // 정리 — 시험 투표 보관 · 토큰 로그아웃
+  if (nb) {
+    const arch = await rpc('ballot_set_status_v2', { p_token: TO, p_ballot_id: nb.id, p_status: 'archived' });
+    if (!arch.ok) console.warn(`neg 정리 실패 — ${arch.message}`);
+  }
+  await logout(TO);
+}
+
 // ── 실행 + 판정 ──────────────────────────────────────────────
 try {
-  if (PHASE === 'expired') await phaseExpired();
+  if (['main', 'p5', 'batch', 'lab'].includes(PHASE)) {
+    throw new Error(`--phase=${PHASE} 는 1단계 화면(「투표 열기」 탭·묶음 버튼) 기준이라 5f9920b 에서 돌지 않습니다. --phase=neg 또는 verify-1017-e2e-v2.mjs 를 쓰십시오.`);
+  }
+  if (PHASE === 'neg') await phaseNeg();
+  else if (PHASE === 'expired') await phaseExpired();
   else if (PHASE === 'p5') await phaseP5();
   else if (PHASE === 'batch') await phaseBatch();
   else if (PHASE === 'lab') await phaseLab();
