@@ -7,6 +7,8 @@
  * 문장·수는 전부 지어낸 것이다.
  */
 import type { BallotCreateInput, BallotListRow, BallotResults, BallotStatus } from '../../lib/deliberation';
+import type { DivisionPrepGetResult, DivisionPrepRow, DivisionPrepSaveResult } from '../../lib/division-prep';
+import type { PrepApi } from './use-division-prep';
 import type { DivisionBallotApi } from './DivisionVotePanel';
 import { DIVISION_VOTE_FIXTURE } from './division-vote-fixture';
 import { applyBallotResults, beginVote, confirmHandCount, markBallotCreated, markBallotOpened, markMinority, setHandCount } from './division-vote-flow';
@@ -207,4 +209,69 @@ export function labOpsStates(nowMs: number): Record<number, PrepState> {
   if (m.ok) s3 = m.state;
 
   return { 1: s1, 2: s2, 3: s3 };
+}
+
+// ── 두 화면 충돌 시연(?pair=1) — 메모리 안 가짜 공유 저장 ───────────────
+
+/**
+ * division_prep_get_v1 / division_prep_save_v1 를 흉내 내는 메모리 서버(10/14 operator-4 시연·시험용).
+ * 판번호가 어긋나면 서버 최신 줄을 돌려준다(실제 RPC 와 같은 모양). 저장 내용은 JSON 으로 복사해 둔다.
+ */
+export function createFakePrepServer(seed: Record<number, PrepState>, now: () => number = () => Date.now()) {
+  type Row = { version: number; state: unknown; updated_at: string | null; updated_by: string | null };
+  const rows = new Map<string, Row>();
+  const iso = () => new Date(now()).toISOString();
+  for (const [d, s] of Object.entries(seed)) {
+    rows.set(`${d}분과`, { version: 1, state: JSON.parse(JSON.stringify(s)), updated_at: iso(), updated_by: '시연 준비' });
+  }
+  const rowOf = (subgroup: string): DivisionPrepRow => {
+    const r = rows.get(subgroup);
+    return { subgroup, version: r?.version ?? 0, state: r ? JSON.parse(JSON.stringify(r.state)) : null, updated_at: r?.updated_at ?? null, updated_by: r?.updated_by ?? null };
+  };
+  /** 한 분과 화면이 쓰는 PrepApi. */
+  const apiFor = (subgroup: string): PrepApi => ({
+    async get(): Promise<DivisionPrepGetResult> {
+      return { scope: 'division', team_subgroup: subgroup, server_now: iso(), rows: [rowOf(subgroup)] };
+    },
+    async save(sg, expectedVersion, state, label): Promise<DivisionPrepSaveResult> {
+      if (sg !== subgroup) throw new Error('division mismatch');
+      const cur = rows.get(sg);
+      const v = cur?.version ?? 0;
+      if (expectedVersion !== v) return { ok: false, conflict: true, current: rowOf(sg) };
+      const at = iso();
+      rows.set(sg, { version: v + 1, state: JSON.parse(JSON.stringify(state)), updated_at: at, updated_by: label });
+      return { ok: true, version: v + 1, updated_at: at };
+    },
+  });
+  return { apiFor, peek: (subgroup: string) => rowOf(subgroup) };
+}
+
+/** ?pair=1 시작 상태 — 2분과, 2-1-안1 마감(거수 확인 전), 2-1-안2·2-4-안1 투표 전. */
+export function labPairState(nowMs: number): PrepState {
+  const [d2] = DIVISION_VOTE_FIXTURE;
+  let s = initPrepState(d2);
+  s = { ...s, attendance: { enrolled: 60, present: 45 } };
+  s = mk(s, ['2-1-1'], '다회용기 확대');
+  s = mk(s, ['2-1-2'], '회수 체계');
+  s = mk(s, ['2-4-1'], '순환센터');
+  const b = beginVote(s, ['2-1-안1'], 'pair-r1');
+  if (!b.ok) throw new Error(b.error);
+  let x = markBallotOpened(markBallotCreated(b.state, 'pair-r1', { id: 'lab-pair-1', token: 'lab-pair-token-1' }), 'pair-r1', new Date(nowMs - 120_000).toISOString());
+  const rec = x.ballots['pair-r1'];
+  const r = applyBallotResults(
+    x,
+    'pair-r1',
+    {
+      id: 'lab-pair-1',
+      title: rec.title,
+      status: 'closed',
+      subgroup: rec.subgroup,
+      responses: 36,
+      items: [{ id: 'p1', ordinal: 1, statement: rec.statements[0], scale: 2, n: 36, avg: null, dist: { '1': 9, '2': 27 } }],
+    },
+    new Date(nowMs - 60_000).toISOString(),
+  );
+  if (!r.ok) throw new Error(r.error);
+  x = r.state;
+  return x;
 }

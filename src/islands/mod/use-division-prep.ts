@@ -394,8 +394,8 @@ export function useDivisionPrep({
           // 충돌 — 서버 최신에 이 기기의 다른 고침을 먼저 다시 적용하고, 다음 바퀴에서 fn 을 다시 적용한다.
           const r = replayAfterConflict(division, after.slot);
           setSlot(division, () => r.slot);
+          // 이 사실(fn)은 다음 바퀴에서 다시 적용되므로 잃는 것이 없다 — 다른 고침을 다시 적용했을 때만 알린다.
           if (r.replayed > 0) setNotice(replayNotice(divisionLabel(division), r.replayed));
-          else if (after.notice) setNotice(after.notice);
         }
         // 세 번 다 충돌 — 사실은 이 기기에 적고 보통 저장 줄로 넘긴다(고침 목록에 넣어 다음 충돌에도 다시 적용).
         const last = (slotsRef.current as Record<number, PrepSlot>)[division];

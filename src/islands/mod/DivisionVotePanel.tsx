@@ -198,6 +198,8 @@ export default function DivisionVotePanel({
   ballotApi,
   opsPreview,
   initialStates,
+  labPrepApi,
+  labStorageNs,
 }: {
   access: WorkshopAuthorization | null;
   fixtureSource?: RecsDivision[];
@@ -211,22 +213,28 @@ export default function DivisionVotePanel({
   opsPreview?: boolean;
   /** 미리보기 전용 — 처음 상태(저장소보다 앞선다). */
   initialStates?: Record<number, PrepState>;
+  /** 미리보기 전용 — 메모리 안 가짜 공유 저장(두 화면 충돌 시연, ?pair=1). */
+  labPrepApi?: PrepApi | null;
+  /** 미리보기 전용 — 이 기기 저장 키 접두사(두 화면이 한 페이지에 있을 때 서로 섞이지 않게). */
+  labStorageNs?: string;
 }) {
   const preview = !!fixtureSource;
   const lockedDivision = lockedDivisionOf(subgroup);
   const isOps = preview ? !!opsPreview : lockedDivision === null;
-  const ns = preview ? (isOps ? 'lab-ops:' : 'lab:') : '';
+  const ns = preview ? labStorageNs ?? (isOps ? 'lab-ops:' : 'lab:') : '';
   const token = access?.accessToken ?? null;
 
   const prepApi = useMemo<PrepApi | null>(
     () =>
-      token && !preview
-        ? {
-            get: () => divisionPrepGet(token),
-            save: (sg, version, state, label) => divisionPrepSave(token, sg, version, state, label),
-          }
-        : null,
-    [token, preview],
+      preview
+        ? labPrepApi ?? null
+        : token
+          ? {
+              get: () => divisionPrepGet(token),
+              save: (sg, version, state, label) => divisionPrepSave(token, sg, version, state, label),
+            }
+          : null,
+    [token, preview, labPrepApi],
   );
   const vApi = useMemo<DivisionBallotApi | null>(
     () => ballotApi ?? (token && !preview ? realBallotApi({ accessToken: token }) : null),
@@ -1177,7 +1185,11 @@ function VoteBoard({
   // 10/14 operator-6 — 새로고침 뒤 들어왔을 때 열린 투표의 QR 을 바로 띄운다(한 번).
   useEffect(() => {
     if (!entryQr) return;
-    if (state.ballots[entryQr]?.stage === 'open') setQrKey(entryQr);
+    if (state.ballots[entryQr]?.stage === 'open') {
+      // 이 PC 가 띄우던 투표로 본다 — 「다른 화면에서 연 투표」 안내를 띄우지 않게.
+      openedHere.current.add(entryQr);
+      setQrKey(entryQr);
+    }
     onEntryQrUsed();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [entryQr]);

@@ -261,7 +261,7 @@ export type BeginVoteResult = { ok: true; state: PrepState; requestId: string; r
  */
 /** 지금 열려 있거나 여는 중인 투표(무효·마감 제외). 화면 맨 위 띠와 시작 막기에 쓴다. */
 export function liveBallots(state: Pick<PrepState, 'ballots'>): BallotRecord[] {
-  return Object.values(state.ballots).filter((b) => b.stage === 'open' || b.stage === 'creating' || b.stage === 'draft');
+  return Object.values(state.ballots).filter((b) => !b.voidedAt && (b.stage === 'open' || b.stage === 'creating' || b.stage === 'draft'));
 }
 
 /** 투표 기록의 화면 이름 — 「2-1-안2」 · 「2-1-안2 2차」 · 묶음은 「2-1-안1 외 2건」. */
@@ -517,7 +517,17 @@ export function voidBallot(state: PrepState, requestId: string, nowIso: string):
     ok: true,
     state: {
       ...state,
-      ballots: { ...state.ballots, [requestId]: { ...record, stage: 'closed', closedAt: record.closedAt ?? nowIso } },
+      // 번호를 받은 투표만 「마감」으로 — 만들기 전(creating)에 무효로 하면 단계는 두고 voidedAt 으로 끝을 표시한다
+      // (readBallot 은 번호 없는 closed 를 거절한다).
+      ballots: {
+        ...state.ballots,
+        [requestId]: {
+          ...record,
+          stage: record.ballotId && record.token ? 'closed' : record.stage,
+          closedAt: record.ballotId && record.token ? record.closedAt ?? nowIso : record.closedAt,
+          voidedAt: nowIso,
+        },
+      },
       motions: state.motions.map((m) => {
         if (!ids.has(m.id)) return m;
         const rounds = m.rounds.map((r) => (r.requestId === requestId && !r.voidedAt ? { ...r, voidedAt: nowIso } : r));

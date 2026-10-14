@@ -42,6 +42,7 @@ import {
 } from './division-vote-flow';
 import { DIVISION_VOTE_FIXTURE } from './division-vote-fixture';
 import { replayEdits, replayNotice } from './division-prep-sync';
+import { createFakePrepServer, labPairState } from './division-vote-lab-fake';
 import type { BallotResults } from '../../lib/deliberation';
 
 /**
@@ -217,6 +218,28 @@ describe('operator-2·ops-1 — 잘못 연 투표 무효', () => {
     const r = await runVoteVoid(api('closed', true), commit, () => state, 'a', () => LATER);
     expect(r.ok).toBe(true);
     expect(motionPhase(state, motion(state, '2-1-안1'))).toBe('ready');
+  });
+
+  it('★ 만들기 전(creating, 번호 없음)에 멈춘 투표를 무효로 해도 준비판이 읽힌다 · 다음 안을 연다', () => {
+    const started = beginVote(base(), ['2-1-안1'], 'stuck', NOW);
+    if (!started.ok) throw new Error();
+    expect(liveBallots(started.state)).toHaveLength(1);
+    const v = voidBallot(started.state, 'stuck', LATER);
+    if (!v.ok) throw new Error(v.error);
+    expect(v.state.ballots.stuck).toMatchObject({ stage: 'creating', ballotId: null, voidedAt: LATER });
+    const back = migratePrep(JSON.parse(serializePrep(v.state)));
+    expect(back).not.toBeNull();
+    expect(liveBallots(back!)).toEqual([]);
+    expect(motionPhase(back!, motion(back!, '2-1-안1'))).toBe('ready');
+    expect(beginVote(back!, ['2-1-안2'], 'next').ok).toBe(true);
+    // 열기 전(draft, 번호 있음)은 마감으로
+    const b = beginVote(base(), ['2-1-안1'], 'd', NOW);
+    if (!b.ok) throw new Error();
+    const draft = markBallotCreated(b.state, 'd', { id: 'BD', token: 'TD' });
+    const vd = voidBallot(draft, 'd', LATER);
+    if (!vd.ok) throw new Error();
+    expect(vd.state.ballots.d.stage).toBe('closed');
+    expect(migratePrep(JSON.parse(serializePrep(vd.state)))).not.toBeNull();
   });
 
   it('무효 차수는 옛 화면(칸 모름)에서도 읽힌다 — 새 열거값이 아니라 선택 칸', () => {
@@ -412,5 +435,22 @@ describe('operator-4 — 충돌해도 이 기기 고침을 서버 최신 위에 
     ]);
     expect(motion(out, '2-1-안1').otherOpinion).toBe('ok');
     expect(replayNotice('2분과', 3)?.text).toContain('2분과: 다른 화면이 먼저 저장했습니다. 이 화면에서 고친 3건');
+  });
+});
+
+describe('미리보기 가짜 공유 저장(?pair=1) — 실제 RPC 와 같은 충돌 모양', () => {
+  it('판번호가 맞으면 저장·판번호 +1, 어긋나면 서버 최신 줄을 돌려준다', async () => {
+    const server = createFakePrepServer({ 2: labPairState(Date.parse(NOW)) }, () => Date.parse(NOW));
+    const api = server.apiFor('2분과');
+    const got = await api.get();
+    expect(got.rows[0].version).toBe(1);
+    const st = migratePrep(got.rows[0].state)!;
+    expect(handPending(currentRound(motion(st, '2-1-안1')))).toBe(true);
+    const ok = await api.save('2분과', 1, st, 'PC-A');
+    expect(ok).toMatchObject({ ok: true, version: 2 });
+    const stale = await api.save('2분과', 1, st, 'PC-B');
+    expect(stale.ok).toBe(false);
+    if (!stale.ok) expect(stale.current).toMatchObject({ version: 2, updated_by: 'PC-A' });
+    await expect(api.save('1분과', 2, st, 'x')).rejects.toThrow('division mismatch');
   });
 });

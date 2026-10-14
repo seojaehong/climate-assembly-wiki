@@ -179,6 +179,11 @@ export type BallotRecord = {
   closedAt: string | null;
   /** [투표 시작]을 누른 시각(서버 시각 보정). 현황판이 「시작 멈춤」 경과를 잰다. 옛 저장에는 없다. */
   createdAt?: string;
+  /**
+   * 잘못 연 투표로 무효 처리한 시각(10/14). 만들기 전(creating, 번호 없음)에 무효로 한 투표는 단계를 그대로 두고
+   * 이 칸으로만 끝났음을 표시한다 — 「closed」인데 번호가 없으면 준비판을 읽을 수 없게 된다.
+   */
+  voidedAt?: string;
 };
 
 export type Attendance = { enrolled: number | null; present: number | null };
@@ -682,8 +687,10 @@ function readBallot(key: string, x: unknown): BallotRecord | null {
   // 서버가 투표를 돌려준 뒤 단계(draft 이후)에는 id·token 이 꼭 있어야 한다.
   if (x.stage !== 'creating' && (!ballotId || !token)) return null;
   if (x.createdAt !== undefined && !isStr(x.createdAt)) return null;
+  if (x.voidedAt !== undefined && !isStr(x.voidedAt)) return null;
   return {
     ...(x.createdAt !== undefined ? { createdAt: x.createdAt as string } : {}),
+    ...(x.voidedAt !== undefined ? { voidedAt: x.voidedAt as string } : {}),
     requestId: key,
     title: x.title,
     instructions,
