@@ -15,6 +15,7 @@
  *
  * 사용
  *   SITE=... SEED_FILE=... RECS_FILE=... OUT_DIR=... node scripts/verify-1017-e2e.mjs     # neg(N1·N9·P7·N11·N12)
+ *     EXPECT_COMMIT=<빌드한 커밋 40자>(로컬 preview 면 dist/deployment-revision.json 의 값) · GROUPS_FILE=<similar_groups_1017.json>(N12 묶음 이름 대조)
  *   (옛) ... node scripts/verify-1017-e2e.mjs --phase=main                                 # 본 시험 — 5f9920b 에서 멈춤
  *   ... node scripts/verify-1017-e2e.mjs --phase=expired                                   # 만료 토큰(SQL 로 만료시킨 뒤)
  *   PLAYWRIGHT_MODULE=file:///.../playwright/index.mjs 로 Playwright 위치를 준다.
@@ -2124,15 +2125,18 @@ async function phaseNeg() {
     const ids = await pg.locator('[data-testid=motion-card]').evaluateAll((els) => els.map((e) => e.getAttribute('data-motion-id')));
     const firstTopic = d2.topics.map((t) => t.no).find((no) => no === topicOf(a) || no === topicOf(b));
     const made = ids.find((id) => id.startsWith(`${firstTopic}-안`) && (ids.length > before));
-    const lockedA = await pg.locator(`li[data-card-no="${a}"] input[type=checkbox]`).isDisabled();
+    // 10/14 밤(167cb29) — 안에 들어간 카드는 잠그지 않는다(유사 묶음이 카드를 함께 쓴다). 「→ ○ 에 들어감」 표시만.
+    const freeA = !(await pg.locator(`li[data-card-no="${a}"] input[type=checkbox]`).isDisabled());
+    const inA = (await pg.locator(`li[data-card-no="${a}"]`).getAttribute('data-in-motion')) ?? '';
+    const badgeA = (await pg.locator(`li[data-card-no="${a}"] [data-testid=card-in-motions]`).count()) === 1;
     // 원상 — 지우기(확인 대화상자는 newCtx 가 수락)
     if (made) await pg.locator(`[data-testid=motion-card][data-motion-id="${made}"]`).getByRole('button', { name: '안 지우기' }).click();
     await pg.waitForTimeout(500);
     const after = await pg.locator('[data-testid=motion-card]').count();
     record(
       'N1',
-      warn && blockAlert === 0 && enabled && !!made && lockedA && after === before,
-      `${a}+${b} 섞기 → 경고 ${warn} · 차단 문구 ${blockAlert} · 버튼 활성 ${enabled} · 만든 안 ${made}(첫 주제 ${firstTopic}) · 카드 잠금 ${lockedA} · 지운 뒤 안 수 ${before}→${after}`,
+      warn && blockAlert === 0 && enabled && !!made && freeA && inA === made && badgeA && after === before,
+      `${a}+${b} 섞기 → 경고 ${warn} · 차단 문구 ${blockAlert} · 버튼 활성 ${enabled} · 만든 안 ${made}(첫 주제 ${firstTopic}) · 카드 잠금 없음 ${freeA}(들어간 안 ${inA}, 표시 ${badgeA}) · 지운 뒤 안 수 ${before}→${after}`,
     );
     S.negMod2Errors = [...pageErrors.negMod2];
     await C.ctx.close();
@@ -2243,13 +2247,30 @@ async function phaseNeg() {
       const u = `${SITE}${m[0]}`;
       if (!bundles.has(u)) bundles.set(u, await (await fetch(u)).text());
     }
+    // 로컬 빌드면 dist/_astro 전부를 본다(동적으로 불리는 조각까지). DIST_DIR=<.../dist>
+    if (process.env.DIST_DIR && existsSync(join(process.env.DIST_DIR, '_astro'))) {
+      const { readdirSync } = await import('node:fs');
+      for (const f of readdirSync(join(process.env.DIST_DIR, '_astro')).filter((x) => x.endsWith('.js'))) {
+        const key = `dist:${f}`;
+        if (!bundles.has(key)) bundles.set(key, readFileSync(join(process.env.DIST_DIR, '_astro', f), 'utf8'));
+      }
+    }
     const all = [...bundles.values()];
     const hits = SAMPLE_IDX.filter((idx) => {
       const probe = allRecTexts[idx % allRecTexts.length].replace(/\s+/g, ' ').trim().slice(0, 20);
       return all.some((b) => b.includes(probe));
     });
     const control = all.some((b) => b.includes('10/17 분과 의결'));
-    record('N12', hits.length === 0 && control, `번들 ${all.length}개 · 표본 ${SAMPLE_IDX.length} 적중 ${hits.length} · 대조군 ${control}`);
+    // 유사 묶음 이름(공통 취지)도 공표 전 — 파일 가져오기로만 들어와야 한다. GROUPS_FILE 이 있으면 이름 전부를 번들과 대조(이름은 찍지 않는다).
+    let groupProbe = 'GROUPS_FILE 없음(건너뜀)';
+    let groupHits = 0;
+    if (process.env.GROUPS_FILE && existsSync(process.env.GROUPS_FILE)) {
+      const gf = JSON.parse(readFileSync(process.env.GROUPS_FILE, 'utf8'));
+      const names = (Array.isArray(gf) ? gf : gf.groups ?? []).map((g) => String(g.name ?? '').replace(/\s+/g, ' ').trim()).filter((n) => [...n].length >= 8);
+      groupHits = names.filter((n) => all.some((b) => b.includes([...n].slice(0, 16).join('')))).length;
+      groupProbe = `묶음 이름 ${names.length} 적중 ${groupHits}`;
+    }
+    record('N12', hits.length === 0 && control && groupHits === 0, `번들 ${all.length}개 · 권고 표본 ${SAMPLE_IDX.length} 적중 ${hits.length} · ${groupProbe} · 대조군 ${control}`);
   }
 
   // 정리 — 시험 투표 보관 · 토큰 로그아웃
