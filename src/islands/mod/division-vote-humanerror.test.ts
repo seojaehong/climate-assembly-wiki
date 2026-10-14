@@ -358,9 +358,10 @@ describe('moderator-2 — 거수 확인 전에는 판정이 잠정이다', () =>
     expect(resultCsvRows(s)[0][14]).toBe('가결');
   });
 
-  it('[거수 없음] = 거수 0·0 으로 확인', () => {
+  it('[거수 없음] = 거수 0·0 을 확인할 뿐 · 거수가 들어 있으면 지우지 않는다(10/14 재검)', () => {
     let s = close(open(base(), '2-1-안1', 'a'), 'a', [[20, 20]]);
-    s = setHandCount(s, '2-1-안1', 1, { handYes: 5 });
+    const withHand = setHandCount(s, '2-1-안1', 1, { handYes: 5 });
+    expect(confirmHandCount(withHand, '2-1-안1', 1, 'none')).toBe(withHand);
     s = confirmHandCount(s, '2-1-안1', 1, 'none');
     expect(currentRound(motion(s, '2-1-안1'))).toMatchObject({ handYes: 0, handNo: 0, handConfirmed: true, verdict: 'failed' });
     expect(canRevote(s, motion(s, '2-1-안1'))).toBe(true);

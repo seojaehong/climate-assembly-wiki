@@ -210,14 +210,15 @@ export function setHandCount(
 
 /**
  * [거수 입력 완료]·[거수 없음](10/14). 확인 전에는 판정이 잠정이고 2차·소수 의견 버튼이 숨는다.
- * 'none' 은 거수 칸을 0 으로 비우고 확인한다.
+ * 'none' 은 「거수가 0 표였음」을 확인할 뿐 거수 칸을 비우지 않는다 — 거수가 이미 들어 있으면(다른 화면이 넣었고
+ * 저장 충돌 뒤 다시 적용되는 경우 포함) 아무것도 바꾸지 않는다. 그러면 화면에 실제 거수가 다시 보인다.
  */
 export function confirmHandCount(state: PrepState, motionId: string, roundNo: number, mode: 'entered' | 'none'): PrepState {
   if (!roundCountsGuard(state, motionId, roundNo)) return state;
   return mapRound(state, motionId, roundNo, (r) => {
     if (roundTotals(r) === null) return r;
-    if (mode === 'entered') return r.handConfirmed === false ? { ...r, handConfirmed: true } : r;
-    return withVerdict({ ...r, handYes: 0, handNo: 0, handConfirmed: true });
+    if (mode === 'none' && (r.handYes !== 0 || r.handNo !== 0)) return r;
+    return r.handConfirmed === false ? { ...r, handConfirmed: true } : r;
   });
 }
 
@@ -261,7 +262,16 @@ export type BeginVoteResult = { ok: true; state: PrepState; requestId: string; r
  */
 /** 지금 열려 있거나 여는 중인 투표(무효·마감 제외). 화면 맨 위 띠와 시작 막기에 쓴다. */
 export function liveBallots(state: Pick<PrepState, 'ballots'>): BallotRecord[] {
-  return Object.values(state.ballots).filter((b) => !b.voidedAt && (b.stage === 'open' || b.stage === 'creating' || b.stage === 'draft'));
+  // 무효로 한 투표라도 「투표 중」으로 남아 있으면(옛 화면이 무효와 열기가 엇갈려 적은 경우) 서버가 표를 받고 있으므로 센다 —
+  // 화면 띠에 [서버 투표 닫기]가 뜬다(strayOpenBallot).
+  return Object.values(state.ballots).filter(
+    (b) => b.stage === 'open' || (!b.voidedAt && (b.stage === 'creating' || b.stage === 'draft')),
+  );
+}
+
+/** 무효로 했는데 서버에서 아직 열려 있는 투표(옛 기록). 안 단위가 없으므로 띠에서 따로 닫는다. */
+export function strayOpenBallot(b: Pick<BallotRecord, 'stage' | 'voidedAt'>): boolean {
+  return b.stage === 'open' && !!b.voidedAt;
 }
 
 /** 투표 기록의 화면 이름 — 「2-1-안2」 · 「2-1-안2 2차」 · 묶음은 「2-1-안1 외 2건」. */
@@ -388,13 +398,16 @@ function mapBallot(state: PrepState, requestId: string, fn: (b: BallotRecord) =>
 export function markBallotCreated(state: PrepState, requestId: string, res: Pick<BallotCreateResult, 'id' | 'token'>): PrepState {
   return mapBallot(state, requestId, (b) => {
     if (b.ballotId && b.token) return b;
+    // 만드는 사이에 무효로 했으면(10/14) 받은 번호만 남기고 「마감」으로 둔다 — 열지 않는다.
+    // 번호를 남겨야 CSV 투표ID 로 서버에 실제 만들어진 투표를 찾을 수 있다.
+    if (b.voidedAt) return { ...b, ballotId: res.id, token: res.token, stage: 'closed', closedAt: b.closedAt ?? b.voidedAt };
     return { ...b, ballotId: res.id, token: res.token, stage: b.stage === 'creating' ? 'draft' : b.stage };
   });
 }
 
 export function markBallotOpened(state: PrepState, requestId: string, nowIso: string): PrepState {
   return mapBallot(state, requestId, (b) =>
-    b.stage === 'creating' || b.stage === 'draft' ? { ...b, stage: 'open', openedAt: b.openedAt ?? nowIso } : b,
+    !b.voidedAt && (b.stage === 'creating' || b.stage === 'draft') ? { ...b, stage: 'open', openedAt: b.openedAt ?? nowIso } : b,
   );
 }
 
@@ -654,18 +667,40 @@ async function setStatusSafely(api: VoteApi, ballotId: string, status: 'open' | 
 export async function runVoteStart(api: VoteApi, commit: CommitFact, getState: () => PrepState, requestId: string, now: () => string): Promise<BallotRecord> {
   let record = getState().ballots[requestId];
   if (!record) throw new Error('투표 기록이 없습니다.');
+  if (record.voidedAt) return record;
   if (record.stage === 'creating' || !record.ballotId || !record.token) {
     const res = await api.create(createInputOf(record), requestId);
     if (!res?.id || !res?.token) throw new Error('투표를 만들었지만 번호를 받지 못했습니다.');
     const saved = await commit((s) => markBallotCreated(s, requestId, res));
     record = saved.ballots[requestId] ?? { ...record, ballotId: res.id, token: res.token, stage: 'draft' };
+    // 만드는 사이에 무효로 했다(10/14) — 열지 않는다. 서버에는 열기 전 투표로 남으니 닫아 두기만 한다(실패해도 표를 받지 않는다).
+    if (record.voidedAt) {
+      await api.setStatus(res.id, 'closed').catch(() => undefined);
+      return record;
+    }
   }
+  // 열기 직전에 최신 기록을 다시 본다 — 만든 뒤·열기 전에 다른 화면(운영팀)이 무효로 했을 수 있다.
+  const fresh = getState().ballots[requestId];
+  if (fresh?.voidedAt) return fresh;
   if (record.stage === 'draft') {
     await setStatusSafely(api, record.ballotId as string, 'open');
     const saved = await commit((s) => markBallotOpened(s, requestId, now()));
     record = saved.ballots[requestId] ?? { ...record, stage: 'open' };
+    // 여는 사이에 무효로 했다 — 무효 쪽이 서버를 닫았어도 이 열기가 뒤에 닿았을 수 있으니 한 번 더 닫는다.
+    if (record.voidedAt && record.ballotId) await setStatusSafely(api, record.ballotId, 'closed');
   }
   return record;
+}
+
+/**
+ * 무효로 했는데 서버에서 아직 열려 있는 투표(strayOpenBallot)를 닫는다 — 띠의 [서버 투표 닫기].
+ * 결과는 읽지 않는다(무효 투표라 판정·세리머니에 쓰지 않는다).
+ */
+export async function runStrayClose(api: VoteApi, commit: CommitFact, getState: () => PrepState, requestId: string, now: () => string): Promise<void> {
+  const record = getState().ballots[requestId];
+  if (!record || !record.ballotId || record.stage === 'closed') return;
+  await setStatusSafely(api, record.ballotId, 'closed');
+  await commit((s) => markBallotClosed(s, requestId, now()));
 }
 
 export type CloseOutcome = { ok: true; state: PrepState } | { ok: false; error: string };
@@ -959,6 +994,15 @@ export function boardSummary(division: number, state: PrepState | null): BoardSu
 /** 현황판 경과 경고 — 시작 멈춤 30초, 투표 중 5분을 넘으면 경고(10/14). 시각을 모르면 경고하지 않는다. */
 export const STUCK_START_MS = 30_000;
 export const LONG_OPEN_MS = 5 * 60_000;
+/**
+ * 화면 띠의 「여는 중」이 멈춘 것인가(10/14 재검) — 이 화면이 여는 중이면 아니다. 누른 지 30초가 지나야 멈춤으로 본다.
+ * 그 전에는 「여는 중…」으로만 보이고 무효를 권하지 않는다. 누른 시각이 없는 옛 기록은 멈춘 것으로 본다.
+ */
+export function startStuck(b: Pick<BallotRecord, 'stage' | 'createdAt'>, busyHere: boolean, nowMs: number): boolean {
+  if (b.stage === 'open' || b.stage === 'closed' || busyHere) return false;
+  return b.createdAt ? overdue(b.createdAt, nowMs, STUCK_START_MS) : true;
+}
+
 export function overdue(since: string | null, nowMs: number, limitMs: number): boolean {
   if (!since) return false;
   const t = Date.parse(since);

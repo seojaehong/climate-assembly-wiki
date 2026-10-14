@@ -1046,6 +1046,20 @@ function HomeScreen({
     return () => cancelAnimationFrame(frame);
   }, [pendingTopicJump, sessionState.topics, tab]);
 
+  // 10/14 — 위 띠(연결 상태·마감 배너)의 높이를 재 CSS 변수로 내려 준다. 의결 탭의 띠(분과·알림·지금 투표 중)는
+  // 그 아래에 붙어 연결 상태를 가리지 않는다(DivisionVotePanel 「division-sticky」).
+  const stickyRef = useRef<HTMLDivElement | null>(null);
+  const [stickyH, setStickyH] = useState(0);
+  useEffect(() => {
+    const el = stickyRef.current;
+    if (!el || typeof ResizeObserver === 'undefined') return undefined;
+    const measure = () => setStickyH(Math.ceil(el.getBoundingClientRect().height));
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const [title, setTitle] = useState('');
   const [type, setType] = useState<'RADIO' | 'CHECKBOX'>('RADIO');
   const [options, setOptions] = useState<string[]>(['', '']);
@@ -1061,7 +1075,7 @@ function HomeScreen({
   const canOpen = title.trim().length > 0 && trimmed.length >= 2 && !hasDuplicateOptions;
 
   return (
-    <div className="min-h-screen bg-[#F5F8FB]">
+    <div className="min-h-screen bg-[#F5F8FB]" style={{ ['--mod-sticky-h' as string]: `${stickyH}px` }}>
       <TopBar right={<TeamBadge name={teamName} tableNo={tableNo} live />} onExit={onExit} />
 
       {/* 10/17 의결 탭만 넓게 — 오퍼레이터 노트북·운영팀 3열 현황판(다른 탭은 그대로) */}
@@ -1071,7 +1085,7 @@ function HomeScreen({
           (`mod-tabs.ts:24-28`) `timer` 탭 안에 두면 8.29처럼 아무도 보지 않는다(설계 B-D2).
           마감이 안 걸려 있으면 스스로 아무것도 그리지 않는다.
         */}
-        <div className="sticky top-0 z-30 -mx-2 bg-[#F5F8FB]/95 px-2 pt-2 backdrop-blur-sm print:hidden">
+        <div ref={stickyRef} className="sticky top-0 z-30 -mx-2 bg-[#F5F8FB]/95 px-2 pt-2 backdrop-blur-sm print:hidden">
           <WorkshopStatusRail
             session={sessionState}
             work={workSummary}

@@ -14,7 +14,7 @@ import {
   slotSaveFailed,
   slotSaveStarted,
 } from './division-prep-sync';
-import { createMotion, initPrepState, serializePrep, type PrepState } from './division-vote-logic';
+import { PREP_VERSION, createMotion, initPrepState, serializePrep, type PrepState } from './division-vote-logic';
 import { DIVISION_VOTE_FIXTURE } from './division-vote-fixture';
 import type { DivisionPrepRow } from '../../lib/division-prep';
 
@@ -70,7 +70,7 @@ describe('서버 줄 읽기', () => {
   it('옛 v1 모양 서버 줄도 읽는다', () => {
     const v1 = { v: 1, division: 2, source: div2, cards: s0.cards, motions: [] };
     const { slot } = slotFromRow(undefined, row(2, v1), null);
-    expect(slot.state?.v).toBe(2);
+    expect(slot.state?.v).toBe(PREP_VERSION);
     expect(slot.unreadable).toBe(false);
   });
 

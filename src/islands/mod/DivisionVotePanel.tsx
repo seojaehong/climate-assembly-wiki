@@ -56,6 +56,9 @@ import {
   liveRounds,
   lockedDivisionOf,
   motionExcluded,
+  motionRef,
+  onMotion,
+  resolveMotionId,
   parseImport,
   passLineText,
   practiceItems,
@@ -114,6 +117,9 @@ import {
   roundVerdict,
   runVoteClose,
   runVoteStart,
+  runStrayClose,
+  strayOpenBallot,
+  startStuck,
   runVoteVoid,
   titleHead,
   setAttendanceField,
@@ -487,7 +493,9 @@ export default function DivisionVotePanel({
       <div className="space-y-5 p-4 sm:p-6">
         {/* 10/14 — 알림·운영팀 분과 띠는 화면 위에 붙어 있다. 아래 안 블록에서 일하는 중에도 보인다(operator-4·ops-6). */}
         {notice || (state && (isOps || view === 'vote')) ? (
-          <div data-testid="division-sticky" className="sticky top-2 z-30 space-y-2">
+          // /mod 안에서는 콘솔 위 띠(연결 상태·마감 배너, ModConsole 이 높이를 --mod-sticky-h 로 내려 줌) 바로 아래에 붙는다 —
+          // 같은 자리에 붙으면 이 띠가 연결 상태를 덮는다(10/14 재검). 미리보기(랩)에는 그 띠가 없어 0.
+          <div data-testid="division-sticky" className="sticky z-20 space-y-2" style={{ top: 'calc(var(--mod-sticky-h, 0px) + 0.5rem)' }}>
             {isOps && state ? (
               <p
                 data-testid="ops-division-band"
@@ -868,7 +876,8 @@ export function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s
   const [agendaError, setAgendaError] = useState<string | null>(null);
   const agendaNextId = nextMotionId(state, agendaTopic);
   const makeAgenda = () => {
-    const spec = { title: agendaTitle, text: '' };
+    // 열쇠는 누를 때 한 번 — 저장 충돌 뒤 다시 적용돼도 같은 안 하나만 만든다(10/14).
+    const spec = { title: agendaTitle, text: '', key: newRequestId() };
     const r = createAgendaMotion(state, spec);
     if (!r.ok) {
       setAgendaError(r.error);
@@ -903,13 +912,14 @@ export function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s
   };
 
   const make = () => {
-    const r = createMotion(state, { cardNos: selected, title, text });
+    // 열쇠는 누를 때 한 번 — 저장 충돌 뒤 다시 적용돼도 같은 안 하나만 만들고, 뒤이은 고침이 이 안을 찾는다(10/14).
+    const spec = { cardNos: selected, title, text, key: newRequestId() };
+    const r = createMotion(state, spec);
     if (!r.ok) {
       setError(r.error);
       return;
     }
     // 충돌하면 서버 최신 위에 다시 적용하므로(use-division-prep) 만든 상태를 통째로 넣지 않고 그 위에서 다시 만든다.
-    const spec = { cardNos: selected, title, text };
     update((s) => {
       const again = createMotion(s, spec);
       return again.ok ? again.state : s;
@@ -1264,7 +1274,7 @@ export function MotionEditor({ motion, state, update }: { motion: Motion; state:
             type="button"
             className={`${btnGhost} ml-auto`}
             onClick={() => {
-              if (window.confirm(`${motion.id}을 지웁니다. 통합으로 묶인 카드는 유지로 돌아갑니다.`)) update((s) => deleteMotion(s, motion.id));
+              if (window.confirm(`${motion.id}을 지웁니다. 통합으로 묶인 카드는 유지로 돌아갑니다.`)) update(onMotion(motionRef(motion), (s, id) => deleteMotion(s, id)));
             }}
           >
             안 지우기
@@ -1293,7 +1303,7 @@ export function MotionEditor({ motion, state, update }: { motion: Motion; state:
           aria-label={`${motion.id} 제목`}
           placeholder={`${motion.id} 제목 — 합친 문구를 칩니다. 큰 QR 화면과 투표자 휴대폰에 그대로 나옵니다`}
           onChange={(e) => {
-            if (!titleLocked) update((s) => updateMotion(s, motion.id, { title: e.target.value }));
+            if (!titleLocked) update(onMotion(motionRef(motion), (s, id) => updateMotion(s, id, { title: e.target.value })));
           }}
         />
       </div>
@@ -1314,7 +1324,7 @@ export function MotionEditor({ motion, state, update }: { motion: Motion; state:
         value={motion.text}
         aria-label={`${motion.id} 문안`}
         placeholder="안 문안"
-        onChange={(e) => update((s) => updateMotion(s, motion.id, { text: e.target.value }))}
+        onChange={(e) => update(onMotion(motionRef(motion), (s, id) => updateMotion(s, id, { text: e.target.value })))}
       />
       {phase === 'excluded' ? (
         <p className="mt-2 text-[16px] font-bold text-[#4B5563]">원 카드가 모두 시행중-제외라 투표에 올리지 않습니다.</p>
@@ -1442,13 +1452,28 @@ function VoteBoard({
   const start = async (unit: VoteUnit) => {
     if (!api) return;
     if (!lock(unit.key, 'start')) return;
+    // [투표 시작]을 누른 뒤에는 그 안의 단위 키가 「new:…」에서 멱등키로 바뀐다(voteUnits). 멱등키로도 잠가 두어야
+    // 여는 동안 같은 화면의 [잘못 연 투표 무효]·[이어서 하기]가 막힌다(10/14).
+    let heldKey: string | null = null;
+    /** 안내 줄을 붙일 단위 키 — 시작 뒤에는 멱등키가 그 단위의 키다. */
+    let msgKey = unit.key;
     try {
       let requestId: string | null = null;
       let error: string | null = null;
       const fresh = newRequestId();
       const at = nowIso();
+      // 안 번호가 아니라 열쇠로 넘긴다 — 저장 충돌 뒤 다시 적용될 때 번호가 밀렸어도 이 화면이 본 그 안을 연다(10/14).
+      const refs = unit.motionIds.map((id) => {
+        const m = state.motions.find((x) => x.id === id);
+        return m ? motionRef(m) : id;
+      });
       await commit((s) => {
-        const r = beginVote(s, unit.motionIds, fresh, at);
+        const ids = refs.map((ref) => resolveMotionId(s, ref));
+        if (ids.some((id) => id === null)) {
+          error = '안이 바뀌었습니다. 화면을 확인하고 다시 누르십시오.';
+          return s;
+        }
+        const r = beginVote(s, ids as string[], fresh, at);
         if (!r.ok) {
           error = r.error;
           return s;
@@ -1461,15 +1486,39 @@ function VoteBoard({
         return;
       }
       const id: string = requestId;
+      msgKey = id;
+      if (id !== unit.key && lock(id, 'start')) heldKey = id;
       openedHere.current.add(id);
-      await runVoteStart(api, commit, getState, id, nowIso);
+      const record = await runVoteStart(api, commit, getState, id, nowIso);
+      if (record.voidedAt || record.stage !== 'open') {
+        // 여는 사이에 무효로 했다(이 화면이든 운영팀이든) — QR 을 띄우지 않는다.
+        setMsg({ key: msgKey, tone: 'ok', text: '여는 사이에 무효로 한 투표라 열지 않았습니다.' });
+        return;
+      }
       setMsg(null);
       setQrKey(id);
     } catch (e) {
       console.error('[division vote] start failed', e);
-      setMsg({ key: unit.key, tone: 'error', text: '투표를 여는 중에 끊겼습니다. [투표 시작]을 다시 누르면 같은 투표를 이어서 엽니다.' });
+      setMsg({ key: msgKey, tone: 'error', text: '투표를 여는 중에 끊겼습니다. [투표 시작]을 다시 누르면 같은 투표를 이어서 엽니다.' });
     } finally {
+      if (heldKey) unlock(heldKey);
       unlock(unit.key);
+    }
+  };
+
+  /** 무효로 했는데 서버에서 아직 열려 있는 투표 닫기(옛 기록 — strayOpenBallot). */
+  const closeStray = async (requestId: string) => {
+    if (!api) return;
+    const key = `stray:${requestId}`;
+    if (!lock(key, 'close')) return;
+    try {
+      await runStrayClose(api, commit, getState, requestId, nowIso);
+      if (qrKey === requestId) setQrKey(null);
+    } catch (e) {
+      console.error('[division vote] stray close failed', e);
+      setMsg({ key, tone: 'error', text: '서버 투표를 닫지 못했습니다. 다시 누르거나 운영팀에 알리십시오.' });
+    } finally {
+      unlock(key);
     }
   };
 
@@ -1520,6 +1569,22 @@ function VoteBoard({
     live.length > 0 ? (
       <div data-testid="live-vote-band" className="space-y-2">
         {live.map((b) => {
+          if (strayOpenBallot(b)) {
+            const strayKey = `stray:${b.requestId}`;
+            return (
+              <div key={b.requestId} data-testid="band-stray" data-band-request={b.requestId} className="rounded-2xl border-2 border-[#B91C1C] bg-[#FEF2F2] px-4 py-3 text-[#7F1D1D] shadow-md">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className="min-w-0 flex-1 text-[20px] font-extrabold tr-num">
+                    무효로 한 투표가 서버에서 아직 열려 있습니다: {divisionLabel(d)} {ballotLabel(b)}
+                  </span>
+                  <button type="button" data-testid="band-stray-close" className={`${btn} bg-[#B91C1C] text-white`} disabled={!api || !!busy[strayKey]} onClick={() => void closeStray(b.requestId)}>
+                    {busy[strayKey] ? '닫는 중…' : '서버 투표 닫기'}
+                  </button>
+                </div>
+                {msg?.key === strayKey ? <p className="mt-1 text-[16px] font-bold">{msg.text}</p> : null}
+              </div>
+            );
+          }
           const unit = unitOf(b.requestId);
           const m = state.motions.find((x) => x.id === b.motionIds[0]);
           const title = currentRound(m ?? { rounds: [] })?.title ?? m?.title ?? '';
@@ -1528,6 +1593,8 @@ function VoteBoard({
           // 운영팀 노트북은 큰 화면에 연결하지 않으므로 이 안내는 분과 PC 에만.
           const elsewhere = !isOps && b.stage === 'open' && !openedHere.current.has(b.requestId) && qrKey !== b.requestId;
           const isBusy = unit ? !!busy[unit.key] : false;
+          // 10/14 — 여는 중은 30초가 지나야 「멈춤」으로 본다(정상 시작마다 무효를 권하지 않게). 시각 없는 옛 기록은 멈춤으로.
+          const stuck = startStuck(b, isBusy, now);
           return (
             <div
               key={b.requestId}
@@ -1537,7 +1604,7 @@ function VoteBoard({
             >
               <div className="flex flex-wrap items-center gap-3">
                 <span className="min-w-0 flex-1 text-[20px] font-extrabold tr-num">
-                  {b.stage === 'open' ? '지금 투표 중' : '투표 여는 중(멈춤)'}: {divisionLabel(d)} {label} 「{titleHead(title, 24)}」
+                  {b.stage === 'open' ? '지금 투표 중' : stuck ? '투표 여는 중(멈춤)' : '투표 여는 중…'}: {divisionLabel(d)} {label} 「{titleHead(title, 24)}」
                   {b.stage === 'open' ? (
                     <span className="ml-2 text-[18px] font-bold opacity-90">
                       · 제출 {responses ?? '…'}명 · {elapsedText(b.openedAt, now)}
@@ -1566,7 +1633,7 @@ function VoteBoard({
                       />
                     ) : null}
                   </>
-                ) : unit ? (
+                ) : unit && stuck ? (
                   <button type="button" data-testid="band-resume" className={`${btn} bg-[#135C73] text-white`} disabled={!api || isBusy} onClick={() => void start(unit)}>
                     투표 시작 이어서 하기
                   </button>
@@ -1577,7 +1644,7 @@ function VoteBoard({
                   다른 화면에서 연 투표입니다. 이 PC가 큰 화면에 연결돼 있으면 [QR 띄우기]를 누르십시오.
                 </p>
               ) : null}
-              {b.stage !== 'open' ? (
+              {stuck ? (
                 <p className="mt-1 text-[16px] font-bold">투표를 여는 중에 멈췄습니다. [투표 시작 이어서 하기]를 누르거나, 잘못 연 것이면 아래 안 카드에서 [잘못 연 투표 무효]를 누릅니다.</p>
               ) : null}
             </div>
@@ -1868,8 +1935,9 @@ export function MotionVoteBlock({ motion, state, update }: { motion: Motion; sta
   // 두 번째 누름에서만 부른다(TwoStepButton). 칸이 비어 있으면 무장 문구가 그 사실을 알린다.
   const onMinority = () =>
     update((s) => {
-      const f = markMinority(s, motion.id, true);
-      return f.ok ? f.state : s;
+      const id = resolveMotionId(s, motionRef(motion));
+      const f = id ? markMinority(s, id, true) : null;
+      return f?.ok ? f.state : s;
     });
   const minorityArmed = motion.minorityOpinion.trim()
     ? '정말 기록합니까? (다시 누르면 기록)'
@@ -1884,7 +1952,7 @@ export function MotionVoteBlock({ motion, state, update }: { motion: Motion; sta
             className={`${input} h-12 flex-1 font-bold`}
             value={motion.title}
             aria-label={`${motion.id} 2차 투표 제목`}
-            onChange={(e) => update((s) => updateMotion(s, motion.id, { title: e.target.value }))}
+            onChange={(e) => update(onMotion(motionRef(motion), (s, id) => updateMotion(s, id, { title: e.target.value })))}
           />
         ) : (
           <span data-testid="motion-vote-title" className="min-w-0 flex-1 text-[20px] font-extrabold text-[#1F2933]">
@@ -1924,7 +1992,7 @@ export function MotionVoteBlock({ motion, state, update }: { motion: Motion; sta
       {phase === 'failed' && !pending ? (
         <div className="flex flex-wrap gap-3">
           {canRevote(state, motion) ? (
-            <button type="button" className={`${btnBig} border-2 border-[#135C73] bg-white text-[#135C73]`} data-testid="revote" onClick={() => update((s) => requestRevote(s, motion.id))}>
+            <button type="button" className={`${btnBig} border-2 border-[#135C73] bg-white text-[#135C73]`} data-testid="revote" onClick={() => update(onMotion(motionRef(motion), (s, id) => requestRevote(s, id)))}>
               문구 고쳐 2차 투표
             </button>
           ) : null}
@@ -1941,7 +2009,7 @@ export function MotionVoteBlock({ motion, state, update }: { motion: Motion; sta
       {phase === 'revote' ? (
         <div className="flex flex-wrap items-center gap-3">
           <p className="text-[17px] font-bold text-[#8A5A00]">위 칸에서 문구를 고친 뒤 [2차 투표 시작]을 누릅니다. 1차 결과는 그대로 남습니다.</p>
-          <button type="button" className={btnGhost} onClick={() => update((s) => cancelRevote(s, motion.id))}>
+          <button type="button" className={btnGhost} onClick={() => update(onMotion(motionRef(motion), (s, id) => cancelRevote(s, id)))}>
             2차 투표 그만두기
           </button>
           <TwoStepButton
@@ -1957,7 +2025,7 @@ export function MotionVoteBlock({ motion, state, update }: { motion: Motion; sta
       {phase === 'minority' ? (
         <div className="flex flex-wrap items-center gap-3">
           <p className="text-[17px] font-extrabold text-[#5B21B6]">소수 의견으로 기록했습니다.</p>
-          <button type="button" className={btnGhost} onClick={() => update((s) => unmarkMinority(s, motion.id))}>
+          <button type="button" className={btnGhost} onClick={() => update(onMotion(motionRef(motion), (s, id) => unmarkMinority(s, id)))}>
             기록 취소
           </button>
         </div>
@@ -1978,7 +2046,7 @@ export function MotionVoteBlock({ motion, state, update }: { motion: Motion; sta
           className={`${input} mt-1 min-h-20 py-2`}
           value={motion.otherOpinion}
           aria-label={`${motion.id} 기타 의견`}
-          onChange={(e) => update((s) => updateMotion(s, motion.id, { otherOpinion: e.target.value }))}
+          onChange={(e) => update(onMotion(motionRef(motion), (s, id) => updateMotion(s, id, { otherOpinion: e.target.value })))}
         />
       </label>
       {rejected ? (
@@ -1988,7 +2056,7 @@ export function MotionVoteBlock({ motion, state, update }: { motion: Motion; sta
             className={`${input} mt-1 min-h-20 py-2`}
             value={motion.minorityOpinion}
             aria-label={`${motion.id} 소수 의견`}
-            onChange={(e) => update((s) => updateMotion(s, motion.id, { minorityOpinion: e.target.value }))}
+            onChange={(e) => update(onMotion(motionRef(motion), (s, id) => updateMotion(s, id, { minorityOpinion: e.target.value })))}
           />
         </label>
       ) : null}
@@ -2134,15 +2202,15 @@ function ResultBar({
 
       {editable ? (
         <div className="mt-5 flex flex-wrap items-end gap-4 rounded-xl bg-white/10 p-4">
-          <HandInput label="거수 찬성" value={round.handYes} onCommit={(v) => update((s) => setHandCount(s, motion.id, round.round, { handYes: v }))} />
-          <HandInput label="거수 반대" value={round.handNo} onCommit={(v) => update((s) => setHandCount(s, motion.id, round.round, { handNo: v }))} />
+          <HandInput label="거수 찬성" value={round.handYes} onCommit={(v) => update(onMotion(motionRef(motion), (s, id) => setHandCount(s, id, round.round, { handYes: v })))} />
+          <HandInput label="거수 반대" value={round.handNo} onCommit={(v) => update(onMotion(motionRef(motion), (s, id) => setHandCount(s, id, round.round, { handNo: v })))} />
           {provisional ? (
             <>
               <button
                 type="button"
                 data-testid="hand-confirm"
                 className="min-h-14 rounded-xl bg-[#FFD25A] px-5 text-[20px] font-extrabold text-[#0B2233]"
-                onClick={() => update((s) => confirmHandCount(s, motion.id, round.round, 'entered'))}
+                onClick={() => update(onMotion(motionRef(motion), (s, id) => confirmHandCount(s, id, round.round, 'entered')))}
               >
                 거수 입력 완료
               </button>
@@ -2151,7 +2219,7 @@ function ResultBar({
                   type="button"
                   data-testid="hand-none"
                   className="min-h-14 rounded-xl border-2 border-[#FFD25A] px-5 text-[20px] font-extrabold text-[#FFD25A]"
-                  onClick={() => update((s) => confirmHandCount(s, motion.id, round.round, 'none'))}
+                  onClick={() => update(onMotion(motionRef(motion), (s, id) => confirmHandCount(s, id, round.round, 'none')))}
                 >
                   거수 없음
                 </button>
@@ -2162,7 +2230,7 @@ function ResultBar({
             <button
               type="button"
               className="min-h-14 rounded-xl border-2 border-[#FFD25A] px-4 text-[18px] font-bold text-[#FFD25A]"
-              onClick={() => update((s) => reapplyAttendance(s, motion.id, round.round))}
+              onClick={() => update(onMotion(motionRef(motion), (s, id) => reapplyAttendance(s, id, round.round)))}
             >
               지금 참석 인원({state.attendance.present ?? '-'}명)으로 다시 판정
             </button>
@@ -2234,7 +2302,7 @@ function CriteriaGrid({ motion, update }: { motion: Motion; update: (fn: (s: Pre
                       className={`min-h-11 w-full rounded-lg text-[16px] font-extrabold ${
                         v === 'met' ? 'bg-[#2F6F25] text-white' : v === 'unmet' ? 'bg-[#B91C1C] text-white' : 'border border-dashed border-[#C4D8E4] bg-white text-[#9AA8B0]'
                       }`}
-                      onClick={() => update((s) => setGridMark(s, motion.id, team as TeamNo, c, next))}
+                      onClick={() => update(onMotion(motionRef(motion), (s, id) => setGridMark(s, id, team as TeamNo, c, next)))}
                     >
                       {v ? MARK_LABELS[v] : '—'}
                     </button>
@@ -2270,7 +2338,7 @@ function CriteriaGrid({ motion, update }: { motion: Motion; update: (fn: (s: Pre
                     aria-label={`${CRITERION_LABELS[c]} 최종 판정`}
                     value={o}
                     className="min-h-11 w-full rounded-lg border border-[#C4D8E4] bg-white px-1 text-[16px] font-bold"
-                    onChange={(e) => update((s) => setCriterionOverride(s, motion.id, c as Criterion, (e.target.value || null) as Mark | null))}
+                    onChange={(e) => update(onMotion(motionRef(motion), (s, id) => setCriterionOverride(s, id, c as Criterion, (e.target.value || null) as Mark | null)))}
                   >
                     <option value="">다수결 따름</option>
                     <option value="met">충족</option>

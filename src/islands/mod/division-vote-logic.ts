@@ -162,6 +162,11 @@ export type Motion = {
    * 묶음 이름은 공개 번들에 넣지 않는다 — 파일 가져오기로만 들어와 준비판(서버·이 기기)에만 있다.
    */
   group?: MotionGroup;
+  /**
+   * 만들 때 붙는 고유 열쇠(10/14). 안 번호(id)는 저장 충돌 뒤 다시 만들 때 바뀔 수 있다(다른 화면이 같은 주제에 먼저 안을 만들면
+   * 안1 → 안2). 이 화면의 뒤이은 고침은 번호가 아니라 이 열쇠로 안을 찾는다(motionRef·onMotion). 옛 안에는 없다(그때는 id).
+   */
+  key?: string;
 };
 
 export type MotionGroup = { id: string; name: string; recs: string[]; teams: string[] };
@@ -195,7 +200,12 @@ export type BallotRecord = {
 
 export type Attendance = { enrolled: number | null; present: number | null };
 
-export const PREP_VERSION = 2;
+/**
+ * 준비판 판 모양 번호. 3(10/14) = 무효(voidedAt)·거수 확인(handConfirmed)·시작 시각(createdAt)·묶음(group)·안 열쇠(key)가 들어간 판.
+ * 2 를 읽는 옛 화면(5f9920b)은 모르는 칸을 버리고 다시 저장하므로 — 무효가 되살아나고 묶음·거수 확인이 사라진다 —
+ * 새 화면은 3 으로 쓴다. 옛 화면은 3 을 「읽을 수 없는 판」으로 보고 저장하지 않는다. 읽기는 1·2·3 모두.
+ */
+export const PREP_VERSION = 3;
 
 /** 내보내기 파일 한 개로 다른 기기에서 그대로 이어 쓸 수 있게 원천 사본까지 담는다. */
 export type PrepState = {
@@ -347,8 +357,11 @@ export type CreateMotionResult =
  */
 export function createMotion(
   state: PrepState,
-  input: { cardNos: readonly string[]; title: string; text: string },
+  input: { cardNos: readonly string[]; title: string; text: string; key?: string },
 ): CreateMotionResult {
+  // 같은 열쇠로 이미 만든 안이 있으면 다시 만들지 않는다 — 저장 응답만 잃고 다시 적용될 때 안이 두 개가 되지 않게.
+  const made = input.key ? state.motions.find((m) => m.key === input.key) : undefined;
+  if (made) return { ok: true, motion: made, warnings: [], state };
   const check = canCombine(state.source, input.cardNos);
   if (!check.ok) return { ok: false, error: combineFailureText(check) ?? '' };
   const excluded = input.cardNos.filter((no) => state.cards[no]?.status === 'excluded');
@@ -370,6 +383,7 @@ export function createMotion(
     title,
     text: input.text.trim(),
     ...newMotionFields(),
+    ...(input.key ? { key: input.key } : {}),
   };
   let cards = state.cards;
   if (cardNos.length > 1) {
@@ -396,7 +410,9 @@ export function isAgendaMotion(motion: Pick<Motion, 'cardNos'>): boolean {
   return motion.cardNos.length === 0;
 }
 
-export function createAgendaMotion(state: PrepState, input: { title: string; text: string }): CreateMotionResult {
+export function createAgendaMotion(state: PrepState, input: { title: string; text: string; key?: string }): CreateMotionResult {
+  const made = input.key ? state.motions.find((m) => m.key === input.key) : undefined;
+  if (made) return { ok: true, motion: made, warnings: [], state };
   const title = input.title.trim();
   if (!title) return { ok: false, error: '안건 제목을 입력하십시오.' };
   const topicNo = agendaTopicNo(state.division);
@@ -404,7 +420,7 @@ export function createAgendaMotion(state: PrepState, input: { title: string; tex
   if (motionTitleRoom(id, title) < 0) {
     return { ok: false, error: `안 제목이 너무 깁니다(안 번호 포함 ${MAX_STATEMENT_LENGTH}자 이하).` };
   }
-  const motion: Motion = { id, topicNo, cardNos: [], title, text: input.text.trim(), ...newMotionFields() };
+  const motion: Motion = { id, topicNo, cardNos: [], title, text: input.text.trim(), ...newMotionFields(), ...(input.key ? { key: input.key } : {}) };
   return { ok: true, motion, warnings: [], state: { ...state, motions: sortMotions(state.source, [...state.motions, motion]) } };
 }
 
@@ -451,6 +467,7 @@ export function importSimilarGroups(state: PrepState, groups: readonly SimilarGr
       text: '',
       ...newMotionFields(),
       group: { id: g.id, name: g.name, recs: [...g.recs], teams: [...g.teams] },
+      key: groupMotionKey(g.id),
     };
     s = { ...s, motions: sortMotions(s.source, [...s.motions, motion]) };
     out.created.push({ groupId: g.id, motionId: id });
@@ -509,6 +526,32 @@ export function sortMotions(source: RecsDivision, motions: Motion[]): Motion[] {
   return [...motions].sort((a, b) => t(a) - t(b) || k(a) - k(b));
 }
 
+/** 화면이 안을 가리킬 때 쓰는 값 — 열쇠가 있으면 열쇠, 없으면(옛 안) 안 번호. */
+export function motionRef(motion: Pick<Motion, 'id' | 'key'>): string {
+  return motion.key ?? motion.id;
+}
+
+/** 묶음에서 만든 안의 열쇠 — 어느 화면에서 가져와도 같다. */
+export function groupMotionKey(groupId: string): string {
+  return `group:${groupId}`;
+}
+
+/** motionRef → 지금 상태의 안 번호. 없으면 null. */
+export function resolveMotionId(state: Pick<PrepState, 'motions'>, ref: string): string | null {
+  return state.motions.find((m) => motionRef(m) === ref)?.id ?? null;
+}
+
+/**
+ * 안 하나를 고치는 고침을 열쇠로 묶는다(10/14). 저장 충돌 뒤 서버 최신 위에 다시 적용될 때 안 번호가 바뀌었어도
+ * 이 화면이 만든 그 안을 고친다. 안이 없어졌으면 아무것도 바꾸지 않는다.
+ */
+export function onMotion(ref: string, fn: (s: PrepState, id: string) => PrepState): (s: PrepState) => PrepState {
+  return (s) => {
+    const id = resolveMotionId(s, ref);
+    return id ? fn(s, id) : s;
+  };
+}
+
 export function updateMotion(
   state: PrepState,
   id: string,
@@ -543,8 +586,33 @@ export function replaceStateProblem(current: PrepState | null | undefined, incom
   if (!current) return null;
   const keep = new Set(incoming.motions.flatMap((m) => m.rounds.map((r) => r.requestId)));
   const lost = current.motions.flatMap((m) => m.rounds.filter((r) => !keep.has(r.requestId)).map(() => m.id));
-  if (lost.length === 0) return null;
-  return `투표 기록이 있는 분과는 옛 파일로 바꿀 수 없습니다(가져올 파일에 없는 투표 ${lost.length}건 · ${[...new Set(lost)].join(', ')}).`;
+  if (lost.length > 0) {
+    return `투표 기록이 있는 분과는 옛 파일로 바꿀 수 없습니다(가져올 파일에 없는 투표 ${lost.length}건 · ${[...new Set(lost)].join(', ')}).`;
+  }
+  // 10/14 — 투표는 다 있어도 그 진행이 뒤로 가면 거절한다: 무효가 풀리거나, 결과·거수 확인이 지워지거나, 마감한 투표가 다시 열린다.
+  const rank: Record<BallotStage, number> = { creating: 0, draft: 1, open: 2, closed: 3 };
+  const back: string[] = [];
+  for (const m of current.motions) {
+    const other = incoming.motions.find((x) => x.id === m.id);
+    for (const r of m.rounds) {
+      const inc = other?.rounds.find((x) => x.requestId === r.requestId);
+      if (!inc) continue;
+      const regressed =
+        (!!r.voidedAt && !inc.voidedAt) ||
+        (r.onlineYes !== null && inc.onlineYes === null) ||
+        (r.onlineNo !== null && inc.onlineNo === null) ||
+        (r.handConfirmed === true && inc.handConfirmed === false);
+      if (regressed) back.push(m.id);
+    }
+  }
+  for (const b of Object.values(current.ballots)) {
+    const inc = incoming.ballots[b.requestId];
+    if (!inc) continue;
+    if ((!!b.voidedAt && !inc.voidedAt) || rank[inc.stage] < rank[b.stage]) back.push(...b.motionIds);
+  }
+  if (back.length === 0) return null;
+  const ids = [...new Set(back)];
+  return `투표 기록이 있는 분과는 옛 파일로 바꿀 수 없습니다(가져올 파일의 투표 진행이 지금보다 뒤입니다 ${ids.length}건 · ${ids.join(', ')}).`;
 }
 
 /** 투표를 한 번이라도 시작한 안은 지우지 않는다(결과·투표 기록이 사라진다). */
@@ -779,7 +847,7 @@ function readRound(x: unknown): MotionRound | null {
  * ★ true 만 「충족」으로 옮기고 false 는 빈칸으로 둔다 — v1 은 처음부터 전부 false 였으므로
  *   false 를 「미충족」으로 옮기면 손대지 않은 안이 전부 「직접 정함 미충족」이 된다.
  */
-function readMotion(x: unknown, source: RecsDivision, v: 1 | 2): Motion | null {
+function readMotion(x: unknown, source: RecsDivision, v: 1 | 2 | 3): Motion | null {
   if (!isObj(x) || !isStr(x.id) || !isStr(x.topicNo) || !isStr(x.title) || !isStr(x.text)) return null;
   if (!Array.isArray(x.cardNos) || !x.cardNos.every(isStr)) return null;
   if (x.cardNos.length === 0) {
@@ -799,6 +867,7 @@ function readMotion(x: unknown, source: RecsDivision, v: 1 | 2): Motion | null {
     if (!recs || !teams) return null;
     group = { id: g.id, name: g.name, recs, teams };
   }
+  if (x.key !== undefined && (!isStr(x.key) || !x.key)) return null;
   const base = {
     id: x.id,
     topicNo: x.topicNo,
@@ -806,6 +875,7 @@ function readMotion(x: unknown, source: RecsDivision, v: 1 | 2): Motion | null {
     title: x.title,
     text: x.text,
     ...(group ? { group } : {}),
+    ...(x.key !== undefined ? { key: x.key as string } : {}),
   };
   if (v === 1) {
     if (!isObj(x.criteria)) return null;
@@ -885,8 +955,8 @@ function readAttendance(x: unknown): Attendance | null {
 }
 
 function readPrep(x: Record<string, unknown>): PrepState | null {
-  if ((x.v !== 1 && x.v !== PREP_VERSION) || !Number.isInteger(x.division)) return null;
-  const v = x.v as 1 | 2;
+  if ((x.v !== 1 && x.v !== 2 && x.v !== PREP_VERSION) || !Number.isInteger(x.division)) return null;
+  const v = x.v as 1 | 2 | 3;
   const source = readDivision(x.source);
   if (!source || source.division !== x.division) return null;
   if (!isObj(x.cards) || !Array.isArray(x.motions)) return null;
@@ -905,7 +975,7 @@ function readPrep(x: Record<string, unknown>): PrepState | null {
   const attendance = v === 1 ? base.attendance : readAttendance(x.attendance);
   if (!attendance) return null;
   const ballots: Record<string, BallotRecord> = {};
-  if (v === 2 && x.ballots !== undefined) {
+  if (v >= 2 && x.ballots !== undefined) {
     if (!isObj(x.ballots)) return null;
     for (const [key, raw] of Object.entries(x.ballots)) {
       const b = readBallot(key, raw);
