@@ -7,12 +7,15 @@ import {
   emptySlot,
   prepErrorText,
   prepTooLarge,
+  replayEdits,
+  replayNotice,
   rowDivision,
   slotAfterSave,
   slotEdited,
   slotFromRow,
   slotSaveFailed,
   slotSaveStarted,
+  type PendingEdit,
   type PrepSlot,
   type SlotNotice,
   type SyncMode,
@@ -23,7 +26,8 @@ import { divisionLabel, type PrepState } from './division-vote-logic';
  * 준비판 공유 저장 훅 — 규칙은 division-prep-sync.ts(순수, 시험됨)에 있고 여기는 타이머·순서만 맡는다.
  *
  * - 고침 → 800ms 뒤 저장(판번호 동봉). 투표 진행 사실(commitFact)은 기다리지 않고 바로 저장.
- * - 분과마다 저장은 한 번에 하나(줄 세움). 충돌이면 서버 최신으로 통째로 바꾸고 알린다.
+ * - 분과마다 저장은 한 번에 하나(줄 세움). 충돌이면 서버 최신을 받고, 아직 저장 안 된 이 기기 고침(pending)을
+ *   그 위에 다시 적용해 다시 저장한다(10/14 — 투표 열기·마감과 거수 입력이 겹쳐도 거수가 사라지지 않게).
  * - 5초마다 읽기(대기 중인 고침·저장이 없을 때만). 서버를 못 쓰면 이 기기 저장으로 내려가고 30초마다 다시 붙어 본다.
  * - 이 기기 저장소에는 늘 사본을 둔다(오프라인 대비).
  */
@@ -84,6 +88,34 @@ export function useDivisionPrep({
   const serverDivisions = useRef<Set<number>>(new Set());
   const queues = useRef<Map<number, Promise<unknown>>>(new Map());
   const timers = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+  /** 분과마다 아직 서버에 올라가지 않은 고침(순서대로). 저장이 성공하면 보낸 만큼 지운다. */
+  const pending = useRef<Map<number, PendingEdit[]>>(new Map());
+  const pendingOf = (division: number): PendingEdit[] => {
+    let list = pending.current.get(division);
+    if (!list) {
+      list = [];
+      pending.current.set(division, list);
+    }
+    return list;
+  };
+  /** 저장 성공 — 보낼 때 있던 고침 수만큼 지운다(보내는 사이 새로 친 것은 남긴다). */
+  const dropSent = (division: number, sentCount: number) => {
+    pendingOf(division).splice(0, sentCount);
+  };
+  /**
+   * 충돌 뒤 — 서버 최신(slot.state)에 남은 고침을 다시 적용한다. 다시 적용할 게 있으면 dirty 로 두고 알린다.
+   * 돌려준 값: 다시 적용한 고침 수.
+   */
+  const replayAfterConflict = (division: number, slot: PrepSlot): { slot: PrepSlot; replayed: number } => {
+    const list = pendingOf(division);
+    if (list.length === 0 || !slot.state || slot.unreadable) return { slot, replayed: 0 };
+    const rebased = replayEdits(slot.state, list);
+    if (rebased === slot.state) {
+      list.splice(0);
+      return { slot, replayed: 0 };
+    }
+    return { slot: { ...slot, state: rebased, dirty: true }, replayed: list.length };
+  };
   const labelRef = useRef(label);
   labelRef.current = label;
   const persistRef = useRef(persistLocal);
@@ -117,6 +149,9 @@ export function useDivisionPrep({
     return run;
   }, []);
 
+  /** saveOnce 가 충돌 뒤 다시 저장을 걸 때 쓴다(scheduleSave 가 saveOnce 보다 뒤에 정의돼서 ref 로). */
+  const scheduleSaveRef = useRef<(division: number, delay?: number) => void>(() => undefined);
+
   const serverWritable = (division: number) =>
     !!apiRef.current && modeRef.current === 'server' && serverDivisions.current.has(division);
 
@@ -133,11 +168,22 @@ export function useDivisionPrep({
         return;
       }
       setSlot(division, slotSaveStarted);
+      const sentCount = pendingOf(division).length;
       try {
         const res = await a.save(divisionLabel(division), slot.version, sent, labelRef.current);
         const after = slotAfterSave((slotsRef.current as Record<number, PrepSlot>)[division], sent, res);
-        setSlot(division, () => after.slot);
-        if (after.notice) setNotice(after.notice);
+        if (res.ok) {
+          dropSent(division, sentCount);
+          setSlot(division, () => after.slot);
+          if (after.notice) setNotice(after.notice);
+        } else {
+          const r = replayAfterConflict(division, after.slot);
+          setSlot(division, () => r.slot);
+          if (r.replayed > 0) {
+            setNotice(replayNotice(divisionLabel(division), r.replayed));
+            scheduleSaveRef.current(division, 0);
+          } else if (after.notice) setNotice(after.notice);
+        }
         setLastSaveFailed(false);
         setConnected(true);
       } catch (error) {
@@ -170,6 +216,7 @@ export function useDivisionPrep({
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [enqueue, saveOnce],
   );
+  scheduleSaveRef.current = scheduleSave;
 
   /** 서버 읽기 결과 반영. */
   const applyGet = useCallback(
@@ -264,17 +311,23 @@ export function useDivisionPrep({
       if (!cur?.state) return;
       const next = fn(cur.state);
       if (next === cur.state) return;
+      pendingOf(division).push(fn);
       setSlot(division, (prev) => slotEdited(prev, next));
       scheduleSave(division);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [scheduleSave, setSlot],
   );
 
   const replace = useCallback(
     (division: number, state: PrepState) => {
+      // 통째로 바꾸기(가져오기·처음으로)는 충돌해도 그 내용으로 — 앞서 친 고침은 버린다.
+      const list = pendingOf(division);
+      list.splice(0, list.length, () => state);
       setSlot(division, (prev) => ({ ...(prev ?? emptySlot(null)), state, dirty: true }));
       scheduleSave(division);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [scheduleSave, setSlot],
   );
 
@@ -299,7 +352,11 @@ export function useDivisionPrep({
           if (next !== slot.state) setSlot(division, (prev) => slotEdited(prev, next));
           const cur = (slotsRef.current as Record<number, PrepSlot>)[division];
           const a = apiRef.current;
-          if (!a || !serverWritable(division) || !canSave(cur) || !cur.state) return cur.state as PrepState;
+          if (!a || !serverWritable(division) || !canSave(cur) || !cur.state) {
+            // 서버에 못 올린 사실도 고침 목록에 남긴다 — 다시 붙어 충돌하면 서버 최신 위에 다시 적용된다.
+            if (next !== slot.state) pendingOf(division).push(fn);
+            return cur.state as PrepState;
+          }
           const sent = cur.state;
           if (prepTooLarge(sent)) {
             setLastSaveFailed(true);
@@ -307,11 +364,13 @@ export function useDivisionPrep({
             return sent;
           }
           setSlot(division, slotSaveStarted);
+          const sentCount = pendingOf(division).length;
           let res: DivisionPrepSaveResult;
           try {
             res = await a.save(divisionLabel(division), cur.version, sent, labelRef.current);
           } catch (error) {
             console.error('[division prep] fact save failed', error);
+            pendingOf(division).push(fn);
             setSlot(division, slotSaveFailed);
             setLastSaveFailed(true);
             setConnected(false);
@@ -319,16 +378,34 @@ export function useDivisionPrep({
             return sent;
           }
           const after = slotAfterSave((slotsRef.current as Record<number, PrepSlot>)[division], sent, res);
-          setSlot(division, () => after.slot);
           setLastSaveFailed(false);
           setConnected(true);
           if (res.ok) {
+            dropSent(division, sentCount);
+            setSlot(division, () => after.slot);
             if (after.slot.dirty) scheduleSave(division);
             return after.slot.state as PrepState;
           }
-          if (after.notice) setNotice(after.notice);
-          if (after.slot.unreadable) return sent;
-          // 충돌 — 서버 최신에 다시 적용(다음 바퀴)
+          if (after.slot.unreadable) {
+            setSlot(division, () => after.slot);
+            if (after.notice) setNotice(after.notice);
+            return sent;
+          }
+          // 충돌 — 서버 최신에 이 기기의 다른 고침을 먼저 다시 적용하고, 다음 바퀴에서 fn 을 다시 적용한다.
+          const r = replayAfterConflict(division, after.slot);
+          setSlot(division, () => r.slot);
+          if (r.replayed > 0) setNotice(replayNotice(divisionLabel(division), r.replayed));
+          else if (after.notice) setNotice(after.notice);
+        }
+        // 세 번 다 충돌 — 사실은 이 기기에 적고 보통 저장 줄로 넘긴다(고침 목록에 넣어 다음 충돌에도 다시 적용).
+        const last = (slotsRef.current as Record<number, PrepSlot>)[division];
+        if (last?.state) {
+          const next = fn(last.state);
+          if (next !== last.state) {
+            pendingOf(division).push(fn);
+            setSlot(division, (prev) => slotEdited(prev, next));
+            scheduleSave(division, 0);
+          }
         }
         return ((slotsRef.current as Record<number, PrepSlot>)[division]?.state ?? null) as PrepState;
       }),

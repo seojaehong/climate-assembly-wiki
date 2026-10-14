@@ -126,6 +126,16 @@ export type MotionRound = {
   present: number | null;
   verdict: 'passed' | 'failed' | 'invalid' | null;
   closedAt: string | null;
+  /**
+   * 거수 확인(10/14 휴먼에러 점검). false = 마감했지만 기록 담당이 아직 [거수 입력 완료]·[거수 없음]을
+   * 누르지 않았다 — 판정은 잠정이고 2차·소수 의견 버튼을 감춘다. 없으면(옛 저장) 확인한 것으로 본다.
+   */
+  handConfirmed?: boolean;
+  /**
+   * 잘못 연 투표를 무효로 한 시각(10/14). 있으면 이 차수는 판정·차수 계산·세리머니에서 빠지고
+   * CSV 에만 「무효」로 남는다. 새 열거값 대신 선택 칸으로 둔다 — 옛 화면도 그대로 읽는다.
+   */
+  voidedAt?: string;
 };
 
 export type Motion = {
@@ -167,6 +177,8 @@ export type BallotRecord = {
   token: string | null;
   openedAt: string | null;
   closedAt: string | null;
+  /** [투표 시작]을 누른 시각(서버 시각 보정). 현황판이 「시작 멈춤」 경과를 잰다. 옛 저장에는 없다. */
+  createdAt?: string;
 };
 
 export type Attendance = { enrolled: number | null; present: number | null };
@@ -354,10 +366,37 @@ export function updateMotion(
   id: string,
   patch: Partial<Pick<Motion, 'title' | 'text' | 'otherOpinion' | 'minorityOpinion'>>,
 ): PrepState {
+  const target = state.motions.find((m) => m.id === id);
+  if (!target) return state;
+  // 투표를 시작한 안의 제목은 잠근다 — QR·휴대폰·세리머니·CSV 는 보낸 문장 그대로라 화면만 달라진다.
+  // 부결 뒤 「2차 준비」일 때만 2차 제목으로 고친다.
+  if (patch.title !== undefined && patch.title !== target.title && !canEditMotionTitle(target)) return state;
   return {
     ...state,
     motions: state.motions.map((motion) => (motion.id === id ? { ...motion, ...patch } : motion)),
   };
+}
+
+/** 무효로 하지 않은 차수(10/14). 판정·차수 번호·단계는 이것만 본다. */
+export function liveRounds<R extends Pick<MotionRound, 'voidedAt'>>(rounds: readonly R[]): R[] {
+  return rounds.filter((r) => !r.voidedAt);
+}
+
+/** 안 제목을 고칠 수 있는가 — 투표 전이거나, 부결 뒤 2차 준비 중일 때만. */
+export function canEditMotionTitle(motion: Pick<Motion, 'rounds' | 'revote'>): boolean {
+  return liveRounds(motion.rounds).length === 0 || motion.revote;
+}
+
+/**
+ * 준비판 파일로 지금 분과를 바꿔도 되는가(10/14). 지금 분과에 투표 기록이 있는데 가져올 파일에
+ * 그 투표가 하나라도 없으면 거절한다 — 옛 백업 파일이 마감한 결과를 지우고 같은 안을 다시 열게 만든다.
+ */
+export function replaceStateProblem(current: PrepState | null | undefined, incoming: PrepState): string | null {
+  if (!current) return null;
+  const keep = new Set(incoming.motions.flatMap((m) => m.rounds.map((r) => r.requestId)));
+  const lost = current.motions.flatMap((m) => m.rounds.filter((r) => !keep.has(r.requestId)).map(() => m.id));
+  if (lost.length === 0) return null;
+  return `투표 기록이 있는 분과는 옛 파일로 바꿀 수 없습니다(가져올 파일에 없는 투표 ${lost.length}건 · ${[...new Set(lost)].join(', ')}).`;
 }
 
 /** 투표를 한 번이라도 시작한 안은 지우지 않는다(결과·투표 기록이 사라진다). */
@@ -564,7 +603,11 @@ function readRound(x: unknown): MotionRound | null {
   if ([onlineYes, onlineNo, handYes, handNo, enrolled, present, closedAt].some((v) => v === undefined)) return null;
   const verdict = x.verdict ?? null;
   if (verdict !== null && verdict !== 'passed' && verdict !== 'failed' && verdict !== 'invalid') return null;
+  if (x.handConfirmed !== undefined && typeof x.handConfirmed !== 'boolean') return null;
+  if (x.voidedAt !== undefined && !isStr(x.voidedAt)) return null;
   return {
+    ...(x.handConfirmed !== undefined ? { handConfirmed: x.handConfirmed as boolean } : {}),
+    ...(x.voidedAt !== undefined ? { voidedAt: x.voidedAt as string } : {}),
     round: x.round as number,
     requestId: x.requestId,
     title: x.title,
@@ -638,7 +681,9 @@ function readBallot(key: string, x: unknown): BallotRecord | null {
   if ([ballotId, token, openedAt, closedAt].some((v) => v === undefined)) return null;
   // 서버가 투표를 돌려준 뒤 단계(draft 이후)에는 id·token 이 꼭 있어야 한다.
   if (x.stage !== 'creating' && (!ballotId || !token)) return null;
+  if (x.createdAt !== undefined && !isStr(x.createdAt)) return null;
   return {
+    ...(x.createdAt !== undefined ? { createdAt: x.createdAt as string } : {}),
     requestId: key,
     title: x.title,
     instructions,
@@ -1049,6 +1094,8 @@ export function ballotCeremonyItems(results: BallotResults): CeremonyItem[] {
         label: match ? match.id : `${item.ordinal}번`,
         title: match ? match.title : item.statement,
         yeas: Number(item.dist?.['2'] ?? 0) || 0,
+        // 반대도 넣는다 — 없으면 찬성만으로 판정한다(10/14). 거수 표는 여기 없다(운영팀 전용 확인용).
+        nays: Number(item.dist?.['1'] ?? 0) || 0,
       };
     });
 }

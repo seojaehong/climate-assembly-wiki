@@ -132,6 +132,31 @@ export function slotAfterSave(prev: PrepSlot, sent: PrepState, result: DivisionP
   };
 }
 
+/** 이 기기에서 고친 것 하나 = 상태를 받아 고친 상태를 돌려주는 함수(값을 정해 넣는 함수만 쓴다). */
+export type PendingEdit = (s: PrepState) => PrepState;
+
+/**
+ * 충돌 뒤 다시 적용(10/14 operator-4) — 서버 최신 내용 위에 아직 저장되지 않은 이 기기 고침을 순서대로 다시 적용한다.
+ * 예: PC-B 가 거수 칸을 치는 사이 PC-A 가 투표를 열어 판번호가 올라가도 PC-B 의 거수가 사라지지 않는다.
+ * 고침 하나가 실패하면(예외) 그것만 건너뛴다.
+ */
+export function replayEdits(server: PrepState, edits: readonly PendingEdit[]): PrepState {
+  return edits.reduce((acc, fn) => {
+    try {
+      return fn(acc);
+    } catch {
+      return acc;
+    }
+  }, server);
+}
+
+export function replayNotice(division: string, count: number): SlotNotice {
+  return {
+    tone: 'warn',
+    text: `${division}: 다른 화면이 먼저 저장했습니다. 이 화면에서 고친 ${count}건을 최신 내용 위에 다시 적용해 저장합니다. 방금 넣은 값이 맞는지 확인하십시오.`,
+  };
+}
+
 /** 저장 요청 자체가 실패(네트워크 등) — 고침은 남겨 두고 다음에 다시 보낸다. */
 export function slotSaveFailed(prev: PrepSlot): PrepSlot {
   return { ...prev, saving: false, dirty: true };

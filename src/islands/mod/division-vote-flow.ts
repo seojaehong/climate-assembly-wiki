@@ -31,6 +31,7 @@ import {
   decideVote,
   divisionLabel,
   finalCriterion,
+  liveRounds,
   motionExcluded,
   type BallotRecord,
   type CeremonyItem,
@@ -69,8 +70,15 @@ export const PHASE_LABELS: Record<MotionPhase, string> = {
   minority: '소수 의견',
 };
 
+/** 지금 차수 = 무효로 하지 않은 마지막 차수. */
 export function currentRound(motion: Pick<Motion, 'rounds'>): MotionRound | null {
-  return motion.rounds.length > 0 ? motion.rounds[motion.rounds.length - 1] : null;
+  const live = liveRounds(motion.rounds);
+  return live.length > 0 ? live[live.length - 1] : null;
+}
+
+/** 마감했지만 거수 확인(완료·없음)을 아직 안 한 차수인가. 옛 저장(칸 없음)은 확인한 것으로 본다. */
+export function handPending(round: Pick<MotionRound, 'handConfirmed' | 'onlineYes' | 'onlineNo'> | null): boolean {
+  return !!round && round.handConfirmed === false && round.onlineYes !== null && round.onlineNo !== null;
 }
 
 export function motionPhase(state: Pick<PrepState, 'cards' | 'ballots'>, motion: Motion): MotionPhase {
@@ -91,6 +99,23 @@ export function motionPhase(state: Pick<PrepState, 'cards' | 'ballots'>, motion:
 /** 화면·투표 제목에 쓰는 차수 표기. 1차는 안 번호만. */
 export function roundLabel(motionId: string, round: number): string {
   return round > 1 ? `${motionId} ${round}차` : motionId;
+}
+
+/** 제목 앞부분 — 무장 문구용. 글자 단위로 자르고 넘치면 「…」. */
+export function titleHead(title: string, max = 18): string {
+  const chars = [...title.replace(/\s+/g, ' ').trim()];
+  return chars.length > max ? `${chars.slice(0, max).join('')}…` : chars.join('');
+}
+
+/**
+ * 되돌릴 수 없는 버튼의 무장 문구(10/14) — 두 번째 누름 전에 어느 분과·어느 안인지 읽히게.
+ * 예: 「2분과 2-1-안2 「예시 제목 가-3…」 투표를 시작합니까? (다시 누르면 시작)」
+ */
+export function armedText(kind: 'start' | 'close' | 'void', division: number, label: string, title: string): string {
+  const head = `${divisionLabel(division)} ${label} 「${titleHead(title)}」`;
+  if (kind === 'start') return `${head} 투표를 시작합니까? (다시 누르면 시작)`;
+  if (kind === 'close') return `${head} 투표를 마감합니까? (다시 누르면 마감)`;
+  return `${head} 투표를 무효로 합니까? (다시 누르면 무효)`;
 }
 
 // ── 판정 ──────────────────────────────────────────────────────
@@ -142,15 +167,33 @@ function mapMotion(state: PrepState, id: string, fn: (m: Motion) => Motion): Pre
 
 function mapRound(state: PrepState, motionId: string, roundNo: number, fn: (r: MotionRound) => MotionRound): PrepState {
   return mapMotion(state, motionId, (m) => {
-    const idx = m.rounds.findIndex((r) => r.round === roundNo);
+    // 무효 차수와 번호가 겹칠 수 있다(잘못 연 1차를 무효로 하고 다시 연 1차) — 살아 있는 차수만.
+    const idx = m.rounds.findIndex((r) => r.round === roundNo && !r.voidedAt);
     if (idx < 0) return m;
+    const next = fn(m.rounds[idx]);
+    if (next === m.rounds[idx]) return m;
     const rounds = [...m.rounds];
-    rounds[idx] = fn(rounds[idx]);
+    rounds[idx] = next;
     return { ...m, rounds };
   });
 }
 
 const isCount = (n: unknown): n is number => typeof n === 'number' && Number.isInteger(n) && n >= 0;
+
+/**
+ * 그 차수의 거수·참석을 고칠 수 있는가(10/14). 지금 차수만, 2차 준비·소수 의견으로 닫은 안은 안 된다 —
+ * 2차가 열린 동안 1차 칸에 2차 거수를 넣어 1차 판정이 뒤집힌 사고를 막는다.
+ * 1차 거수를 꼭 고쳐야 하면 [2차 투표 그만두기]·[기록 취소]로 먼저 되돌린다.
+ */
+export function canEditRoundCounts(motion: Motion, roundNo: number): boolean {
+  if (motion.revote || motion.resolution === 'minority') return false;
+  return currentRound(motion)?.round === roundNo;
+}
+
+function roundCountsGuard(state: PrepState, motionId: string, roundNo: number): boolean {
+  const m = state.motions.find((x) => x.id === motionId);
+  return !!m && canEditRoundCounts(m, roundNo);
+}
 
 /** 거수 찬성·반대 입력. 0 이상 정수만 받는다. 마감된 차수면 판정을 다시 계산한다. */
 export function setHandCount(
@@ -161,11 +204,26 @@ export function setHandCount(
 ): PrepState {
   if (patch.handYes !== undefined && !isCount(patch.handYes)) return state;
   if (patch.handNo !== undefined && !isCount(patch.handNo)) return state;
+  if (!roundCountsGuard(state, motionId, roundNo)) return state;
   return mapRound(state, motionId, roundNo, (r) => withVerdict({ ...r, ...patch }));
+}
+
+/**
+ * [거수 입력 완료]·[거수 없음](10/14). 확인 전에는 판정이 잠정이고 2차·소수 의견 버튼이 숨는다.
+ * 'none' 은 거수 칸을 0 으로 비우고 확인한다.
+ */
+export function confirmHandCount(state: PrepState, motionId: string, roundNo: number, mode: 'entered' | 'none'): PrepState {
+  if (!roundCountsGuard(state, motionId, roundNo)) return state;
+  return mapRound(state, motionId, roundNo, (r) => {
+    if (roundTotals(r) === null) return r;
+    if (mode === 'entered') return r.handConfirmed === false ? { ...r, handConfirmed: true } : r;
+    return withVerdict({ ...r, handYes: 0, handNo: 0, handConfirmed: true });
+  });
 }
 
 /** 마감 뒤 참석 인원을 고쳤을 때 — 지금 참석 인원을 그 차수에 다시 박고 판정을 다시 한다. */
 export function reapplyAttendance(state: PrepState, motionId: string, roundNo: number): PrepState {
+  if (!roundCountsGuard(state, motionId, roundNo)) return state;
   return mapRound(state, motionId, roundNo, (r) =>
     withVerdict({ ...r, enrolled: state.attendance.enrolled, present: state.attendance.present }),
   );
@@ -201,7 +259,18 @@ export type BeginVoteResult = { ok: true; state: PrepState; requestId: string; r
  * 이미 시작 중인 같은 투표면 새로 만들지 않고 그 멱등키를 돌려준다(이어 가기).
  * requestId 는 바깥에서 받는다(uuid) — 순수 함수로 두고 재시도에도 같은 값을 쓰게.
  */
-export function beginVote(state: PrepState, motionIds: readonly string[], requestId: string): BeginVoteResult {
+/** 지금 열려 있거나 여는 중인 투표(무효·마감 제외). 화면 맨 위 띠와 시작 막기에 쓴다. */
+export function liveBallots(state: Pick<PrepState, 'ballots'>): BallotRecord[] {
+  return Object.values(state.ballots).filter((b) => b.stage === 'open' || b.stage === 'creating' || b.stage === 'draft');
+}
+
+/** 투표 기록의 화면 이름 — 「2-1-안2」 · 「2-1-안2 2차」 · 묶음은 「2-1-안1 외 2건」. */
+export function ballotLabel(b: Pick<BallotRecord, 'motionIds' | 'round'>): string {
+  const head = roundLabel(b.motionIds[0] ?? '', b.round);
+  return b.motionIds.length > 1 ? `${head} 외 ${b.motionIds.length - 1}건` : head;
+}
+
+export function beginVote(state: PrepState, motionIds: readonly string[], requestId: string, nowIso?: string): BeginVoteResult {
   if (motionIds.length === 0) return { ok: false, error: '투표할 안을 고르십시오.' };
   const motions: Motion[] = [];
   for (const id of motionIds) {
@@ -222,6 +291,12 @@ export function beginVote(state: PrepState, motionIds: readonly string[], reques
     return { ok: false, error: '이미 다른 투표에 들어간 안이 섞여 있습니다.' };
   }
 
+  // 한 분과에 열린 투표는 하나만(10/14) — 앞 안을 마감하지 않고 다음 안을 열면 앞 안이 계속 표를 받는다.
+  const busy = liveBallots(state);
+  if (busy.length > 0) {
+    return { ok: false, error: `${ballotLabel(busy[0])} 투표가 열려 있습니다. 먼저 마감하십시오.` };
+  }
+
   if (!attendanceReady(state.attendance)) {
     return { ok: false, error: '재적·참석 인원을 먼저 넣으십시오(재적 과반수가 참석해야 투표를 시작합니다).' };
   }
@@ -233,7 +308,7 @@ export function beginVote(state: PrepState, motionIds: readonly string[], reques
   const revoting = phases.some((p) => p === 'revote');
   if (revoting && motions.length > 1) return { ok: false, error: '2차 투표는 안 하나씩 엽니다.' };
   if (motions.length > MAX_BALLOT_ITEMS) return { ok: false, error: `한 투표에 담을 수 있는 안은 ${MAX_BALLOT_ITEMS}개입니다.` };
-  const round = revoting ? motions[0].rounds.length + 1 : 1;
+  const round = revoting ? liveRounds(motions[0].rounds).length + 1 : 1;
   if (round > MAX_ROUNDS) return { ok: false, error: `투표는 ${MAX_ROUNDS}차까지입니다.` };
   if (motions.some((m) => !m.title.trim())) return { ok: false, error: '제목이 빈 안이 있습니다. 제목을 넣으십시오.' };
 
@@ -258,6 +333,7 @@ export function beginVote(state: PrepState, motionIds: readonly string[], reques
     token: null,
     openedAt: null,
     closedAt: null,
+    ...(nowIso ? { createdAt: nowIso } : {}),
   };
   const ids = new Set(record.motionIds);
   const next: PrepState = {
@@ -282,6 +358,7 @@ export function beginVote(state: PrepState, motionIds: readonly string[], reques
                 present: null,
                 verdict: null,
                 closedAt: null,
+                handConfirmed: false,
               },
             ],
           }
@@ -370,7 +447,9 @@ export function applyBallotResults(state: PrepState, requestId: string, results:
 // ── 부결 뒤 ───────────────────────────────────────────────────
 
 export function canRevote(state: PrepState, motion: Motion): boolean {
-  return motionPhase(state, motion) === 'failed' && motion.rounds.length < MAX_ROUNDS;
+  return (
+    motionPhase(state, motion) === 'failed' && liveRounds(motion.rounds).length < MAX_ROUNDS && !handPending(currentRound(motion))
+  );
 }
 
 /** [문구 고쳐 2차 투표] — 부결 안만. 제목 고치기는 updateMotion 으로 하고 시작은 beginVote. */
@@ -380,8 +459,9 @@ export function requestRevote(state: PrepState, motionId: string): PrepState {
   return mapMotion(state, motionId, (x) => ({ ...x, revote: true }));
 }
 
+/** 2차 준비 그만두기 — 2차 제목 칸에 고쳐 둔 문구는 버리고 마지막으로 투표한 제목으로 돌린다. */
 export function cancelRevote(state: PrepState, motionId: string): PrepState {
-  return mapMotion(state, motionId, (x) => (x.revote ? { ...x, revote: false } : x));
+  return mapMotion(state, motionId, (x) => (x.revote ? { ...x, revote: false, title: currentRound(x)?.title ?? x.title } : x));
 }
 
 export type MinorityResult = { ok: true; state: PrepState } | { ok: false; needsConfirm: true } | { ok: false; error: string };
@@ -394,12 +474,92 @@ export function markMinority(state: PrepState, motionId: string, force = false):
   if (!m) return { ok: false, error: '없는 안입니다.' };
   const phase = motionPhase(state, m);
   if (phase !== 'failed' && phase !== 'revote') return { ok: false, error: '부결된 안만 소수 의견으로 기록합니다.' };
+  if (handPending(currentRound(m))) return { ok: false, error: '거수 확인 전입니다. [거수 입력 완료] 또는 [거수 없음]을 먼저 누르십시오.' };
   if (!m.minorityOpinion.trim() && !force) return { ok: false, needsConfirm: true };
   return { ok: true, state: mapMotion(state, motionId, (x) => ({ ...x, resolution: 'minority', revote: false })) };
 }
 
 export function unmarkMinority(state: PrepState, motionId: string): PrepState {
   return mapMotion(state, motionId, (x) => (x.resolution === 'minority' ? { ...x, resolution: null } : x));
+}
+
+// ── 잘못 연 투표 무효(10/14) ──────────────────────────────────
+
+/** 무효로 할 수 있는 단계. 투표 전·2차 준비·소수 의견은 무효로 할 투표가 없다(또는 먼저 되돌린다). */
+const VOIDABLE: readonly MotionPhase[] = ['starting', 'open', 'counting', 'passed', 'failed', 'undecided'];
+/** 결과가 이미 나온 단계 — 무효는 운영팀 화면에서만(결과를 보고 뒤집는 데 쓰이지 않게). */
+const VOID_OPS_ONLY: readonly MotionPhase[] = ['passed', 'failed', 'undecided'];
+
+export function canVoidRound(state: PrepState, motion: Motion, isOps: boolean): boolean {
+  const phase = motionPhase(state, motion);
+  if (!VOIDABLE.includes(phase)) return false;
+  return isOps || !VOID_OPS_ONLY.includes(phase);
+}
+
+export type VoidOutcome = { ok: true; state: PrepState } | { ok: false; error: string };
+
+/**
+ * 투표 하나(멱등키)를 무효로 한다 — 그 투표에 걸린 안의 지금 차수에 voidedAt 을 적고 투표 기록은 마감으로 둔다.
+ * 안은 그 앞 단계로 돌아간다: 1차였으면 「투표 전」, 2차였으면 「2차 준비」. 차수 번호를 쓰지 않는다.
+ * 무효 차수는 CSV 에 「무효(잘못 열림)」로 남는다.
+ */
+export function voidBallot(state: PrepState, requestId: string, nowIso: string): VoidOutcome {
+  const record = state.ballots[requestId];
+  if (!record) return { ok: false, error: '투표 기록을 찾지 못했습니다.' };
+  for (const id of record.motionIds) {
+    const m = state.motions.find((x) => x.id === id);
+    if (!m) return { ok: false, error: `없는 안입니다(${id}).` };
+    if (currentRound(m)?.requestId !== requestId) return { ok: false, error: `${id}의 지금 차수가 아닌 투표입니다.` };
+    if (!VOIDABLE.includes(motionPhase(state, m))) return { ok: false, error: `${id}은 무효로 할 수 없는 단계입니다.` };
+  }
+  const ids = new Set(record.motionIds);
+  return {
+    ok: true,
+    state: {
+      ...state,
+      ballots: { ...state.ballots, [requestId]: { ...record, stage: 'closed', closedAt: record.closedAt ?? nowIso } },
+      motions: state.motions.map((m) => {
+        if (!ids.has(m.id)) return m;
+        const rounds = m.rounds.map((r) => (r.requestId === requestId && !r.voidedAt ? { ...r, voidedAt: nowIso } : r));
+        const left = liveRounds(rounds);
+        // 2차를 무효로 하면 2차 준비로 — 제목은 그 2차에 보냈던 문구를 남겨 다시 고칠 수 있게.
+        return { ...m, rounds, revote: left.length > 0, resolution: null };
+      }),
+    },
+  };
+}
+
+/**
+ * [잘못 연 투표 무효] 네트워크 부분 — 서버 투표를 먼저 닫는다(더 받지 않게). 닫기가 실패했는데 서버에서
+ * 아직 열려 있으면(또는 확인 못 하면) 무효로 적지 않는다 — 표를 계속 받는 투표를 화면에서만 지우면 안 된다.
+ * 만들기 전(creating)·열기 전(draft)이면 시민이 투표할 수 없으므로 서버 닫기 실패를 넘어간다.
+ */
+export async function runVoteVoid(api: VoteApi, commit: CommitFact, getState: () => PrepState, requestId: string, now: () => string): Promise<VoidOutcome> {
+  const record = getState().ballots[requestId];
+  if (!record) return { ok: false, error: '투표 기록을 찾지 못했습니다.' };
+  if (record.ballotId && record.stage !== 'closed') {
+    try {
+      await api.setStatus(record.ballotId, 'closed');
+    } catch (error) {
+      let st: BallotStatus | null = null;
+      try {
+        st = await api.statusOf(record.ballotId);
+      } catch {
+        st = null;
+      }
+      if (st !== 'draft' && st !== 'closed' && st !== 'published' && st !== 'archived') throw error;
+    }
+  }
+  let failure: string | null = null;
+  const saved = await commit((s) => {
+    const r = voidBallot(s, requestId, now());
+    if (!r.ok) {
+      failure = r.error;
+      return s;
+    }
+    return r.state;
+  });
+  return failure ? { ok: false, error: failure } : { ok: true, state: saved };
 }
 
 // ── 투표 단위(화면의 [투표 시작] 묶음) ───────────────────────
@@ -562,7 +722,10 @@ export function storedCeremonyItems(state: PrepState): CeremonyItem[] {
   const out: CeremonyItem[] = [];
   for (const m of state.motions) {
     if (motionExcluded(state, m)) continue;
-    const rounds = m.rounds.filter((r) => roundTotals(r) !== null);
+    // 결론이 아직 없는 안은 넣지 않는다 — 2차가 열려 있는데 1차 부결을 결과로 공개하면 안 된다(10/14).
+    // 빠진 안은 ceremonyGaps 가 세리머니 설정 화면에 따로 띄운다.
+    if (UNSETTLED.includes(motionPhase(state, m))) continue;
+    const rounds = liveRounds(m.rounds).filter((r) => roundTotals(r) !== null);
     const r = rounds[rounds.length - 1];
     if (!r) continue;
     const t = roundTotals(r) as RoundTotals;
@@ -576,6 +739,30 @@ export function storedCeremonyItems(state: PrepState): CeremonyItem[] {
       ...(r.present !== null ? { present: r.present } : {}),
       round: r.round,
     });
+  }
+  return out;
+}
+
+const UNSETTLED: readonly MotionPhase[] = ['ready', 'revote', 'starting', 'open', 'counting'];
+/** 세리머니를 시작하기 전에 멈춰 세워야 하는 단계 — 투표가 아직 돌아가는 중. */
+const CEREMONY_BLOCKING: readonly MotionPhase[] = ['starting', 'open', 'counting'];
+
+export type CeremonyGap = { id: string; status: string; blocking: boolean };
+
+/**
+ * 세리머니에서 빠지거나 잠정인 안(10/14) — 「상정 N건」이 조용히 줄지 않게 설정 화면에 빨간 띠로 띄운다.
+ * blocking = 투표가 아직 돌아가는 중(시작 중·투표 중·집계 전) → [세리머니 시작]을 두 번 눌러야 한다.
+ */
+export function ceremonyGaps(state: PrepState): CeremonyGap[] {
+  const out: CeremonyGap[] = [];
+  for (const m of state.motions) {
+    if (motionExcluded(state, m)) continue;
+    const phase = motionPhase(state, m);
+    if (UNSETTLED.includes(phase) || phase === 'undecided') {
+      out.push({ id: m.id, status: PHASE_LABELS[phase], blocking: CEREMONY_BLOCKING.includes(phase) });
+    } else if (handPending(currentRound(m))) {
+      out.push({ id: m.id, status: '거수 확인 전', blocking: false });
+    }
   }
   return out;
 }
@@ -610,8 +797,10 @@ export function formatKst(iso: string | null): string {
 
 function verdictText(state: PrepState, m: Motion, r: MotionRound, isLast: boolean): string {
   const b = state.ballots[r.requestId];
-  if (r.verdict === 'passed') return '가결';
-  if (r.verdict === 'failed') return isLast && m.resolution === 'minority' ? '부결(소수의견)' : '부결';
+  if (r.voidedAt) return '무효(잘못 열림)';
+  const pending = handPending(r) ? '(거수 확인 전)' : '';
+  if (r.verdict === 'passed') return `가결${pending}`;
+  if (r.verdict === 'failed') return isLast && m.resolution === 'minority' ? '부결(소수의견)' : `부결${pending}`;
   if (r.verdict === 'invalid') return '판정불가';
   if (!b || b.stage === 'creating' || b.stage === 'draft') return '시작 중';
   if (b.stage === 'open') return '투표중';
@@ -636,12 +825,8 @@ export function resultCsvRows(state: PrepState): string[][] {
       r ? state.ballots[r.requestId]?.ballotId ?? '' : '',
       r ? formatKst(r.closedAt) : '',
     ];
-    if (m.rounds.length === 0) {
-      const excluded = motionExcluded(state, m);
-      rows.push([division, m.id, m.title, m.cardNos.join(' '), '', '', '', '', '', '', '', '', '', '', excluded ? '제외' : '미투표', ...tail(null)]);
-      continue;
-    }
-    m.rounds.forEach((r, i) => {
+    const last = currentRound(m);
+    m.rounds.forEach((r) => {
       const t = roundTotals(r);
       rows.push([
         division,
@@ -658,10 +843,15 @@ export function resultCsvRows(state: PrepState): string[][] {
         t ? String(t.yes) : '',
         t ? String(t.no) : '',
         n(roundThreshold(r)),
-        verdictText(state, m, r, i === m.rounds.length - 1),
+        verdictText(state, m, r, r === last),
         ...tail(r),
       ]);
     });
+    // 투표하지 않은 안(무효만 있는 안 포함)도 한 줄 — 「미투표」/「제외」.
+    if (!last) {
+      const excluded = motionExcluded(state, m);
+      rows.push([division, m.id, m.title, m.cardNos.join(' '), '', '', '', '', '', '', '', '', '', '', excluded ? '제외' : '미투표', ...tail(null)]);
+    }
   }
   return rows;
 }
@@ -695,6 +885,14 @@ export type BoardSummary = {
   motionCount: number;
   excludedCount: number;
   open: { label: string; openedAt: string | null }[];
+  /** 여는 중(만들기·열기 사이)에 멈춘 투표 — since = [투표 시작]을 누른 시각(옛 저장은 null). */
+  starting: { label: string; since: string | null }[];
+  /** 마감했지만 결과를 못 읽은 안(집계 전). */
+  counting: string[];
+  /** 판정 불가(참석 인원 문제 등). */
+  undecided: string[];
+  /** 마감 뒤 거수 확인을 아직 안 한 안. */
+  handPending: string[];
   passed: number;
   failed: number;
   minority: number;
@@ -711,6 +909,10 @@ export function boardSummary(division: number, state: PrepState | null): BoardSu
     motionCount: 0,
     excludedCount: 0,
     open: [],
+    starting: [],
+    counting: [],
+    undecided: [],
+    handPending: [],
     passed: 0,
     failed: 0,
     minority: 0,
@@ -728,15 +930,29 @@ export function boardSummary(division: number, state: PrepState | null): BoardSu
       continue;
     }
     out.motionCount += 1;
+    const r = currentRound(m);
+    const label = roundLabel(m.id, r?.round ?? 1);
+    if (handPending(r)) out.handPending.push(label);
     if (phase === 'passed') out.passed += 1;
     else if (phase === 'failed' || phase === 'revote') out.failed += 1;
     else if (phase === 'minority') out.minority += 1;
-    else if (phase === 'open' || phase === 'starting') {
-      const r = currentRound(m);
-      out.open.push({ label: roundLabel(m.id, r?.round ?? 1), openedAt: r ? state.ballots[r.requestId]?.openedAt ?? null : null });
-    } else out.pending += 1;
+    else if (phase === 'open') out.open.push({ label, openedAt: r ? state.ballots[r.requestId]?.openedAt ?? null : null });
+    // 10/14 — 시작 멈춤·집계 실패·판정 불가는 「투표 중」·「투표 전」에 섞지 않고 따로 센다.
+    else if (phase === 'starting') out.starting.push({ label, since: r ? state.ballots[r.requestId]?.createdAt ?? null : null });
+    else if (phase === 'counting') out.counting.push(label);
+    else if (phase === 'undecided') out.undecided.push(label);
+    else out.pending += 1;
   }
   return out;
+}
+
+/** 현황판 경과 경고 — 시작 멈춤 30초, 투표 중 5분을 넘으면 경고(10/14). 시각을 모르면 경고하지 않는다. */
+export const STUCK_START_MS = 30_000;
+export const LONG_OPEN_MS = 5 * 60_000;
+export function overdue(since: string | null, nowMs: number, limitMs: number): boolean {
+  if (!since) return false;
+  const t = Date.parse(since);
+  return !Number.isNaN(t) && nowMs - t > limitMs;
 }
 
 /** 「3분 07초」. 시작 시각이 없거나 미래면 「방금」. now 는 서버 시각 보정한 값. */

@@ -33,6 +33,7 @@ import {
   beginVote,
   boardSummary,
   canRevote,
+  confirmHandCount,
   cancelRevote,
   createInputOf,
   csvCell,
@@ -109,7 +110,8 @@ function voteThrough(s: PrepState, ids: string[], counts: [number, number][], ke
   x = markBallotOpened(x, key, NOW);
   const r = applyBallotResults(x, key, results(x.ballots[key], counts), NOW);
   if (!r.ok) throw new Error(r.error);
-  return r.state;
+  // 기록 담당이 [거수 입력 완료]까지 누른 모양(10/14).
+  return ids.reduce((acc, id) => confirmHandCount(acc, id, 1, 'entered'), r.state);
 }
 
 // ─────────────────────────────────────────────────────────────

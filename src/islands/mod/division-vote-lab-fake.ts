@@ -9,7 +9,7 @@
 import type { BallotCreateInput, BallotListRow, BallotResults, BallotStatus } from '../../lib/deliberation';
 import type { DivisionBallotApi } from './DivisionVotePanel';
 import { DIVISION_VOTE_FIXTURE } from './division-vote-fixture';
-import { applyBallotResults, beginVote, markBallotCreated, markBallotOpened, markMinority, setHandCount } from './division-vote-flow';
+import { applyBallotResults, beginVote, confirmHandCount, markBallotCreated, markBallotOpened, markMinority, setHandCount } from './division-vote-flow';
 import { createMotion, initPrepState, setCardStatus, setGridMark, updateMotion, type PrepState, type RecsDivision } from './division-vote-logic';
 
 type FakeBallot = {
@@ -169,6 +169,8 @@ function voted(s: PrepState, ids: string[], key: string, counts: [number, number
   );
   if (!r.ok) throw new Error(r.error);
   x = r.state;
+  // 시연 상태는 거수 확인까지 마친 모양(10/14 거수 확인 단계).
+  for (const id of ids) x = confirmHandCount(x, id, rec.round, 'entered');
   return x;
 }
 

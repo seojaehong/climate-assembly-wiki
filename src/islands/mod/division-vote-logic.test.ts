@@ -437,7 +437,7 @@ describe('결과 원천', () => {
     ]);
   });
 
-  it('실제 결과는 dist["2"](찬성)를 쓰고 문장 앞 안 번호를 라벨로 뗀다', () => {
+  it('실제 결과는 dist["2"](찬성)·dist["1"](반대)를 쓰고 문장 앞 안 번호를 라벨로 뗀다', () => {
     const results: BallotResults = {
       id: 'b',
       title: '2분과 의결',
@@ -450,8 +450,8 @@ describe('결과 원천', () => {
       ],
     };
     expect(ballotCeremonyItems(results)).toEqual([
-      { key: 'i1', label: '2-1-안1', title: '다회용기 확대', yeas: 40 },
-      { key: 'i2', label: '2번', title: '임의 문장', yeas: 25 },
+      { key: 'i1', label: '2-1-안1', title: '다회용기 확대', yeas: 40, nays: 10 },
+      { key: 'i2', label: '2번', title: '임의 문장', yeas: 25, nays: 25 },
     ]);
   });
 });
