@@ -19,7 +19,8 @@ import {
  * 10/17 분과 의결 세리머니 — 대형 화면(200명) 풀스크린.
  *
  * 판단은 전부 division-vote-logic.ts 에 있다. 여기서는 단계별로 보이는 것을 그리기만 한다.
- * 크기: 본문 24px+ · 안 제목 40px+ · 숫자 80px+ · hover 의존 없음.
+ * 크기: 본문 24px+ · 안 제목 40px+(긴 합친 문구는 길이에 따라 줄인다 — 300자도 1920×1080 에서 약 41px) · 숫자 80px+ · hover 의존 없음.
+ * 안 제목은 자르지 않는다 — 합친 문구(안 번호 포함 300자까지)를 전부 보인다.
  * 「다음」 한 번 = 안 제목 공개, 다시 한 번 = 막대 → 기준선 → 도장(자동 진행, 누르면 바로 도장).
  * 리모컨 넘김키(PageDown/PageUp)와 화살표도 받는다.
  */
@@ -39,6 +40,18 @@ const C = {
   fail: '#9FB3C2',
   warn: '#FFB4B4',
 };
+
+/**
+ * 안 제목 글자 크기 — 길수록 줄인다(분과 의결 QR 화면 headlineSize 와 같은 방식).
+ * 아래 막대·도장 줄(약 360px)이 늘 자리를 잡고 있으므로, 300자(안 번호 포함)도 1920×1080 에서
+ * 그 위 남은 높이 안에 잘리지 않고 들어가는 크기로 잡았다. vh 항은 낮은 화면에서 넘치지 않게 한다.
+ */
+function titleSize(text: string): string {
+  const n = [...text].length;
+  if (n <= 40) return 'text-[clamp(40px,3.6vw,72px)]';
+  if (n <= 120) return 'text-[clamp(32px,min(3vw,5.4vh),58px)]';
+  return 'text-[clamp(24px,min(2.3vw,3.8vh),42px)]';
+}
 
 function prefersReducedMotion(): boolean {
   try {
@@ -282,8 +295,8 @@ function MotionView({
         </p>
         <h2
           data-testid="ceremony-title"
-          className="text-[clamp(40px,3.6vw,72px)] font-black leading-[1.18] line-clamp-3 break-keep"
-          style={{ letterSpacing: '-.02em', color: C.text }}
+          className={`${titleSize(item.title)} font-black leading-[1.18] break-keep`}
+          style={{ letterSpacing: '-.02em', color: C.text, overflowWrap: 'anywhere' }}
         >
           {item.title}
         </h2>
@@ -412,13 +425,15 @@ function SummaryView({
         </p>
       </div>
       {shown.length > 0 ? (
-        <ol className="grid min-h-0 gap-x-10 gap-y-2" style={{ gridTemplateColumns: shown.length > 6 ? 'repeat(2,minmax(0,1fr))' : 'minmax(0,1fr)' }}>
+        <ol className="grid min-h-0 overflow-y-auto gap-x-10 gap-y-2" style={{ gridTemplateColumns: shown.length > 6 ? 'repeat(2,minmax(0,1fr))' : 'minmax(0,1fr)' }}>
           {shown.map((item) => (
             <li key={item.key} className="flex min-w-0 items-baseline gap-4 text-[clamp(24px,1.8vw,34px)] font-bold">
               <span className="shrink-0 tr-num" style={{ color: C.gold }}>
                 {item.label}
               </span>
-              <span className="min-w-0 truncate">{item.title}</span>
+              <span className="min-w-0 break-keep" style={{ overflowWrap: 'anywhere' }}>
+                {item.title}
+              </span>
             </li>
           ))}
         </ol>
