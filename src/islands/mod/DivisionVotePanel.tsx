@@ -661,6 +661,10 @@ function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepS
     } else if (next.length === 0 && untouched) {
       autoTitle.current = null;
       setTitle('');
+    } else if (next.length >= 2 && autoTitle.current !== null && title === autoTitle.current) {
+      // 둘 이상 합칠 때 첫 카드 제목이 그대로 남으면 합친 안이 그 제목으로 나간다. 미리 넣은 값만 비운다.
+      autoTitle.current = null;
+      setTitle('');
     }
   };
 

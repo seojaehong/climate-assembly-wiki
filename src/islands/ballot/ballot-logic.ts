@@ -67,7 +67,7 @@ export type VoterCopy = {
 export const SURVEY_EVIDENCE_BOUNDARY =
   '이름·개인정보는 저장하지 않으며, 브라우저 기기 식별값으로 중복을 줄이는 비구속 현장 의견조사입니다. 공식 의사결정이나 참여 인원 산정의 단독 근거로 사용할 수 없습니다.';
 export const DECISION_EVIDENCE_BOUNDARY =
-  '무기명 투표입니다. 이름·개인정보는 저장하지 않으며, 같은 기기에서는 한 번만 제출됩니다.';
+  '무기명 투표입니다. 이름·개인정보는 저장하지 않습니다. 중복 제출은 같은 브라우저 기준으로만 막으므로, 결과는 현장 참석 인원과 대조해 확정합니다.';
 
 export function voterCopy(decision: boolean): VoterCopy {
   if (decision) {
