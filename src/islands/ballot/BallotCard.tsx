@@ -311,7 +311,7 @@ function ItemBlock({
         <div className="mb-3" />
       )}
 
-      <div className="space-y-2" role="group" aria-label={motion ? `${motion.id} 찬반` : `의제 ${item.ordinal} 응답`}>
+      <div className="space-y-2" role="group" aria-label={motion ? `${motion.id} 찬반 응답` : `의제 ${item.ordinal} 응답`}>
         {labels.map((label, i) => {
           const v = i + 1;
           const active = value === v;

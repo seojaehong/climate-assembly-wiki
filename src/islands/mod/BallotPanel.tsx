@@ -83,12 +83,15 @@ function statusBadgeClass(status: BallotListRow['status']): string {
 // 풀스크린 — 참가용 QR (대형 스크린: QR 최대, 안내 24px+)
 // ============================================================
 
-/** 큰 제목 글자 크기 — 길수록 줄여 QR 자리를 남긴다(300자도 1920×1080 에서 QR 이 화면 ⅓ 이상). */
+/**
+ * 분과 의결 큰 제목 글자 크기 — 길수록 줄인다. 왼쪽 단(화면 약 58%)에 들어가는 크기로 잡았다:
+ * 300자(안 번호 포함)도 1920×1080·1280×720 에서 잘리지 않고 오른쪽 QR 이 화면 높이 절반 이상을 쓴다.
+ */
 function headlineSize(text: string): string {
   const n = [...text].length;
-  if (n <= 40) return 'text-[clamp(30px,4vw,72px)]';
-  if (n <= 120) return 'text-[clamp(26px,2.8vw,52px)]';
-  return 'text-[clamp(22px,2vw,40px)]';
+  if (n <= 40) return 'text-[clamp(32px,4.2vw,84px)]';
+  if (n <= 120) return 'text-[clamp(26px,3vw,60px)]';
+  return 'text-[clamp(20px,2.25vw,46px)]';
 }
 
 export function BallotQrFullscreen({
@@ -100,7 +103,7 @@ export function BallotQrFullscreen({
   onExit: () => void;
   /**
    * 분과 의결: 투표 제목 대신 크게 보일 안 제목(오퍼레이터가 친 합친 문구)과 작은 곁글(안 번호·차수).
-   * 없으면 지금처럼 투표 제목을 보인다(일반 다의제 투표).
+   * 주면 왼쪽 = 안 제목, 오른쪽 = QR 두 단으로 놓는다. 없으면 지금처럼(일반 다의제 투표).
    */
   headline?: { main: string; sub: string; eyebrow?: string };
 }) {
@@ -129,81 +132,108 @@ export function BallotQrFullscreen({
   // 세 분과가 세 장소에서 동시에 QR을 띄운다 — 오배포 방지용 분과 라벨을 크게 박는다.
   const subgroupNotice = qrSubgroupNotice(ballot.subgroup);
 
+  const exitButton = (
+    <button
+      type="button"
+      onClick={onExit}
+      aria-label="QR 화면 나가기"
+      className="shrink-0 rounded-full border border-[#C4D8E4] bg-white/90 px-4 py-2 text-[15px] font-bold text-[#5A6B73] shadow-sm"
+    >
+      나가기 (ESC)
+    </button>
+  );
+  const notice = subgroupNotice ? (
+    <p className="mt-3 w-full shrink-0 rounded-2xl bg-[#135C73] px-6 py-3 text-center text-[clamp(24px,2.8vw,44px)] font-extrabold text-white">
+      {subgroupNotice}
+    </p>
+  ) : null;
+  /* QR — flex-1 영역에 이미지를 양방향(max-h/max-w-full)으로 가둬 실제 남은 공간에 맞춰
+     축소시킨다. grid place-items-center는 자식을 컨테이너에 제약하지 못해(내용크기 렌더)
+     QR이 하단을 침범했다 → flex items-center + 이미지 자체 상한으로 교체. object-contain이
+     비율을 지키므로 정사각 강제 없이도 항상 flex 영역 안에 들어간다. */
+  const qrBox = (
+    <div className="flex-1 min-h-0 w-full flex items-center justify-center py-2">
+      {qr ? (
+        <img
+          src={qr}
+          alt="참가용 QR 코드"
+          className="max-h-full max-w-full w-auto h-auto object-contain rounded-2xl border border-[#DCE7EE]"
+        />
+      ) : (
+        <div className="h-full max-h-full aspect-square bg-[#F1F7FA] rounded-2xl animate-pulse" />
+      )}
+    </div>
+  );
+  const scanBlock = (
+    <div className="w-full shrink-0 flex flex-col items-center text-center gap-2 pb-1">
+      <p className="text-[clamp(24px,2.6vw,40px)] font-extrabold text-[#1F4E79]">
+        <span aria-hidden="true">📷</span> 휴대폰 카메라로 QR을 스캔하세요
+      </p>
+      <p
+        className="font-mono text-[clamp(24px,2.2vw,34px)] font-bold text-[#135C73] break-all select-all"
+        style={{ letterSpacing: '-.01em' }}
+      >
+        {urlDisplay}
+      </p>
+      <p className="text-[clamp(28px,3vw,48px)] font-extrabold text-[#1F4E79] tr-num">
+        제출 {ballot.response_count}명
+      </p>
+    </div>
+  );
+
+  if (headline) {
+    // 분과 의결 — 왼쪽 단에 안 제목 전체(잘림 없음), 오른쪽 단에 QR·안내.
+    return (
+      <div className="fixed inset-0 z-50 bg-white flex flex-col items-center px-6 py-5 sm:py-6" data-testid="qr-fullscreen-decision">
+        <div className="w-full shrink-0 flex items-center justify-between gap-4">
+          <Eyebrow className="text-[#135C73]">
+            {headline.eyebrow ?? '분과 의결'} · {subgroupBadgeLabel(ballot.subgroup)}
+          </Eyebrow>
+          {exitButton}
+        </div>
+        {notice}
+        <div className="mt-4 flex-1 min-h-0 w-full grid grid-cols-1 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-6 lg:gap-10">
+          <div className="min-h-0 overflow-auto flex flex-col justify-center">
+            <p data-testid="qr-headline-sub" className="text-[clamp(20px,1.9vw,34px)] font-bold text-[#5A6B73] tr-num mb-2">
+              {headline.sub}
+            </p>
+            <h1
+              data-testid="qr-headline"
+              className={`${headlineSize(headline.main)} font-extrabold text-[#1F4E79] leading-snug break-words whitespace-pre-line`}
+              style={{ letterSpacing: '-.022em', wordBreak: 'keep-all', overflowWrap: 'anywhere' }}
+            >
+              {headline.main}
+            </h1>
+          </div>
+          <div className="min-h-0 flex flex-col items-center">
+            {qrBox}
+            {scanBlock}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 bg-white flex flex-col items-center px-6 py-6 sm:py-8">
       <div className="w-full shrink-0 flex items-start justify-between gap-4">
         <div className="min-w-0">
           <Eyebrow className="text-[#135C73] mb-1">
-            {headline?.eyebrow ?? '다의제 투표'} · {subgroupBadgeLabel(ballot.subgroup)}
+            다의제 투표 · {subgroupBadgeLabel(ballot.subgroup)}
           </Eyebrow>
-          {headline ? (
-            <>
-              <p data-testid="qr-headline-sub" className="text-[clamp(20px,1.8vw,30px)] font-bold text-[#5A6B73] tr-num">
-                {headline.sub}
-              </p>
-              <h1
-                data-testid="qr-headline"
-                className={`${headlineSize(headline.main)} font-extrabold text-[#1F4E79] leading-snug break-words whitespace-pre-line`}
-                style={{ letterSpacing: '-.022em', wordBreak: 'keep-all', overflowWrap: 'anywhere' }}
-              >
-                {headline.main}
-              </h1>
-            </>
-          ) : (
-            <h1
-              className="text-[clamp(24px,3vw,44px)] font-extrabold text-[#1F4E79] leading-tight break-words"
-              style={{ letterSpacing: '-.022em', wordBreak: 'keep-all', overflowWrap: 'anywhere' }}
-            >
-              {ballot.title}
-            </h1>
-          )}
+          {/* 10/14 — 한 줄 잘림(truncate)을 풀었다. 긴 제목도 여러 줄로 다 보인다. */}
+          <h1
+            className="text-[clamp(24px,3vw,44px)] font-extrabold text-[#1F4E79] leading-tight break-words"
+            style={{ letterSpacing: '-.022em', wordBreak: 'keep-all', overflowWrap: 'anywhere' }}
+          >
+            {ballot.title}
+          </h1>
         </div>
-        <button
-          type="button"
-          onClick={onExit}
-          aria-label="QR 화면 나가기"
-          className="shrink-0 rounded-full border border-[#C4D8E4] bg-white/90 px-4 py-2 text-[15px] font-bold text-[#5A6B73] shadow-sm"
-        >
-          나가기 (ESC)
-        </button>
+        {exitButton}
       </div>
-
-      {subgroupNotice ? (
-        <p className="mt-3 w-full shrink-0 rounded-2xl bg-[#135C73] px-6 py-3 text-center text-[clamp(24px,2.8vw,44px)] font-extrabold text-white">
-          {subgroupNotice}
-        </p>
-      ) : null}
-
-      {/* QR — flex-1 영역에 이미지를 양방향(max-h/max-w-full)으로 가둬 실제 남은 공간에 맞춰
-          축소시킨다. grid place-items-center는 자식을 컨테이너에 제약하지 못해(내용크기 렌더)
-          QR이 하단을 침범했다 → flex items-center + 이미지 자체 상한으로 교체. object-contain이
-          비율을 지키므로 정사각 강제 없이도 항상 flex 영역 안에 들어간다. */}
-      <div className="flex-1 min-h-0 w-full flex items-center justify-center py-2">
-        {qr ? (
-          <img
-            src={qr}
-            alt="참가용 QR 코드"
-            className="max-h-full max-w-full w-auto h-auto object-contain rounded-2xl border border-[#DCE7EE]"
-          />
-        ) : (
-          <div className="h-full max-h-full aspect-square bg-[#F1F7FA] rounded-2xl animate-pulse" />
-        )}
-      </div>
-
-      <div className="w-full shrink-0 flex flex-col items-center text-center gap-2 pb-1">
-        <p className="text-[clamp(24px,2.6vw,40px)] font-extrabold text-[#1F4E79]">
-          <span aria-hidden="true">📷</span> 휴대폰 카메라로 QR을 스캔하세요
-        </p>
-        <p
-          className="font-mono text-[clamp(24px,2.2vw,34px)] font-bold text-[#135C73] break-all select-all"
-          style={{ letterSpacing: '-.01em' }}
-        >
-          {urlDisplay}
-        </p>
-        <p className="text-[clamp(28px,3vw,48px)] font-extrabold text-[#1F4E79] tr-num">
-          제출 {ballot.response_count}명
-        </p>
-      </div>
+      {notice}
+      {qrBox}
+      {scanBlock}
     </div>
   );
 }

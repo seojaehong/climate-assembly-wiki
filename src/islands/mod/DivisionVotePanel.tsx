@@ -813,6 +813,7 @@ function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepS
           ) : null}
           <textarea
             className={`${input} min-h-16 py-2 font-bold`}
+            rows={titleRows(title)}
             placeholder="안 제목 — 합친 문구. 큰 QR 화면과 투표자 휴대폰에 그대로 크게 나옵니다"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
@@ -873,6 +874,11 @@ function PhaseBadge({ phase }: { phase: MotionPhase }) {
   );
 }
 
+/** 안 제목 칸 줄 수 — 300자 문구도 스크롤 없이 다 보이게 길이에 맞춰 늘린다. */
+function titleRows(title: string): number {
+  return Math.min(8, Math.max(2, Math.ceil([...title].length / 55) + (title.match(/\n/g)?.length ?? 0)));
+}
+
 /** 안 제목 칸 아래 「남은 글자」. 투표 문항 = 안 번호 + 띄어쓰기 + 제목, 300자까지. */
 function TitleRoom({ id, room }: { id: string; room: number }) {
   return (
@@ -912,6 +918,7 @@ function MotionEditor({ motion, state, update }: { motion: Motion; state: PrepSt
       </div>
       <textarea
         className={`${input} mt-3 min-h-14 py-2 font-bold`}
+        rows={titleRows(motion.title)}
         value={motion.title}
         aria-label={`${motion.id} 제목`}
         onChange={(e) => update((s) => updateMotion(s, motion.id, { title: e.target.value }))}
