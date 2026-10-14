@@ -265,6 +265,12 @@ export default function DivisionVotePanel({
   const [bandSlot, setBandSlot] = useState<HTMLDivElement | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const { notice, setNotice } = prep;
+  // 알림은 화면 위에 붙어 있으므로 「됐습니다」류(ok)는 6초 뒤 스스로 닫는다. 경고·오류는 닫을 때까지 둔다.
+  useEffect(() => {
+    if (notice?.tone !== 'ok') return undefined;
+    const t = setTimeout(() => setNotice(null), 6000);
+    return () => clearTimeout(t);
+  }, [notice, setNotice]);
 
   const divisions = Object.entries(prep.slots)
     .filter(([, slot]) => !!slot.state)
@@ -1283,7 +1289,8 @@ function VoteBoard({
           const title = currentRound(m ?? { rounds: [] })?.title ?? m?.title ?? '';
           const label = ballotLabel(b);
           const responses = b.ballotId ? counts[b.ballotId] ?? null : null;
-          const elsewhere = b.stage === 'open' && !openedHere.current.has(b.requestId) && qrKey !== b.requestId;
+          // 운영팀 노트북은 큰 화면에 연결하지 않으므로 이 안내는 분과 PC 에만.
+          const elsewhere = !isOps && b.stage === 'open' && !openedHere.current.has(b.requestId) && qrKey !== b.requestId;
           const isBusy = unit ? !!busy[unit.key] : false;
           return (
             <div
