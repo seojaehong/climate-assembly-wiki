@@ -3,7 +3,7 @@
  *
  * 설계: 10_작업산출물/2026-10-04_1017토론회_준비/01_설계_1017의결화면.md §1·§2(1단계)
  *
- * - 준비판: 권고 제목 카드에 처리 상태를 붙이고, 같은 주제 안 카드끼리만 「의결안」으로 묶는다.
+ * - 준비판: 권고 제목 카드에 처리 상태를 붙이고, 같은 분과 안 카드를 「의결안」으로 묶는다(주제가 달라도 경고만, 10/14).
  * - 투표 열기: 고른 의결안을 기존 ballot_create_v3 페이로드(scale 2, subgroup 「N분과」)로 바꾼다.
  * - 세리머니: 재적 R·참석 M·찬성 V 로 가결을 판정한다(운영규정 §16③, quorum.ts 정수식 재사용).
  *
@@ -19,6 +19,7 @@ import type {
   BallotResults,
 } from '../../lib/deliberation';
 import { MAX_BALLOT_ITEMS, MAX_STATEMENT_LENGTH } from './ballot-panel-logic';
+import { divisionBallotTitle, motionStatementOf, parseMotionStatement } from '../../lib/division-ballot-format';
 
 // ── 원천 데이터 모양 (recs_1017.json) ─────────────────────────
 
@@ -238,27 +239,43 @@ export function topicOfCard(source: RecsDivision, cardNo: string): string | null
 }
 
 export type CombineCheck =
-  | { ok: true; topicNo: string }
-  | { ok: false; reason: 'empty' | 'unknown-card' | 'mixed-topic'; topics?: string[] };
+  | { ok: true; topicNo: string; topics: string[] }
+  | { ok: false; reason: 'empty' | 'unknown-card' };
 
-/** 10/3 결정 — 통합은 같은 주제 안에서만. 다른 주제 카드가 섞이면 거절한다. */
+/**
+ * 10/14 결정 — 같은 분과 안이면 주제가 달라도 한 안으로 합칠 수 있다(원천이 분과 하나라 분과는 늘 같다).
+ * topicNo = 원천 자리 순서로 첫 카드의 주제(안 번호·정렬·묶음 표시에 쓴다).
+ * topics = 고른 카드의 주제 전부(원천 순서). 둘 이상이면 화면에 경고만 띄운다(combineWarningText).
+ */
 export function canCombine(source: RecsDivision, cardNos: readonly string[]): CombineCheck {
   if (cardNos.length === 0) return { ok: false, reason: 'empty' };
-  const topics: string[] = [];
+  const found = new Set<string>();
   for (const no of cardNos) {
     const topic = topicOfCard(source, no);
     if (!topic) return { ok: false, reason: 'unknown-card' };
-    if (!topics.includes(topic)) topics.push(topic);
+    found.add(topic);
   }
-  if (topics.length > 1) return { ok: false, reason: 'mixed-topic', topics };
-  return { ok: true, topicNo: topics[0] };
+  const topics = source.topics.map((t) => t.no).filter((no) => found.has(no));
+  return { ok: true, topicNo: topics[0], topics };
 }
 
 export function combineFailureText(check: CombineCheck): string | null {
   if (check.ok) return null;
   if (check.reason === 'empty') return '카드를 1개 이상 고르십시오.';
-  if (check.reason === 'unknown-card') return '목록에 없는 카드가 섞였습니다.';
-  return `다른 주제(${(check.topics ?? []).join(' · ')})의 카드는 한 안으로 묶을 수 없습니다.`;
+  return '목록에 없는 카드가 섞였습니다.';
+}
+
+/** 다른 주제가 섞였을 때의 경고 한 줄. 막지 않는다. 섞이지 않았으면 null. */
+export function combineWarningText(check: CombineCheck): string | null {
+  if (!check.ok || check.topics.length < 2) return null;
+  return `다른 주제(${check.topics.join(' · ')})의 카드가 섞였습니다. 안 번호는 ${check.topicNo} 주제로 붙습니다. 맞으면 그대로 만드십시오.`;
+}
+
+/** 이미 어느 안에 들어간 카드 → 그 안 번호. 카드 1개짜리 안은 카드 상태를 바꾸지 않으므로 안 목록에서 직접 찾는다. */
+export function cardsInMotions(state: Pick<PrepState, 'motions'>): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const motion of state.motions) for (const no of motion.cardNos) if (!out.has(no)) out.set(no, motion.id);
+  return out;
 }
 
 export function nextMotionId(state: PrepState, topicNo: string): string {
@@ -295,11 +312,20 @@ export function createMotion(
   if (excluded.length > 0) {
     return { ok: false, error: `시행중-제외 카드(${excluded.join(', ')})는 의결안에 넣을 수 없습니다.` };
   }
+  const used = cardsInMotions(state);
+  const taken = input.cardNos.filter((no) => used.has(no));
+  if (taken.length > 0) {
+    return { ok: false, error: `이미 다른 안에 들어간 카드입니다(${taken.map((no) => `${no} → ${used.get(no)}`).join(', ')}).` };
+  }
   const title = input.title.trim();
   if (!title) return { ok: false, error: '안 제목을 입력하십시오.' };
+  const id = nextMotionId(state, check.topicNo);
+  if (motionTitleRoom(id, title) < 0) {
+    return { ok: false, error: `안 제목이 너무 깁니다(안 번호 포함 ${MAX_STATEMENT_LENGTH}자 이하).` };
+  }
   const cardNos = orderCardNos(state.source, input.cardNos);
   const motion: Motion = {
-    id: nextMotionId(state, check.topicNo),
+    id,
     topicNo: check.topicNo,
     cardNos,
     title,
@@ -737,7 +763,12 @@ export const DIVISION_BALLOT_SCALE = 2 as const;
 
 /** 투표 문항 문장 = 「안 번호 + 안 제목」. 문안 전체는 300자 제한에 걸려 넣지 않는다. */
 export function motionStatement(motion: Pick<Motion, 'id' | 'title'>): string {
-  return `${motion.id} ${motion.title.trim()}`;
+  return motionStatementOf(motion.id, motion.title);
+}
+
+/** 안 제목에 더 쓸 수 있는 글자 수(안 번호·띄어쓰기 포함 300자 기준). 음수면 넘친 것. */
+export function motionTitleRoom(id: string, title: string): number {
+  return MAX_STATEMENT_LENGTH - motionStatementOf(id, title).length;
 }
 
 export type DivisionBallotPlan = {
@@ -797,7 +828,7 @@ export function buildDivisionBallot(division: number, motions: readonly Motion[]
   });
   return {
     payload: {
-      title: label ? `${subgroup} 의결 ${label}` : `${subgroup} 의결`,
+      title: divisionBallotTitle(subgroup, label),
       instructions: '안마다 찬성 또는 반대를 고릅니다.',
       items,
       subgroup,
@@ -1012,11 +1043,11 @@ export function ballotCeremonyItems(results: BallotResults): CeremonyItem[] {
   return [...results.items]
     .sort((a, b) => a.ordinal - b.ordinal)
     .map((item) => {
-      const match = /^(\S+-안\d+)\s+(.*)$/s.exec(item.statement);
+      const match = parseMotionStatement(item.statement);
       return {
         key: item.id,
-        label: match ? match[1] : `${item.ordinal}번`,
-        title: match ? match[2] : item.statement,
+        label: match ? match.id : `${item.ordinal}번`,
+        title: match ? match.title : item.statement,
         yeas: Number(item.dist?.['2'] ?? 0) || 0,
       };
     });

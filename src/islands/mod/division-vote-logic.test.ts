@@ -15,7 +15,10 @@ import {
   lockedDivisionOf,
   buildDivisionBallot,
   canCombine,
+  cardsInMotions,
   cardStatusText,
+  combineWarningText,
+  motionTitleRoom,
   criteriaCount,
   ceremonyReveal,
   createMotion,
@@ -104,14 +107,40 @@ describe('의결안 — 같은 주제 안에서만 묶는다', () => {
     expect(r.state.cards['2-1-2'].status).toBe('keep');
   });
 
-  it('★ 다른 주제 카드가 섞이면 거절하고 상태를 바꾸지 않는다', () => {
-    const s = fresh();
-    const check = canCombine(div2, ['2-1-1', '2-4-1']);
-    expect(check).toEqual({ ok: false, reason: 'mixed-topic', topics: ['2-1', '2-4'] });
-    const r = createMotion(s, { cardNos: ['2-1-1', '2-4-1'], title: '섞인 안', text: '' });
+  it('★ (10/14) 같은 분과면 다른 주제 카드도 묶인다 — 막지 않고 경고만, 안 번호는 원천 순서 첫 주제', () => {
+    const check = canCombine(div2, ['2-4-1', '2-1-1']); // 고른 순서와 무관하게 원천 순서
+    expect(check).toEqual({ ok: true, topicNo: '2-1', topics: ['2-1', '2-4'] });
+    expect(combineWarningText(check)).toContain('2-1 · 2-4');
+    expect(combineWarningText(canCombine(div2, ['2-1-1', '2-1-2']))).toBeNull();
+    const r = mustCreate(fresh(), ['2-4-1', '2-1-1'], '섞인 안');
+    expect(r.motion.id).toBe('2-1-안1');
+    expect(r.motion.topicNo).toBe('2-1');
+    expect(r.motion.cardNos).toEqual(['2-1-1', '2-4-1']);
+    expect(r.state.cards['2-4-1']).toEqual({ status: 'merged', target: '2-1-안1' });
+    // 저장·가져오기를 거쳐도 그대로 남는다
+    expect(readStoredPrep(serializePrep(r.state))).toEqual(r.state);
+  });
+
+  it('★ 이미 다른 안에 들어간 카드는 또 넣을 수 없다(카드 1개짜리 안 포함)', () => {
+    const s = mustCreate(fresh(), ['2-4-6'], '하나짜리').state; // 1개짜리 = 카드 상태는 그대로
+    expect(s.cards['2-4-6'].status).toBe('keep');
+    expect(cardsInMotions(s).get('2-4-6')).toBe('2-4-안1');
+    const r = createMotion(s, { cardNos: ['2-4-1', '2-4-6'], title: '또', text: '' });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.error).toContain('2-1 · 2-4');
-    expect(s.motions).toHaveLength(0);
+    if (!r.ok) expect(r.error).toContain('2-4-6 → 2-4-안1');
+    // 안을 지우면 다시 고를 수 있다
+    expect(createMotion(deleteMotion(s, '2-4-안1'), { cardNos: ['2-4-1', '2-4-6'], title: '또', text: '' }).ok).toBe(true);
+  });
+
+  it('★ 안 제목 길이 — 안 번호·띄어쓰기 포함 300자까지', () => {
+    const id = '2-1-안1';
+    const fits = '가'.repeat(300 - id.length - 1);
+    expect(motionTitleRoom(id, fits)).toBe(0);
+    expect(motionTitleRoom(id, `${fits}가`)).toBe(-1);
+    expect(mustCreate(fresh(), ['2-1-1'], fits).motion.title).toBe(fits);
+    const r = createMotion(fresh(), { cardNos: ['2-1-1'], title: `${fits}가`, text: '' });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain('300자');
   });
 
   it('빈 선택·없는 카드·빈 제목을 거절한다', () => {
@@ -182,7 +211,7 @@ describe('JSON 내보내기·가져오기', () => {
   it('★ 한 곳만 틀려도 통째로 거절한다', () => {
     const s = mustCreate(fresh(), ['2-1-1']).state;
     const bad = JSON.parse(serializePrep(s));
-    bad.motions[0].cardNos = ['2-1-1', '2-4-1']; // 다른 주제가 섞인 안
+    bad.motions[0].topicNo = '2-4'; // 카드(2-1-1)와 맞지 않는 주제 — 10/14 부터 주제 섞기는 정상이라 이것으로 바꿈
     expect(parseImport(JSON.stringify(bad)).kind).toBe('error');
 
     const bad2 = JSON.parse(serializePrep(s));

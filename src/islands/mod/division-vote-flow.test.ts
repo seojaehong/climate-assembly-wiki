@@ -308,6 +308,33 @@ describe('투표 단위 — 기본은 하나씩', () => {
     expect(units.map((u) => u.motionIds)).toEqual([['2-1-안1', '2-1-안2'], ['2-4-안1']]);
     expect(units[0].requestId).toBe('kk');
   });
+
+  it('★ (10/14) 주제가 섞인 안도 하나씩 한 단위 · 문항 = 안 번호 + 합친 제목 · 결과까지 돈다', () => {
+    let s = initPrepState(div2);
+    s = make(s, ['2-4-1', '2-1-3'], '보증금 정비와 순환센터를 합친 안');
+    s = make(s, ['2-1-1'], '다회용기 확대');
+    s = { ...s, attendance: { enrolled: 60, present: 45 } };
+    expect(s.motions.map((m) => [m.id, m.cardNos])).toEqual([
+      ['2-1-안1', ['2-1-3', '2-4-1']],
+      ['2-1-안2', ['2-1-1']],
+    ]);
+    expect(voteUnits(s, 1).map((u) => u.motionIds)).toEqual([['2-1-안1'], ['2-1-안2']]);
+    const b = beginVote(s, ['2-1-안1'], 'mx');
+    if (!b.ok) throw new Error(b.error);
+    expect(b.state.ballots.mx.statements).toEqual(['2-1-안1 보증금 정비와 순환센터를 합친 안']);
+    const done = voteThrough(s, ['2-1-안1'], [[40, 3]], 'mx');
+    expect(motionPhase(done, done.motions[0])).toBe('passed');
+  });
+
+  it('★ 300자(안 번호 포함) 꽉 찬 제목으로도 투표가 열린다', () => {
+    const id = '2-1-안1';
+    const long = '가'.repeat(300 - id.length - 1);
+    let s = make(initPrepState(div2), ['2-1-1'], long);
+    s = { ...s, attendance: { enrolled: 60, present: 45 } };
+    const b = beginVote(s, [id], 'long');
+    if (!b.ok) throw new Error(b.error);
+    expect(b.state.ballots.long.statements[0]).toHaveLength(300);
+  });
 });
 
 describe('투표 시작 — 한 번 누르면 만들기 → 열기 → QR', () => {
