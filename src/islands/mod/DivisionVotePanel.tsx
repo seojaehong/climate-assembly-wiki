@@ -215,6 +215,7 @@ export default function DivisionVotePanel({
   initialStates,
   labPrepApi,
   labStorageNs,
+  storageScope,
 }: {
   access: WorkshopAuthorization | null;
   fixtureSource?: RecsDivision[];
@@ -232,11 +233,13 @@ export default function DivisionVotePanel({
   labPrepApi?: PrepApi | null;
   /** 미리보기 전용 — 이 기기 저장 키 접두사(두 화면이 한 페이지에 있을 때 서로 섞이지 않게). */
   labStorageNs?: string;
+  /** 실제 /mod — 이 기기 저장을 조(=세션) 단위로 나눈다. 없으면 옛 세션 내용이 새 세션 빈 서버로 올라간다(10/15 리허설2). */
+  storageScope?: string | null;
 }) {
   const preview = !!fixtureSource;
   const lockedDivision = lockedDivisionOf(subgroup);
   const isOps = preview ? !!opsPreview : lockedDivision === null;
-  const ns = preview ? labStorageNs ?? (isOps ? 'lab-ops:' : 'lab:') : '';
+  const ns = preview ? labStorageNs ?? (isOps ? 'lab-ops:' : 'lab:') : `team:${storageScope ?? 'unknown'}:`;
   const token = access?.accessToken ?? null;
 
   const prepApi = useMemo<PrepApi | null>(
