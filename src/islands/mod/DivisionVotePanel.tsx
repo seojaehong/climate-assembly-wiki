@@ -1367,7 +1367,7 @@ export function MotionEditor({ motion, state, update }: { motion: Motion; state:
         <TitleRoom id={motion.id} room={motionTitleRoom(motion.id, motion.title)} />
       )}
       <label className="mt-3 block text-[16px] font-extrabold text-[#135C73]" htmlFor={`motion-text-${motion.id}`}>
-        수정 문안 <span className="font-bold text-[#5A6B73]">(14:45~16:00 문안 수정 시간에 씁니다 · 투표 뒤에도 고칠 수 있고 결과 CSV 「수정문안」 열에 남습니다)</span>
+        본문 메모 <span className="font-bold text-[#5A6B73]">(선택 · 투표 문구는 위 제목 칸입니다. 원안 대비 수정 내역·권고 본문을 남길 때 씁니다 · 투표 뒤에도 고칠 수 있고 결과 CSV 「수정문안」 열에 남습니다)</span>
       </label>
       <textarea
         id={`motion-text-${motion.id}`}
@@ -1375,7 +1375,7 @@ export function MotionEditor({ motion, state, update }: { motion: Motion; state:
         className={`${input} mt-1 min-h-20 py-2`}
         value={motion.text}
         aria-label={`${motion.id} 문안`}
-        placeholder="가결된 안의 문구를 다듬어 적습니다. 투표한 제목(가결 기록)은 그대로 남습니다."
+        placeholder="필요할 때만 — 원안과 수정안 차이, 권고 본문 등"
         onChange={(e) => update(onMotion(motionRef(motion), (s, id) => updateMotion(s, id, { text: e.target.value })))}
       />
       {phase === 'excluded' ? (

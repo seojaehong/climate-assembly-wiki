@@ -18,11 +18,12 @@ export type TimetableBlock = {
 
 export const DECISION_EVENT_DATE_KST = '2026-10-17';
 
+// 10/15 상세 계획 v5(20261015-…상세 계획_ADR_v5.hwpx) 숙의참여단 상세 운영 계획 기준. 투표(QR)는 16:15 한 번뿐이다.
 export const DECISION_TIMETABLE: readonly TimetableBlock[] = [
-  { id: 'merge1', start: '11:00', end: '12:00', label: '중복 권고안 통합 의결(1)', view: 'vote', where: '준비판 제목 칸에 합친 문구 → 투표 진행에서 한 안씩' },
-  { id: 'merge2', start: '13:00', end: '14:30', label: '중복 권고안 통합 의결(2)', view: 'vote', where: '준비판 제목 칸에 합친 문구 → 투표 진행에서 한 안씩' },
-  { id: 'edit', start: '14:45', end: '16:00', label: '권고안 문안 수정', view: 'prep', where: '준비판에서 가결안의 「수정 문안」 칸' },
-  { id: 'final', start: '16:15', end: '16:45', label: '최종 권고안 · 문구 작성 위임 의결', view: 'vote', where: '투표 진행 맨 아래 최종 안건 2개' },
+  { id: 'merge1', start: '11:10', end: '12:00', label: '중복 확인 · 통합(1) — 현황·전문가 의견', view: 'prep', where: '준비판: 묶음 안과 세부 권고를 보며 공유(투표 없음)' },
+  { id: 'merge2', start: '13:00', end: '14:30', label: '중복 확인 · 통합(2) — 후보 권고안 목록', view: 'prep', where: '준비판: 안 합치기·나누기·빼기로 후보 목록 확정(투표 없음)' },
+  { id: 'edit', start: '14:45', end: '16:00', label: '문구 조정 · 권고 수준 · 기타 의견', view: 'prep', where: '준비판 제목 칸에 최종 후보 문구 · 투표 진행에서 권고 수준·기타 의견' },
+  { id: 'final', start: '16:15', end: '16:45', label: '분과별 의결(온라인) · 문구 작성 위임', view: 'vote', where: '투표 진행: 후보안 하나씩 QR(20분) → 맨 아래 위임 의결(10분)' },
 ] as const;
 
 function kstParts(now: Date): { date: string; hm: string } {
