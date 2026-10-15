@@ -25,6 +25,7 @@ A.on('dialog', (d) => d.accept());
 await A.goto(`${BASE}/mod?code=${CODE}`, { waitUntil: 'domcontentloaded' });
 await A.locator('#mod-tab-decision').waitFor({ timeout: 40000 });
 await A.getByRole('button', { name: '1분과 화면 열기' }).click();
+await A.getByRole('tab', { name: '1. 준비판', exact: true }).click();
 await A.locator('[data-testid=motion-card]').first().waitFor({ timeout: 20000 });
 
 // 발표 창 열기

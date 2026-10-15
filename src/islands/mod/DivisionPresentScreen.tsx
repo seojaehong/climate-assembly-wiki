@@ -144,8 +144,9 @@ function MotionView({ state, motion }: { state: PrepState; motion: Motion }) {
       </p>
       <h1
         data-testid="present-title"
-        className={`font-black leading-[1.25] ${title ? 'text-white' : 'text-white/40'}`}
-        style={{ fontSize: `${presentTitleSize(title || '합친 문구를 입력하는 중')}px`, wordBreak: 'keep-all' }}
+        className="font-black leading-[1.25]"
+        // 사이트 공통 h1 색이 클래스보다 앞서 어두운 글자가 됐다(10/15 캡처) — 색은 인라인으로 박는다.
+        style={{ fontSize: `${presentTitleSize(title || '합친 문구를 입력하는 중')}px`, wordBreak: 'keep-all', color: title ? '#FFFFFF' : 'rgba(255,255,255,0.45)', margin: 0 }}
       >
         {title || '합친 문구를 입력하는 중'}
       </h1>
