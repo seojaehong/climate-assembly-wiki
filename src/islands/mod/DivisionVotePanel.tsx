@@ -1,5 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import {
+  PRESENT_ALIVE_MS,
+  PRESENT_QUERY,
+  isPresentMessage,
+  presentChannelName,
+  type PresentStateMessage,
+} from './division-present';
 import {
   ballotCreate,
   ballotList,
@@ -355,6 +362,59 @@ export default function DivisionVotePanel({
     if (activeDivision !== null) storage.setItem(`${ns}${PREP_DIVISION_KEY}`, String(activeDivision));
   }, [activeDivision, ns]);
 
+  // ── 발표 화면(10/15) — 같은 PC 의 발표 창으로 지금 상태·고른 안·제출 수를 보낸다(division-present.ts) ──
+  const presentScope = preview ? 'preview' : storageScope ?? 'unknown';
+  const [presentFocus, setPresentFocus] = useState<string | null>(null);
+  const [presenterOn, setPresenterOn] = useState(false);
+  const presenterSeenAt = useRef(0);
+  const presentCounts = useRef<Record<string, number>>({});
+  const presentChannel = useRef<BroadcastChannel | null>(null);
+  const presentLatest = useRef<PresentStateMessage | null>(null);
+  useEffect(() => {
+    if (typeof BroadcastChannel === 'undefined') return undefined;
+    const ch = new BroadcastChannel(presentChannelName(presentScope));
+    presentChannel.current = ch;
+    ch.onmessage = (e) => {
+      if (!isPresentMessage(e.data) || e.data.kind !== 'alive') return;
+      presenterSeenAt.current = Date.now();
+      setPresenterOn(true);
+      if (presentLatest.current) ch.postMessage(presentLatest.current);
+    };
+    const id = setInterval(() => setPresenterOn(Date.now() - presenterSeenAt.current < PRESENT_ALIVE_MS), 2000);
+    return () => {
+      clearInterval(id);
+      ch.close();
+      presentChannel.current = null;
+    };
+  }, [presentScope]);
+  const postPresent = useCallback(() => {
+    if (!state) return;
+    const m: PresentStateMessage = { kind: 'state', v: 1, state, focus: presentFocus, counts: presentCounts.current };
+    presentLatest.current = m;
+    presentChannel.current?.postMessage(m);
+  }, [state, presentFocus]);
+  useEffect(() => {
+    postPresent();
+  }, [postPresent]);
+  const onPresentCounts = useCallback(
+    (c: Record<string, number>) => {
+      presentCounts.current = c;
+      postPresent();
+    },
+    [postPresent],
+  );
+  const presentCtx = useMemo<PresentCtx>(
+    () => ({
+      focus: (id: string) => setPresentFocus(id),
+      presenterAlive: () => Date.now() - presenterSeenAt.current < PRESENT_ALIVE_MS,
+      current: presentFocus,
+    }),
+    [presentFocus],
+  );
+  const openPresenter = () => {
+    window.open(`${window.location.pathname}?${PRESENT_QUERY}=1`, `division-present-${presentScope}`, 'popup=yes,width=1280,height=720');
+  };
+
   // 10/14 operator-6 — 새로고침·노트북 재시작 뒤 들어왔을 때 열린 투표가 있으면 「투표 진행」과 그 QR 로 바로 연다.
   // 서버에서 읽기를 마친 뒤(연결 중이 아닐 때) 한 번만 본다. 운영팀 화면은 건드리지 않는다.
   useEffect(() => {
@@ -497,6 +557,7 @@ export default function DivisionVotePanel({
   const chip = chipText(prep.mode, activeDivision !== null ? prep.slots[activeDivision] : undefined, prep.lastSaveFailed);
 
   return (
+    <PresentContext.Provider value={presentCtx}>
     <section data-testid="division-vote-panel" data-ops={isOps ? 'true' : 'false'} className="rounded-2xl border border-[#DCE7EE] bg-white shadow-sm">
       <div className="flex flex-wrap items-center gap-3 border-b border-[#DCE7EE] bg-[#1F4E79]/6 px-6 py-4">
         <div className="min-w-0 flex-1">
@@ -528,6 +589,16 @@ export default function DivisionVotePanel({
             if (f) void onImportFile(f);
           }}
         />
+        {!preview ? (
+          <button
+            type="button"
+            data-testid="present-open"
+            className={presenterOn ? `${btn} bg-[#2F6F25] text-white` : btnPrimary}
+            onClick={openPresenter}
+          >
+            {presenterOn ? '발표 화면 연결됨' : '발표 화면 열기 (새 창)'}
+          </button>
+        ) : null}
         <button type="button" className={btnGhost} onClick={() => fileRef.current?.click()}>
           JSON 가져오기
         </button>
@@ -694,6 +765,7 @@ export default function DivisionVotePanel({
                 onEntryQrUsed={() => setEntryQr(null)}
                 bandSlot={bandSlot}
                 onCsv={() => downloadCsv(state.division)}
+                onCounts={onPresentCounts}
               />
             ) : null}
             {view === 'ceremony' ? <CeremonySetup state={state} api={vApi} isOps={isOps} preview={preview} /> : null}
@@ -701,8 +773,13 @@ export default function DivisionVotePanel({
         )}
       </div>
     </section>
+    </PresentContext.Provider>
   );
 }
+
+/** 발표 창 연결(10/15) — 안 카드·투표 단위가 「지금 이 안」을 알리고, 발표 창이 살아 있으면 노트북에 QR 전체 화면을 띄우지 않는다. */
+type PresentCtx = { focus: (id: string) => void; presenterAlive: () => boolean; current: string | null };
+const PresentContext = createContext<PresentCtx>({ focus: () => undefined, presenterAlive: () => false, current: null });
 
 // ============================================================
 // 사용법
@@ -1297,15 +1374,29 @@ export function GroupReference({ group, source }: { group: NonNullable<Motion['g
 }
 
 export function MotionEditor({ motion, state, update }: { motion: Motion; state: PrepState; update: (fn: (s: PrepState) => PrepState) => void }) {
+  const present = useContext(PresentContext);
   const phase = motionPhase(state, motion);
   const titleLocked = !canEditMotionTitle(motion);
   const combined = canCombine(state.source, motion.cardNos);
   const topics = combined.ok ? combined.topics : [];
   return (
-    <div data-testid="motion-card" data-motion-id={motion.id} className="rounded-xl border border-[#C4D8E4] bg-white p-4">
+    <div
+      data-testid="motion-card"
+      data-motion-id={motion.id}
+      className={`rounded-xl border bg-white p-4 ${present.current === motion.id ? 'border-[3px] border-[#B45309]' : 'border-[#C4D8E4]'}`}
+    >
       <div className="flex flex-wrap items-center gap-3">
         <span className="rounded-lg bg-[#1F4E79] px-3 py-1 text-[16px] font-extrabold text-white">{motion.id}</span>
         <PhaseBadge phase={phase} />
+        <button
+          type="button"
+          data-testid="present-focus"
+          aria-pressed={present.current === motion.id}
+          onClick={() => present.focus(motion.id)}
+          className={present.current === motion.id ? `${btn} bg-[#B45309] text-white` : btnGhost}
+        >
+          {present.current === motion.id ? '큰 화면에 나오는 중' : '큰 화면에 띄우기'}
+        </button>
         <span className="text-[16px] text-[#5A6B73]">{cardsText(motion)}</span>
         {motion.group ? (
           <span data-testid="motion-group-id" className="rounded-lg bg-[#E6F0F8] px-2 py-0.5 text-[16px] font-extrabold text-[#1F4E79]">
@@ -1349,6 +1440,7 @@ export function MotionEditor({ motion, state, update }: { motion: Motion; state:
           data-locked={titleLocked ? 'true' : 'false'}
           aria-label={`${motion.id} 제목`}
           placeholder={`${motion.id} 제목 — 합친 문구를 칩니다. 큰 QR 화면과 투표자 휴대폰에 그대로 나옵니다`}
+          onFocus={() => present.focus(motion.id)}
           onChange={(e) => {
             if (!titleLocked) update(onMotion(motionRef(motion), (s, id) => updateMotion(s, id, { title: e.target.value })));
           }}
@@ -1429,6 +1521,7 @@ function VoteBoard({
   onEntryQrUsed,
   bandSlot,
   onCsv,
+  onCounts,
 }: {
   state: PrepState;
   update: (fn: (s: PrepState) => PrepState) => void;
@@ -1442,7 +1535,10 @@ function VoteBoard({
   /** 「지금 투표 중」 띠를 붙일 자리(패널 위 붙박이 칸). 없으면 이 자리에 그린다. */
   bandSlot: HTMLElement | null;
   onCsv: () => void;
+  /** 제출 수가 바뀔 때마다 — 발표 창으로 보낸다(10/15). */
+  onCounts?: (counts: Record<string, number>) => void;
 }) {
+  const present = useContext(PresentContext);
   const d = state.division;
   const [busy, setBusy] = useState<Record<string, 'start' | 'close' | 'void'>>({});
   const inflight = useRef<Set<string>>(new Set());
@@ -1456,6 +1552,9 @@ function VoteBoard({
   const live = liveBallots(state);
   const anyOpen = live.some((b) => b.stage === 'open');
   const counts = useBallotCounts(api, anyOpen || qrKey !== null);
+  useEffect(() => {
+    onCounts?.(counts);
+  }, [counts, onCounts]);
   const ready = attendanceReady(state.attendance);
   const excludedMotions = state.motions.filter((m) => motionExcluded(state, m));
   const now = useNow(1000) + prep.serverOffsetMs;
@@ -1479,7 +1578,9 @@ function VoteBoard({
     if (!entryQr) return;
     if (state.ballots[entryQr]?.stage === 'open') {
       // 이 PC 가 띄우던 투표로 본다 — 「다른 화면에서 연 투표」 안내를 띄우지 않게.
-      showQr(entryQr);
+      // 발표 창이 연결돼 있으면 QR 은 발표 창이 띄운다(노트북은 작업 화면 그대로).
+      if (present.presenterAlive()) openedHere.current.add(entryQr);
+      else showQr(entryQr);
     }
     onEntryQrUsed();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1553,7 +1654,9 @@ function VoteBoard({
         return;
       }
       setMsg(null);
-      setQrKey(id);
+      present.focus(unit.motionIds[0] ?? '');
+      // 발표 창이 연결돼 있으면 QR 은 그 창(프로젝터)에 뜬다 — 노트북은 마감·제출 수를 보며 계속 쓴다.
+      if (!present.presenterAlive()) setQrKey(id);
     } catch (e) {
       console.error('[division vote] start failed', e);
       setMsg({ key: msgKey, tone: 'error', text: '투표를 여는 중에 끊겼습니다. [투표 시작]을 다시 누르면 같은 투표를 이어서 엽니다.' });
@@ -1863,6 +1966,7 @@ export function UnitCard({
   onQr: () => void;
 }) {
   const motions = unit.motionIds.map((id) => state.motions.find((m) => m.id === id)).filter((m): m is Motion => !!m);
+  const present = useContext(PresentContext);
   if (motions.length === 0) return null;
   const d = state.division;
   const phase = motionPhase(state, motions[0]);
@@ -1889,6 +1993,17 @@ export function UnitCard({
         <PhaseBadge phase={phase} />
         {ballot ? <span className="text-[16px] text-[#5A6B73]">{ballot.title} · {ballotStatusLabel(ballot.stage === 'creating' ? 'draft' : ballot.stage)}</span> : null}
         <div className="ml-auto flex flex-wrap items-center gap-2">
+          {motions[0] ? (
+            <button
+              type="button"
+              data-testid="present-focus"
+              aria-pressed={present.current === motions[0].id}
+              onClick={() => present.focus(motions[0].id)}
+              className={present.current === motions[0].id ? `${btn} bg-[#B45309] text-white` : btnGhost}
+            >
+              {present.current === motions[0].id ? '큰 화면에 나오는 중' : '큰 화면에 띄우기'}
+            </button>
+          ) : null}
           {notStarted ? (
             <TwoStepButton
               className={`${btnBig} bg-[#135C73] text-white`}

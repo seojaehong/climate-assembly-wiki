@@ -58,6 +58,13 @@ import BallotPanel from './BallotPanel';
 import SubmissionPanel from './SubmissionPanel';
 import AgendaProgressBoard from './AgendaProgressBoard';
 import DivisionVotePanel from './DivisionVotePanel';
+import DivisionPresentScreen from './DivisionPresentScreen';
+import { PRESENT_QUERY } from './division-present';
+
+/** 발표 창(10/15) — 「발표 화면 열기」가 /mod?present=1 로 연 창. 같은 기기 로그인을 그대로 쓰고 「10/17 의결」 자리에 발표 화면만 그린다. */
+function isPresentWindow(): boolean {
+  return typeof window !== 'undefined' && new URLSearchParams(window.location.search).has(PRESENT_QUERY);
+}
 import DeadlineBanner from './DeadlineBanner';
 import { tableNoLabel } from './table-no';
 import { topicAnchorId } from './submission-guide';
@@ -1236,7 +1243,12 @@ function HomeScreen({
             <AttendancePanel teamId={teamId} teamName={teamName} accessToken={access?.accessToken} />
           )}
           {tab === 'vote' && <BallotPanel access={access} subgroup={subgroup ?? null} />}
-          {tab === 'decision' && <DivisionVotePanel access={access} subgroup={subgroup ?? null} teamName={teamName} storageScope={teamId} />}
+          {tab === 'decision' &&
+            (isPresentWindow() ? (
+              <DivisionPresentScreen scope={teamId} />
+            ) : (
+              <DivisionVotePanel access={access} subgroup={subgroup ?? null} teamName={teamName} storageScope={teamId} />
+            ))}
           {tab === 'submission' && (
             <SubmissionPanel
               access={access}
