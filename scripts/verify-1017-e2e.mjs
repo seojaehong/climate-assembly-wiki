@@ -2187,13 +2187,12 @@ async function phaseNeg() {
   {
     const M1 = await newCtx('negMod1');
     await M1.page.goto(`${SITE}/mod?code=${seed.teams['1'][1]}`, { waitUntil: 'domcontentloaded' });
-    await M1.page.locator('#mod-tab-progress').waitFor({ timeout: 40000 });
+    // 10/15 — 1017 세션은 「10/17 의결」 탭만 보인다(mod-tabs visibleTabs). 다른 탭이 하나라도 있으면 실패.
+    await M1.page.locator('#mod-tab-decision').waitFor({ timeout: 40000 });
     const def = await M1.page.locator('[role=tab][aria-selected=true]').first().getAttribute('id');
-    const tabs = [];
-    for (const id of ['progress', 'submission', 'vote', 'timer', 'decision']) {
-      await M1.page.locator(`#mod-tab-${id}`).click();
-      await M1.page.waitForTimeout(800);
-      tabs.push({ id, selected: (await M1.page.locator(`#mod-tab-${id}`).getAttribute('aria-selected')) === 'true' });
+    const tabs = [{ id: 'decision', selected: def === 'mod-tab-decision' }];
+    for (const id of ['progress', 'submission', 'vote', 'timer']) {
+      tabs.push({ id, selected: (await M1.page.locator(`#mod-tab-${id}`).count()) === 0 });
     }
     const http = {};
     for (const p of ['/hq', '/v', '/b', '/mod-help', '/mod', '/ko/moderator/insights/division-vote-lab']) http[p] = (await fetch(`${SITE}${p}`, { redirect: 'follow' })).status;
