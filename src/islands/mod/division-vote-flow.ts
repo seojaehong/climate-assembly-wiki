@@ -849,6 +849,8 @@ export const CSV_COLUMNS = [
   '온라인찬성', '온라인반대', '거수찬성', '거수반대', '찬성합계', '반대합계', '가결선', '판정',
   '효과성', '형평성', '사회적수용성', '지속가능성', '실행가능성',
   '기타의견', '소수의견', '투표ID', '마감시각',
+  // 10/15 — 14:45~16:00 문안 수정 시간에 고친 문안(안 카드 「수정 문안」 칸). 투표 제목(가결 기록)과 따로 남긴다.
+  '수정문안',
 ] as const;
 
 /** 서울 시각 「2026-10-17 14:05:09」. 읽을 수 없으면 빈칸. */
@@ -899,6 +901,7 @@ export function resultCsvRows(state: PrepState): string[][] {
       m.minorityOpinion,
       r ? state.ballots[r.requestId]?.ballotId ?? '' : '',
       r ? formatKst(r.closedAt) : '',
+      m.text,
     ];
     const last = currentRound(m);
     m.rounds.forEach((r) => {

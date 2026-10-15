@@ -12,6 +12,7 @@
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import {
+  createAgendaMotion,
   importSimilarGroups,
   initPrepState,
   parseImport,
@@ -45,12 +46,20 @@ async function rpc(fn: string, body: Record<string, unknown>) {
   return JSON.parse(text);
 }
 
+/** 16:15~16:45 시간표 블록 — 분과마다 미리 넣는 카드 없는 안건(10/15 사용자 선택). key 로 한 번만 만든다. */
+const agendaSpecs = (d: number) => [
+  { key: 'baseline-final', title: `${d}분과 최종 권고안 의결` },
+  { key: 'baseline-delegate', title: `${d}분과 최종 권고안 문구 작성 위임 의결` },
+];
+
 /** 사람이 화면에서 넣은 흔적 — 있으면 --replace 로도 덮지 않는다. */
 function humanInput(s: PrepState): string[] {
   const out: string[] = [];
+  const preset = new Map(agendaSpecs(s.division).map((a) => [a.key, a.title]));
   for (const m of s.motions) {
     if (m.rounds.length) out.push(`${m.id} 투표 기록`);
-    if (m.title.trim()) out.push(`${m.id} 제목`);
+    if (m.title.trim() && !(m.key && preset.get(m.key) === m.title)) out.push(`${m.id} 제목`);
+    if (m.text.trim()) out.push(`${m.id} 수정 문안`);
     if (m.otherOpinion.trim() || m.minorityOpinion.trim()) out.push(`${m.id} 의견 칸`);
     if (Object.keys(m.grid).length) out.push(`${m.id} 권고 수준`);
   }
@@ -76,28 +85,48 @@ for (const source of recs.divisions) {
   const row = (got.rows ?? []).find((r: { subgroup: string }) => r.subgroup === sub) ?? { version: 0, state: null };
   const mine = groups.groups.filter((g) => g.division === source.division);
   const res = importSimilarGroups(initPrepState(source), mine);
+  for (const a of agendaSpecs(source.division)) {
+    const made = createAgendaMotion(res.state, { title: a.title, text: '', key: a.key });
+    if (!made.ok) throw new Error(`${sub} 안건 만들기 실패: ${made.error}`);
+    res.state = made.state;
+  }
   const cards = Object.keys(res.state.cards).length;
-  const line = `${sub}: 카드 ${cards} · 묶음 안 ${res.created.length}${res.failed.length ? ` · 못 만듦 ${res.failed.map((f) => f.groupId).join(',')}` : ''}`;
+  const agendas = res.state.motions.filter((m) => m.cardNos.length === 0).map((m) => m.id);
+  const line = `${sub}: 카드 ${cards} · 묶음 안 ${res.created.length} · 최종 안건 ${agendas.join(',')}${res.failed.length ? ` · 못 만듦 ${res.failed.map((f) => f.groupId).join(',')}` : ''}`;
   if (res.failed.length) failed = true;
+  let next = res.state;
   if (row.version && row.state) {
     const cur = row.state as PrepState;
     const human = humanInput(cur);
-    if (!replace) {
-      console.log(`${line} → 건너뜀(서버 판 ${row.version}에 이미 내용, 카드 ${Object.keys(cur.cards ?? {}).length} · 안 ${cur.motions?.length ?? 0}). 바꾸려면 --replace`);
-      continue;
-    }
-    if (human.length) {
-      failed = true;
-      console.log(`${line} → 바꾸지 않음: 사람이 넣은 내용 있음(${human.slice(0, 6).join(', ')}${human.length > 6 ? ' …' : ''})`);
-      continue;
+    if (!replace || human.length) {
+      // 통째로 바꾸지 않는다. 대신 빠진 최종·위임 안건만 더한다(있던 내용은 그대로).
+      let added = cur;
+      const names: string[] = [];
+      for (const a of agendaSpecs(source.division)) {
+        if (added.motions.some((m) => m.key === a.key)) continue;
+        const made = createAgendaMotion(added, { title: a.title, text: '', key: a.key });
+        if (!made.ok) throw new Error(`${sub} 안건 만들기 실패: ${made.error}`);
+        added = made.state;
+        names.push(made.motion.id);
+      }
+      const why = human.length
+        ? `사람이 넣은 내용 있음(${human.slice(0, 6).join(', ')}${human.length > 6 ? ' …' : ''})`
+        : `서버 판 ${row.version}에 이미 내용(바꾸려면 --replace)`;
+      if (replace && human.length) failed = true;
+      if (!names.length) {
+        console.log(`${sub}: 그대로 둠 — ${why}`);
+        continue;
+      }
+      console.log(`${sub}: 통째로 바꾸지 않음 — ${why}. 빠진 최종 안건만 더함 ${names.join(',')}`);
+      next = added;
     }
   }
   if (!apply) {
-    console.log(`${line} → ${row.version ? `판 ${row.version} 덮어쓸 예정` : '새로 넣을 예정'}`);
+    console.log(`${line} → ${row.version ? `판 ${row.version} 에 저장할 예정(${next === res.state ? "통째로 바꿈" : "안건만 더함"})` : '새로 넣을 예정'}`);
     continue;
   }
   const saved = await rpc('division_prep_save_v1', {
-    p_token: auth.accessToken, p_subgroup: sub, p_expected_version: row.version || 0, p_state: res.state, p_label: '운영팀(기본 자료)',
+    p_token: auth.accessToken, p_subgroup: sub, p_expected_version: row.version || 0, p_state: next, p_label: '운영팀(기본 자료)',
   });
   if (!saved?.ok) {
     failed = true;

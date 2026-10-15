@@ -1042,7 +1042,7 @@ async function main() {
     const g2Row = body.find((r) => r[col_('안번호')] === G2);
     const aRow = body.find((r) => r[col_('안번호')] === AGENDA_ID);
     record('f4-csv-name-bom', /^1017_의결결과_전체_\d{8}_\d{4}\.csv$/.test(dl.suggestedFilename()) && raw.charCodeAt(0) === 0xfeff, dl.suggestedFilename());
-    record('f5-csv-header', header.length === 24 && header[0] === '분과' && header[23] === '마감시각', `열 ${header.length}`);
+    record('f5-csv-header', header.length === 25 && header[0] === '분과' && header[23] === '마감시각' && header[24] === '수정문안', `열 ${header.length}`);
     record(
       'f6-csv-rows',
       body.length === 8 &&

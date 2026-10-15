@@ -133,6 +133,7 @@ import {
   type VoteApi,
   type VoteUnit,
 } from './division-vote-flow';
+import { DECISION_TIMETABLE, currentTimetableBlock } from './division-timetable';
 import { downloadBlob } from './svg-to-png';
 import { TWO_STEP_MS, twoStepPress, type TwoStepArm } from './two-step';
 import { useDivisionPrep, type DivisionPrep, type PrepApi } from './use-division-prep';
@@ -175,6 +176,47 @@ const btn =
   'min-h-12 rounded-xl px-4 text-[17px] font-bold focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#1F4E79] disabled:cursor-not-allowed disabled:opacity-40';
 const btnPrimary = `${btn} bg-[#135C73] text-white`;
 const btnGhost = `${btn} border border-[#C4D8E4] bg-white text-[#1F4E79]`;
+
+/**
+ * 시간표 띠(10/15) — 추진계획안_5 의결 블록 넷. 누르면 그 시간에 쓰는 화면(준비판·투표 진행)으로 간다.
+ * 행사 당일(KST)에는 지금 블록에 「지금」이 붙는다. 30초마다 시각을 다시 본다.
+ */
+function TimetableStrip({ view, onGo }: { view: View; onGo: (v: View) => void }) {
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const id = setInterval(() => setNow(new Date()), 30000);
+    return () => clearInterval(id);
+  }, []);
+  const current = currentTimetableBlock(now);
+  return (
+    <ol data-testid="timetable-strip" aria-label="10/17 의결 시간표" className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+      {DECISION_TIMETABLE.map((b) => {
+        const isNow = current?.id === b.id;
+        return (
+          <li key={b.id}>
+            <button
+              type="button"
+              data-testid={`timetable-${b.id}`}
+              data-now={isNow ? 'true' : 'false'}
+              aria-current={isNow ? 'time' : undefined}
+              onClick={() => onGo(b.view)}
+              className={`flex h-full w-full flex-col items-start rounded-2xl border-2 px-4 py-3 text-left ${
+                isNow ? 'border-[#B45309] bg-[#FFF7E6]' : view === b.view ? 'border-[#9CC3D5] bg-[#F5F8FB]' : 'border-[#DCE7EE] bg-white'
+              }`}
+            >
+              <span className="text-[16px] font-extrabold text-[#5A6B73]">
+                {isNow ? <span className="mr-2 rounded-full bg-[#B45309] px-2 py-0.5 text-white">지금</span> : null}
+                {b.start}~{b.end}
+              </span>
+              <span className="mt-1 text-[18px] font-extrabold text-[#1F4E79]">{b.label}</span>
+              <span className="mt-1 text-[15px] font-bold text-[#335]">{b.where}</span>
+            </button>
+          </li>
+        );
+      })}
+    </ol>
+  );
+}
 const btnBig = 'min-h-16 rounded-2xl px-7 text-[22px] font-extrabold focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#1F4E79] disabled:cursor-not-allowed disabled:opacity-40';
 const input =
   'w-full min-w-0 rounded-xl border border-[#C4D8E4] px-3 text-[17px] text-[#1F2933] outline-none focus:border-[#23B2C3] focus-visible:outline-4 focus-visible:outline-offset-2 focus-visible:outline-[#1F4E79]';
@@ -612,6 +654,7 @@ export default function DivisionVotePanel({
               <span className="font-extrabold text-[#1F4E79]">{divisionLabel(state.division)}</span> · {state.source.agenda}
               {isOps ? <span className="ml-2 text-[16px] font-bold text-[#135C73]">(운영팀이 이 분과 화면을 열었습니다 · 고친 내용은 이 분과에 저장됩니다)</span> : null}
             </p>
+            <TimetableStrip view={view} onGo={setView} />
 
             {view === 'prep' ? (
               <>
@@ -1323,11 +1366,16 @@ export function MotionEditor({ motion, state, update }: { motion: Motion; state:
       ) : (
         <TitleRoom id={motion.id} room={motionTitleRoom(motion.id, motion.title)} />
       )}
+      <label className="mt-3 block text-[16px] font-extrabold text-[#135C73]" htmlFor={`motion-text-${motion.id}`}>
+        수정 문안 <span className="font-bold text-[#5A6B73]">(14:45~16:00 문안 수정 시간에 씁니다 · 투표 뒤에도 고칠 수 있고 결과 CSV 「수정문안」 열에 남습니다)</span>
+      </label>
       <textarea
-        className={`${input} mt-2 min-h-20 py-2`}
+        id={`motion-text-${motion.id}`}
+        data-testid="motion-text"
+        className={`${input} mt-1 min-h-20 py-2`}
         value={motion.text}
         aria-label={`${motion.id} 문안`}
-        placeholder="안 문안"
+        placeholder="가결된 안의 문구를 다듬어 적습니다. 투표한 제목(가결 기록)은 그대로 남습니다."
         onChange={(e) => update(onMotion(motionRef(motion), (s, id) => updateMotion(s, id, { text: e.target.value })))}
       />
       {phase === 'excluded' ? (

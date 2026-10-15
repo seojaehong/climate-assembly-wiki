@@ -629,8 +629,9 @@ describe('세리머니 — 저장된 결과 공개', () => {
 });
 
 describe('결과 CSV', () => {
-  it('머리줄 24칸이 정한 순서 · 기준 이름이 화면과 같다', () => {
-    expect(CSV_COLUMNS).toHaveLength(24);
+  it('머리줄 25칸이 정한 순서 · 기준 이름이 화면과 같다', () => {
+    expect(CSV_COLUMNS).toHaveLength(25);
+    expect(CSV_COLUMNS[24]).toBe('수정문안');
     expect(CSV_COLUMNS.slice(15, 20)).toEqual(CRITERIA_COLUMN_LABELS);
     const csv = toCsv([]);
     expect(csv.startsWith('﻿분과,안번호,제목,원카드번호,차수,')).toBe(true);
@@ -654,18 +655,18 @@ describe('결과 CSV', () => {
     s = setCriterionOverride(s, '2-1-안1', 'equity', 'unmet');
     s = setGridMark(s, '2-1-안1', '1', 'feasibility', 'met');
     s = setGridMark(s, '2-1-안1', '2', 'feasibility', 'unmet');
-    s = updateMotion(s, '2-1-안1', { otherOpinion: '의견, 하나' });
+    s = updateMotion(s, '2-1-안1', { otherOpinion: '의견, 하나', text: '문안 수정 시간에 다듬은 문구' });
     const rows = resultCsvRows(s);
     expect(rows).toHaveLength(3);
     expect(rows[0]).toEqual([
       '2분과', '2-1-안1', '다회용기 확대', '2-1-1', '1차', '60', '45',
       '28', '10', '3', '1', '31', '11', '30', '가결',
       '충족', '미충족(직접)', '-', '-', '동수',
-      '의견, 하나', '', 'ballot-req-1', '2026-10-17 14:05:09',
+      '의견, 하나', '', 'ballot-req-1', '2026-10-17 14:05:09', '문안 수정 시간에 다듬은 문구',
     ]);
     expect(rows[1].slice(0, 5)).toEqual(['2분과', '2-1-안2', '회수 체계', '2-1-2', '']);
     expect(rows[1][14]).toBe('미투표');
-    expect(rows.every((r) => r.length === 24)).toBe(true);
+    expect(rows.every((r) => r.length === 25)).toBe(true);
     const csv = toCsv(rows);
     expect(csv).toContain('"의견, 하나"');
     expect(csv.split('\r\n')).toHaveLength(5); // 머리줄 + 3줄 + 끝 빈칸
