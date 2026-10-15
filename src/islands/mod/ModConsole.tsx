@@ -61,7 +61,7 @@ import DivisionVotePanel from './DivisionVotePanel';
 import DeadlineBanner from './DeadlineBanner';
 import { tableNoLabel } from './table-no';
 import { topicAnchorId } from './submission-guide';
-import { MOD_TABS, MOD_TAB_KEY, normalizeTabId, tabAfterKey, tabById, type ModTabId } from './mod-tabs';
+import { MOD_TAB_KEY, normalizeTabId, tabAfterKey, tabById, visibleTabs, type ModTab, type ModTabId } from './mod-tabs';
 import {
   EMPTY_WORKSHOP_WORK_SUMMARY,
   useWorkshopSessionState,
@@ -975,6 +975,7 @@ function WorkshopStatusRail({
 }
 
 function HomeScreen({
+  sessionSlug,
   teamId,
   teamName,
   tableNo,
@@ -984,6 +985,8 @@ function HomeScreen({
   creating,
   onExit,
 }: {
+  /** 토큰 교환 응답의 세션 슬러그 — 10/17 세션이면 「10/17 의결」 탭만 보인다(mod-tabs visibleTabs). */
+  sessionSlug?: string | null;
   teamId: string;
   teamName: string;
   tableNo?: string | null;
@@ -998,9 +1001,12 @@ function HomeScreen({
   // 새로고침해도 보던 탭에 머물도록 sessionStorage에 남긴다.
   // 10/14 — 탭을 닫았다 다시 열어도(노트북 재시작 포함) 보던 탭으로: localStorage 에도 남긴다.
   // 10/17 의결 중 탭을 닫으면 「의제·권고안 기록」으로 돌아가 QR 을 못 찾던 문제. 옛 sessionStorage 값도 읽는다.
-  const [tab, setTab] = useState<ModTabId>(() =>
+  const tabs = visibleTabs(sessionSlug);
+  const [storedTab, setTab] = useState<ModTabId>(() =>
     normalizeTabId(workshopLocalStorage.getItem(MOD_TAB_KEY) ?? workshopSessionStorage.getItem(MOD_TAB_KEY))
   );
+  // 이 세션에 없는 탭(10/17 세션의 옛 탭)이 저장돼 있으면 첫 탭으로.
+  const tab: ModTabId = tabs.some((item) => item.id === storedTab) ? storedTab : tabs[0].id;
   const sessionState = useWorkshopSessionState({ access });
   const selectTab = (next: ModTabId) => {
     setTab(next);
@@ -1097,9 +1103,9 @@ function HomeScreen({
             unsavedTopicIds={workSummary.unsavedTopicIds}
           />
         </div>
-        <ModTabBar active={tab} onSelect={selectTab} />
+        <ModTabBar active={tab} onSelect={selectTab} tabs={tabs} />
 
-        {MOD_TABS.filter((item) => item.id !== tab).map((item) => (
+        {tabs.filter((item) => item.id !== tab).map((item) => (
           <div
             key={item.id}
             id={`mod-panel-${item.id}`}
@@ -1257,10 +1263,10 @@ function HomeScreen({
  * 조 콘솔 상단 탭 — 8.29의 위계를 그대로 옮긴다(조별 산출물이 첫 탭·기본값).
  * 조 모더레이터가 노트북 앞에서 장갑 낀 손으로도 누를 수 있도록 높이 56px·18px 글자를 쓴다.
  */
-function ModTabBar({ active, onSelect }: { active: ModTabId; onSelect: (id: ModTabId) => void }) {
+function ModTabBar({ active, onSelect, tabs }: { active: ModTabId; onSelect: (id: ModTabId) => void; tabs: readonly ModTab[] }) {
   const tabRefs = useRef<Partial<Record<ModTabId, HTMLButtonElement>>>({});
   const handleKeyDown = (event: React.KeyboardEvent<HTMLButtonElement>, current: ModTabId) => {
-    const next = tabAfterKey(current, event.key);
+    const next = tabAfterKey(current, event.key, tabs);
     if (!next) return;
     event.preventDefault();
     onSelect(next);
@@ -1274,7 +1280,7 @@ function ModTabBar({ active, onSelect }: { active: ModTabId; onSelect: (id: ModT
         aria-label="조 콘솔 메뉴"
         className="flex flex-wrap gap-2 p-2 rounded-2xl border border-[#DCE7EE] bg-white shadow-sm"
       >
-        {MOD_TABS.map((tab) => {
+        {tabs.map((tab) => {
           const selected = tab.id === active;
           return (
             <button
@@ -2763,6 +2769,7 @@ export default function ModConsole() {
   if (state.screen === 'home') {
     screenEl = (
       <HomeScreen
+        sessionSlug={workshopSession?.sessionSlug ?? null}
         onExit={handleExit}
         teamId={state.team?.id ?? ''}
         teamName={teamName}

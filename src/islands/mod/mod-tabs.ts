@@ -28,6 +28,18 @@ export const MOD_TABS: readonly ModTab[] = [
   { id: 'decision', label: '10/17 의결', hint: '분과 의결안을 준비하고 투표·세리머니 화면을 띄웁니다' },
 ] as const;
 
+/**
+ * 10/17 분과 의결 세션(실세션·리허설·드라이런 — 슬러그에 「1017」 마디)은 「10/17 의결」 탭만 보인다.
+ * 10/15 사용자 「콘솔에 1017에 할 것만, 타이머도 필요 없다」 — 옛 「투표」 탭은 같은 투표를 다른 화면에서 여닫게 만든다.
+ */
+export function isDecisionOnlySession(sessionSlug: string | null | undefined): boolean {
+  return typeof sessionSlug === 'string' && /(^|-)1017(-|$)/.test(sessionSlug);
+}
+
+export function visibleTabs(sessionSlug: string | null | undefined): readonly ModTab[] {
+  return isDecisionOnlySession(sessionSlug) ? MOD_TABS.filter((tab) => tab.id === 'decision') : MOD_TABS;
+}
+
 /** 아무 것도 고르지 않았을 때 열리는 탭. */
 export const DEFAULT_MOD_TAB: ModTabId = 'progress';
 
@@ -50,9 +62,9 @@ export function tabById(id: ModTabId): ModTab {
 }
 
 /** WAI-ARIA tabs pattern: arrows wrap, Home/End jump, other keys stay untouched. */
-export function tabAfterKey(active: ModTabId, key: string): ModTabId | null {
-  if (key === 'Home') return MOD_TABS[0].id;
-  if (key === 'End') return MOD_TABS[MOD_TABS.length - 1].id;
+export function tabAfterKey(active: ModTabId, key: string, tabs: readonly ModTab[] = MOD_TABS): ModTabId | null {
+  if (key === 'Home') return tabs[0].id;
+  if (key === 'End') return tabs[tabs.length - 1].id;
 
   const direction =
     key === 'ArrowRight' || key === 'ArrowDown'
@@ -62,7 +74,7 @@ export function tabAfterKey(active: ModTabId, key: string): ModTabId | null {
         : 0;
   if (direction === 0) return null;
 
-  const index = MOD_TABS.findIndex((tab) => tab.id === active);
-  const next = (index + direction + MOD_TABS.length) % MOD_TABS.length;
-  return MOD_TABS[next].id;
+  const index = tabs.findIndex((tab) => tab.id === active);
+  const next = (index + direction + tabs.length) % tabs.length;
+  return tabs[next].id;
 }

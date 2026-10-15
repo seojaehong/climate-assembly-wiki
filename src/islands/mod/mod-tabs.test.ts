@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { MOD_TABS, DEFAULT_MOD_TAB, normalizeTabId, tabAfterKey, tabById } from './mod-tabs';
+import { MOD_TABS, DEFAULT_MOD_TAB, normalizeTabId, tabAfterKey, tabById, isDecisionOnlySession, visibleTabs } from './mod-tabs';
 
 describe('MOD_TABS', () => {
   it('opens on 의제 진행 — the current workshop task', () => {
@@ -73,5 +73,25 @@ describe('tabById', () => {
 
   it('never returns undefined', () => {
     expect(tabById('progress')).toBeDefined();
+  });
+});
+
+describe('visibleTabs — 10/17 세션은 의결 탭만', () => {
+  it('keeps only 10/17 의결 for 1017 sessions (real, rehearsal, dry-run)', () => {
+    for (const slug of ['1017-division-vote', 'zz-rehearsal-1017', 'zz-rehearsal-1017-2', 'zz-dryrun-1017-20261015t0900']) {
+      expect(isDecisionOnlySession(slug)).toBe(true);
+      expect(visibleTabs(slug).map((t) => t.id)).toEqual(['decision']);
+    }
+  });
+  it('keeps every tab for other sessions', () => {
+    for (const slug of ['0912-deliberation', 'zz-x-10170', null, undefined]) {
+      expect(isDecisionOnlySession(slug)).toBe(false);
+      expect(visibleTabs(slug)).toBe(MOD_TABS);
+    }
+  });
+  it('arrow keys stay inside the visible tabs', () => {
+    const only = visibleTabs('1017-division-vote');
+    expect(tabAfterKey('decision', 'ArrowRight', only)).toBe('decision');
+    expect(tabAfterKey('decision', 'Home', only)).toBe('decision');
   });
 });
