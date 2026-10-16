@@ -116,13 +116,24 @@ for (const source of recs.divisions) {
   if (row.version && row.state) {
     // 서버 판을 지금 판 모양(v5)으로 읽는다 — 옛 판 번호로 다시 저장하면 옛 화면이 새 칸을 버린다.
     const cur = migratePrep(row.state);
-    if (!cur) throw new Error(`${sub}: 서버 판을 읽지 못했습니다`);
-    const human = humanInput(cur);
+    const rawBallots = Object.keys((row.state as { ballots?: Record<string, unknown> }).ballots ?? {}).length;
+    const orphanRounds = ((row.state as { motions?: { id?: string; rounds?: unknown[] }[] }).motions ?? [])
+      .filter((m) => Array.isArray(m.rounds) && m.rounds.length > 0)
+      .map((m) => m.id ?? '?');
+    if (!cur && replace && force && rawBallots === 0) {
+      // 화면도 못 읽는 판(예: 다른 세션 판을 복사하며 ballots 만 비워 차수가 가리킬 투표가 없음). 투표가 없으니 통째로 바꾼다.
+      console.log(`${sub}: 서버 판 ${row.version}을 읽을 수 없음(투표 0건, 투표 없는 차수 ${orphanRounds.join(',') || '없음'}) — --force 로 통째로 바꿈`);
+    } else if (!cur) {
+      throw new Error(
+        `${sub}: 서버 판을 읽지 못했습니다(투표 ${rawBallots}건, 차수 있는 안 ${orphanRounds.join(',') || '없음'}). 투표가 0건이면 --replace --force 로 바꿀 수 있습니다`,
+      );
+    }
+    const human = cur ? humanInput(cur) : [];
     const votes = human.filter((h) => h.endsWith('투표 기록') || h === '투표');
     if (replace && force && human.length && !votes.length) {
       console.log(`${sub}: --force — 버릴 사람 입력 ${human.length}건: ${human.join(', ')}`);
     }
-    if (!replace || (human.length && !(force && !votes.length))) {
+    if (cur && (!replace || (human.length && !(force && !votes.length)))) {
       // 통째로 바꾸지 않는다. 대신 빠진 최종·위임 안건만 더한다(있던 내용은 그대로).
       let added = withExpert(cur, `${sub}(지금 판)`);
       const names: string[] = [];
