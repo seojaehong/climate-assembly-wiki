@@ -21,6 +21,7 @@ import { BallotQrFullscreen } from './BallotPanel';
 import { NamedAccessContext, NamedResultBoard } from './NamedResultBoard';
 import VoterReconcileBox from './VoterReconcileBox';
 import DivisionBundleBoard from './DivisionBundleBoard';
+import ExpertNotes from './ExpertNotes';
 import { bundleCsvRows, bundleCsvText } from './division-bundle';
 import NamedVoteSettingsBox from './NamedVoteSettingsBox';
 import { MAX_STATEMENT_LENGTH, ballotStatusLabel } from './ballot-panel-logic';
@@ -1200,6 +1201,7 @@ function PrepBoardBody({ state, update }: { state: PrepState; update: (fn: (s: P
                         <li key={r.no}>
                           <span className="mr-2 font-bold text-[#5A6B73] tr-num">{r.no}</span>
                           {r.text}
+                          <ExpertNotes opinions={r.expert} />
                         </li>
                       ))}
                     </ol>
@@ -1411,6 +1413,7 @@ export function GroupReference({ group, source }: { group: NonNullable<Motion['g
             <li key={r.no} data-rec-no={r.no}>
               <span className="mr-2 font-bold text-[#135C73] tr-num">{r.no}</span>
               {r.text ?? <span className="font-bold text-[#B91C1C]">권고안 파일에서 찾지 못했습니다</span>}
+              <ExpertNotes opinions={r.expert} />
             </li>
           ))}
         </ol>

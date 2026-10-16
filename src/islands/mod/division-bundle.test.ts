@@ -115,7 +115,7 @@ describe('판 번호 4 — 묶음 칸이 왕복한다', () => {
     s = setBundleRecord(s, '2B', { decision: 'separate', minority: '소수' });
     const j = JSON.parse(serializePrep(s));
     expect(j.v).toBe(PREP_VERSION);
-    expect(PREP_VERSION).toBe(4);
+    expect(PREP_VERSION).toBe(5);
     expect(migratePrep(j)).toEqual(s);
   });
   it('모양이 틀린 기록은 판째 거절(반쪽만 읽지 않는다)', () => {

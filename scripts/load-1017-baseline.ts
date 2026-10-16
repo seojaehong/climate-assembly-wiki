@@ -11,13 +11,17 @@
  * - --force 를 --replace 와 함께 주면(10/17 A–G 묶음으로 다시 깔기, 사용자 승인) 사람이 넣은 제목·의견·참석도 버리고 바꾼다.
  *   ★ 그래도 투표 기록(차수·투표)이 있는 분과는 절대 바꾸지 않는다. 미리보기에서 버려질 항목을 먼저 확인할 것.
  * - --groups 에 bundles_ag_1017.json(A–G 묶음)을 주면 그 묶음으로 안을 만든다(유사 묶음 파일과 같은 모양 + letter·card_teams).
+ * - --expert <expert_1017.json> 을 주면 세부권고마다 전문가 의견을 원천에 붙인다. 이미 있는 판도 그 칸만 바꿔 저장한다
+ *   (사람이 넣은 내용은 그대로). 공개 저장소·번들에는 넣지 않는다.
  */
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
+import { attachExpertOpinions, parseExpertFile } from '../src/islands/mod/division-expert';
 import {
   createAgendaMotion,
   importSimilarGroups,
   initPrepState,
+  migratePrep,
   parseImport,
   parseSimilarGroups,
   type PrepState,
@@ -37,6 +41,15 @@ const groupsPath = arg('--groups');
 const apply = process.argv.includes('--apply');
 const replace = process.argv.includes('--replace');
 const force = process.argv.includes('--force');
+const expertPath = arg('--expert');
+const expert = expertPath ? parseExpertFile(readFileSync(expertPath, 'utf8')) : null;
+if (expertPath && !expert) throw new Error('전문가 의견 파일 모양이 맞지 않습니다');
+const withExpert = (st: PrepState, sub: string): PrepState => {
+  if (!expert) return st;
+  const r = attachExpertOpinions(st, expert);
+  console.log(`${sub}: 전문가 의견 붙임 세부권고 ${r.attached}${r.unknown.length ? ` · 원천에 없는 번호 ${r.unknown.length}(${r.unknown.slice(0, 5).join(',')})` : ''}`);
+  return r.state;
+};
 if (!code || !recsPath || !groupsPath) throw new Error('--code --recs --groups 가 필요합니다');
 
 async function rpc(fn: string, body: Record<string, unknown>) {
@@ -94,13 +107,16 @@ for (const source of recs.divisions) {
     if (!made.ok) throw new Error(`${sub} 안건 만들기 실패: ${made.error}`);
     res.state = made.state;
   }
+  res.state = withExpert(res.state, sub);
   const cards = Object.keys(res.state.cards).length;
   const agendas = res.state.motions.filter((m) => m.cardNos.length === 0).map((m) => m.id);
   const line = `${sub}: 카드 ${cards} · 묶음 안 ${res.created.length} · 최종 안건 ${agendas.join(',')}${res.failed.length ? ` · 못 만듦 ${res.failed.map((f) => f.groupId).join(',')}` : ''}`;
   if (res.failed.length) failed = true;
   let next = res.state;
   if (row.version && row.state) {
-    const cur = row.state as PrepState;
+    // 서버 판을 지금 판 모양(v5)으로 읽는다 — 옛 판 번호로 다시 저장하면 옛 화면이 새 칸을 버린다.
+    const cur = migratePrep(row.state);
+    if (!cur) throw new Error(`${sub}: 서버 판을 읽지 못했습니다`);
     const human = humanInput(cur);
     const votes = human.filter((h) => h.endsWith('투표 기록') || h === '투표');
     if (replace && force && human.length && !votes.length) {
@@ -108,7 +124,7 @@ for (const source of recs.divisions) {
     }
     if (!replace || (human.length && !(force && !votes.length))) {
       // 통째로 바꾸지 않는다. 대신 빠진 최종·위임 안건만 더한다(있던 내용은 그대로).
-      let added = cur;
+      let added = withExpert(cur, `${sub}(지금 판)`);
       const names: string[] = [];
       for (const a of agendaSpecs(source.division)) {
         if (added.motions.some((m) => m.key === a.key)) continue;
@@ -122,11 +138,11 @@ for (const source of recs.divisions) {
         : `서버 판 ${row.version}에 이미 내용(바꾸려면 --replace)`;
       if (replace && human.length) failed = true;
       if (force && votes.length) console.log(`${sub}: 투표 기록이 있어 --force 로도 바꾸지 않습니다(${votes.join(', ')})`);
-      if (!names.length) {
+      if (!names.length && !expert) {
         console.log(`${sub}: 그대로 둠 — ${why}`);
         continue;
       }
-      console.log(`${sub}: 통째로 바꾸지 않음 — ${why}. 빠진 최종 안건만 더함 ${names.join(',')}`);
+      console.log(`${sub}: 통째로 바꾸지 않음 — ${why}.${names.length ? ` 빠진 최종 안건만 더함 ${names.join(',')}` : ''}${expert ? ' 전문가 의견 칸만 바꿈' : ''}`);
       next = added;
     }
   }

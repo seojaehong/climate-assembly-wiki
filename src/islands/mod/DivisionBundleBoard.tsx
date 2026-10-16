@@ -20,6 +20,7 @@ import {
   toggleBundleTeam,
 } from './division-bundle';
 import { downloadBlob } from './svg-to-png';
+import ExpertNotes from './ExpertNotes';
 
 /**
  * 10/17 오전 헤쳐모여 — A–G 묶음마다 결론(합친다·옮긴다·따로 둔다)·참여 조·합친 문구·옮긴 세부권고·소수의견.
@@ -78,6 +79,7 @@ export default function DivisionBundleBoard({
                     <li key={r.no}>
                       <b className="tr-num">{r.no}</b>
                       {r.cardNo && b.group.cardTeams?.[r.cardNo] ? <span className="text-[#5A6B73]"> ({b.group.cardTeams[r.cardNo]})</span> : null} {r.text ?? '(원천에 없음)'}
+                      <ExpertNotes opinions={r.expert} />
                     </li>
                   ))}
                 </ul>

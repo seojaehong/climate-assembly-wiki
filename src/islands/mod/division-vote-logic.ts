@@ -23,7 +23,13 @@ import { divisionBallotTitle, motionStatementOf, parseMotionStatement } from '..
 
 // ── 원천 데이터 모양 (recs_1017.json) ─────────────────────────
 
-export type RecsRec = { no: string; text: string; note?: string };
+export type RecsRec = {
+  no: string;
+  text: string;
+  note?: string;
+  /** 10/17 전문가 검토 의견(expert_1017.json) — 로더가 서버 준비판에만 붙인다. 공개 번들에는 없다. */
+  expert?: string[];
+};
 export type RecsCard = {
   no: string;
   /** 빈 문자열이면 「제목 없음」 카드. */
@@ -243,7 +249,8 @@ export type Attendance = { enrolled: number | null; present: number | null };
  * 2 를 읽는 옛 화면(5f9920b)은 모르는 칸을 버리고 다시 저장하므로 — 무효가 되살아나고 묶음·거수 확인이 사라진다 —
  * 새 화면은 3 으로 쓴다. 옛 화면은 3 을 「읽을 수 없는 판」으로 보고 저장하지 않는다. 읽기는 1·2·3 모두.
  */
-export const PREP_VERSION = 4;
+export const PREP_VERSION = 5;
+// 5(10/17 오후) = 세부권고 전문가 의견(source…recs[].expert). 4 를 쓰는 화면은 이 칸을 버리고 저장하므로 다시 올렸다.
 // 4(10/17) = 묶음 기록(bundles)·A–G 묶음 칸(letter·level·common·cardTeams)이 들어간 판. 3 을 쓰는 옛 화면은 이 칸들을
 // 버리고 저장하므로, 4 를 「읽을 수 없는 판」으로 보고 저장하지 않게 판 번호를 올렸다(새로고침하면 새 화면).
 
@@ -555,12 +562,15 @@ export function importSimilarGroups(state: PrepState, groups: readonly SimilarGr
 }
 
 /** 묶음의 세부 권고 문구 — 원천에서 세부 번호로 찾는다. 원천에 없는 번호는 text=null. */
-export function groupRecTexts(source: RecsDivision, recNos: readonly string[]): { no: string; cardNo: string | null; text: string | null }[] {
-  const index = new Map<string, { cardNo: string; text: string }>();
-  for (const topic of source.topics) for (const card of topic.cards) for (const r of card.recs) index.set(r.no, { cardNo: card.no, text: r.text });
+export function groupRecTexts(
+  source: RecsDivision,
+  recNos: readonly string[],
+): { no: string; cardNo: string | null; text: string | null; expert?: string[] }[] {
+  const index = new Map<string, { cardNo: string; text: string; expert?: string[] }>();
+  for (const topic of source.topics) for (const card of topic.cards) for (const r of card.recs) index.set(r.no, { cardNo: card.no, text: r.text, ...(r.expert ? { expert: r.expert } : {}) });
   return recNos.map((no) => {
     const hit = index.get(no);
-    return { no, cardNo: hit?.cardNo ?? null, text: hit?.text ?? null };
+    return { no, cardNo: hit?.cardNo ?? null, text: hit?.text ?? null, ...(hit?.expert ? { expert: hit.expert } : {}) };
   });
 }
 
@@ -822,6 +832,10 @@ function readRec(x: unknown): RecsRec | null {
   if (!isObj(x) || !isStr(x.no) || !isStr(x.text)) return null;
   const rec: RecsRec = { no: x.no, text: x.text };
   if (isStr(x.note)) rec.note = x.note;
+  if (x.expert !== undefined) {
+    if (!Array.isArray(x.expert) || !x.expert.every(isStr)) return null;
+    rec.expert = [...(x.expert as string[])];
+  }
   return rec;
 }
 
@@ -1046,8 +1060,8 @@ function readAttendance(x: unknown): Attendance | null {
 }
 
 function readPrep(x: Record<string, unknown>): PrepState | null {
-  if ((x.v !== 1 && x.v !== 2 && x.v !== 3 && x.v !== PREP_VERSION) || !Number.isInteger(x.division)) return null;
-  const v = (x.v === PREP_VERSION ? 3 : x.v) as 1 | 2 | 3;
+  if ((x.v !== 1 && x.v !== 2 && x.v !== 3 && x.v !== 4 && x.v !== PREP_VERSION) || !Number.isInteger(x.division)) return null;
+  const v = (x.v === 4 || x.v === PREP_VERSION ? 3 : x.v) as 1 | 2 | 3;
   const source = readDivision(x.source);
   if (!source || source.division !== x.division) return null;
   if (!isObj(x.cards) || !Array.isArray(x.motions)) return null;
