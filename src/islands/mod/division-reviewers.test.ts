@@ -52,8 +52,9 @@ describe('위임 안건 검토위원', () => {
     ]);
     const rows = bundleCsvRows(s).filter((r) => r[1] === '검토위원');
     expect(rows).toHaveLength(5);
-    expect(rows[1][2]).toBe('2조');
-    expect(rows[1][8]).toBe('가나다');
+    expect(rows[1][6]).toBe('2조');
+    expect(rows[1][11]).toBe('가나다');
+    expect(rows[1][8]).toBe('');
   });
   it('화면 — 1조~5조 칸, 위임 안건이 있어도 명단은 서버에서(미리보기는 빈 목록)', () => {
     const made = createAgendaMotion(initPrepState(DIVISION_VOTE_FIXTURE[0]), { title: '최종 권고안 문구 작성 위임 의결', text: '', key: 'baseline-delegate' });

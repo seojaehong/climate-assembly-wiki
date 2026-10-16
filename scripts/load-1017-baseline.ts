@@ -11,6 +11,7 @@
  * - --force 를 --replace 와 함께 주면(10/17 A–G 묶음으로 다시 깔기, 사용자 승인) 사람이 넣은 제목·의견·참석도 버리고 바꾼다.
  *   ★ 그래도 투표 기록(차수·투표)이 있는 분과는 절대 바꾸지 않는다. 미리보기에서 버려질 항목을 먼저 확인할 것.
  * - --groups 에 bundles_ag_1017.json(A–G 묶음)을 주면 그 묶음으로 안을 만든다(유사 묶음 파일과 같은 모양 + letter·card_teams).
+ * - --apply 는 --after-deploy 와 함께만 된다(판 번호 5 — 배포·전 화면 새로고침 뒤).
  * - --expert <expert_1017.json> 을 주면 세부권고마다 전문가 의견을 원천에 붙인다. 이미 있는 판도 그 칸만 바꿔 저장한다
  *   (사람이 넣은 내용은 그대로). 공개 저장소·번들에는 넣지 않는다.
  */
@@ -41,6 +42,10 @@ const groupsPath = arg('--groups');
 const apply = process.argv.includes('--apply');
 const replace = process.argv.includes('--replace');
 const force = process.argv.includes('--force');
+// 이 로더는 판 번호 5(전문가 의견·검토위원 칸)로 쓴다. v4 화면(8188aec)이 떠 있으면 그 화면은 이 판을 못 읽는다.
+if (apply && !process.argv.includes('--after-deploy')) {
+  throw new Error('판 번호 5로 씁니다. (3)+(4) 배포 → 모든 분과 PC·운영 노트북·발표 창 새로고침 뒤에 --after-deploy 를 붙여 다시 실행하십시오.');
+}
 const expertPath = arg('--expert');
 const expert = expertPath ? parseExpertFile(readFileSync(expertPath, 'utf8')) : null;
 if (expertPath && !expert) throw new Error('전문가 의견 파일 모양이 맞지 않습니다');

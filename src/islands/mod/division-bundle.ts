@@ -129,7 +129,7 @@ export function nextBundleMotionNo(state: PrepState, id: string): number {
 
 // ── 묶음 기록 CSV ────────────────────────────────────────────
 
-export const BUNDLE_CSV_COLUMNS = ['분과', '묶음', '묶음 이름', '겹치는 정도', '카드(조)', '결론', '참여 조', '안번호', '합친 문구(안 제목)', '옮긴 세부권고', '소수의견'] as const;
+export const BUNDLE_CSV_COLUMNS = ['분과', '묶음', '묶음 이름', '겹치는 정도', '카드(조)', '결론', '참여 조', '안번호', '합친 문구(안 제목)', '옮긴 세부권고', '소수의견', '검토위원'] as const;
 
 /** 묶음마다 안 하나당 한 줄(안이 둘이면 두 줄, 기록 칸은 되풀이). */
 export function bundleCsvRows(state: PrepState): string[][] {
@@ -144,11 +144,12 @@ export function bundleCsvRows(state: PrepState): string[][] {
       b.record.decision ? BUNDLE_DECISION_LABELS[b.record.decision] : '',
       b.record.teams.map((t) => `${t}조`).join(' '),
     ];
-    for (const m of b.motions) rows.push([...common, m.id, m.title, b.record.movedRecs, b.record.minority]);
+    for (const m of b.motions) rows.push([...common, m.id, m.title, b.record.movedRecs, b.record.minority, '']);
   }
   // 위임 안건 검토위원(조마다 한 명) — 같은 파일 아래쪽에 「검토위원」 줄로.
   if (rows.length || state.reviewers) {
-    for (const [division, team, name] of reviewerRows(state)) rows.push([division, '검토위원', team, '', '', '', '', '', name, '', '']);
+    // 묶음 칸은 비우고 「참여 조」 자리에 조, 맨 끝 「검토위원」 열에 이름.
+    for (const [division, team, name] of reviewerRows(state)) rows.push([division, '검토위원', '', '', '', '', team, '', '', '', '', name]);
   }
   return rows;
 }
