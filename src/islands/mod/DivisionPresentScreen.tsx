@@ -83,10 +83,10 @@ export default function DivisionPresentScreen({ scope, access = null }: { scope:
             </Center>
           );
         })()
-      ) : scene.kind === 'result' && access && namesFor && namesFor === msg?.state.ballots[scene.round.requestId]?.ballotId ? (
+      ) : scene.kind === 'result' && access && (namesFor ?? msg?.names) && (namesFor ?? msg?.names) === msg?.state.ballots[scene.round.requestId]?.ballotId ? (
         <NamedResultBoard
           access={access}
-          ballotId={namesFor}
+          ballotId={(namesFor ?? msg?.names) as string}
           title={scene.round.title}
           sub={`${divisionLabel(scene.division)} · ${scene.motion.id}${scene.round.round > 1 ? ` · ${scene.round.round}차` : ''} · QR 투표`}
           onBack={() => setNamesFor(null)}

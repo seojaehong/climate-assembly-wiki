@@ -368,6 +368,7 @@ export default function DivisionVotePanel({
   // ── 발표 화면(10/15) — 같은 PC 의 발표 창으로 지금 상태·고른 안·제출 수를 보낸다(division-present.ts) ──
   const presentScope = preview ? 'preview' : storageScope ?? 'unknown';
   const [presentFocus, setPresentFocus] = useState<string | null>(null);
+  const [presentNames, setPresentNames] = useState<string | null>(null);
   const [presenterOn, setPresenterOn] = useState(false);
   const presenterSeenAt = useRef(0);
   const presentCounts = useRef<Record<string, number>>({});
@@ -392,10 +393,10 @@ export default function DivisionVotePanel({
   }, [presentScope]);
   const postPresent = useCallback(() => {
     if (!state) return;
-    const m: PresentStateMessage = { kind: 'state', v: 1, state, focus: presentFocus, counts: presentCounts.current };
+    const m: PresentStateMessage = { kind: 'state', v: 1, state, focus: presentFocus, counts: presentCounts.current, names: presentNames };
     presentLatest.current = m;
     presentChannel.current?.postMessage(m);
-  }, [state, presentFocus]);
+  }, [state, presentFocus, presentNames]);
   useEffect(() => {
     postPresent();
   }, [postPresent]);
@@ -408,11 +409,16 @@ export default function DivisionVotePanel({
   );
   const presentCtx = useMemo<PresentCtx>(
     () => ({
-      focus: (id: string) => setPresentFocus(id),
+      focus: (id: string) => {
+        setPresentFocus(id);
+        setPresentNames(null);
+      },
       presenterAlive: () => Date.now() - presenterSeenAt.current < PRESENT_ALIVE_MS,
       current: presentFocus,
+      names: presentNames,
+      showNames: (ballotId: string | null) => setPresentNames(ballotId),
     }),
-    [presentFocus],
+    [presentFocus, presentNames],
   );
   const openPresenter = () => {
     window.open(`${window.location.pathname}?${PRESENT_QUERY}=1`, `division-present-${presentScope}`, 'popup=yes,width=1280,height=720');
@@ -783,7 +789,14 @@ export default function DivisionVotePanel({
 }
 
 /** 발표 창 연결(10/15) — 안 카드·투표 단위가 「지금 이 안」을 알리고, 발표 창이 살아 있으면 노트북에 QR 전체 화면을 띄우지 않는다. */
-type PresentCtx = { focus: (id: string) => void; presenterAlive: () => boolean; current: string | null };
+type PresentCtx = {
+  focus: (id: string) => void;
+  presenterAlive: () => boolean;
+  current: string | null;
+  /** 큰 화면에 띄운 「투표결과 보기」의 투표(ballotId). */
+  names?: string | null;
+  showNames?: (ballotId: string | null) => void;
+};
 const PresentContext = createContext<PresentCtx>({ focus: () => undefined, presenterAlive: () => false, current: null });
 
 // ============================================================
@@ -2114,8 +2127,10 @@ export function MotionVoteBlock({ motion, state, update }: { motion: Motion; sta
   const shownTitle = cur?.title ?? motion.title;
   // 실명 투표(10/17) — 마감한 차수의 「투표결과 보기」(찬성 | 반대 이름표)와 제출자 대조.
   const namedAccess = useContext(NamedAccessContext);
+  const present = useContext(PresentContext);
   const [namesOpen, setNamesOpen] = useState(false);
   const lastBallotId = last ? state.ballots[last.requestId]?.ballotId ?? null : null;
+  const namesOnBig = !!lastBallotId && present.names === lastBallotId;
 
   // 두 번째 누름에서만 부른다(TwoStepButton). 칸이 비어 있으면 무장 문구가 그 사실을 알린다.
   const onMinority = () =>
@@ -2165,6 +2180,19 @@ export function MotionVoteBlock({ motion, state, update }: { motion: Motion; sta
           <button type="button" className={btnGhost} data-testid="named-board-open" onClick={() => setNamesOpen(true)}>
             투표결과 보기 (조·이름)
           </button>
+          {present.showNames ? (
+            <button
+              type="button"
+              className={namesOnBig ? btnPrimary : btnGhost}
+              data-testid="named-board-present"
+              onClick={() => {
+                present.focus(motion.key ?? motion.id);
+                present.showNames?.(namesOnBig ? null : lastBallotId);
+              }}
+            >
+              {namesOnBig ? '큰 화면: 결과로 돌아가기' : '큰 화면에 투표결과 보기'}
+            </button>
+          ) : null}
         </div>
       ) : null}
       {last && lastBallotId && namedAccess ? (

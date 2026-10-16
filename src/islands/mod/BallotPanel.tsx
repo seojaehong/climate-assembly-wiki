@@ -93,7 +93,9 @@ function headlineSize(text: string): string {
   const n = [...text].length;
   if (n <= 40) return 'text-[clamp(32px,4.2vw,84px)]';
   if (n <= 120) return 'text-[clamp(26px,3vw,60px)]';
-  return 'text-[clamp(20px,2.25vw,46px)]';
+  if (n <= 200) return 'text-[clamp(20px,2.25vw,46px)]';
+  // 10/17 — QR 이 커져 제목 단이 좁다(1920 에서 약 800px). 300자까지 잘리지 않게 한 단계 더.
+  return 'text-[clamp(16px,1.8vw,34px)]';
 }
 
 export function BallotQrFullscreen({

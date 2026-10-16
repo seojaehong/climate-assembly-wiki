@@ -18,6 +18,8 @@ export type PresentStateMessage = {
   focus: string | null;
   /** ballotId → 제출 수(운영 화면이 폴링한 값). */
   counts: Record<string, number>;
+  /** 실명 투표(10/17) — 이 투표(ballotId)의 「투표결과 보기」(조·이름)를 큰 화면에 띄운다. 옛 운영 화면은 보내지 않는다(없음 = 띄우지 않음). */
+  names?: string | null;
 };
 /** 발표 창 → 운영 화면: 살아 있음. 운영 화면은 이것이 오면 QR 전체 화면을 노트북에 띄우지 않는다. */
 export type PresentAliveMessage = { kind: 'alive'; v: 1 };

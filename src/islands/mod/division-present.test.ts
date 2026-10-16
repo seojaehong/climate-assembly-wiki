@@ -86,3 +86,11 @@ describe('presentScene', () => {
     expect(presentTitleSize('가'.repeat(300))).toBe(44);
   });
 });
+
+describe('실명 투표(10/17) — 발표 창 이름 화면 신호', () => {
+  it('names 칸이 있어도 없어도 같은 v1 메시지로 받는다(옛 운영 화면 호환)', () => {
+    const base = { kind: 'state', v: 1, state: {}, focus: null, counts: {} };
+    expect(isPresentMessage(base)).toBe(true);
+    expect(isPresentMessage({ ...base, names: 'ballot-1' })).toBe(true);
+  });
+});

@@ -129,6 +129,7 @@ export function NamedResultBoard({
   backLabel = 'QR로 돌아가기',
   note,
   live = true,
+  fixture = null,
 }: {
   access: WorkshopAuthorization | null | undefined;
   ballotId: string;
@@ -140,14 +141,19 @@ export function NamedResultBoard({
   note?: string | null;
   /** 열려 있는 투표면 3초마다 다시 읽는다. 닫힌 투표는 한 번만. */
   live?: boolean;
+  /** 미리보기 — 주면 서버를 부르지 않고 이 값을 그린다. */
+  fixture?: BallotNamedResponses | null;
 }) {
-  const { data, missing, failed } = useNamedResponses(access, ballotId, true, live ? POLL_MS : 0);
+  const remote = useNamedResponses(access, ballotId, !fixture, live ? POLL_MS : 0);
+  const data = fixture ?? remote.data;
+  const missing = fixture ? false : remote.missing;
+  const failed = fixture ? false : remote.failed;
   const cols = useMemo(() => (data ? yesNoColumns(data.items, data.responses) : null), [data]);
   // 세션 스위치 「큰 화면에 이름」이 꺼져 있으면(기본) 수만 — 이름표를 그리지 않는다.
   const showNames = data?.settings?.show_names === true;
   const longest = cols ? Math.max(cols.yesNames.length, cols.noNames.length) : 0;
-  // 한 단 높이 ≈ 1080 − 머리(제목·수 ≈ 380) = 약 640px.
-  const layout = nameGridLayout(longest, 640);
+  // 이름표 칸 높이 실측 722px(1920×1080, 제목 두 줄) — 여유를 두고 700.
+  const layout = nameGridLayout(longest, 700);
   // 두 칸(찬성·반대)이 화면 반씩(약 900px) — 그 안을 다시 2~4단으로 나눈다(4단이면 한 이름표 약 210px).
   const inner = layout;
   return (
@@ -157,7 +163,18 @@ export function NamedResultBoard({
           {sub ? <p className="text-[28px] font-bold text-[#5A6B73] tr-num">{sub}</p> : null}
           <h1
             className="font-extrabold leading-snug text-[#1F4E79]"
-            style={{ fontSize: [...title].length > 60 ? '36px' : '48px', wordBreak: 'keep-all', overflowWrap: 'anywhere', margin: 0, color: '#1F4E79' }}
+            // 제목은 두 줄까지만(긴 문구는 QR 화면에 전체가 있다) — 이름표 자리를 지킨다.
+            style={{
+              fontSize: [...title].length > 120 ? '30px' : [...title].length > 60 ? '36px' : '48px',
+              wordBreak: 'keep-all',
+              overflowWrap: 'anywhere',
+              margin: 0,
+              color: '#1F4E79',
+              display: '-webkit-box',
+              WebkitLineClamp: 2,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+            }}
           >
             {title}
           </h1>
