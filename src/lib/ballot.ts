@@ -1,4 +1,5 @@
 import { getSupabase } from './supabase';
+import type { RosterRow } from './named-vote-logic';
 
 /**
  * 다의제 1회 제출 투표(ballot) 데이터 레이어 — /b 참여자 화면 전용.
@@ -107,4 +108,57 @@ export async function fetchBallotResults(token: string): Promise<BallotResults |
   const { data, error } = await sb.schema('climate_vote').rpc('ballot_results', { p_token: token });
   if (error) throw error;
   return (data as BallotResults | null) ?? null;
+}
+
+// ── 실명 투표(s28, 10/17) ─────────────────────────────────────────────
+
+export type { RosterRow };
+
+/** PostgREST 가 함수를 못 찾았다(마이그레이션 미적용) — 무기명으로 내려간다. */
+export function isMissingRpc(error: unknown): boolean {
+  const e = error as { code?: string; message?: string } | null;
+  return e?.code === 'PGRST202' || /could not find the function/i.test(e?.message ?? '');
+}
+
+/**
+ * 투표 범위의 명단. 명단이 없거나 s28 미적용이면 [] — 그때 화면은 지금처럼 무기명이다.
+ * 그 밖의 오류는 throw(화면이 「다시 불러오기」를 띄운다 — 이름을 조용히 빼먹지 않게).
+ */
+export async function fetchBallotRoster(token: string): Promise<RosterRow[]> {
+  const sb = client();
+  const { data, error } = await sb.schema('climate_vote').rpc('ballot_roster_get', { p_token: token });
+  if (error) {
+    if (isMissingRpc(error)) return [];
+    throw error;
+  }
+  const rows = (data as { roster?: RosterRow[] } | null)?.roster;
+  return Array.isArray(rows) ? rows : [];
+}
+
+export type NamedSubmitResult = BallotSubmitResult | 'name_taken';
+
+/** 실명 제출. 같은 이름이 이미 있으면 'name_taken'(이 기기는 잠그지 않는다). */
+export async function submitBallotNamed(
+  token: string,
+  clientId: string,
+  answers: Record<string, number>,
+  voterTeam: string,
+  voterName: string,
+): Promise<NamedSubmitResult> {
+  const sb = client();
+  const { error } = await sb.schema('climate_vote').rpc('ballot_submit_named', {
+    p_token: token,
+    p_client_id: clientId,
+    p_answers: answers,
+    p_voter_team: voterTeam,
+    p_voter_name: voterName,
+  });
+  if (error) {
+    const message = (error as { message?: string }).message ?? '';
+    if (message.includes('name already submitted')) return 'name_taken';
+    if (message.includes('already submitted')) return 'duplicate';
+    if (message.includes('ballot not open')) return 'closed';
+    throw error;
+  }
+  return 'ok';
 }

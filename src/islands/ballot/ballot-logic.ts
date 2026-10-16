@@ -150,6 +150,39 @@ export function isLocalSubmitStoragePersistent(): boolean {
   return localSubmitStorage.isPersistent();
 }
 
+/** 실명 투표(s28) — 이 기기에서 낸 조·이름·고른 값. 새로고침 뒤에도 「○○ 님 — 찬성으로 제출」을 다시 보인다. */
+export type LocalVoter = { team: string; name: string; choice: string | null };
+
+export function recordLocalVoter(ballotId: string, voter: LocalVoter): void {
+  localSubmitStorage.setItem(`${localSubmitKey(ballotId)}_voter`, JSON.stringify(voter));
+}
+
+export function getLocalVoter(ballotId: string): LocalVoter | null {
+  const raw = localSubmitStorage.getItem(`${localSubmitKey(ballotId)}_voter`);
+  if (!raw) return null;
+  try {
+    const v = JSON.parse(raw) as Partial<LocalVoter>;
+    return typeof v.team === 'string' && typeof v.name === 'string'
+      ? { team: v.team, name: v.name, choice: typeof v.choice === 'string' ? v.choice : null }
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/** 완료 문구 — 「1분과 3조 홍길동 님 — 찬성으로 제출되었습니다」. */
+export function namedDoneText(v: LocalVoter): string {
+  return v.choice ? `${v.team} ${v.name} 님 — ${v.choice}${euro(v.choice)} 제출되었습니다` : `${v.team} ${v.name} 님 — 제출되었습니다`;
+}
+
+/** 조사 「으로/로」 — 받침이 있으면(ㄹ 제외) 「으로」. 찬성으로 · 반대로. */
+function euro(word: string): string {
+  const code = word.charCodeAt(word.length - 1) - 0xac00;
+  if (code < 0 || code > 11171) return '로';
+  const jong = code % 28;
+  return jong !== 0 && jong !== 8 ? '으로' : '로';
+}
+
 /** 이 디바이스의 제출 기록(ISO 시각). 없으면 null. SSR(localStorage 없음)은 null. */
 export function getLocalSubmit(ballotId: string): string | null {
   return localSubmitStorage.getItem(localSubmitKey(ballotId));

@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   fetchBallot,
   fetchBallotResults,
+  fetchBallotRoster,
   submitBallot,
+  submitBallotNamed,
   type Ballot,
+  type RosterRow,
   type BallotItem,
   type BallotResults,
 } from '../../lib/ballot';
@@ -13,10 +16,13 @@ import {
   ballotChoices,
   decisionChoiceOf,
   getLocalSubmit,
+  getLocalVoter,
   isComplete,
   isLocalSubmitStoragePersistent,
   parseBallotUrl,
   recordLocalSubmit,
+  recordLocalVoter,
+  namedDoneText,
   refreshNoticeMessage,
   resolveBallotScreen,
   scaleLabels,
@@ -24,7 +30,15 @@ import {
   SURVEY_EVIDENCE_BOUNDARY,
   voterCopy,
   type BallotChoice,
+  type LocalVoter,
 } from './ballot-logic';
+import {
+  displayVoterName,
+  responseChoiceText,
+  rosterTeams,
+  voterReady,
+  type RosterTeam,
+} from '../../lib/named-vote-logic';
 import { isDivisionDecisionBallot, parseMotionStatement } from '../../lib/division-ballot-format';
 import { useModalDialog } from '../mod/use-modal-dialog';
 
@@ -220,6 +234,8 @@ function DoneScreen({
   onRefresh: () => void;
   refreshing: boolean;
   refreshNotice: string | null;
+  /** 실명 투표 — 이 기기에서 낸 조·이름·고른 값. */
+  voter?: LocalVoter | null;
 }) {
   const copy = voterCopy(decision);
   return (
@@ -234,6 +250,11 @@ function DoneScreen({
       }
       color={duplicate ? '#8A4B08' : '#2D6A24'}
     >
+      {voter ? (
+        <p data-testid="named-done" className="mt-5 rounded-2xl border-2 border-[#2F6F25] bg-[#EAF6EE] px-4 py-3 text-[20px] font-extrabold leading-snug text-[#1F4E79]">
+          {namedDoneText(voter)}
+        </p>
+      ) : null}
       <p className="mt-5 text-[14px] leading-relaxed text-[#5A6B73]">집계는 운영진 확인을 거쳐 공개됩니다.</p>
       <RefreshButton onRefresh={onRefresh} refreshing={refreshing} refreshNotice={refreshNotice} />
     </CenterMessage>
@@ -377,6 +398,7 @@ export function ConfirmDialog({
   answered,
   total,
   choice = null,
+  voterLine = null,
   onCancel,
   onConfirm,
   submitting,
@@ -385,6 +407,8 @@ export function ConfirmDialog({
   total: number;
   /** 분과 의결 — 고른 값을 크게 보인다(10/14 voter-2). 확인 창이 버튼을 덮어도 무엇을 골랐는지 보이게. */
   choice?: BallotChoice | null;
+  /** 실명 투표 — 「1분과 3조 홍길동 님」. */
+  voterLine?: string | null;
   onCancel: () => void;
   onConfirm: () => void;
   submitting: boolean;
@@ -409,6 +433,11 @@ export function ConfirmDialog({
         >
           답변을 제출할까요?
         </h2>
+        {voterLine ? (
+          <p data-testid="confirm-voter" className="text-[19px] font-extrabold text-[#1F2933]">
+            {voterLine}
+          </p>
+        ) : null}
         {choice ? (
           <p
             data-testid="confirm-choice"
@@ -445,6 +474,108 @@ export function ConfirmDialog({
   );
 }
 
+// ── 실명 투표(s28): 조 → 이름 ───────────────────────────────────────
+
+export type VoterDraft = { team: string | null; name: string; manual?: boolean };
+
+export function VoterPicker({
+  teams,
+  voter,
+  onVoter,
+  disabled,
+}: {
+  teams: RosterTeam[];
+  voter: VoterDraft;
+  onVoter: (v: VoterDraft) => void;
+  disabled: boolean;
+}) {
+  const team = teams.find((t) => t.team === voter.team) ?? null;
+  const chosen = !!team && displayVoterName(voter.name).length > 0 && !voter.manual;
+  return (
+    <section data-testid="voter-picker" aria-label="조와 이름" className="mb-6 rounded-2xl border-2 border-[#135C73] bg-[#F1F7FA] p-4">
+      <p className="text-[18px] font-extrabold text-[#135C73] mb-3">1. 우리 조를 누르세요</p>
+      <div className="grid grid-cols-3 gap-2" role="group" aria-label="조">
+        {teams.map((t) => {
+          const active = voter.team === t.team;
+          return (
+            <button
+              key={t.team}
+              type="button"
+              disabled={disabled}
+              aria-pressed={active}
+              data-team={t.team}
+              onClick={() => onVoter({ team: t.team, name: active ? voter.name : '', manual: active ? voter.manual : false })}
+              className={`min-h-[60px] rounded-2xl border-2 px-2 text-[20px] font-extrabold tr-num ${
+                active ? 'border-[#135C73] bg-[#135C73] text-white' : 'border-[#C4D8E4] bg-white text-[#1F2933]'
+              }`}
+            >
+              {t.short}
+            </button>
+          );
+        })}
+      </div>
+
+      {team ? (
+        <>
+          <p className="mt-5 mb-3 text-[18px] font-extrabold text-[#135C73]">2. 내 이름을 누르세요 ({team.team})</p>
+          <div className="grid grid-cols-2 gap-2" role="group" aria-label="이름">
+            {team.names.map((r) => {
+              const active = !voter.manual && displayVoterName(voter.name) === displayVoterName(r.name);
+              return (
+                <button
+                  key={`${r.team}-${r.name}`}
+                  type="button"
+                  disabled={disabled}
+                  aria-pressed={active}
+                  data-name={r.name}
+                  onClick={() => onVoter({ team: team.team, name: r.name, manual: false })}
+                  className={`min-h-[60px] rounded-2xl border-2 px-3 text-[20px] font-bold break-all ${
+                    active ? 'border-[#2F6F25] bg-[#2F6F25] text-white' : 'border-[#C4D8E4] bg-white text-[#1F2933]'
+                  }`}
+                >
+                  {r.name}
+                </button>
+              );
+            })}
+          </div>
+          {voter.manual ? (
+            <label className="mt-3 block">
+              <span className="text-[16px] font-bold text-[#1F4E79]">이름을 직접 적어 주세요</span>
+              <input
+                type="text"
+                autoComplete="off"
+                maxLength={80}
+                disabled={disabled}
+                value={voter.name}
+                data-testid="voter-name-input"
+                onChange={(e) => onVoter({ team: team.team, name: e.target.value, manual: true })}
+                className="mt-1 h-14 w-full rounded-2xl border-2 border-[#135C73] bg-white px-4 text-[20px] font-bold"
+              />
+            </label>
+          ) : (
+            <button
+              type="button"
+              disabled={disabled}
+              data-testid="voter-manual"
+              onClick={() => onVoter({ team: team.team, name: '', manual: true })}
+              className="mt-3 min-h-[56px] w-full rounded-2xl border-2 border-dashed border-[#5A6B73] bg-white px-3 text-[17px] font-bold text-[#5A6B73]"
+            >
+              명단에 없어요 — 이름 직접 입력
+            </button>
+          )}
+        </>
+      ) : null}
+
+      {chosen || (voter.manual && team && displayVoterName(voter.name)) ? (
+        <p data-testid="voter-chosen" className="mt-4 text-[19px] font-extrabold text-[#1F4E79]">
+          {team?.team} {displayVoterName(voter.name)} 님
+        </p>
+      ) : null}
+      <p className="mt-2 text-[14px] text-[#5A6B73]">3. 아래에서 답을 고른 뒤 제출합니다. 제출한 뒤에는 바꿀 수 없습니다.</p>
+    </section>
+  );
+}
+
 function VotingScreen({
   ballot,
   answers,
@@ -452,6 +583,9 @@ function VotingScreen({
   onRequestSubmit,
   submitting,
   error,
+  teams = [],
+  voter = { team: null, name: '' },
+  onVoter = () => undefined,
 }: {
   ballot: Ballot;
   answers: Record<string, number>;
@@ -459,10 +593,16 @@ function VotingScreen({
   onRequestSubmit: () => void;
   submitting: boolean;
   error: string | null;
+  /** 실명 투표(s28) — 명단이 있으면 조·이름을 먼저 고른다. 비었으면 지금처럼 무기명. */
+  teams?: RosterTeam[];
+  voter?: VoterDraft;
+  onVoter?: (v: VoterDraft) => void;
 }) {
   const total = ballot.items.length;
   const answered = answeredCount(ballot.items, answers);
-  const complete = isComplete(ballot.items, answers);
+  const named = teams.length > 0;
+  const voterOk = !named || voterReady(voter.team, voter.name, teams);
+  const complete = isComplete(ballot.items, answers) && voterOk;
   const decision = isDivisionDecisionBallot(ballot);
   const copy = voterCopy(decision);
 
@@ -509,6 +649,8 @@ function VotingScreen({
             : '모든 문항에 답한 뒤 맨 아래에서 한 번에 제출합니다.'}
         </p>
 
+        {named ? <VoterPicker teams={teams} voter={voter} onVoter={onVoter} disabled={submitting} /> : null}
+
         <div className="divide-y divide-[#DCE7EE]">
           {ballot.items.map((item) => (
             <ItemBlock
@@ -535,7 +677,11 @@ function VotingScreen({
           disabled={submitting || !complete}
           className="w-full min-h-[64px] mt-6 rounded-2xl bg-[#23B2C3] text-white text-[20px] font-bold shadow-sm active:scale-[.99] transition disabled:opacity-40"
         >
-          {complete ? '제출하기' : `남은 문항 ${total - answered}개에 답해 주세요`}
+          {complete
+            ? '제출하기'
+            : !voterOk
+              ? '조와 이름을 먼저 골라 주세요'
+              : `남은 문항 ${total - answered}개에 답해 주세요`}
         </button>
 
         <p className="text-[13px] leading-relaxed text-[#5A6B73] text-center mt-6">{copy.evidence}</p>
@@ -650,14 +796,24 @@ export default function BallotCard() {
   const [resultLoading, setResultLoading] = useState(false);
   const [resultError, setResultError] = useState<string | null>(null);
   const [resultReloadKey, setResultReloadKey] = useState(0);
+  /** 실명 투표(s28) 명단. 빈 배열 = 무기명(지금과 같음). */
+  const [roster, setRoster] = useState<RosterRow[]>([]);
+  const [voter, setVoter] = useState<VoterDraft>({ team: null, name: '' });
+  const [localVoter, setLocalVoter] = useState<LocalVoter | null>(null);
+  const teams = useMemo(() => rosterTeams(roster), [roster]);
 
   const load = async ({ preserveCurrent = false }: { preserveCurrent?: boolean } = {}): Promise<Ballot | null> => {
     if (!token) return null;
     try {
-      const b = await fetchBallot(token);
+      // 명단 조회가 실패하면(함수 없음 제외) 투표 화면을 띄우지 않는다 — 이름을 조용히 빼먹지 않게.
+      const [b, r] = await Promise.all([fetchBallot(token), fetchBallotRoster(token)]);
+      setRoster(r);
       setBallot(b);
       setBallotLoadError(null);
-      if (b && getLocalSubmit(b.id)) setLocallySubmitted(true);
+      if (b && getLocalSubmit(b.id)) {
+        setLocallySubmitted(true);
+        setLocalVoter(getLocalVoter(b.id));
+      }
       return b;
     } catch (loadError) {
       console.error('투표를 불러오지 못했습니다.', loadError);
@@ -718,15 +874,36 @@ export default function BallotCard() {
     if (!token || !ballot) return;
     setSubmitting(true);
     setError(null);
-    try {
-      const result = await submitBallot(token, getDeviceToken(), answers);
+    const named = teams.length > 0;
+    const voterName = displayVoterName(voter.name);
+    if (named && !voterReady(voter.team, voter.name, teams)) {
       setConfirmOpen(false);
-      if (result === 'ok') {
+      setSubmitting(false);
+      setError('조와 이름을 먼저 골라 주세요.');
+      return;
+    }
+    try {
+      const result = named
+        ? await submitBallotNamed(token, getDeviceToken(), answers, voter.team as string, voterName)
+        : await submitBallot(token, getDeviceToken(), answers);
+      setConfirmOpen(false);
+      const mine: LocalVoter | null = named
+        ? { team: voter.team as string, name: voterName, choice: responseChoiceText(answers, ballot.items) || null }
+        : null;
+      if (result === 'name_taken') {
+        // 같은 이름이 이미 제출됨 — 이 기기는 잠그지 않는다(조·이름을 잘못 눌렀을 수 있다).
+        setError('이미 이 이름으로 제출되었습니다. 운영팀에 알려 주세요.');
+      } else if (result === 'ok') {
         recordLocalSubmit(ballot.id);
+        if (mine) {
+          recordLocalVoter(ballot.id, mine);
+          setLocalVoter(mine);
+        }
         setSubmitState('submitted');
       } else if (result === 'duplicate') {
         // 이 디바이스의 제출이 이미 존재 — 로컬 기록을 보정하고 완료 화면으로.
         recordLocalSubmit(ballot.id);
+        setLocalVoter(getLocalVoter(ballot.id));
         setSubmitState('duplicate');
       } else {
         // 제출 시점에 이미 마감됨 — 최신 상태(closed/published)를 다시 받아 화면 전환.
@@ -816,6 +993,7 @@ export default function BallotCard() {
         onRefresh={handleRefresh}
         refreshing={refreshing}
         refreshNotice={refreshNotice}
+        voter={localVoter}
       />
     );
   }
@@ -829,12 +1007,19 @@ export default function BallotCard() {
           onRequestSubmit={() => setConfirmOpen(true)}
           submitting={submitting}
           error={error}
+          teams={teams}
+          voter={voter}
+          onVoter={(v) => {
+            setVoter(v);
+            setError(null);
+          }}
         />
         {confirmOpen ? (
           <ConfirmDialog
             answered={answeredCount(ballot.items, answers)}
             total={ballot.items.length}
             choice={decisionChoiceOf(ballot.items, answers, decisionBallot)}
+            voterLine={teams.length > 0 && voter.team ? `${voter.team} ${displayVoterName(voter.name)} 님` : null}
             onCancel={() => setConfirmOpen(false)}
             onConfirm={handleSubmit}
             submitting={submitting}

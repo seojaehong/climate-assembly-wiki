@@ -1,5 +1,6 @@
 import { getSupabase } from './supabase';
 import type { WorkshopSession } from './workshop-access';
+import type { NamedItem, NamedResponse, RosterRow } from './named-vote-logic';
 
 /**
  * 숙의 운영 데이터 레이어 — 20260808_s1(주제·조별 산출물)과 20260808_s2(다의제 투표)의
@@ -378,4 +379,53 @@ export async function ballotResults(
   });
   if (error) throw error;
   return (data as BallotResults | null) ?? null;
+}
+
+// ── 실명 투표(s28, 10/17) — 운영 콘솔 ────────────────────────────────
+
+export type BallotNamedResponses = {
+  id: string;
+  title: string;
+  status: BallotStatus;
+  subgroup: string | null;
+  items: NamedItem[];
+  roster: RosterRow[];
+  responses: NamedResponse[];
+};
+
+/** 투표 하나의 실명 응답·명단·문항. s28 미적용이면 null(화면은 수만 보인다). */
+export async function ballotNamedResponses(
+  access: WorkshopAccess,
+  ballotId: string,
+): Promise<BallotNamedResponses | null> {
+  const sb = client();
+  const { data, error } = await sb.schema('climate_vote').rpc('ballot_named_responses_v2', {
+    p_token: access.accessToken,
+    p_ballot_id: ballotId,
+  });
+  if (error) {
+    const e = error as { code?: string; message?: string };
+    if (e.code === 'PGRST202' || /could not find the function/i.test(e.message ?? '')) return null;
+    throw error;
+  }
+  return (data as BallotNamedResponses | null) ?? null;
+}
+
+/** 조·이름만 정정한다(찬반은 서버가 못 바꾸게 막는다). 정정 이력은 workshop_audit_event 에 남는다. */
+export async function ballotVoterCorrect(
+  access: WorkshopAccess,
+  ballotId: string,
+  responseId: string,
+  voterTeam: string,
+  voterName: string,
+): Promise<void> {
+  const sb = client();
+  const { error } = await sb.schema('climate_vote').rpc('ballot_voter_correct_v2', {
+    p_token: access.accessToken,
+    p_ballot_id: ballotId,
+    p_response_id: responseId,
+    p_voter_team: voterTeam,
+    p_voter_name: voterName,
+  });
+  if (error) throw error;
 }
