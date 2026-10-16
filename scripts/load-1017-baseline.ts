@@ -8,6 +8,9 @@
  * - 서버가 빈 분과는 새로 넣는다.
  * - 이미 내용이 있는 분과는 건너뛴다. --replace 를 주면 새 파일 내용으로 통째로 바꾼다(자료가 바뀌었을 때).
  *   단 투표 기록이 있거나 안 제목·기록 칸에 사람이 넣은 내용이 있으면 바꾸지 않는다(현장 입력을 지우지 않게).
+ * - --force 를 --replace 와 함께 주면(10/17 A–G 묶음으로 다시 깔기, 사용자 승인) 사람이 넣은 제목·의견·참석도 버리고 바꾼다.
+ *   ★ 그래도 투표 기록(차수·투표)이 있는 분과는 절대 바꾸지 않는다. 미리보기에서 버려질 항목을 먼저 확인할 것.
+ * - --groups 에 bundles_ag_1017.json(A–G 묶음)을 주면 그 묶음으로 안을 만든다(유사 묶음 파일과 같은 모양 + letter·card_teams).
  */
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
@@ -33,6 +36,7 @@ const recsPath = arg('--recs');
 const groupsPath = arg('--groups');
 const apply = process.argv.includes('--apply');
 const replace = process.argv.includes('--replace');
+const force = process.argv.includes('--force');
 if (!code || !recsPath || !groupsPath) throw new Error('--code --recs --groups 가 필요합니다');
 
 async function rpc(fn: string, body: Record<string, unknown>) {
@@ -98,7 +102,11 @@ for (const source of recs.divisions) {
   if (row.version && row.state) {
     const cur = row.state as PrepState;
     const human = humanInput(cur);
-    if (!replace || human.length) {
+    const votes = human.filter((h) => h.endsWith('투표 기록') || h === '투표');
+    if (replace && force && human.length && !votes.length) {
+      console.log(`${sub}: --force — 버릴 사람 입력 ${human.length}건: ${human.join(', ')}`);
+    }
+    if (!replace || (human.length && !(force && !votes.length))) {
       // 통째로 바꾸지 않는다. 대신 빠진 최종·위임 안건만 더한다(있던 내용은 그대로).
       let added = cur;
       const names: string[] = [];
@@ -113,6 +121,7 @@ for (const source of recs.divisions) {
         ? `사람이 넣은 내용 있음(${human.slice(0, 6).join(', ')}${human.length > 6 ? ' …' : ''})`
         : `서버 판 ${row.version}에 이미 내용(바꾸려면 --replace)`;
       if (replace && human.length) failed = true;
+      if (force && votes.length) console.log(`${sub}: 투표 기록이 있어 --force 로도 바꾸지 않습니다(${votes.join(', ')})`);
       if (!names.length) {
         console.log(`${sub}: 그대로 둠 — ${why}`);
         continue;

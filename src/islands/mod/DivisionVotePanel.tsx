@@ -20,6 +20,8 @@ import { createSafeBrowserStorage } from '../../lib/safe-browser-storage';
 import { BallotQrFullscreen } from './BallotPanel';
 import { NamedAccessContext, NamedResultBoard } from './NamedResultBoard';
 import VoterReconcileBox from './VoterReconcileBox';
+import DivisionBundleBoard from './DivisionBundleBoard';
+import { bundleCsvRows, bundleCsvText } from './division-bundle';
 import NamedVoteSettingsBox from './NamedVoteSettingsBox';
 import { MAX_STATEMENT_LENGTH, ballotStatusLabel } from './ballot-panel-logic';
 import DivisionCeremony from './DivisionCeremony';
@@ -38,6 +40,7 @@ import {
   attendanceText,
   agendaTopicNo,
   createAgendaMotion,
+  groupLabel,
   groupRecTexts,
   importSimilarGroups,
   isAgendaMotion,
@@ -682,6 +685,14 @@ export default function DivisionVotePanel({
               setView('vote');
             }}
             onCsvAll={() => downloadCsv('all')}
+            onBundleCsvAll={() => {
+              const rows = [1, 2, 3].flatMap((d) => {
+                const st = prep.slots[d]?.state;
+                return st ? bundleCsvRows(st) : [];
+              });
+              downloadBlob(new Blob([bundleCsvText(rows)], { type: 'text/csv;charset=utf-8' }), '1017_묶음기록_전체.csv');
+              setNotice({ tone: 'ok', text: `묶음 기록 CSV를 내려받았습니다(${rows.length}줄).` });
+            }}
           />
         ) : null}
 
@@ -854,12 +865,15 @@ function OpsBoard({
   active,
   onOpen,
   onCsvAll,
+  onBundleCsvAll,
 }: {
   prep: DivisionPrep;
   preview: boolean;
   active: number | null;
   onOpen: (division: number) => void;
   onCsvAll: () => void;
+  /** 10/17 — 세 분과 묶음 기록(헤쳐모여) CSV. */
+  onBundleCsvAll?: () => void;
 }) {
   const now = useNow(1000) + prep.serverOffsetMs;
   const conn = preview ? '미리보기(서버 없음)' : prep.mode === 'local' ? '서버 저장 안 됨' : prep.connected === false ? '연결 끊김' : prep.connected ? '연결됨' : '연결 중';
@@ -874,6 +888,11 @@ function OpsBoard({
         <button type="button" className={btnPrimary} onClick={onCsvAll} data-testid="ops-csv-all">
           전체 결과 CSV
         </button>
+        {onBundleCsvAll ? (
+          <button type="button" className={btnGhost} onClick={onBundleCsvAll} data-testid="ops-bundle-csv-all">
+            전체 묶음 기록 CSV
+          </button>
+        ) : null}
       </div>
       <div className="grid gap-3 md:grid-cols-3">
         {[1, 2, 3].map((d) => {
@@ -983,6 +1002,15 @@ function OpsBoard({
 // ============================================================
 
 export function PrepBoard({ state, update }: { state: PrepState; update: (fn: (s: PrepState) => PrepState) => void }) {
+  return (
+    <div className="space-y-5">
+      <DivisionBundleBoard state={state} update={update} />
+      <PrepBoardBody state={state} update={update} />
+    </div>
+  );
+}
+
+function PrepBoardBody({ state, update }: { state: PrepState; update: (fn: (s: PrepState) => PrepState) => void }) {
   const [selected, setSelected] = useState<string[]>([]);
   const [title, setTitle] = useState('');
   const [text, setText] = useState('');
@@ -1369,12 +1397,12 @@ export function GroupReference({ group, source }: { group: NonNullable<Motion['g
   return (
     <div data-testid="group-reference" className="mt-3 rounded-xl border border-[#C4D8E4] bg-[#F5F8FB] px-4 py-3">
       <p className="text-[17px] text-[#1F2933]">
-        <span className="mr-2 font-extrabold text-[#1F4E79]">{group.id}</span>
-        <span className="font-bold">공통 취지:</span> {group.name || '—'}
+        <span className="mr-2 font-extrabold text-[#1F4E79]">{group.letter ? groupLabel(group) : group.id}</span>
+        {group.letter ? (group.common ? <span className="text-[#5A6B73]">공통: {group.common}</span> : null) : (<><span className="font-bold">공통 취지:</span> {group.name || '—'}</>)}
       </p>
       <p className="mt-1 text-[16px] text-[#5A6B73] tr-num">
         세부 {group.recs.length}건 {group.recs.join(', ')}
-        {group.teams.length ? ` · 제안 ${group.teams.join(' ')}` : ''}
+        {group.cardTeams ? ` · 카드 ${Object.entries(group.cardTeams).map(([c, t]) => `${c} (${t})`).join(' ')}` : group.teams.length ? ` · 제안 ${group.teams.join(' ')}` : ''}
       </p>
       <details className="mt-1" data-testid="group-recs">
         <summary className="min-h-11 cursor-pointer text-[16px] font-bold text-[#2E75B6]">세부 권고 문구 보기 ({recs.length}건)</summary>

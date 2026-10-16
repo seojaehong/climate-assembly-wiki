@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { BallotQrFullscreen } from './BallotPanel';
 import { NamedResultBoard } from './NamedResultBoard';
 import type { WorkshopAuthorization } from '../../lib/deliberation';
-import { groupRecTexts, divisionLabel, type Motion, type PrepState } from './division-vote-logic';
+import { groupLabel, groupRecTexts, divisionLabel, type Motion, type PrepState } from './division-vote-logic';
 import { qrHeadlineOf, qrRowOf } from './division-vote-flow';
 import { currentTimetableBlock } from './division-timetable';
 import {
@@ -165,7 +165,7 @@ function MotionView({ state, motion }: { state: PrepState; motion: Motion }) {
     <div className="flex flex-1 flex-col gap-8 overflow-hidden px-20 pb-12 pt-16">
       <p className="text-[36px] font-extrabold text-[#7FC8DE] tr-num">
         {divisionLabel(state.division)} · {motion.id}
-        {motion.group?.name ? <span className="ml-4 text-[30px] text-[#BFE3F0]">공통 취지: {motion.group.name}</span> : null}
+        {motion.group?.name ? <span className="ml-4 text-[30px] text-[#BFE3F0]">{motion.group.letter ? `묶음 ${groupLabel(motion.group)}` : `공통 취지: ${motion.group.name}`}</span> : null}
       </p>
       <h1
         data-testid="present-title"

@@ -169,7 +169,45 @@ export type Motion = {
   key?: string;
 };
 
-export type MotionGroup = { id: string; name: string; recs: string[]; teams: string[] };
+export type MotionGroup = {
+  id: string;
+  name: string;
+  recs: string[];
+  teams: string[];
+  /** 10/17 진행자료 A–G 묶음(카드 단위). 옛 유사 묶음(유사N)에는 없다. */
+  letter?: string;
+  /** 겹치는 정도 「높음」·「중간」·「낮음」. */
+  level?: string;
+  /** 「여러 장에 공통으로 나온 내용」. */
+  common?: string;
+  /** 카드 번호 → 작성 조(「3조」). 진행자료 장표 기준. */
+  cardTeams?: Record<string, string>;
+};
+
+/** 묶음 이름표 — A–G 묶음이면 「A 탄소정보 공시·인증」, 옛 묶음이면 이름 그대로. */
+export function groupLabel(g: Pick<MotionGroup, 'name' | 'letter'>): string {
+  return g.letter ? `${g.letter} ${g.name}` : g.name;
+}
+
+/** 오전 헤쳐모여 결과(10/17 진행자료 슬라이드 15·30) — 세 가지 중 하나. */
+export const BUNDLE_DECISIONS = ['merge', 'move', 'separate'] as const;
+export type BundleDecision = (typeof BUNDLE_DECISIONS)[number];
+export const BUNDLE_DECISION_LABELS: Record<BundleDecision, string> = {
+  merge: '합친다(카드를 통째로 합치기)',
+  move: '옮긴다(세부권고만 옮겨 합치기)',
+  separate: '따로 둔다',
+};
+
+/**
+ * 묶음 하나의 기록(10/17). 합친 문구는 따로 두지 않는다 — 그 묶음 안(들)의 제목이 곧 16:15 투표 문구다.
+ * 참여 조는 '1'..'5'(TEAM_NOS).
+ */
+export type BundleRecord = {
+  decision: BundleDecision | null;
+  teams: string[];
+  movedRecs: string;
+  minority: string;
+};
 
 export type BallotStage = 'creating' | 'draft' | 'open' | 'closed';
 
@@ -205,7 +243,9 @@ export type Attendance = { enrolled: number | null; present: number | null };
  * 2 를 읽는 옛 화면(5f9920b)은 모르는 칸을 버리고 다시 저장하므로 — 무효가 되살아나고 묶음·거수 확인이 사라진다 —
  * 새 화면은 3 으로 쓴다. 옛 화면은 3 을 「읽을 수 없는 판」으로 보고 저장하지 않는다. 읽기는 1·2·3 모두.
  */
-export const PREP_VERSION = 3;
+export const PREP_VERSION = 4;
+// 4(10/17) = 묶음 기록(bundles)·A–G 묶음 칸(letter·level·common·cardTeams)이 들어간 판. 3 을 쓰는 옛 화면은 이 칸들을
+// 버리고 저장하므로, 4 를 「읽을 수 없는 판」으로 보고 저장하지 않게 판 번호를 올렸다(새로고침하면 새 화면).
 
 /** 내보내기 파일 한 개로 다른 기기에서 그대로 이어 쓸 수 있게 원천 사본까지 담는다. */
 export type PrepState = {
@@ -216,6 +256,8 @@ export type PrepState = {
   motions: Motion[];
   attendance: Attendance;
   ballots: Record<string, BallotRecord>;
+  /** 묶음 번호(「1A」) → 오전 헤쳐모여 기록. 없으면 아직 아무것도 적지 않았다. */
+  bundles?: Record<string, BundleRecord>;
 };
 
 export function initPrepState(source: RecsDivision): PrepState {
@@ -427,7 +469,43 @@ export function createAgendaMotion(state: PrepState, input: { title: string; tex
 // ── 유사 묶음 파일(10/14 추진계획안5) ─────────────────────────
 
 /** similar_groups_1017.json 의 한 줄. division 은 파일에 「1분과」로 적혀 있다. */
-export type SimilarGroup = { id: string; division: number; name: string; recs: string[]; cards: string[]; teams: string[] };
+export type SimilarGroup = {
+  id: string;
+  division: number;
+  name: string;
+  recs: string[];
+  cards: string[];
+  teams: string[];
+  letter?: string;
+  level?: string;
+  common?: string;
+  cardTeams?: Record<string, string>;
+};
+
+/** 묶음 파일의 선택 칸(A–G) — 있는 것만 옮긴다. */
+function groupExtras(g: Pick<MotionGroup, 'letter' | 'level' | 'common' | 'cardTeams'>): Partial<MotionGroup> {
+  return {
+    ...(g.letter !== undefined ? { letter: g.letter } : {}),
+    ...(g.level !== undefined ? { level: g.level } : {}),
+    ...(g.common !== undefined ? { common: g.common } : {}),
+    ...(g.cardTeams !== undefined ? { cardTeams: { ...g.cardTeams } } : {}),
+  };
+}
+
+function readGroupExtras(x: Record<string, unknown>, cardTeamsKey: 'card_teams' | 'cardTeams'): Partial<MotionGroup> | null {
+  for (const k of ['letter', 'level', 'common'] as const) if (x[k] !== undefined && typeof x[k] !== 'string') return null;
+  const ct = x[cardTeamsKey];
+  let cardTeams: Record<string, string> | undefined;
+  if (ct !== undefined) {
+    if (typeof ct !== 'object' || ct === null || Array.isArray(ct)) return null;
+    cardTeams = {};
+    for (const [k, v] of Object.entries(ct)) {
+      if (typeof v !== 'string') return null;
+      cardTeams[k] = v;
+    }
+  }
+  return groupExtras({ letter: x.letter as string | undefined, level: x.level as string | undefined, common: x.common as string | undefined, cardTeams });
+}
 
 export type ImportGroupsResult = {
   state: PrepState;
@@ -466,7 +544,7 @@ export function importSimilarGroups(state: PrepState, groups: readonly SimilarGr
       title: '',
       text: '',
       ...newMotionFields(),
-      group: { id: g.id, name: g.name, recs: [...g.recs], teams: [...g.teams] },
+      group: { id: g.id, name: g.name, recs: [...g.recs], teams: [...g.teams], ...groupExtras(g) },
       key: groupMotionKey(g.id),
     };
     s = { ...s, motions: sortMotions(s.source, [...s.motions, motion]) };
@@ -495,7 +573,9 @@ function readGroupRow(x: unknown): SimilarGroup | null {
   const cards = list(x.cards);
   const teams = x.teams === undefined ? [] : list(x.teams);
   if (!recs || !cards || !teams || cards.length === 0) return null;
-  return { id: x.id.trim(), division, name: x.name, recs, cards, teams };
+  const extras = readGroupExtras(x, 'card_teams');
+  if (!extras) return null;
+  return { id: x.id.trim(), division, name: x.name, recs, cards, teams, ...extras };
 }
 
 /** 유사 묶음 파일 판독 — `{ groups: [...] }` 또는 배열. 한 줄이라도 모양이 틀리면 통째로 거절한다. */
@@ -865,7 +945,9 @@ function readMotion(x: unknown, source: RecsDivision, v: 1 | 2 | 3): Motion | nu
     const recs = list(g.recs);
     const teams = list(g.teams);
     if (!recs || !teams) return null;
-    group = { id: g.id, name: g.name, recs, teams };
+    const extras = readGroupExtras(g, 'cardTeams');
+    if (!extras) return null;
+    group = { id: g.id, name: g.name, recs, teams, ...extras };
   }
   if (x.key !== undefined && (!isStr(x.key) || !x.key)) return null;
   const base = {
@@ -945,6 +1027,15 @@ function readBallot(key: string, x: unknown): BallotRecord | null {
   };
 }
 
+function readBundleRecord(x: unknown): BundleRecord | null {
+  if (!isObj(x)) return null;
+  const decision = x.decision ?? null;
+  if (decision !== null && !BUNDLE_DECISIONS.includes(decision as BundleDecision)) return null;
+  if (!Array.isArray(x.teams) || !x.teams.every((t) => TEAM_NOS.includes(t as TeamNo))) return null;
+  if (!isStr(x.movedRecs) || !isStr(x.minority)) return null;
+  return { decision: decision as BundleDecision | null, teams: [...(x.teams as string[])], movedRecs: x.movedRecs, minority: x.minority };
+}
+
 function readAttendance(x: unknown): Attendance | null {
   if (x === undefined) return { enrolled: null, present: null };
   if (!isObj(x)) return null;
@@ -955,8 +1046,8 @@ function readAttendance(x: unknown): Attendance | null {
 }
 
 function readPrep(x: Record<string, unknown>): PrepState | null {
-  if ((x.v !== 1 && x.v !== 2 && x.v !== PREP_VERSION) || !Number.isInteger(x.division)) return null;
-  const v = x.v as 1 | 2 | 3;
+  if ((x.v !== 1 && x.v !== 2 && x.v !== 3 && x.v !== PREP_VERSION) || !Number.isInteger(x.division)) return null;
+  const v = (x.v === PREP_VERSION ? 3 : x.v) as 1 | 2 | 3;
   const source = readDivision(x.source);
   if (!source || source.division !== x.division) return null;
   if (!isObj(x.cards) || !Array.isArray(x.motions)) return null;
@@ -987,6 +1078,16 @@ function readPrep(x: Record<string, unknown>): PrepState | null {
   for (const m of motions as Motion[]) {
     if (m.rounds.some((r) => !ballots[r.requestId])) return null;
   }
+  let bundles: Record<string, BundleRecord> | undefined;
+  if (x.bundles !== undefined) {
+    if (!isObj(x.bundles)) return null;
+    bundles = {};
+    for (const [key, raw] of Object.entries(x.bundles)) {
+      const b = readBundleRecord(raw);
+      if (!b) return null;
+      bundles[key] = b;
+    }
+  }
   return {
     v: PREP_VERSION,
     division: source.division,
@@ -995,6 +1096,7 @@ function readPrep(x: Record<string, unknown>): PrepState | null {
     motions: sortMotions(source, motions as Motion[]),
     attendance,
     ballots,
+    ...(bundles ? { bundles } : {}),
   };
 }
 

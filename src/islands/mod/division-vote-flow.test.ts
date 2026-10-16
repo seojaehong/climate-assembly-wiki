@@ -179,7 +179,7 @@ describe('준비판 v2 — 옛 저장(v1)도 읽는다', () => {
     bad5.ballots['req-1'].stage = 'open';
     bad5.ballots['req-1'].ballotId = null; // 열렸는데 id 없음
     const bad6 = j();
-    bad6.v = 4; // 모르는 판(3 은 10/14 판)
+    bad6.v = 5; // 모르는 판(3 은 10/14 판, 4 는 10/17 묶음 기록 판)
     for (const b of [bad1, bad2, bad3, bad4, bad5, bad6]) expect(migratePrep(b)).toBeNull();
     expect(migratePrep(null)).toBeNull();
     expect(migratePrep('문자열')).toBeNull();
