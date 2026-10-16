@@ -21,8 +21,10 @@ describe('QR 화면(10/17 정리) — 제목 + 큰 QR + 실시간 수', () => {
     );
     expect(html).toContain('탄소 정보 공시');
     expect(html).toContain('제출 7명');
-    expect(html).not.toContain('/b?');
-    expect(html).not.toContain('cccccccc');
+    // 주소는 e2e 용 data-ballot-url 속성에만 있고 화면 글자에는 없다.
+    const text = html.replace(/<[^>]+>/g, ' ');
+    expect(text).not.toContain('/b?');
+    expect(text).not.toContain('cccccccc');
     expect(html).not.toContain('전용');
     expect(html).not.toContain('스캔하세요');
     expect(html).not.toContain('1분과 한정');
