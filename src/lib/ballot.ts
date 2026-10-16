@@ -135,7 +135,7 @@ export async function fetchBallotRoster(token: string): Promise<RosterRow[]> {
   return Array.isArray(rows) ? rows : [];
 }
 
-export type NamedSubmitResult = BallotSubmitResult | 'name_taken';
+export type NamedSubmitResult = BallotSubmitResult | 'name_taken' | 'named_off';
 
 /** 실명 제출. 같은 이름이 이미 있으면 'name_taken'(이 기기는 잠그지 않는다). */
 export async function submitBallotNamed(
@@ -156,6 +156,7 @@ export async function submitBallotNamed(
   if (error) {
     const message = (error as { message?: string }).message ?? '';
     if (message.includes('name already submitted')) return 'name_taken';
+    if (message.includes('named voting off')) return 'named_off';
     if (message.includes('already submitted')) return 'duplicate';
     if (message.includes('ballot not open')) return 'closed';
     throw error;

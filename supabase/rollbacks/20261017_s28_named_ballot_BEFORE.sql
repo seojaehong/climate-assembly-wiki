@@ -5,6 +5,8 @@
 --    where br.voter_name is not null order by b.created_at, br.submitted_at;
 -- 화면을 먼저 이전 배포로 돌린 뒤 적용한다(새 화면이 PGRST202 로 실명 제출을 못 하게 되므로).
 
+drop function if exists climate_vote.ballot_named_settings_v2(text);
+drop function if exists climate_vote.ballot_named_settings_set_v2(text,boolean,boolean);
 drop function if exists climate_vote.ballot_voter_correct_v2(text,uuid,uuid,text,text);
 drop function if exists climate_vote.ballot_named_responses_v2(text,uuid);
 drop function if exists climate_vote.ballot_submit_named(text,text,jsonb,text,text);
@@ -19,3 +21,6 @@ alter table climate_vote.ballot_response
 
 drop table if exists climate_vote.ballot_roster;
 drop function if exists climate_vote.voter_name_norm(text);
+drop function if exists climate_vote.session_named_vote(uuid);
+-- 세션 스위치 칸(session.config.named_vote)은 다른 칸을 건드리지 않고 그 키만 뺀다.
+update climate_vote.session set config = config - 'named_vote' where config ? 'named_vote';

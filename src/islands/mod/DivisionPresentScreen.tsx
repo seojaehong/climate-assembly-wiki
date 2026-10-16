@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BallotQrFullscreen } from './BallotPanel';
+import { NamedResultBoard } from './NamedResultBoard';
+import type { WorkshopAuthorization } from '../../lib/deliberation';
 import { groupRecTexts, divisionLabel, type Motion, type PrepState } from './division-vote-logic';
 import { qrHeadlineOf, qrRowOf } from './division-vote-flow';
 import { currentTimetableBlock } from './division-timetable';
@@ -15,7 +17,8 @@ import {
  * 발표 창(10/15) — 분과 PC 의 프로젝터 모니터에 띄운다. 운영 화면이 보내는 상태를 그대로 그리고, 아무것도 저장하지 않는다.
  * 200명·8~15m 시청 기준: 제목 44~96px, 숫자 140px, 본문 28px 이상, 진한 배경에 흰 글자.
  */
-export default function DivisionPresentScreen({ scope }: { scope: string }) {
+export default function DivisionPresentScreen({ scope, access = null }: { scope: string; access?: WorkshopAuthorization | null }) {
+  const [namesFor, setNamesFor] = useState<string | null>(null);
   const [msg, setMsg] = useState<PresentStateMessage | null>(null);
   const [lastAt, setLastAt] = useState(0);
   const [now, setNow] = useState(() => Date.now());
@@ -73,14 +76,35 @@ export default function DivisionPresentScreen({ scope }: { scope: string }) {
         (() => {
           const row = qrRowOf(scene.record, scene.count ?? 0);
           return row ? (
-            <BallotQrFullscreen ballot={row} headline={qrHeadlineOf(scene.record)} onExit={() => undefined} />
+            <BallotQrFullscreen ballot={row} headline={qrHeadlineOf(scene.record)} onExit={() => undefined} access={access} hideExit />
           ) : (
             <Center>
               <p className="text-[56px] font-black">투표를 여는 중입니다</p>
             </Center>
           );
         })()
+      ) : scene.kind === 'result' && access && namesFor && namesFor === msg?.state.ballots[scene.round.requestId]?.ballotId ? (
+        <NamedResultBoard
+          access={access}
+          ballotId={namesFor}
+          title={scene.round.title}
+          sub={`${divisionLabel(scene.division)} · ${scene.motion.id}${scene.round.round > 1 ? ` · ${scene.round.round}차` : ''} · QR 투표`}
+          onBack={() => setNamesFor(null)}
+          backLabel="결과로 돌아가기"
+          live={false}
+        />
       ) : scene.kind === 'result' ? (
+        <>
+        {access && msg?.state.ballots[scene.round.requestId]?.ballotId ? (
+          <button
+            type="button"
+            data-testid="present-show-names"
+            onClick={() => setNamesFor(msg.state.ballots[scene.round.requestId]?.ballotId ?? null)}
+            className="absolute bottom-6 right-6 z-10 min-h-12 rounded-xl bg-white/90 px-5 text-[20px] font-extrabold text-[#0B2233]"
+          >
+            투표결과 보기
+          </button>
+        ) : null}
         <ResultView
           division={scene.division}
           motion={scene.motion}
@@ -92,6 +116,7 @@ export default function DivisionPresentScreen({ scope }: { scope: string }) {
           passed={scene.round.verdict === 'passed'}
           roundNo={scene.round.round}
         />
+        </>
       ) : scene.kind === 'motion' && msg ? (
         <MotionView state={msg.state} motion={scene.motion} />
       ) : (

@@ -15,6 +15,9 @@ import {
   type WorkshopAuthorization,
 } from '../../lib/deliberation';
 import { fetchSessionTeams } from '../../lib/mod-console';
+import { NamedResultBoard, useLiveCounts } from './NamedResultBoard';
+import NamedVoteSettingsBox from './NamedVoteSettingsBox';
+import VoterReconcileBox from './VoterReconcileBox';
 import { renderBallotItemSvg } from './ballot-result-image';
 import {
   RESULT_IMAGE_SCALE,
@@ -36,7 +39,6 @@ import {
   distRows,
   emptyBallotFormItem,
   primaryAction,
-  qrSubgroupNotice,
   scaleLabel,
   sessionSubgroups,
   subgroupBadgeLabel,
@@ -98,22 +100,30 @@ export function BallotQrFullscreen({
   ballot,
   onExit,
   headline,
+  access = null,
+  hideExit = false,
 }: {
   ballot: BallotListRow;
   onExit: () => void;
   /**
    * 분과 의결: 투표 제목 대신 크게 보일 안 제목(오퍼레이터가 친 합친 문구)과 작은 곁글(안 번호·차수).
-   * 주면 왼쪽 = 안 제목, 오른쪽 = QR 두 단으로 놓는다. 없으면 지금처럼(일반 다의제 투표).
+   * 없으면 투표 제목을 크게 쓴다(일반 다의제 투표).
    */
   headline?: { main: string; sub: string; eyebrow?: string };
+  /** 있으면 제출 수·찬반 수를 3초마다 직접 읽고, 「투표결과 보기」(이름표)를 연다. */
+  access?: WorkshopAuthorization | null;
+  /** 발표 창 — 나가기 버튼을 숨긴다(누를 사람이 없다). */
+  hideExit?: boolean;
 }) {
   const [qr, setQr] = useState<string | null>(null);
+  const [showNames, setShowNames] = useState(false);
   const url = ballotUrl(typeof window !== 'undefined' ? window.location.origin : '', ballot.token);
-  const urlDisplay = url.replace(/^https?:\/\//, '');
+  const live = useLiveCounts(access, ballot.token);
+  const submitted = live?.responses ?? ballot.response_count;
 
   useEffect(() => {
     // 대형 스크린에서 원거리 스캔 대비 고해상도로 뽑는다(표시 크기는 CSS가 결정).
-    QRCode.toDataURL(url, { width: 960, margin: 1 })
+    QRCode.toDataURL(url, { width: 1200, margin: 1 })
       .then(setQr)
       .catch((error: unknown) => {
         console.warn('[ballot QR] generation failed', error);
@@ -123,117 +133,110 @@ export function BallotQrFullscreen({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onExit();
+      if (e.key === 'Escape') {
+        if (showNames) setShowNames(false);
+        else onExit();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [onExit]);
+  }, [onExit, showNames]);
 
-  // 세 분과가 세 장소에서 동시에 QR을 띄운다 — 오배포 방지용 분과 라벨을 크게 박는다.
-  const subgroupNotice = qrSubgroupNotice(ballot.subgroup);
+  const title = headline?.main ?? ballot.title;
+  const sub = headline?.sub ?? '';
 
-  const exitButton = (
-    <button
-      type="button"
-      onClick={onExit}
-      aria-label="QR 화면 나가기"
-      className="shrink-0 rounded-full border border-[#C4D8E4] bg-white/90 px-4 py-2 text-[15px] font-bold text-[#5A6B73] shadow-sm"
-    >
-      나가기 (ESC)
-    </button>
-  );
-  const notice = subgroupNotice ? (
-    <p className="mt-3 w-full shrink-0 rounded-2xl bg-[#135C73] px-6 py-3 text-center text-[clamp(24px,2.8vw,44px)] font-extrabold text-white">
-      {subgroupNotice}
-    </p>
-  ) : null;
-  /* QR — flex-1 영역에 이미지를 양방향(max-h/max-w-full)으로 가둬 실제 남은 공간에 맞춰
-     축소시킨다. grid place-items-center는 자식을 컨테이너에 제약하지 못해(내용크기 렌더)
-     QR이 하단을 침범했다 → flex items-center + 이미지 자체 상한으로 교체. object-contain이
-     비율을 지키므로 정사각 강제 없이도 항상 flex 영역 안에 들어간다. */
-  const qrBox = (
-    <div className="flex-1 min-h-0 w-full flex items-center justify-center py-2">
-      {qr ? (
-        <img
-          src={qr}
-          alt="참가용 QR 코드"
-          className="max-h-full max-w-full w-auto h-auto object-contain rounded-2xl border border-[#DCE7EE]"
-        />
-      ) : (
-        <div className="h-full max-h-full aspect-square bg-[#F1F7FA] rounded-2xl animate-pulse" />
-      )}
-    </div>
-  );
-  const scanBlock = (
-    <div className="w-full shrink-0 flex flex-col items-center text-center gap-2 pb-1">
-      <p className="text-[clamp(24px,2.6vw,40px)] font-extrabold text-[#1F4E79]">
-        <span aria-hidden="true">📷</span> 휴대폰 카메라로 QR을 스캔하세요
-      </p>
-      <p
-        className="font-mono text-[clamp(24px,2.2vw,34px)] font-bold text-[#135C73] break-all select-all"
-        style={{ letterSpacing: '-.01em' }}
-      >
-        {urlDisplay}
-      </p>
-      <p className="text-[clamp(28px,3vw,48px)] font-extrabold text-[#1F4E79] tr-num">
-        제출 {ballot.response_count}명
-      </p>
-    </div>
-  );
-
-  if (headline) {
-    // 분과 의결 — 왼쪽 단에 안 제목 전체(잘림 없음), 오른쪽 단에 QR·안내.
+  if (showNames && access) {
     return (
-      <div className="fixed inset-0 z-50 bg-white flex flex-col items-center px-6 py-5 sm:py-6" data-testid="qr-fullscreen-decision">
-        <div className="w-full shrink-0 flex items-center justify-between gap-4">
-          <Eyebrow className="text-[#135C73]">
-            {headline.eyebrow ?? '분과 의결'} · {subgroupBadgeLabel(ballot.subgroup)}
-          </Eyebrow>
-          {exitButton}
-        </div>
-        {notice}
-        <div className="mt-4 flex-1 min-h-0 w-full grid grid-cols-1 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] gap-6 lg:gap-10">
-          <div className="min-h-0 overflow-auto flex flex-col justify-center">
-            <p data-testid="qr-headline-sub" className="text-[clamp(20px,1.9vw,34px)] font-bold text-[#5A6B73] tr-num mb-2">
-              {headline.sub}
-            </p>
-            <h1
-              data-testid="qr-headline"
-              className={`${headlineSize(headline.main)} font-extrabold text-[#1F4E79] leading-snug break-words whitespace-pre-line`}
-              style={{ letterSpacing: '-.022em', wordBreak: 'keep-all', overflowWrap: 'anywhere' }}
-            >
-              {headline.main}
-            </h1>
-          </div>
-          <div className="min-h-0 flex flex-col items-center">
-            {qrBox}
-            {scanBlock}
-          </div>
-        </div>
-      </div>
+      <NamedResultBoard
+        access={access}
+        ballotId={ballot.id}
+        title={title}
+        sub={sub}
+        onBack={() => setShowNames(false)}
+        live={ballot.status === 'open'}
+      />
     );
   }
 
+  // 10/17 — 화면은 「안 제목 + 큰 QR + 실시간 수」만. 링크 글자·분과 전용 띠·안내 문구는 뺐다(사용자 지시).
+  // QR 은 화면 높이를 거의 다 쓰는 정사각형(1920×1080 에서 약 1000px), 왼쪽 단에 제목과 수.
   return (
-    <div className="fixed inset-0 z-50 bg-white flex flex-col items-center px-6 py-6 sm:py-8">
-      <div className="w-full shrink-0 flex items-start justify-between gap-4">
-        <div className="min-w-0">
-          <Eyebrow className="text-[#135C73] mb-1">
-            다의제 투표 · {subgroupBadgeLabel(ballot.subgroup)}
-          </Eyebrow>
-          {/* 10/14 — 한 줄 잘림(truncate)을 풀었다. 긴 제목도 여러 줄로 다 보인다. */}
+    <div
+      className="fixed inset-0 z-50 bg-white grid grid-cols-[minmax(0,1fr)_auto] grid-rows-[minmax(0,1fr)] gap-8 px-8 py-5"
+      data-testid={headline ? 'qr-fullscreen-decision' : 'qr-fullscreen'}
+      data-ballot-url={url}
+    >
+      <div className="min-h-0 min-w-0 flex flex-col">
+        <div className="min-h-0 flex-1 overflow-hidden flex flex-col justify-center">
+          {sub ? (
+            <p data-testid="qr-headline-sub" className="text-[clamp(20px,1.9vw,34px)] font-bold text-[#5A6B73] tr-num mb-2">
+              {sub}
+            </p>
+          ) : null}
           <h1
-            className="text-[clamp(24px,3vw,44px)] font-extrabold text-[#1F4E79] leading-tight break-words"
-            style={{ letterSpacing: '-.022em', wordBreak: 'keep-all', overflowWrap: 'anywhere' }}
+            data-testid="qr-headline"
+            className={`${headlineSize(title)} font-extrabold leading-snug break-words whitespace-pre-line`}
+            style={{ letterSpacing: '-.022em', wordBreak: 'keep-all', overflowWrap: 'anywhere', color: '#1F4E79', margin: 0 }}
           >
-            {ballot.title}
+            {title}
           </h1>
         </div>
-        {exitButton}
+        <div className="shrink-0 pt-4" data-testid="qr-live">
+          {live && live.yes !== null && live.no !== null ? (
+            <div className="flex items-end gap-10 tr-num">
+              <div>
+                <p className="text-[clamp(22px,2vw,36px)] font-extrabold text-[#2F6F25]">찬성</p>
+                <p data-testid="qr-live-yes" className="text-[clamp(64px,7vw,140px)] font-black leading-none text-[#2F6F25]">{live.yes}</p>
+              </div>
+              <div>
+                <p className="text-[clamp(22px,2vw,36px)] font-extrabold text-[#B91C1C]">반대</p>
+                <p data-testid="qr-live-no" className="text-[clamp(64px,7vw,140px)] font-black leading-none text-[#B91C1C]">{live.no}</p>
+              </div>
+              <div>
+                <p className="text-[clamp(22px,2vw,36px)] font-extrabold text-[#1F4E79]">제출</p>
+                <p data-testid="qr-live-total" className="text-[clamp(64px,7vw,140px)] font-black leading-none text-[#1F4E79]">{submitted}</p>
+              </div>
+            </div>
+          ) : (
+            <p className="text-[clamp(40px,4.5vw,88px)] font-black text-[#1F4E79] tr-num" data-testid="qr-live-total">
+              제출 {submitted}명
+            </p>
+          )}
+          <div className="mt-4 flex flex-wrap gap-3">
+            {access ? (
+              <button
+                type="button"
+                onClick={() => setShowNames(true)}
+                data-testid="qr-show-names"
+                className="rounded-full bg-[#135C73] px-5 py-3 text-[18px] font-bold text-white"
+              >
+                투표결과 보기
+              </button>
+            ) : null}
+            {hideExit ? null : (
+              <button
+                type="button"
+                onClick={onExit}
+                aria-label="QR 화면 나가기"
+                className="rounded-full border border-[#C4D8E4] bg-white px-5 py-3 text-[18px] font-bold text-[#5A6B73]"
+              >
+                나가기 (ESC)
+              </button>
+            )}
+          </div>
+        </div>
       </div>
-      {notice}
-      {qrBox}
-      {scanBlock}
+      <div className="min-h-0 h-full flex items-center justify-center">
+        {qr ? (
+          <img
+            src={qr}
+            alt="참가용 QR 코드"
+            className="block h-full max-h-[calc(100vh-40px)] w-auto max-w-[62vw] aspect-square object-contain"
+          />
+        ) : (
+          <div className="h-full max-h-[calc(100vh-40px)] aspect-square bg-[#F1F7FA] rounded-2xl animate-pulse" />
+        )}
+      </div>
     </div>
   );
 }
@@ -810,6 +813,8 @@ export default function BallotPanel({
   // 풀스크린은 id만 들고 목록 폴링분에서 최신 행을 찾는다 — 제출 수가 3초마다 살아 움직인다.
   const [qrId, setQrId] = useState<string | null>(null);
   const [resultsId, setResultsId] = useState<string | null>(null);
+  /** 실명 투표(10/17) — 「투표결과 보기」(찬성 | 반대 이름표) 전체 화면. */
+  const [namesId, setNamesId] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const createRequestIdRef = useRef<BallotCreateIntent | null>(null);
   const refreshCoordinatorRef = useRef(createResourceRequestCoordinator());
@@ -970,6 +975,7 @@ export default function BallotPanel({
           />
         ) : (
           <>
+            <NamedVoteSettingsBox access={access} />
             {refreshState.failed ? (
               <div role="alert" className="flex flex-wrap items-center gap-3 rounded-xl border-2 border-[#DC2626] bg-[#FEF2F2] px-4 py-3 text-[#B91C1C]">
                 <p className="min-w-[220px] flex-1 text-[16px] font-extrabold leading-relaxed">
@@ -1064,7 +1070,22 @@ export default function BallotPanel({
                         {busy ? '처리 중…' : action.label}
                       </button>
                     ) : null}
+                    {ballot.status !== 'draft' ? (
+                      <button
+                        type="button"
+                        onClick={() => setNamesId(ballot.id)}
+                        data-testid="ballot-named-board"
+                        className="h-12 rounded-xl border border-[#135C73] px-4 text-[16px] font-bold text-[#135C73]"
+                      >
+                        투표결과 보기 (조·이름)
+                      </button>
+                    ) : null}
                   </div>
+                  {ballot.status !== 'draft' && access ? (
+                    <div className="mt-3">
+                      <VoterReconcileBox access={access} ballotId={ballot.id} csvName={ballot.title.slice(0, 40)} />
+                    </div>
+                  ) : null}
                 </div>
               );
             })}
@@ -1150,7 +1171,13 @@ export default function BallotPanel({
         </div>
       ) : null}
 
-      {qrBallot ? <BallotQrFullscreen ballot={qrBallot} onExit={() => setQrId(null)} /> : null}
+      {namesId && access ? (() => {
+        const b = ballots?.find((x) => x.id === namesId);
+        return b ? (
+          <NamedResultBoard access={access} ballotId={b.id} title={b.title} onBack={() => setNamesId(null)} backLabel="닫기" live={b.status === 'open'} />
+        ) : null;
+      })() : null}
+      {qrBallot ? <BallotQrFullscreen ballot={qrBallot} onExit={() => setQrId(null)} access={access} /> : null}
       {resultsBallot && access ? (
         <BallotResultsFullscreen
           ballot={resultsBallot}

@@ -572,7 +572,7 @@ async function main() {
     record('c1-start-qr', qr && bP?.stage === 'open' && ballotsForP.length === 1, `QR ${qr} · stage ${bP?.stage} · 이 안의 투표 ${ballotsForP.length}개`);
     if (bP?.ballotId) manifest.ballots.push(bP.ballotId);
     saveManifest();
-    const qrText = await A.page.locator('p.font-mono').first().textContent().catch(() => '');
+    const qrText = await (await A.page.locator('[data-ballot-url]').first().getAttribute('data-ballot-url').catch(() => '')) ?? '';
     record('c2-qr-token', !!bP?.token && qrText.includes(`t=${bP.token}`), 'QR 주소가 서버에 적힌 투표 토큰과 같다');
     await A.page.keyboard.press('Escape');
 
@@ -594,7 +594,7 @@ async function main() {
     if (!(await A.page.locator('[data-testid=division-vote-panel]').count())) await A.page.locator('#mod-tab-decision').click();
     await A.page.locator('[data-testid=division-vote-panel]').waitFor();
     const autoQr = await A.page.locator('[data-testid=qr-fullscreen-decision]').waitFor({ timeout: 20000 }).then(() => true).catch(() => false);
-    const qrAgain = autoQr ? ((await A.page.locator('[data-testid=qr-fullscreen-decision] p.font-mono').first().textContent().catch(() => '')) ?? '') : '';
+    const qrAgain = autoQr ? ((await A.page.locator('[data-testid=qr-fullscreen-decision]').first().getAttribute('data-ballot-url').catch(() => '')) ?? '') : '';
     const noElsewhere = (await A.page.locator('[data-testid=band-elsewhere]').count()) === 0;
     record(
       'g1-reload-auto-qr',
@@ -916,7 +916,7 @@ async function main() {
     const sub = ((await op.locator('[data-testid=qr-headline-sub]').textContent()) ?? '').trim();
     const colFit = await fitOf(op.locator('[data-testid=qr-headline]').locator('xpath=..'));
     const qrImg = await op.locator('[data-testid=qr-fullscreen-decision] img').first().boundingBox().catch(() => null);
-    const urlOk = ((await op.locator('[data-testid=qr-fullscreen-decision] p.font-mono').first().textContent()) ?? '').includes(`t=${bM?.token}`);
+    const urlOk = ((await op.locator('[data-testid=qr-fullscreen-decision]').first().getAttribute('data-ballot-url')) ?? '').includes(`t=${bM?.token}`);
     record(
       'h2-qr-two-column-full-title',
       head === M_TITLE && sub.includes(M) && fitsBox(colFit) && (qrImg?.width ?? 0) >= 420 && urlOk,
@@ -940,7 +940,7 @@ async function main() {
     );
     // 분과 PC 가 [QR 띄우기]를 누르면 같은 투표 QR 이 뜨고 안내는 사라진다
     await A.page.locator('[data-testid=band-qr]').click();
-    const aQr = ((await A.page.locator('[data-testid=qr-fullscreen-decision] p.font-mono').first().textContent({ timeout: 10000 }).catch(() => '')) ?? '').includes(`t=${bM?.token}`);
+    const aQr = ((await A.page.locator('[data-testid=qr-fullscreen-decision]').first().getAttribute('data-ballot-url', { timeout: 10000 }).catch(() => '')) ?? '').includes(`t=${bM?.token}`);
     await A.page.keyboard.press('Escape');
     const hintGone = await waitUntil(async () => (await A.page.locator('[data-testid=band-elsewhere]').count()) === 0, 5000);
     record('h3b-operator-band-qr', aQr && hintGone, `분과 PC QR 같은 토큰=${aQr} · 안내 사라짐=${hintGone}`);

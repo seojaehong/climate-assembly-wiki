@@ -8,6 +8,10 @@
 --   5) ballot_submit_named(...)                 ballot_submit 과 같은 검사 + 조·이름. 같은 이름 두 번은 거부.
 --   6) ballot_named_responses_v2(p_token, id)   운영 콘솔: 투표 하나의 실명 응답·명단·문항(대조·결과 보기·CSV).
 --   7) ballot_voter_correct_v2(...)             운영 콘솔: 조·이름만 정정(찬반은 못 건드림) + workshop_audit 기록.
+--   8) 세션별 스위치 2개 — session.config.named_vote = {collect, show_names}, 둘 다 기본 켜짐(10/17 08:05 결정: 실명).
+--      collect=false 면 ballot_roster_get 이 빈 명단을 돌려 /b 는 지금과 똑같은 무기명이고, ballot_submit_named 는 거부한다.
+--      show_names=false 면 ballot_named_responses_v2 가 이름 없이(수만) 돌려준다 → 큰 화면 「투표결과 보기」에 이름이 안 나온다.
+--      운영 콘솔이 ballot_named_settings_set_v2 로 켜고 끈다(재배포 없이). 명단이 없는 세션은 켜져 있어도 무기명이다.
 -- 범위 규칙: 명단 행은 r.session_id = b.session_id 이고, 투표의 subgroup 이 비었으면 세션 전체, 있으면 그 분과만.
 -- 명단이 없는 세션은 지금과 똑같이 무기명이다(화면이 옛 ballot_submit 을 부른다).
 -- 되돌리기: supabase/rollbacks/20261017_s28_named_ballot_BEFORE.sql
@@ -47,6 +51,21 @@ create index if not exists ballot_response_voter_name_idx
   on climate_vote.ballot_response (ballot_id, voter_name_norm)
   where voter_name_norm is not null;
 
+-- ── 8) 세션 스위치 읽기(내부용) ─────────────────────────────────────────
+create or replace function climate_vote.session_named_vote(p_session_id uuid)
+returns jsonb
+language sql
+stable
+security definer
+set search_path = climate_vote, pg_temp
+as $$
+  select jsonb_build_object(
+    'collect', coalesce((s.config->'named_vote'->>'collect')::boolean, true),
+    'show_names', coalesce((s.config->'named_vote'->>'show_names')::boolean, true))
+    from climate_vote.session s where s.id = p_session_id
+$$;
+revoke execute on function climate_vote.session_named_vote(uuid) from public, anon, authenticated;
+
 -- ── 4) /b 화면: 투표 범위의 명단 ─────────────────────────────────────────
 create or replace function climate_vote.ballot_roster_get(p_token text)
 returns jsonb
@@ -60,6 +79,10 @@ begin
   select * into v_ballot from climate_vote.ballot
    where token = p_token and status in ('open','closed','published') and archived_at is null;
   if not found then return null; end if;
+  -- 실명 수집이 꺼져 있으면 빈 명단 = /b 는 지금과 같은 무기명.
+  if not coalesce((climate_vote.session_named_vote(v_ballot.session_id)->>'collect')::boolean, true) then
+    return jsonb_build_object('ballot_id', v_ballot.id, 'subgroup', v_ballot.subgroup, 'roster', '[]'::jsonb);
+  end if;
   select coalesce(jsonb_agg(jsonb_build_object(
            'team', r.team_label, 'no', r.no, 'name', r.name)
            order by r.team_label, r.no nulls last, r.name), '[]'::jsonb)
@@ -138,6 +161,9 @@ begin
   end loop;
 
   -- 실명 검사. 투표 행 잠금(for update of b) 아래라 같은 투표의 제출은 한 줄로 선다 — 이름 중복 검사에 경합이 없다.
+  if not coalesce((climate_vote.session_named_vote(v_ballot.session_id)->>'collect')::boolean, true) then
+    raise exception 'named voting off';
+  end if;
   if not exists(select 1 from climate_vote.ballot_roster r
      where r.session_id=v_ballot.session_id
        and (nullif(btrim(v_ballot.subgroup),'') is null or r.subgroup=btrim(v_ballot.subgroup))) then
@@ -200,6 +226,7 @@ begin
   return jsonb_build_object(
     'id',v_ballot.id,'title',v_ballot.title,'status',v_ballot.status,
     'subgroup',v_ballot.subgroup,
+    'settings',climate_vote.session_named_vote(v_ballot.session_id),
     'items',(select coalesce(jsonb_agg(jsonb_build_object(
         'id',bi.id,'ordinal',bi.ordinal,'statement',bi.statement,'scale',bi.scale)
         order by bi.ordinal),'[]'::jsonb)
@@ -276,3 +303,49 @@ begin
 end $function$;
 grant execute on function climate_vote.ballot_voter_correct_v2(text,uuid,uuid,text,text) to anon, authenticated;
 revoke execute on function climate_vote.ballot_voter_correct_v2(text,uuid,uuid,text,text) from public;
+
+-- ── 8) 세션 스위치 켜고 끄기 (인증 = 같은 세션의 조 토큰, 운영 콘솔) ─────────────
+create or replace function climate_vote.ballot_named_settings_set_v2(p_token text, p_collect boolean, p_show_names boolean)
+returns jsonb
+language plpgsql
+security definer
+set search_path = climate_vote, extensions, pg_temp
+as $function$
+declare v_team climate_vote.team; v_auth climate_vote.attendance_auth_session;
+  v_before jsonb; v_after jsonb;
+begin
+  v_auth:=climate_vote.attendance_token_row(p_token);
+  v_team:=climate_vote.team_token_row(p_token);
+  perform 1 from climate_vote.session s where s.id=v_team.session_id for update;
+  v_before:=climate_vote.session_named_vote(v_team.session_id);
+  v_after:=jsonb_build_object(
+    'collect', coalesce(p_collect, (v_before->>'collect')::boolean),
+    'show_names', coalesce(p_show_names, (v_before->>'show_names')::boolean));
+  if v_after = v_before then return v_after; end if;
+  update climate_vote.session
+     set config = coalesce(config,'{}'::jsonb) || jsonb_build_object('named_vote', v_after)
+   where id=v_team.session_id;
+  perform climate_vote.workshop_audit(v_team.org_id,v_team.session_id,v_team.id,
+    v_auth.id,null,'named_vote_settings','team',v_auth.actor_label,v_before,v_after);
+  return v_after;
+end $function$;
+grant execute on function climate_vote.ballot_named_settings_set_v2(text,boolean,boolean) to anon, authenticated;
+revoke execute on function climate_vote.ballot_named_settings_set_v2(text,boolean,boolean) from public;
+
+-- 읽기 — 운영 콘솔이 스위치 상태를 보인다(p_collect·p_show_names 를 null 로 주면 바꾸지 않고 읽기만 해도 되지만, 감사 기록 없이 읽도록 따로 둔다).
+create or replace function climate_vote.ballot_named_settings_v2(p_token text)
+returns jsonb
+language plpgsql
+security definer
+set search_path = climate_vote, extensions, pg_temp
+as $function$
+declare v_team climate_vote.team;
+begin
+  v_team:=climate_vote.team_token_row(p_token);
+  return climate_vote.session_named_vote(v_team.session_id)
+    || jsonb_build_object('roster_count',
+         (select count(*) from climate_vote.ballot_roster r where r.session_id=v_team.session_id
+            and (nullif(btrim(v_team.subgroup),'') is null or r.subgroup=btrim(v_team.subgroup))));
+end $function$;
+grant execute on function climate_vote.ballot_named_settings_v2(text) to anon, authenticated;
+revoke execute on function climate_vote.ballot_named_settings_v2(text) from public;

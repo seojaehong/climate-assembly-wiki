@@ -228,6 +228,7 @@ function DoneScreen({
   onRefresh,
   refreshing,
   refreshNotice,
+  voter = null,
 }: {
   duplicate: boolean;
   decision: boolean;
@@ -883,11 +884,17 @@ export default function BallotCard() {
       return;
     }
     try {
-      const result = named
+      let result = named
         ? await submitBallotNamed(token, getDeviceToken(), answers, voter.team as string, voterName)
         : await submitBallot(token, getDeviceToken(), answers);
+      // 화면을 연 뒤 운영팀이 실명 수집을 껐다 — 지금처럼 무기명으로 낸다.
+      let namedSaved = named;
+      if (result === 'named_off') {
+        namedSaved = false;
+        result = await submitBallot(token, getDeviceToken(), answers);
+      }
       setConfirmOpen(false);
-      const mine: LocalVoter | null = named
+      const mine: LocalVoter | null = namedSaved
         ? { team: voter.team as string, name: voterName, choice: responseChoiceText(answers, ballot.items) || null }
         : null;
       if (result === 'name_taken') {

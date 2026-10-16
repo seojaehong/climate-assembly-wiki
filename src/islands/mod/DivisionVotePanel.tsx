@@ -18,6 +18,9 @@ import {
 import { divisionPrepGet, divisionPrepSave } from '../../lib/division-prep';
 import { createSafeBrowserStorage } from '../../lib/safe-browser-storage';
 import { BallotQrFullscreen } from './BallotPanel';
+import { NamedAccessContext, NamedResultBoard } from './NamedResultBoard';
+import VoterReconcileBox from './VoterReconcileBox';
+import NamedVoteSettingsBox from './NamedVoteSettingsBox';
 import { MAX_STATEMENT_LENGTH, ballotStatusLabel } from './ballot-panel-logic';
 import DivisionCeremony from './DivisionCeremony';
 import { chipText, hhmmss } from './division-prep-sync';
@@ -558,6 +561,7 @@ export default function DivisionVotePanel({
 
   return (
     <PresentContext.Provider value={presentCtx}>
+    <NamedAccessContext.Provider value={preview ? null : access}>
     <section data-testid="division-vote-panel" data-ops={isOps ? 'true' : 'false'} className="rounded-2xl border border-[#DCE7EE] bg-white shadow-sm">
       <div className="flex flex-wrap items-center gap-3 border-b border-[#DCE7EE] bg-[#1F4E79]/6 px-6 py-4">
         <div className="min-w-0 flex-1">
@@ -773,6 +777,7 @@ export default function DivisionVotePanel({
         )}
       </div>
     </section>
+    </NamedAccessContext.Provider>
     </PresentContext.Provider>
   );
 }
@@ -1539,6 +1544,7 @@ function VoteBoard({
   onCounts?: (counts: Record<string, number>) => void;
 }) {
   const present = useContext(PresentContext);
+  const namedAccess = useContext(NamedAccessContext);
   const d = state.division;
   const [busy, setBusy] = useState<Record<string, 'start' | 'close' | 'void'>>({});
   const inflight = useRef<Set<string>>(new Set());
@@ -1816,6 +1822,7 @@ function VoteBoard({
   return (
     <div className="space-y-5">
       {band ? (bandSlot ? createPortal(band, bandSlot) : band) : null}
+      <NamedVoteSettingsBox access={namedAccess} />
       <AttendanceBox state={state} update={update} />
 
       {state.motions.length === 0 ? (
@@ -1875,7 +1882,7 @@ function VoteBoard({
         <span className="text-[16px] text-[#5A6B73]">엑셀에서 바로 열리는 파일로 내려받습니다(안·차수마다 한 줄).</span>
       </div>
 
-      {qrRow ? <BallotQrFullscreen ballot={qrRow} headline={qrRecord ? qrHeadlineOf(qrRecord) : undefined} onExit={() => setQrKey(null)} /> : null}
+      {qrRow ? <BallotQrFullscreen ballot={qrRow} headline={qrRecord ? qrHeadlineOf(qrRecord) : undefined} onExit={() => setQrKey(null)} access={namedAccess} /> : null}
     </div>
   );
 }
@@ -2105,6 +2112,10 @@ export function MotionVoteBlock({ motion, state, update }: { motion: Motion; sta
   const heading = last ? (last.round > 1 || newerRound ? `${last.round}차 투표 결과` : '투표 결과') : '';
   // 투표 진행 화면의 제목 = 지금 차수에 보낸 문장(10/14 operator-5). 2차 준비 중에만 고치는 칸.
   const shownTitle = cur?.title ?? motion.title;
+  // 실명 투표(10/17) — 마감한 차수의 「투표결과 보기」(찬성 | 반대 이름표)와 제출자 대조.
+  const namedAccess = useContext(NamedAccessContext);
+  const [namesOpen, setNamesOpen] = useState(false);
+  const lastBallotId = last ? state.ballots[last.requestId]?.ballotId ?? null : null;
 
   // 두 번째 누름에서만 부른다(TwoStepButton). 칸이 비어 있으면 무장 문구가 그 사실을 알린다.
   const onMinority = () =>
@@ -2149,6 +2160,27 @@ export function MotionVoteBlock({ motion, state, update }: { motion: Motion; sta
       ))}
 
       {last ? <ResultBar motion={motion} round={last} state={state} update={update} editable={editable} heading={heading} /> : null}
+      {last && lastBallotId && namedAccess ? (
+        <div className="flex flex-wrap gap-3">
+          <button type="button" className={btnGhost} data-testid="named-board-open" onClick={() => setNamesOpen(true)}>
+            투표결과 보기 (조·이름)
+          </button>
+        </div>
+      ) : null}
+      {last && lastBallotId && namedAccess ? (
+        <VoterReconcileBox access={namedAccess} ballotId={lastBallotId} csvName={`${divisionLabel(state.division)}_${motion.id}_${last.round}차`} />
+      ) : null}
+      {namesOpen && lastBallotId && last ? (
+        <NamedResultBoard
+          access={namedAccess}
+          ballotId={lastBallotId}
+          title={last.title}
+          sub={`${divisionLabel(state.division)} · ${motion.id}${last.round > 1 ? ` · ${last.round}차` : ''} · QR 투표 (거수는 따로)`}
+          onBack={() => setNamesOpen(false)}
+          backLabel="닫기"
+          live={false}
+        />
+      ) : null}
       {last && (phase === 'starting' || phase === 'open' || phase === 'counting') ? (
         <p data-testid="hand-wait" className="rounded-xl border-2 border-dashed border-[#F5A623] bg-[#FFF7E6] px-4 py-3 text-[18px] font-extrabold text-[#8A5A00]">
           {cur?.round ?? last.round + 1}차 투표 중 — 거수는 마감 뒤 새로 나오는 「{cur?.round ?? last.round + 1}차 투표 결과」 아래 칸에 넣습니다. 위 {last.round}차 칸은 고칠 수 없습니다.

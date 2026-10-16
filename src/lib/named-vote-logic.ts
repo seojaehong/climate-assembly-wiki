@@ -249,3 +249,14 @@ export function namedCsvRows(title: string, items: readonly NamedItem[], respons
       r.submitted_at,
     ]);
 }
+
+function csvCell(v: string): string {
+  // 엑셀 수식 주입 방지(= + - @ 로 시작) + 따옴표 처리.
+  const safe = /^[=+\-@]/.test(v) ? `'${v}` : v;
+  return /[",\r\n]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
+}
+
+/** 실명 CSV 전체 글(BOM + 머리행, 엑셀에서 바로 열림). */
+export function namedCsvText(rows: readonly (readonly string[])[]): string {
+  return `﻿${[NAMED_CSV_HEADER as readonly string[], ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n')}\r\n`;
+}

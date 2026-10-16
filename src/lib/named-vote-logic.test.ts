@@ -189,3 +189,12 @@ describe('실명 CSV', () => {
     expect(rows[0][0]).toBe('1분과 의결 1-1');
   });
 });
+
+describe('실명 CSV 글', () => {
+  it('BOM·머리행·따옴표·수식 주입 방지', async () => {
+    const { namedCsvText } = await import('./named-vote-logic');
+    const t = namedCsvText([['a,b', '=1+1', '홍"길동', '찬성', '명단', 'x']]);
+    expect(t.startsWith('﻿투표,조,이름,찬반,명단 여부,제출 시각\r\n')).toBe(true);
+    expect(t).toContain('"a,b",\'=1+1,"홍""길동",찬성');
+  });
+});

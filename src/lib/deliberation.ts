@@ -388,6 +388,8 @@ export type BallotNamedResponses = {
   title: string;
   status: BallotStatus;
   subgroup: string | null;
+  /** 세션 스위치(s28). show_names=false 면 큰 화면에 이름을 띄우지 않는다. */
+  settings?: NamedVoteSettings;
   items: NamedItem[];
   roster: RosterRow[];
   responses: NamedResponse[];
@@ -409,6 +411,35 @@ export async function ballotNamedResponses(
     throw error;
   }
   return (data as BallotNamedResponses | null) ?? null;
+}
+
+export type NamedVoteSettings = { collect: boolean; show_names: boolean; roster_count?: number };
+
+/** 세션 스위치 읽기. s28 미적용이면 null. */
+export async function namedVoteSettings(access: WorkshopAccess): Promise<NamedVoteSettings | null> {
+  const sb = client();
+  const { data, error } = await sb.schema('climate_vote').rpc('ballot_named_settings_v2', { p_token: access.accessToken });
+  if (error) {
+    const e = error as { code?: string; message?: string };
+    if (e.code === 'PGRST202' || /could not find the function/i.test(e.message ?? '')) return null;
+    throw error;
+  }
+  return (data as NamedVoteSettings | null) ?? null;
+}
+
+/** 세션 스위치 바꾸기(null = 그대로). 바뀌면 workshop_audit_event 에 남는다. */
+export async function setNamedVoteSettings(
+  access: WorkshopAccess,
+  next: { collect?: boolean | null; show_names?: boolean | null },
+): Promise<NamedVoteSettings> {
+  const sb = client();
+  const { data, error } = await sb.schema('climate_vote').rpc('ballot_named_settings_set_v2', {
+    p_token: access.accessToken,
+    p_collect: next.collect ?? null,
+    p_show_names: next.show_names ?? null,
+  });
+  if (error) throw error;
+  return data as NamedVoteSettings;
 }
 
 /** 조·이름만 정정한다(찬반은 서버가 못 바꾸게 막는다). 정정 이력은 workshop_audit_event 에 남는다. */

@@ -1245,7 +1245,7 @@ function HomeScreen({
           {tab === 'vote' && <BallotPanel access={access} subgroup={subgroup ?? null} />}
           {tab === 'decision' &&
             (isPresentWindow() ? (
-              <DivisionPresentScreen scope={teamId} />
+              <DivisionPresentScreen scope={teamId} access={access} />
             ) : (
               <DivisionVotePanel access={access} subgroup={subgroup ?? null} teamName={teamName} storageScope={teamId} />
             ))}
