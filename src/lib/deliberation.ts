@@ -442,6 +442,18 @@ export async function setNamedVoteSettings(
   return data as NamedVoteSettings;
 }
 
+/** 운영 화면 명단(s29) — 이 조 범위(분과 조는 그 분과, 운영팀은 세션 전체). 함수 없으면 null. */
+export async function sessionRoster(access: WorkshopAccess): Promise<RosterRow[] | null> {
+  const sb = client();
+  const { data, error } = await sb.schema('climate_vote').rpc('ballot_session_roster_v2', { p_token: access.accessToken });
+  if (error) {
+    const e = error as { code?: string; message?: string };
+    if (e.code === 'PGRST202' || /could not find the function/i.test(e.message ?? '')) return null;
+    throw error;
+  }
+  return Array.isArray(data) ? (data as RosterRow[]) : [];
+}
+
 /** 조·이름만 정정한다(찬반은 서버가 못 바꾸게 막는다). 정정 이력은 workshop_audit_event 에 남는다. */
 export async function ballotVoterCorrect(
   access: WorkshopAccess,

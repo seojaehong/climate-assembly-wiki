@@ -19,6 +19,7 @@ import {
   type MotionGroup,
   type PrepState,
 } from './division-vote-logic';
+import { reviewerRows } from './division-reviewers';
 
 export type BundleView = {
   id: string;
@@ -144,6 +145,10 @@ export function bundleCsvRows(state: PrepState): string[][] {
       b.record.teams.map((t) => `${t}조`).join(' '),
     ];
     for (const m of b.motions) rows.push([...common, m.id, m.title, b.record.movedRecs, b.record.minority]);
+  }
+  // 위임 안건 검토위원(조마다 한 명) — 같은 파일 아래쪽에 「검토위원」 줄로.
+  if (rows.length || state.reviewers) {
+    for (const [division, team, name] of reviewerRows(state)) rows.push([division, '검토위원', team, '', '', '', '', '', name, '', '']);
   }
   return rows;
 }

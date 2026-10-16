@@ -161,3 +161,15 @@ describe('s28 마이그레이션 불변식', () => {
     expect(sql).not.toMatch(/function climate_vote\.ballot_submit\(/);
   });
 });
+
+describe('운영 명단 읽기 (s29)', () => {
+  it('rows 그대로, 함수 없으면 null', async () => {
+    const { sessionRoster } = await import('./deliberation');
+    const access = { accessToken: 'a'.repeat(64) };
+    const rpc = mockRpc([{ data: [{ team: '1분과 1조', no: 1, name: '가나다' }], error: null }]);
+    expect(await sessionRoster(access)).toEqual([{ team: '1분과 1조', no: 1, name: '가나다' }]);
+    expect(rpc).toHaveBeenCalledWith('ballot_session_roster_v2', { p_token: access.accessToken });
+    mockRpc([{ data: null, error: { code: 'PGRST202', message: '' } }]);
+    expect(await sessionRoster(access)).toBeNull();
+  });
+});

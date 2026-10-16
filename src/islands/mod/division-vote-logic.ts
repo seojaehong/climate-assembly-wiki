@@ -250,7 +250,7 @@ export type Attendance = { enrolled: number | null; present: number | null };
  * 새 화면은 3 으로 쓴다. 옛 화면은 3 을 「읽을 수 없는 판」으로 보고 저장하지 않는다. 읽기는 1·2·3 모두.
  */
 export const PREP_VERSION = 5;
-// 5(10/17 오후) = 세부권고 전문가 의견(source…recs[].expert). 4 를 쓰는 화면은 이 칸을 버리고 저장하므로 다시 올렸다.
+// 5(10/17 오후) = 세부권고 전문가 의견(source…recs[].expert)·위임 안건 검토위원(reviewers). 4 를 쓰는 화면은 이 칸들을 버리고 저장하므로 다시 올렸다.
 // 4(10/17) = 묶음 기록(bundles)·A–G 묶음 칸(letter·level·common·cardTeams)이 들어간 판. 3 을 쓰는 옛 화면은 이 칸들을
 // 버리고 저장하므로, 4 를 「읽을 수 없는 판」으로 보고 저장하지 않게 판 번호를 올렸다(새로고침하면 새 화면).
 
@@ -265,6 +265,8 @@ export type PrepState = {
   ballots: Record<string, BallotRecord>;
   /** 묶음 번호(「1A」) → 오전 헤쳐모여 기록. 없으면 아직 아무것도 적지 않았다. */
   bundles?: Record<string, BundleRecord>;
+  /** 위임 안건의 검토위원(시민대표) — 조 번호('1'..'5') → 이름. 연락처는 두지 않는다. */
+  reviewers?: Partial<Record<TeamNo, string>>;
 };
 
 export function initPrepState(source: RecsDivision): PrepState {
@@ -1092,6 +1094,15 @@ function readPrep(x: Record<string, unknown>): PrepState | null {
   for (const m of motions as Motion[]) {
     if (m.rounds.some((r) => !ballots[r.requestId])) return null;
   }
+  let reviewers: Partial<Record<TeamNo, string>> | undefined;
+  if (x.reviewers !== undefined) {
+    if (!isObj(x.reviewers)) return null;
+    reviewers = {};
+    for (const [k, v] of Object.entries(x.reviewers)) {
+      if (!TEAM_NOS.includes(k as TeamNo) || !isStr(v)) return null;
+      if (v.trim()) reviewers[k as TeamNo] = v;
+    }
+  }
   let bundles: Record<string, BundleRecord> | undefined;
   if (x.bundles !== undefined) {
     if (!isObj(x.bundles)) return null;
@@ -1111,6 +1122,7 @@ function readPrep(x: Record<string, unknown>): PrepState | null {
     attendance,
     ballots,
     ...(bundles ? { bundles } : {}),
+    ...(reviewers ? { reviewers } : {}),
   };
 }
 

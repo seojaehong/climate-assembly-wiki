@@ -22,6 +22,8 @@ import { NamedAccessContext, NamedResultBoard } from './NamedResultBoard';
 import VoterReconcileBox from './VoterReconcileBox';
 import DivisionBundleBoard from './DivisionBundleBoard';
 import ExpertNotes from './ExpertNotes';
+import ReviewerSlots from './ReviewerSlots';
+import { isDelegationMotion } from './division-reviewers';
 import { bundleCsvRows, bundleCsvText } from './division-bundle';
 import NamedVoteSettingsBox from './NamedVoteSettingsBox';
 import { MAX_STATEMENT_LENGTH, ballotStatusLabel } from './ballot-panel-logic';
@@ -1507,6 +1509,11 @@ export function MotionEditor({ motion, state, update }: { motion: Motion; state:
       ) : (
         <TitleRoom id={motion.id} room={motionTitleRoom(motion.id, motion.title)} />
       )}
+      {isDelegationMotion(motion) ? (
+        <div className="mt-3">
+          <ReviewerSlots state={state} update={update} />
+        </div>
+      ) : null}
       <label className="mt-3 block text-[16px] font-extrabold text-[#135C73]" htmlFor={`motion-text-${motion.id}`}>
         본문 메모 <span className="font-bold text-[#5A6B73]">(선택 · 투표 문구는 위 제목 칸입니다. 원안 대비 수정 내역·권고 본문을 남길 때 씁니다 · 투표 뒤에도 고칠 수 있고 결과 CSV 「수정문안」 열에 남습니다)</span>
       </label>
@@ -2193,6 +2200,7 @@ export function MotionVoteBlock({ motion, state, update }: { motion: Motion; sta
         <span className="text-[16px] text-[#5A6B73]">{cardsText(motion)}{motion.group ? ` · ${motion.group.id}` : ''}</span>
       </div>
       {phase === 'revote' ? <TitleRoom id={motion.id} room={motionTitleRoom(motion.id, motion.title)} /> : null}
+      {isDelegationMotion(motion) ? <ReviewerSlots state={state} update={update} /> : null}
 
       {voided.map((r) => (
         <p key={r.requestId} className="rounded-lg bg-[#F4F4F4] px-3 py-2 text-[16px] text-[#4B5563] line-through" data-testid="round-voided">
