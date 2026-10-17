@@ -282,9 +282,11 @@ export function checkRecEdits(source: RecsDivision, rows: readonly RecEditRow[])
       // 현장 시트는 「2-4-1-4, 2-4-2-4(합침)」「2-1-1-4와 합치기」처럼 쓴다 — 앞의 번호 하나를 대상으로 읽고, 못 읽으면 글 그대로 표시만 한다
       const m = /\d-\d+-\d+(?:-\d+)?/.exec(e.target);
       const raw = e.target;
-      if (m && (isCardNo(m[0]) ? cards.has(m[0]) : idx.has(m[0]))) {
-        if (m[0] !== raw.trim()) out.warnings.push(`${where}: 대상 「${raw}」 → ${m[0]} 로 읽음.`);
-        e.target = m[0];
+      // 「2-1-2-6 신설」처럼 아직 없는 번호 → 그 카드로 옮긴 것으로 본다
+      const tgt = m && !isCardNo(m[0]) && !idx.has(m[0]) && cards.has(cardOfRec(m[0])) ? cardOfRec(m[0]) : m?.[0];
+      if (tgt && (isCardNo(tgt) ? cards.has(tgt) : idx.has(tgt))) {
+        if (tgt !== raw.trim()) out.warnings.push(`${where}: 대상 「${raw}」 → ${tgt} 로 읽음.`);
+        e.target = tgt;
       } else {
         out.warnings.push(`${where}: 대상 「${raw}」 를 번호로 읽지 못해 표시만 합니다(받는 카드에는 안 붙음).`);
         out.edits.push({ ...e });
@@ -299,7 +301,12 @@ export function checkRecEdits(source: RecsDivision, rows: readonly RecEditRow[])
         if (!ok) {
           const other = tc && !tc.startsWith(`${source.division}-`);
           out.errors.push(`${where}: 대상 ${e.target} ${other ? '은 다른 분과입니다(분과를 넘는 이관·흡수는 안 됩니다).' : `가 ${source.division}분과에 없습니다.`}`);
-        } else if (e.no && (e.target === e.no || (isCardNo(e.target) && e.target === cardOfRec(e.no)))) {
+        } else if (e.no && (e.target === e.no || targetCard(e.target) === cardOfRec(e.no))) {
+          // 같은 카드 안에서 합친 것(서로 「…와 합치기」 포함) — 줄을 긋지 않는다. 문구가 있으면 수정, 없으면 원안 그대로
+          out.warnings.push(`${where}: ${e.no} → ${e.target} 는 같은 카드 안 합치기라 ${e.text ? '수정' : '원안 유지'}으로 봅니다.`);
+          if (e.text) out.edits.push({ ...e, action: '수정', target: '' });
+          continue;
+        } else if (false) {
           // 자기 카드 안에서 정리한 것 — 문구가 있으면 수정으로, 없으면 원안 유지로 본다
           out.warnings.push(`${where}: ${e.no} 의 대상이 자기 카드라 ${e.text ? '수정' : '원안 유지'}으로 봅니다.`);
           if (e.text) out.edits.push({ ...e, action: '수정', target: '' });
