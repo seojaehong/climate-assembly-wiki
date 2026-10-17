@@ -113,9 +113,47 @@ export function compactRecLines(list: readonly DisplayRec[], max: number): strin
   return lines;
 }
 
-/** 투표 문항 설명(휴대폰) — 남은 세부권고 전부를 줄바꿈으로. 서버 설명 칸에 들어간다. */
+/** 투표 문항 설명(휴대폰 「세부권고 보기」) — 처리 표시를 붙인 전부(삭제·옮겨 간 것도 표시해 남긴다). 서버 설명 칸에 들어간다. */
 export function recDescription(list: readonly DisplayRec[]): string {
-  return remainingRecs(list).map(recLine).join('\n');
+  return list.map((d, i) => recPlainLine(recView(d, i))).join('\n');
+}
+
+
+// ── 화면 표시(큰 화면·휴대폰·운영) ─────────────────────────────
+
+export type RecView = { key: string; mark: RecMark; tag: string; no: string | null; text: string; struck: boolean };
+
+/** 한 줄 표시값 — 표시(tag)는 수정·삭제·→ 대상·← 원번호·추가, 유지는 빈칸. */
+export function recView(d: DisplayRec, i = 0): RecView {
+  const tag =
+    d.mark === 'edited' ? '수정' : d.mark === 'deleted' ? '삭제' : d.mark === 'moved-out' ? `→ ${d.ref}` : d.mark === 'incoming' ? `← ${d.ref}` : d.mark === 'added' ? '추가' : '';
+  const no = d.mark === 'incoming' || d.mark === 'added' ? null : d.no;
+  return { key: `${d.mark}:${d.no ?? 'add'}:${i}`, mark: d.mark, tag, no, text: d.text, struck: d.mark === 'deleted' || d.mark === 'moved-out' };
+}
+
+/** 안(카드 여럿일 수 있다)의 세부권고 표시 목록 — 처리 기록이 없으면 빈 배열(옛 판은 아무것도 안 그린다). */
+export function motionRecViews(source: RecsDivision, edits: readonly RecEdit[] | undefined, cardNos: readonly string[]): RecView[] {
+  if (!edits) return [];
+  return cardNos.flatMap((c) => cardRecList(source, edits, c)).map((d, i) => recView(d, i));
+}
+
+/**
+ * 큰 화면 맞춤 — 줄 수에 따라 글자 크기를 줄이고, 그래도 넘으면 앞 max 개만 + 「외 N개」.
+ * 한 줄은 두 줄까지만 보인다(넘으면 말줄임). 1920×1080 QR 화면 왼쪽 단(약 840px × 600px) 기준.
+ */
+export function fitRecViews(views: readonly RecView[], room: 'qr' | 'result' = 'qr'): { items: RecView[]; more: number; fontPx: number } {
+  const n = views.length;
+  const steps = room === 'qr' ? [[4, 28], [6, 24], [8, 21], [10, 19]] : [[4, 30], [6, 26], [9, 22], [12, 20]];
+  const max = steps[steps.length - 1][0];
+  const fontPx = (steps.find(([k]) => n <= k) ?? steps[steps.length - 1])[1];
+  if (n <= max) return { items: [...views], more: 0, fontPx };
+  return { items: views.slice(0, max - 1), more: n - (max - 1), fontPx };
+}
+
+/** 휴대폰·글 한 줄(꺾쇠 표시). */
+export function recPlainLine(v: RecView): string {
+  const head = v.tag ? `[${v.tag}] ` : '';
+  return `${head}${v.no ? `${v.no} ` : ''}${v.text}`;
 }
 
 // ── 검토표 CSV 판독·점검 ─────────────────────────────────────
@@ -204,4 +242,54 @@ export function checkRecEdits(source: RecsDivision, rows: readonly RecEditRow[])
     }
   }
   return out;
+}
+
+// ── 판에 적용(가져오기) ─────────────────────────────────────
+
+export type RecEditPlan = RecEditCheck & {
+  division: number;
+  /** 카드마다 남은 세부권고 수(이전 → 이후), 바뀐 카드만. */
+  cardDiff: { card: string; before: number; after: number }[];
+  /** 처리 줄 변화(새로 생김·바뀜·없어짐). */
+  changes: string[];
+  /** 남은 세부권고가 없어진 카드(투표 제외 후보). */
+  emptied: string[];
+  state: import('./division-vote-logic').PrepState;
+};
+
+const editKey = (e: RecEdit) => (e.no ? `n:${e.no}` : `a:${e.card}:${e.text}`);
+const editText = (e: RecEdit) => `${e.no ?? `${e.card} 추가`} ${e.action}${e.target ? ` → ${e.target}` : ''}${e.text ? ` 「${e.text.length > 40 ? `${e.text.slice(0, 40)}…` : e.text}」` : ''}`;
+
+/**
+ * 한 분과 판에 검토표를 적용한다 — 그 분과의 세부권고 처리 목록을 파일 것으로 통째로 바꾼다(전부 아니면 전무).
+ * 투표 기록이 있는 판은 오류.
+ */
+export function planRecEdits(current: import('./division-vote-logic').PrepState, rows: readonly RecEditRow[]): RecEditPlan {
+  const check = checkRecEdits(current.source, rows);
+  const plan: RecEditPlan = { ...check, division: current.division, cardDiff: [], changes: [], emptied: [], state: current };
+  if (Object.keys(current.ballots).length || current.motions.some((m) => m.rounds.length)) {
+    plan.errors.unshift('이 분과는 투표 기록이 있어 바꾸지 않습니다.');
+    return plan;
+  }
+  if (check.errors.length) return plan;
+  const before = current.recEdits ?? [];
+  const after = check.edits;
+  const bMap = new Map(before.map((e) => [editKey(e), e]));
+  const aMap = new Map(after.map((e) => [editKey(e), e]));
+  for (const [k, e] of aMap) {
+    const old = bMap.get(k);
+    if (!old) plan.changes.push(`새로 ${editText(e)}`);
+    else if (JSON.stringify(old) !== JSON.stringify(e)) plan.changes.push(`바뀜 ${editText(old)} → ${editText(e)}`);
+  }
+  for (const [k, e] of bMap) if (!aMap.has(k)) plan.changes.push(`없어짐 ${editText(e)}(유지로 돌아감)`);
+  for (const c of current.source.topics.flatMap((t) => t.cards)) {
+    const b = remainingRecs(cardRecList(current.source, before, c.no)).length;
+    const a = remainingRecs(cardRecList(current.source, after, c.no)).length;
+    if (a !== b || JSON.stringify(cardRecList(current.source, before, c.no)) !== JSON.stringify(cardRecList(current.source, after, c.no))) {
+      plan.cardDiff.push({ card: c.no, before: b, after: a });
+    }
+  }
+  plan.emptied = emptiedCards(current.source, after);
+  plan.state = { ...current, recEdits: after.map((e) => ({ ...e })) };
+  return plan;
 }

@@ -337,6 +337,14 @@ export function ItemBlock({
           >
             {motion.title}
           </h2>
+          {item.description ? (
+            <details data-testid="ballot-recs" className="mt-2 rounded-lg border border-[#C4D8E4] bg-[#F7FAFC] px-3 py-2">
+              <summary className="cursor-pointer text-[15px] font-bold text-[#135C73]">세부권고 보기</summary>
+              <p className="mt-2 whitespace-pre-line text-[14px] leading-relaxed text-[#1F2933]" style={{ wordBreak: 'keep-all' }}>
+                {item.description}
+              </p>
+            </details>
+          ) : null}
         </div>
       ) : (
       <div className="flex items-start gap-3 mb-1.5">

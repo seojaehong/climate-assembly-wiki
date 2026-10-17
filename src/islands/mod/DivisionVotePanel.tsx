@@ -155,6 +155,8 @@ import { DECISION_TIMETABLE, currentTimetableBlock } from './division-timetable'
 import { downloadBlob } from './svg-to-png';
 import { TWO_STEP_MS, twoStepPress, type TwoStepArm } from './two-step';
 import { useDivisionPrep, type DivisionPrep, type PrepApi } from './use-division-prep';
+import DivisionRecList from './DivisionRecList';
+import { motionRecViews } from './division-rec-edits';
 
 /**
  * 10/17 토론회 「분과 의결」 탭.
@@ -1439,6 +1441,22 @@ export function GroupReference({ group, source }: { group: NonNullable<Motion['g
   );
 }
 
+/** 10/17 오후 — 안(카드)의 세부권고 처리 목록과 「남은 세부권고 없음」 표시. */
+function MotionRecs({ state, motion }: { state: PrepState; motion: Motion }) {
+  const views = motionRecViews(state.source, state.recEdits, motion.cardNos);
+  const empty = motion.cardNos.length > 0 && views.length > 0 && views.every((v) => v.struck);
+  return (
+    <div data-testid="motion-recs" className="mt-2">
+      {empty ? (
+        <p data-testid="motion-recs-empty" className="rounded-lg bg-[#FEE2E2] px-3 py-1.5 text-[16px] font-extrabold text-[#B91C1C]">
+          남은 세부권고 없음 — 투표 제외 후보
+        </p>
+      ) : null}
+      <DivisionRecList views={views} room="operator" tone="light" />
+    </div>
+  );
+}
+
 export function MotionEditor({ motion, state, update }: { motion: Motion; state: PrepState; update: (fn: (s: PrepState) => PrepState) => void }) {
   const present = useContext(PresentContext);
   const phase = motionPhase(state, motion);
@@ -1488,6 +1506,7 @@ export function MotionEditor({ motion, state, update }: { motion: Motion; state:
         )}
       </div>
       {motion.group ? <GroupReference group={motion.group} source={state.source} /> : null}
+      {state.recEdits ? <MotionRecs state={state} motion={motion} /> : null}
       {/* 10/14 operator-5 — 제목 칸 바로 왼쪽에 안 번호를 크게. 다른 안 칸을 고치는 착각을 막는다. */}
       <div className="mt-3 flex items-stretch gap-3">
         <span

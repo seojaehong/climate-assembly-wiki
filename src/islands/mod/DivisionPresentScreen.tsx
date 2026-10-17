@@ -6,6 +6,8 @@ import type { WorkshopAuthorization } from '../../lib/deliberation';
 import { groupLabel, groupRecTexts, divisionLabel, type Motion, type PrepState } from './division-vote-logic';
 import { qrHeadlineOf, qrRowOf } from './division-vote-flow';
 import { currentTimetableBlock } from './division-timetable';
+import { motionRecViews } from './division-rec-edits';
+import DivisionRecList from './DivisionRecList';
 import {
   isPresentMessage,
   presentChannelName,
@@ -85,7 +87,13 @@ export default function DivisionPresentScreen({ scope, access = null }: { scope:
         (() => {
           const row = qrRowOf(scene.record, scene.count ?? 0);
           return row ? (
-            <BallotQrFullscreen ballot={row} headline={qrHeadlineOf(scene.record)} onExit={() => undefined} access={access} hideExit hideNames />
+            <BallotQrFullscreen
+              ballot={row}
+              headline={qrHeadlineOf(scene.record)}
+              onExit={() => undefined}
+              access={access} hideExit hideNames
+              extra={msg && scene.motion ? <DivisionRecList views={motionRecViews(msg.state.source, msg.state.recEdits, scene.motion.cardNos)} room="qr" tone="light" /> : null}
+            />
           ) : (
             <Center>
               <p className="text-[56px] font-black">투표를 여는 중입니다</p>
@@ -145,6 +153,7 @@ export default function DivisionPresentScreen({ scope, access = null }: { scope:
           threshold={scene.threshold}
           verdict={presentVerdict(scene.round, scene.provisional)}
           roundNo={scene.round.round}
+          recs={msg ? <DivisionRecList views={motionRecViews(msg.state.source, msg.state.recEdits, scene.motion.cardNos)} room="result" tone="dark" /> : null}
         />
       ) : scene.kind === 'motion' && msg ? (
         <MotionView state={msg.state} motion={scene.motion} />
@@ -232,11 +241,13 @@ export function ResultView(props: {
   present?: number | null;
   /** 있으면 머리줄 오른쪽에 「투표결과 보기」(가결선 글자와 겹치지 않게 위로 옮김). */
   onShowNames?: () => void;
+  /** 10/17 오후 — 제목 아래 세부권고 처리 목록(없으면 안 그림). */
+  recs?: React.ReactNode;
 }) {
-  const { division, motion, title, yes, no, threshold, verdict, roundNo, enrolled, present, onShowNames } = props;
+  const { division, motion, title, yes, no, threshold, verdict, roundNo, enrolled, present, onShowNames, recs } = props;
   const color = verdict.tone === 'pass' ? '#34D399' : verdict.tone === 'fail' ? '#F87171' : '#FBBF24';
   return (
-    <div className="flex flex-1 flex-col gap-8 px-20 pb-12 pt-14">
+    <div className="flex min-h-0 flex-1 flex-col gap-8 overflow-hidden px-20 pb-12 pt-14">
       {/* 오른쪽 위 「전체 화면」 단추(전체 화면 전)와 한 줄에 겹치지 않게 오른쪽을 비운다(10/17 v2). */}
       <div className="flex items-center gap-6 pr-[min(520px,30vw)]">
         <p className="min-w-0 flex-1 text-[36px] font-extrabold text-[#7FC8DE] tr-num">
@@ -257,6 +268,7 @@ export function ResultView(props: {
       <p className="font-black leading-tight" style={{ fontSize: `${Math.min(64, presentTitleSize(title))}px`, wordBreak: 'keep-all' }}>
         {title}
       </p>
+      {recs ? <div className="min-h-0 flex-1 overflow-hidden" style={{ marginTop: '-1rem' }}>{recs}</div> : null}
       <div className="mt-auto flex flex-wrap items-end gap-16">
         {/* 거수 확인 전(집계 중)에는 잠정 숫자를 띄우지 않는다 — 거수로 바뀔 수 있다(10/17 v2). */}
         {verdict.word === '집계 중' ? null : (
