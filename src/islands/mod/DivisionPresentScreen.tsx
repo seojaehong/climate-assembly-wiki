@@ -94,6 +94,7 @@ export default function DivisionPresentScreen({ scope, access = null }: { scope:
               headline={qrHeadlineOf(scene.record)}
               onExit={() => undefined}
               access={access} hideExit hideNames
+              top={<VoteTimer openedAt={scene.record.openedAt} />}
               extra={msg && scene.motion ? <DivisionRecList views={motionRecViews(msg.state.source, msg.state.recEdits, scene.motion.cardNos)} room="qr" tone="light" /> : null}
             />
           ) : (
@@ -299,5 +300,25 @@ export function ResultView(props: {
         </div>
       </div>
     </div>
+  );
+}
+
+/** 큰 화면 투표 타이머 — 투표를 연 시각부터 1분 30초(10/17 현장 지시). 0이 되면 「시간 종료」. */
+const VOTE_SECONDS = 90;
+function VoteTimer({ openedAt }: { openedAt: string | null }) {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = window.setInterval(() => setNow(Date.now()), 250);
+    return () => window.clearInterval(t);
+  }, []);
+  if (!openedAt) return null;
+  const left = Math.max(0, VOTE_SECONDS - Math.floor((now - Date.parse(openedAt)) / 1000));
+  const mm = Math.floor(left / 60);
+  const ss = String(left % 60).padStart(2, '0');
+  const done = left === 0;
+  return (
+    <p data-testid="vote-timer" className="tr-num mb-2 font-extrabold" style={{ fontSize: 'clamp(40px,4.2vw,80px)', lineHeight: 1.05, color: done ? '#B91C1C' : left <= 15 ? '#B45309' : '#1F4E79' }}>
+      {done ? '시간 종료' : `남은 시간 ${mm}:${ss}`}
+    </p>
   );
 }

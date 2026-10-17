@@ -106,6 +106,7 @@ export function BallotQrFullscreen({
   hideExit = false,
   hideNames = false,
   extra,
+  top,
 }: {
   ballot: BallotListRow;
   onExit: () => void;
@@ -122,6 +123,8 @@ export function BallotQrFullscreen({
   hideNames?: boolean;
   /** 분과 의결(10/17 오후) — 제목 아래 세부권고 처리 목록. */
   extra?: React.ReactNode;
+  /** 분과 의결(10/17 오후) — 제목 위 타이머(투표 연 시각 기준). */
+  top?: React.ReactNode;
 }) {
   const [qr, setQr] = useState<string | null>(null);
   const [showNames, setShowNames] = useState(false);
@@ -177,6 +180,7 @@ export function BallotQrFullscreen({
     >
       <div className="min-h-0 min-w-0 flex flex-col">
         <div className={`min-h-0 flex-1 overflow-hidden flex flex-col ${extra ? 'justify-start' : 'justify-center'}`}>
+          {top ?? null}
           {sub ? (
             <p data-testid="qr-headline-sub" className="text-[clamp(20px,1.9vw,34px)] font-bold text-[#5A6B73] tr-num mb-2">
               {sub}
