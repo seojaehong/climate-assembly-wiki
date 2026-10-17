@@ -43,13 +43,13 @@ describe('카드별 남은 세부권고', () => {
       ['2-1-2-2', 'keep'],
       ['2-1-1-3', 'incoming'],
       ['2-1-3-1', 'incoming'],
-      [null, 'added'],
+      ['2-1-2-3', 'added'],
     ]);
     // 옮겨 온 것: 수정 문구가 있으면 그 글, 없으면 원문
     expect(b[2].text).toBe('예시 권고 문장 2-1-1-3입니다.');
     expect(b[3].text).toBe('흡수하며 다듬은 문구');
     expect(recLine(b[3])).toBe('← 2-1-3-1에서 옮겨 옴: 흡수하며 다듬은 문구');
-    expect(recLine(b[4])).toBe('추가: 새로 넣은 세부권고');
+    expect(recLine(b[4])).toBe('2-1-2-3 (추가) 새로 넣은 세부권고');
     expect(remainingRecs(a).map((d) => d.no)).toEqual(['2-1-1-1']);
   });
   it('자기 세부권고가 모두 빠지고 들어온 것도 없으면 「투표 제외 후보」', () => {
@@ -145,13 +145,13 @@ describe('카드별 안 깔기', () => {
     const b = beginVote(s, [m.id], 'k1');
     if (!b.ok) throw new Error(b.error);
     const rec = b.state.ballots.k1;
-    expect(rec.descriptions?.[0].split('\n')).toEqual(['2-1-1-1 예시 권고 문장 2-1-1-1입니다.', '[삭제] 2-1-1-2 예시 권고 문장 2-1-1-2입니다.', '2-1-1-3 예시 권고 문장 2-1-1-3입니다.','[추가] 새 문구']);
+    expect(rec.descriptions?.[0].split('\n')).toEqual(['2-1-1-1 예시 권고 문장 2-1-1-1입니다.', '[삭제] 2-1-1-2 예시 권고 문장 2-1-1-2입니다.', '2-1-1-3 예시 권고 문장 2-1-1-3입니다.','[추가] 2-1-1-4 새 문구']);
     expect(createInputOf(rec).items[0].description).toBe(rec.descriptions?.[0]);
     expect(migratePrep(JSON.parse(serializePrep(b.state)))?.ballots.k1.descriptions).toEqual(rec.descriptions);
     // 결과 CSV 맨 끝 칸 = 최종 세부권고
-    expect(motionRecCsv(s, m)).toContain('추가: 새 문구');
+    expect(motionRecCsv(s, m)).toContain('2-1-1-4 (추가) 새 문구');
     const row = resultCsvRows(s).find((x) => x[1] === m.id)!;
-    expect(row[25]).toContain('추가: 새 문구');
+    expect(row[25]).toContain('2-1-1-4 (추가) 새 문구');
   });
   it('세부권고 처리가 없는 판은 지금과 같다(설명 없음)', () => {
     const s = { ...initPrepState(src), attendance: { enrolled: 60, present: 45 } };
@@ -177,7 +177,7 @@ describe('세부권고 표시(큰 화면·휴대폰·운영)', () => {
     expect(a.map((v) => [v.tag, v.struck])).toEqual([['수정', false], ['삭제', true], ['→ 2-1-2', true]]);
     const b = motionRecViews(src, edits, ['2-1-2']);
     expect(b.map((v) => v.tag)).toEqual(['', '', '← 2-1-1-3', '← 2-1-3-1', '추가']);
-    expect(b.map(recPlainLine).slice(2)).toEqual(['[← 2-1-1-3] 예시 권고 문장 2-1-1-3입니다.', '[← 2-1-3-1] 예시 권고 문장 2-1-3-1입니다.', '[추가] 새로 넣은 세부권고']);
+    expect(b.map(recPlainLine).slice(2)).toEqual(['[← 2-1-1-3] 예시 권고 문장 2-1-1-3입니다.', '[← 2-1-3-1] 예시 권고 문장 2-1-3-1입니다.', '[추가] 2-1-2-3 새로 넣은 세부권고']);
     expect(new Set([...a, ...b].map((v) => v.key)).size).toBe(a.length + b.length);
   });
   it('처리 기록이 없는 판은 아무것도 그리지 않는다', () => {

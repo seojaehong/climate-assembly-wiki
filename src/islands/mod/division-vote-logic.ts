@@ -1115,7 +1115,7 @@ function readPrep(x: Record<string, unknown>): PrepState | null {
     for (const e of x.recEdits) {
       if (!isObj(e) || !(e.no === null || isStr(e.no)) || !isStr(e.card) || !isStr(e.text) || !isStr(e.target) || !isStr(e.note)) return null;
       if (!REC_ACTIONS.includes(e.action as RecAction)) return null;
-      recEdits.push({ no: e.no as string | null, card: e.card, action: e.action as RecAction, text: e.text, target: e.target, note: e.note });
+      recEdits.push({ no: e.no as string | null, card: e.card, action: e.action as RecAction, text: e.text, target: e.target, note: e.note, ...(isStr(e.from) ? { from: e.from } : {}) });
     }
   }
   let reviewers: Partial<Record<TeamNo, string>> | undefined;

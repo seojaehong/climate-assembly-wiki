@@ -22,6 +22,8 @@ export type RecEdit = {
   text: string;
   target: string;
   note: string;
+  /** 같은 세부권고 번호의 둘째 줄부터(수정 문구가 여럿) — 원래 번호. 추가로 저장하고 「원번호에서 나뉨」으로 보인다. */
+  from?: string;
 };
 
 export type RecMark = 'keep' | 'edited' | 'deleted' | 'moved-out' | 'incoming' | 'added';
@@ -75,8 +77,13 @@ export function cardRecList(source: RecsDivision, edits: readonly RecEdit[], car
     if (targetCard(e.target) !== cardNo || cardOfRec(e.no) === cardNo) continue;
     out.push({ no: e.no, text: e.text.trim() || idx.get(e.no)?.text || '', mark: 'incoming', ref: e.no, via: e.action as '이관' | '흡수' });
   }
+  // 나뉨·추가 = 카드 끝 번호 다음 새 번호(휴대폰 페이지 add_changes.py · 출력물 print_cards.py 와 같은 규칙, 시트 줄 순서)
+  let next = Math.max(0, ...(card?.recs ?? []).map((r) => Number(r.no.split('-')[3]) || 0));
   for (const e of edits) {
-    if (e.action === '추가' && e.card === cardNo && e.text.trim()) out.push({ no: null, text: e.text.trim(), mark: 'added' });
+    if (e.action === '추가' && e.card === cardNo && e.text.trim()) {
+      next += 1;
+      out.push({ no: `${cardNo}-${next}`, text: e.text.trim(), mark: 'added', ...(e.from ? { ref: e.from } : {}) });
+    }
   }
   return out;
 }
@@ -100,7 +107,7 @@ const MARK_TEXT: Record<RecMark, string> = { keep: '', edited: '수정', deleted
 export function recLine(d: DisplayRec): string {
   if (d.mark === 'moved-out') return `${d.no} → ${d.ref}(으)로 ${d.via === '흡수' ? '흡수' : '이동'}`;
   if (d.mark === 'incoming') return `← ${d.ref}에서 옮겨 옴: ${d.text}`;
-  if (d.mark === 'added') return `추가: ${d.text}`;
+  if (d.mark === 'added') return `${d.no ? `${d.no} ` : ''}(${d.ref ? `${d.ref}에서 나뉨` : '추가'}) ${d.text}`;
   if (d.mark === 'deleted') return `${d.no} 삭제`;
   return `${d.no}${MARK_TEXT[d.mark] ? ` (${MARK_TEXT[d.mark]})` : ''} ${d.text}`;
 }
@@ -126,8 +133,8 @@ export type RecView = { key: string; mark: RecMark; tag: string; no: string | nu
 /** 한 줄 표시값 — 표시(tag)는 수정·삭제·→ 대상·← 원번호·추가, 유지는 빈칸. */
 export function recView(d: DisplayRec, i = 0): RecView {
   const tag =
-    d.mark === 'edited' ? '수정' : d.mark === 'deleted' ? '삭제' : d.mark === 'moved-out' ? `→ ${d.ref}` : d.mark === 'incoming' ? `← ${d.ref}` : d.mark === 'added' ? '추가' : '';
-  const no = d.mark === 'incoming' || d.mark === 'added' ? null : d.no;
+    d.mark === 'edited' ? '수정' : d.mark === 'deleted' ? '삭제' : d.mark === 'moved-out' ? `→ ${d.ref}` : d.mark === 'incoming' ? `← ${d.ref}` : d.mark === 'added' ? (d.ref ? `${d.ref}에서 나뉨` : '추가') : '';
+  const no = d.mark === 'incoming' ? null : d.no;
   return { key: `${d.mark}:${d.no ?? 'add'}:${i}`, mark: d.mark, tag, no, text: d.text, struck: d.mark === 'deleted' || d.mark === 'moved-out' };
 }
 
@@ -212,7 +219,15 @@ export function checkRecEdits(source: RecsDivision, rows: readonly RecEditRow[])
         continue;
       }
       if (idx.get(e.no)!.card !== e.card) out.errors.push(`${where}: 세부권고 ${e.no} 는 권고카드 ${e.card} 의 것이 아닙니다.`);
-      if (seen.has(e.no)) out.errors.push(`${where}: 세부권고 ${e.no} 가 ${seen.get(e.no)}행에도 있습니다.`);
+      if (seen.has(e.no)) {
+        // 같은 번호 둘째 줄부터 = 수정 문구가 여럿 → 그 카드 끝 번호 다음 새 세부권고(「원번호에서 나뉨」)
+        if (!e.text) out.errors.push(`${where}: 세부권고 ${e.no} 가 ${seen.get(e.no)}행에도 있는데 수정 문구가 없습니다(나뉨 줄은 문구가 필요합니다).`);
+        else {
+          out.warnings.push(`${where}: ${e.no} 둘째 줄 이후 → 새 번호로 나뉨(${idx.get(e.no)!.card} 끝 번호 다음).`);
+          out.edits.push({ no: null, card: idx.get(e.no)!.card, action: '추가', text: e.text, target: '', note: e.note, from: e.no });
+        }
+        continue;
+      }
       seen.set(e.no, r.line);
     }
     if (e.action === '수정' && !e.text) out.errors.push(`${where}: 수정인데 수정 문구가 없습니다.`);
@@ -257,7 +272,7 @@ export type RecEditPlan = RecEditCheck & {
   state: import('./division-vote-logic').PrepState;
 };
 
-const editKey = (e: RecEdit) => (e.no ? `n:${e.no}` : `a:${e.card}:${e.text}`);
+const editKey = (e: RecEdit) => (e.no ? `n:${e.no}` : `a:${e.card}:${e.from ?? ''}:${e.text}`);
 const editText = (e: RecEdit) => `${e.no ?? e.card} ${e.action}${e.target ? ` → ${e.target}` : ''}${e.text ? ` 「${e.text.length > 40 ? `${e.text.slice(0, 40)}…` : e.text}」` : ''}`;
 
 /**
