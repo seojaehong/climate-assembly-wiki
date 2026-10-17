@@ -173,3 +173,24 @@ describe('운영 명단 읽기 (s29)', () => {
     expect(await sessionRoster(access)).toBeNull();
   });
 });
+
+describe('s30 — 명단은 받는 중인 투표에만', () => {
+  const sql = readFileSync(new URL('../../supabase/migrations/20261017_s30_roster_get_open_only.sql', import.meta.url), 'utf8');
+  it('ballot_submit_named 와 같은 세션·회의·기관·기한 조건 + open, 아니면 빈 명단', () => {
+    for (const guard of [
+      "s.status='active'",
+      's.access_expires_at is not null and s.access_expires_at>now()',
+      "a.status='active' and a.archived_at is null",
+      "o.status='active' and o.archived_at is null",
+      "b.status='open' and b.archived_at is null",
+    ]) {
+      expect(sql).toContain(guard);
+    }
+    // 조건에 걸리면 명단 대신 빈 배열 — 명단 조회(ballot_roster from)보다 앞에서 돌아간다.
+    const emptyAt = sql.indexOf("'roster', '[]'::jsonb");
+    expect(emptyAt).toBeGreaterThan(-1);
+    expect(emptyAt).toBeLessThan(sql.indexOf('from climate_vote.ballot_roster r'));
+    expect(sql).toContain('grant execute on function climate_vote.ballot_roster_get(text) to anon, authenticated;');
+    expect(sql).toContain('revoke execute on function climate_vote.ballot_roster_get(text) from public;');
+  });
+});
