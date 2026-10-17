@@ -2355,24 +2355,24 @@ export function MotionVoteBlock({ motion, state, update }: { motion: Motion; sta
         </div>
       ) : null}
 
-      <details className="rounded-xl border border-[#DCE7EE]" open={phase === 'passed'}>
-        <summary className="min-h-12 cursor-pointer px-4 py-3 text-[17px] font-extrabold text-[#1F4E79]">
-          권고 수준 (조별 판정) · 충족 {criteriaCount(motion)}/5
-        </summary>
-        <div className="px-2 pb-3 sm:px-4">
+      {/* 10/17 오후: 카드 단위 투표 — 투표 카드에 바뀐 세부권고를 바로 보인다. 권고 수준·기타 의견은 쓰지 않아 접어 둔다. */}
+      {state.recEdits ? <MotionRecs state={state} motion={motion} /> : null}
+      <details className="rounded-xl border border-[#DCE7EE]">
+        <summary className="min-h-10 cursor-pointer px-4 py-2 text-[14px] font-bold text-[#6B7280]">(쓰지 않음) 권고 수준 · 기타 의견</summary>
+        <div className="space-y-3 px-2 pb-3 sm:px-4">
+          <p className="text-[14px] text-[#6B7280]">권고 수준 · 충족 {criteriaCount(motion)}/5</p>
           <CriteriaGrid motion={motion} update={update} />
+          <label className="block">
+            <span className="text-[14px] font-bold text-[#6B7280]">기타 의견</span>
+            <textarea
+              className={`${input} mt-1 min-h-16 py-2`}
+              value={motion.otherOpinion}
+              aria-label={`${motion.id} 기타 의견`}
+              onChange={(e) => update(onMotion(motionRef(motion), (s, id) => updateMotion(s, id, { otherOpinion: e.target.value })))}
+            />
+          </label>
         </div>
       </details>
-
-      <label className="block">
-        <span className="text-[17px] font-bold text-[#1F4E79]">기타 의견</span>
-        <textarea
-          className={`${input} mt-1 min-h-20 py-2`}
-          value={motion.otherOpinion}
-          aria-label={`${motion.id} 기타 의견`}
-          onChange={(e) => update(onMotion(motionRef(motion), (s, id) => updateMotion(s, id, { otherOpinion: e.target.value })))}
-        />
-      </label>
       {rejected ? (
         <label className="block">
           <span className="text-[17px] font-bold text-[#5B21B6]">소수 의견</span>
