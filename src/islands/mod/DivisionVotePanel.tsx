@@ -19,6 +19,7 @@ import { divisionPrepGet, divisionPrepSave } from '../../lib/division-prep';
 import { createSafeBrowserStorage } from '../../lib/safe-browser-storage';
 import { BallotQrFullscreen } from './BallotPanel';
 import { NamedAccessContext, NamedResultBoard } from './NamedResultBoard';
+import type { PresentCeremony } from './division-present';
 import VoterReconcileBox from './VoterReconcileBox';
 import { reconcileRoundOf } from './division-present';
 import DivisionBundleBoard from './DivisionBundleBoard';
@@ -376,6 +377,8 @@ export default function DivisionVotePanel({
   const presentScope = preview ? 'preview' : storageScope ?? 'unknown';
   const [presentFocus, setPresentFocus] = useState<string | null>(null);
   const [presentNames, setPresentNames] = useState<string | null>(null);
+  /** 세리머니 진행 중이면 발표 창으로 보낼 내용·단계(10/17). */
+  const [presentCeremony, setPresentCeremony] = useState<PresentCeremony | null>(null);
   const [presenterOn, setPresenterOn] = useState(false);
   const presenterSeenAt = useRef(0);
   const presentCounts = useRef<Record<string, number>>({});
@@ -400,10 +403,18 @@ export default function DivisionVotePanel({
   }, [presentScope]);
   const postPresent = useCallback(() => {
     if (!state) return;
-    const m: PresentStateMessage = { kind: 'state', v: 1, state, focus: presentFocus, counts: presentCounts.current, names: presentNames };
+    const m: PresentStateMessage = {
+      kind: 'state',
+      v: 1,
+      state,
+      focus: presentFocus,
+      counts: presentCounts.current,
+      names: presentNames,
+      ceremony: presentCeremony,
+    };
     presentLatest.current = m;
     presentChannel.current?.postMessage(m);
-  }, [state, presentFocus, presentNames]);
+  }, [state, presentFocus, presentNames, presentCeremony]);
   useEffect(() => {
     postPresent();
   }, [postPresent]);
@@ -424,6 +435,7 @@ export default function DivisionVotePanel({
       current: presentFocus,
       names: presentNames,
       showNames: (ballotId: string | null) => setPresentNames(ballotId),
+      ceremony: (c: PresentCeremony | null) => setPresentCeremony(c),
     }),
     [presentFocus, presentNames],
   );
@@ -811,6 +823,8 @@ type PresentCtx = {
   /** 큰 화면에 띄운 「투표결과 보기」의 투표(ballotId). */
   names?: string | null;
   showNames?: (ballotId: string | null) => void;
+  /** 세리머니를 발표 창에 띄운다(null = 내린다). */
+  ceremony?: (c: PresentCeremony | null) => void;
 };
 const PresentContext = createContext<PresentCtx>({ focus: () => undefined, presenterAlive: () => false, current: null });
 
@@ -2711,6 +2725,14 @@ function CeremonySetup({ state, api, isOps, preview }: { state: PrepState; api: 
   };
 
   const items = mode === 'stored' ? stored : mode === 'practice' ? practiceItems(votable, yeas) : ballotItems ?? [];
+  // 10/17 — 「상정 N건」은 실제로 투표한 안만 센다(저장된 결과 = 투표한 안). 목록에서 불러오기는 분과 안 수와 비교해 밝힌다.
+  const ceremonyMotionCount = mode === 'ballot' ? votable.length : undefined;
+  const ceremonySource = mode === 'stored' ? '투표 결과' : mode === 'practice' ? '연습' : '투표 목록';
+  const presentCtx = useContext(PresentContext);
+  // 세리머니 화면을 닫지 않고 이 화면을 떠나면 발표 창도 평소로 돌린다(언마운트 때 한 번).
+  const ceremonyOff = useRef(presentCtx.ceremony);
+  ceremonyOff.current = presentCtx.ceremony;
+  useEffect(() => () => ceremonyOff.current?.(null), []);
   const num = (v: string) => (v.trim() === '' ? Number.NaN : Number(v));
 
   return (
@@ -2865,9 +2887,23 @@ function CeremonySetup({ state, api, isOps, preview }: { state: PrepState; api: 
           enrolled={enrolled}
           present={present}
           items={running}
-          motionCount={mode === 'practice' ? undefined : votable.length}
-          sourceLabel={mode === 'stored' ? '투표 결과' : mode === 'practice' ? '연습' : '투표 목록'}
-          onExit={() => setRunning(null)}
+          motionCount={ceremonyMotionCount}
+          sourceLabel={ceremonySource}
+          onExit={() => {
+            setRunning(null);
+            presentCtx.ceremony?.(null);
+          }}
+          onStepChange={(step) =>
+            presentCtx.ceremony?.({
+              division: state.division,
+              enrolled,
+              present,
+              items: running,
+              ...(ceremonyMotionCount !== undefined ? { motionCount: ceremonyMotionCount } : {}),
+              sourceLabel: ceremonySource,
+              step,
+            })
+          }
         />
       ) : null}
     </div>

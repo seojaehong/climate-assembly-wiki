@@ -5,7 +5,18 @@
  * 순수 로직이라 vitest 로 검증한다.
  */
 import { currentRound, handPending, roundThreshold, roundTotals, roundVerdict } from './division-vote-flow';
-import type { BallotRecord, Motion, MotionRound, PrepState } from './division-vote-logic';
+import type { BallotRecord, CeremonyItem, CeremonyStep, Motion, MotionRound, PrepState } from './division-vote-logic';
+
+/** 세리머니(10/17) — 노트북이 진행하는 세리머니를 발표 창이 그대로 그린다. 단계(step)는 노트북이 정한다. */
+export type PresentCeremony = {
+  division: number;
+  enrolled: number;
+  present: number;
+  items: CeremonyItem[];
+  motionCount?: number;
+  sourceLabel: string;
+  step: CeremonyStep;
+};
 
 export const PRESENT_QUERY = 'present';
 
@@ -20,6 +31,8 @@ export type PresentStateMessage = {
   counts: Record<string, number>;
   /** 실명 투표(10/17) — 이 투표(ballotId)의 「투표결과 보기」(조·이름)를 큰 화면에 띄운다. 옛 운영 화면은 보내지 않는다(없음 = 띄우지 않음). */
   names?: string | null;
+  /** 세리머니 진행 중이면 그 내용·단계(10/17). 없거나 null 이면 평소 화면. */
+  ceremony?: PresentCeremony | null;
 };
 /** 발표 창 → 운영 화면: 살아 있음. 운영 화면은 이것이 오면 QR 전체 화면을 노트북에 띄우지 않는다. */
 export type PresentAliveMessage = { kind: 'alive'; v: 1 };
@@ -51,7 +64,9 @@ export type PresentScene =
       threshold: number | null;
       /** 거수 확인 전 = 잠정. */
       provisional: boolean;
-    };
+    }
+  | { kind: 'counting'; division: number; motion: Motion; round: MotionRound }
+  | { kind: 'ceremony'; ceremony: PresentCeremony };
 
 /**
  * 지금 큰 화면에 무엇을 띄우는가.
@@ -62,6 +77,7 @@ export type PresentScene =
  */
 export function presentScene(msg: PresentStateMessage | null): PresentScene {
   if (!msg) return { kind: 'idle', division: null };
+  if (msg.ceremony) return { kind: 'ceremony', ceremony: msg.ceremony };
   const { state, focus, counts } = msg;
   const division = state.division;
   const open = Object.values(state.ballots).find((b) => b.stage === 'open' && !b.voidedAt);
@@ -85,6 +101,11 @@ export function presentScene(msg: PresentStateMessage | null): PresentScene {
       threshold: roundThreshold(round),
       provisional: handPending(round),
     };
+  }
+  // 마감했는데 결과를 아직 받는 중(마감 → 결과 읽기 사이) — 안 제목 화면으로 돌아가지 않고 「집계 중」(10/17 시뮬레이션: 첫 안).
+  const rec = round ? state.ballots[round.requestId] : undefined;
+  if (round && !totals && !motion.revote && rec && rec.stage === 'closed' && !rec.voidedAt) {
+    return { kind: 'counting', division, motion, round };
   }
   return { kind: 'motion', division, motion };
 }

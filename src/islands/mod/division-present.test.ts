@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createMotion, initPrepState, type PrepState } from './division-vote-logic';
-import { applyBallotResults, beginVote, confirmHandCount, markBallotCreated, markBallotOpened, requestRevote } from './division-vote-flow';
+import { createAgendaMotion, createMotion, initPrepState, type PrepState } from './division-vote-logic';
+import { applyBallotResults, beginVote, confirmHandCount, markBallotClosed, markBallotCreated, markBallotOpened, requestRevote, storedCeremonyItems } from './division-vote-flow';
 import { DIVISION_VOTE_FIXTURE } from './division-vote-fixture';
 import { isPresentMessage, presentNamesBallot, presentScene, presentTitleSize, type PresentStateMessage } from './division-present';
 import type { BallotResults } from '../../lib/deliberation';
@@ -162,5 +162,47 @@ describe('제출자 대조 차수 — 투표 중에도 보인다', () => {
     expect(reconcileRoundOf({ requestId: 'c', round: 2 }, { requestId: 'a', round: 1 }, ballots)).toEqual({ ballotId: 'A', round: 1 });
     expect(reconcileRoundOf({ requestId: 'v', round: 2 }, null, ballots)).toBeNull();
     expect(reconcileRoundOf(null, null, ballots)).toBeNull();
+  });
+});
+
+describe('10/17 시뮬레이션 — 발표 창 흐름', () => {
+  it('마감 뒤 결과를 받기 전에는 안 제목이 아니라 「집계 중」(첫 안 공백)', () => {
+    let s = open(base(), '2-1-안1', 'k1');
+    s = markBallotClosed(s, 'k1', NOW);
+    const sc = presentScene(msg(s, '2-1-안1'));
+    expect(sc.kind).toBe('counting');
+    s = close(s, '2-1-안1', 'k1', 31, 9);
+    expect(presentScene(msg(s, '2-1-안1')).kind).toBe('result');
+  });
+  it('세리머니가 오면 무엇보다 먼저 세리머니', () => {
+    const s = open(base(), '2-1-안1', 'k1');
+    const ceremony = { division: 2, enrolled: 60, present: 45, items: [], sourceLabel: '투표 결과', step: { phase: 'intro' as const, index: 0 } };
+    const sc = presentScene({ ...msg(s, '2-1-안1'), ceremony });
+    expect(sc).toEqual({ kind: 'ceremony', ceremony });
+    expect(presentScene({ ...msg(s, '2-1-안1'), ceremony: null }).kind).toBe('vote');
+  });
+});
+
+describe('세리머니 항목 — 투표한 순서, 위임 의결은 따로', () => {
+  it('안 번호 순이 아니라 연 순서, 위임 의결은 맨 뒤 「문구 작성 위임 의결」', () => {
+    let s = base();
+    const d = createAgendaMotion(s, { title: '2분과 최종 권고안 문구 작성 위임 의결', text: '', key: 'baseline-delegate' });
+    if (!d.ok) throw new Error();
+    s = d.state;
+    const delegId = d.motion.id;
+    // 위임 → 안2 → 안1 순서로 연다(시각 다르게).
+    const at = (k: string, iso: string) => ({ ...s, ballots: { ...s.ballots, [k]: { ...s.ballots[k], openedAt: iso } } });
+    s = open(s, delegId, 'kd');
+    s = at('kd', '2026-10-17T07:00:00Z');
+    s = close(s, delegId, 'kd', 40, 2);
+    s = open(s, '2-1-안2', 'k2');
+    s = at('k2', '2026-10-17T07:05:00Z');
+    s = close(s, '2-1-안2', 'k2', 31, 9);
+    s = open(s, '2-1-안1', 'k1');
+    s = at('k1', '2026-10-17T07:10:00Z');
+    s = close(s, '2-1-안1', 'k1', 10, 30);
+    const items = storedCeremonyItems(s);
+    expect(items.map((i) => i.label)).toEqual(['2-1-안2', '2-1-안1', '문구 작성 위임 의결']);
+    expect(items[2].kind).toBe('delegation');
   });
 });

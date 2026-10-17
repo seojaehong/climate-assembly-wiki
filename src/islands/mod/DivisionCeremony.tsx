@@ -83,6 +83,9 @@ export default function DivisionCeremony({
   motionCount,
   sourceLabel,
   onExit,
+  controlledStep,
+  onStepChange,
+  displayOnly = false,
 }: {
   division: number;
   enrolled: number;
@@ -93,10 +96,27 @@ export default function DivisionCeremony({
   /** 「연습 모드」·「실제 투표 결과」 — 화면 구석에 작게 남겨 캡처해도 출처가 보이게 한다. */
   sourceLabel: string;
   onExit: () => void;
+  /** 발표 창 — 노트북이 보낸 단계를 그대로 그린다(스스로 넘기지 않는다). */
+  controlledStep?: CeremonyStep;
+  /** 노트북 — 단계가 바뀔 때마다 알린다(발표 창으로 보낸다). */
+  onStepChange?: (step: CeremonyStep) => void;
+  /** 발표 창 — 단추·키보드 없이 보이기만. */
+  displayOnly?: boolean;
 }) {
-  const [step, setStep] = useState<CeremonyStep>(CEREMONY_START);
+  const [ownStep, setStep] = useState<CeremonyStep>(CEREMONY_START);
+  const step = controlledStep ?? ownStep;
+  // 알림 함수는 매번 새로 와도 단계가 바뀔 때만 부른다(새 함수마다 부르면 부모 다시 그리기와 맞물려 끝없이 돈다).
+  const onStepChangeRef = useRef(onStepChange);
+  onStepChangeRef.current = onStepChange;
+  useEffect(() => {
+    if (!controlledStep) onStepChangeRef.current?.(ownStep);
+  }, [ownStep, controlledStep]);
   const total = items.length;
-  const totalText = motionCount !== undefined && motionCount !== total ? `상정 ${total}건(분과 안 ${motionCount}건 중)` : `상정 ${total}건`;
+  // 10/17 — 「상정 N건」은 정책 권고안만(문구 작성 위임 의결은 따로 센다).
+  const policy = useMemo(() => items.filter((i) => i.kind !== 'delegation'), [items]);
+  const delegations = useMemo(() => items.filter((i) => i.kind === 'delegation'), [items]);
+  const policyTotal = policy.length;
+  const totalText = motionCount !== undefined && motionCount !== policyTotal ? `상정 ${policyTotal}건(분과 안 ${motionCount}건 중)` : `상정 ${policyTotal}건`;
   const att = attendanceCheck(enrolled, present);
   const established = att.kind === 'ok' && att.established;
   const label = divisionLabel(division);
@@ -113,12 +133,14 @@ export default function DivisionCeremony({
 
   // 막대 → 기준선 → 도장 자동 진행
   useEffect(() => {
+    if (controlledStep) return undefined;
     if (step.phase !== 'bar' && step.phase !== 'line') return undefined;
     const t = setTimeout(() => setStep((current) => advanceCeremony(current, total)), step.phase === 'bar' ? BAR_MS : LINE_MS);
     return () => clearTimeout(t);
-  }, [step, total]);
+  }, [step, total, controlledStep]);
 
   useEffect(() => {
+    if (displayOnly) return undefined;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onExit();
       else if (e.key === 'ArrowRight' || e.key === 'PageDown') {
@@ -131,7 +153,7 @@ export default function DivisionCeremony({
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [back, next, onExit]);
+  }, [back, next, onExit, displayOnly]);
 
   const current = step.phase === 'intro' || step.phase === 'summary' ? null : items[step.index] ?? null;
   const verdict = current ? ceremonyVerdict(current, enrolled, present) : null;
@@ -152,7 +174,11 @@ export default function DivisionCeremony({
     if (step.phase !== 'verdict') firedRef.current = null;
   }, [step.phase]);
 
-  const summary = useMemo(() => summarizeCeremony(items, enrolled, present), [items, enrolled, present]);
+  const summary = useMemo(() => summarizeCeremony(policy, enrolled, present), [policy, enrolled, present]);
+  const delegationResults = useMemo(
+    () => delegations.map((d) => ({ item: d, verdict: ceremonyVerdict(d, enrolled, present) })),
+    [delegations, enrolled, present],
+  );
 
   return (
     <div
@@ -178,6 +204,8 @@ export default function DivisionCeremony({
           <span className="text-[24px] font-bold" style={{ color: C.sub }}>
             {sourceLabel}
           </span>
+          {displayOnly ? null : (
+          <>
           <button
             type="button"
             onClick={back}
@@ -196,6 +224,8 @@ export default function DivisionCeremony({
           >
             나가기 (ESC)
           </button>
+          </>
+          )}
         </div>
       </header>
 
@@ -204,7 +234,7 @@ export default function DivisionCeremony({
         {step.phase === 'intro' ? (
           <IntroView label={label} totalText={totalText} enrolled={enrolled} present={present} established={established} />
         ) : step.phase === 'summary' ? (
-          <SummaryView label={label} summary={summary} totalText={totalText} />
+          <SummaryView label={label} summary={summary} totalText={totalText} delegations={delegationResults} />
         ) : current && verdict ? (
           <MotionView item={current} verdict={verdict} present={itemPresent} reveal={ceremonyReveal(step.phase)} />
         ) : null}
@@ -215,7 +245,7 @@ export default function DivisionCeremony({
         <p className="min-w-0 text-[clamp(24px,1.6vw,30px)] font-bold" style={{ color: C.sub }}>
           재적 {itemEnrolled}명 · 참석 {itemPresent}명 · 참석자 3분의 2 이상 찬성 시 가결
         </p>
-        {step.phase === 'summary' ? (
+        {displayOnly ? null : step.phase === 'summary' ? (
           <button
             type="button"
             onClick={onExit}
@@ -406,14 +436,21 @@ function SummaryView({
   label,
   summary,
   totalText,
+  delegations = [],
 }: {
   label: string;
   summary: ReturnType<typeof summarizeCeremony>;
   totalText: string;
+  /** 문구 작성 위임 의결 — 정책 권고안 수와 따로(10/17). */
+  delegations?: { item: CeremonyItem; verdict: ReturnType<typeof ceremonyVerdict> }[];
 }) {
-  const MAX_ROWS = 16;
+  const MAX_ROWS = 12;
   const shown = summary.passed.slice(0, MAX_ROWS);
   const rest = summary.passed.length - shown.length;
+  const rejected = [...summary.failed, ...summary.invalid];
+  const MAX_FAILED = 6;
+  const shownFailed = rejected.slice(0, MAX_FAILED);
+  const restFailed = rejected.length - shownFailed.length;
   return (
     <div className="flex min-h-0 flex-col" style={{ gap: 'clamp(12px,2.4vh,32px)' }}>
       <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2">
@@ -448,6 +485,32 @@ function SummaryView({
           외 {rest}건
         </p>
       ) : null}
+      {shownFailed.length > 0 ? (
+        <section data-testid="ceremony-summary-failed" className="min-h-0">
+          <p className="text-[clamp(26px,2vw,38px)] font-extrabold" style={{ color: C.fail }}>
+            부결{summary.invalid.length ? '·판정 불가' : ''} {rejected.length}건
+          </p>
+          <ol className="mt-1 grid gap-x-10 gap-y-1" style={{ gridTemplateColumns: shownFailed.length > 3 ? 'repeat(2,minmax(0,1fr))' : 'minmax(0,1fr)' }}>
+            {shownFailed.map((item) => (
+              <li key={item.key} className="flex min-w-0 items-baseline gap-4 text-[clamp(22px,1.6vw,30px)] font-bold" style={{ color: C.sub }}>
+                <span className="shrink-0 tr-num">{item.label}</span>
+                <span className="min-w-0 break-keep" style={{ overflowWrap: 'anywhere' }}>
+                  {item.title}
+                </span>
+              </li>
+            ))}
+          </ol>
+          {restFailed > 0 ? <p className="text-[22px] font-bold" style={{ color: C.sub }}>외 {restFailed}건</p> : null}
+        </section>
+      ) : null}
+      {delegations.map(({ item, verdict }) => (
+        <p key={item.key} data-testid="ceremony-summary-delegation" className="text-[clamp(26px,2vw,38px)] font-extrabold" style={{ color: C.text }}>
+          문구 작성 위임 의결:{' '}
+          <span style={{ color: verdict.kind === 'decided' ? (verdict.passed ? C.pass : C.fail) : C.warn }}>
+            {verdict.kind === 'decided' ? (verdict.passed ? '가결' : '부결') : '판정 불가'}
+          </span>
+        </p>
+      ))}
     </div>
   );
 }

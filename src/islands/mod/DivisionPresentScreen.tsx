@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { BallotQrFullscreen } from './BallotPanel';
+import DivisionCeremony from './DivisionCeremony';
 import { NamedResultBoard } from './NamedResultBoard';
 import type { WorkshopAuthorization } from '../../lib/deliberation';
 import { groupLabel, groupRecTexts, divisionLabel, type Motion, type PrepState } from './division-vote-logic';
@@ -84,7 +85,7 @@ export default function DivisionPresentScreen({ scope, access = null }: { scope:
         (() => {
           const row = qrRowOf(scene.record, scene.count ?? 0);
           return row ? (
-            <BallotQrFullscreen ballot={row} headline={qrHeadlineOf(scene.record)} onExit={() => undefined} access={access} hideExit />
+            <BallotQrFullscreen ballot={row} headline={qrHeadlineOf(scene.record)} onExit={() => undefined} access={access} hideExit hideNames />
           ) : (
             <Center>
               <p className="text-[56px] font-black">투표를 여는 중입니다</p>
@@ -102,19 +103,40 @@ export default function DivisionPresentScreen({ scope, access = null }: { scope:
           backLabel="결과로 돌아가기"
           live={false}
         />
+      ) : scene.kind === 'ceremony' ? (
+        <DivisionCeremony
+          division={scene.ceremony.division}
+          enrolled={scene.ceremony.enrolled}
+          present={scene.ceremony.present}
+          items={scene.ceremony.items}
+          motionCount={scene.ceremony.motionCount}
+          sourceLabel={scene.ceremony.sourceLabel}
+          controlledStep={scene.ceremony.step}
+          displayOnly
+          onExit={() => undefined}
+        />
+      ) : scene.kind === 'counting' ? (
+        <Center>
+          <p className="text-[36px] font-extrabold text-[#7FC8DE] tr-num">
+            {divisionLabel(scene.division)} · {scene.motion.id}
+            {scene.round.round > 1 ? ` · ${scene.round.round}차` : ''}
+          </p>
+          <p className="max-w-[90vw] font-black leading-tight" style={{ fontSize: `${Math.min(64, presentTitleSize(scene.round.title))}px`, wordBreak: 'keep-all', color: '#FFFFFF', margin: 0 }}>
+            {scene.round.title}
+          </p>
+          <p data-testid="present-counting" className="rounded-3xl border-[10px] border-[#FBBF24] px-12 py-4 text-[110px] font-black leading-none text-[#FBBF24]">
+            집계 중
+          </p>
+        </Center>
       ) : scene.kind === 'result' ? (
-        <>
-        {access && msg?.state.ballots[scene.round.requestId]?.ballotId ? (
-          <button
-            type="button"
-            data-testid="present-show-names"
-            onClick={() => setNamesLocal({ msgNames: msg.names ?? null, show: msg.state.ballots[scene.round.requestId]?.ballotId ?? null })}
-            className="absolute bottom-6 right-6 z-10 min-h-12 rounded-xl bg-white/90 px-5 text-[20px] font-extrabold text-[#0B2233]"
-          >
-            투표결과 보기
-          </button>
-        ) : null}
         <ResultView
+          onShowNames={
+            access && msg?.state.ballots[scene.round.requestId]?.ballotId
+              ? () => setNamesLocal({ msgNames: msg.names ?? null, show: msg.state.ballots[scene.round.requestId]?.ballotId ?? null })
+              : undefined
+          }
+          enrolled={scene.round.enrolled}
+          present={scene.round.present}
           division={scene.division}
           motion={scene.motion}
           title={scene.round.title}
@@ -124,7 +146,6 @@ export default function DivisionPresentScreen({ scope, access = null }: { scope:
           verdict={presentVerdict(scene.round, scene.provisional)}
           roundNo={scene.round.round}
         />
-        </>
       ) : scene.kind === 'motion' && msg ? (
         <MotionView state={msg.state} motion={scene.motion} />
       ) : (
@@ -206,15 +227,32 @@ export function ResultView(props: {
   threshold: number | null;
   verdict: ReturnType<typeof presentVerdict>;
   roundNo: number;
+  /** 그 차수 마감 때 박은 재적·참석(10/17 — 가결선 옆에 보인다). */
+  enrolled?: number | null;
+  present?: number | null;
+  /** 있으면 머리줄 오른쪽에 「투표결과 보기」(가결선 글자와 겹치지 않게 위로 옮김). */
+  onShowNames?: () => void;
 }) {
-  const { division, motion, title, yes, no, threshold, verdict, roundNo } = props;
+  const { division, motion, title, yes, no, threshold, verdict, roundNo, enrolled, present, onShowNames } = props;
   const color = verdict.tone === 'pass' ? '#34D399' : verdict.tone === 'fail' ? '#F87171' : '#FBBF24';
   return (
     <div className="flex flex-1 flex-col gap-8 px-20 pb-12 pt-14">
-      <p className="text-[36px] font-extrabold text-[#7FC8DE] tr-num">
-        {divisionLabel(division)} · {motion.id}
-        {roundNo > 1 ? ` · ${roundNo}차` : ''} · 투표 결과
-      </p>
+      <div className="flex items-center gap-6">
+        <p className="min-w-0 flex-1 text-[36px] font-extrabold text-[#7FC8DE] tr-num">
+          {divisionLabel(division)} · {motion.id}
+          {roundNo > 1 ? ` · ${roundNo}차` : ''} · 투표 결과
+        </p>
+        {onShowNames ? (
+          <button
+            type="button"
+            data-testid="present-show-names"
+            onClick={onShowNames}
+            className="shrink-0 min-h-12 rounded-xl bg-white/90 px-5 text-[20px] font-extrabold text-[#0B2233]"
+          >
+            투표결과 보기
+          </button>
+        ) : null}
+      </div>
       <p className="font-black leading-tight" style={{ fontSize: `${Math.min(64, presentTitleSize(title))}px`, wordBreak: 'keep-all' }}>
         {title}
       </p>
@@ -233,6 +271,11 @@ export function ResultView(props: {
           </p>
           {verdict.reason ? <p data-testid="present-verdict-reason" className="mt-3 text-[34px] font-extrabold text-[#FDE68A]">{verdict.reason}</p> : null}
           {threshold !== null ? <p className="mt-4 text-[34px] font-extrabold text-[#FDE68A] tr-num">가결선 찬성 {threshold}표 이상</p> : null}
+          {present != null || enrolled != null ? (
+            <p data-testid="present-attendance" className="mt-2 text-[30px] font-extrabold text-[#BFE3F0] tr-num">
+              참석 {present ?? '—'} · 재적 {enrolled ?? '—'}
+            </p>
+          ) : null}
         </div>
       </div>
     </div>

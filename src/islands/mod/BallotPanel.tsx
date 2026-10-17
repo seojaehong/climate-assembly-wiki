@@ -104,6 +104,7 @@ export function BallotQrFullscreen({
   headline,
   access = null,
   hideExit = false,
+  hideNames = false,
 }: {
   ballot: BallotListRow;
   onExit: () => void;
@@ -116,6 +117,8 @@ export function BallotQrFullscreen({
   access?: WorkshopAuthorization | null;
   /** 발표 창 — 나가기 버튼을 숨긴다(누를 사람이 없다). */
   hideExit?: boolean;
+  /** 발표 창 — 투표 중에는 「투표결과 보기」를 숨긴다(이름 화면은 마감 뒤에만, 10/17). */
+  hideNames?: boolean;
 }) {
   const [qr, setQr] = useState<string | null>(null);
   const [showNames, setShowNames] = useState(false);
@@ -206,7 +209,7 @@ export function BallotQrFullscreen({
             </p>
           )}
           <div className="mt-4 flex flex-wrap gap-3">
-            {access ? (
+            {access && !hideNames ? (
               <button
                 type="button"
                 onClick={() => setShowNames(true)}
