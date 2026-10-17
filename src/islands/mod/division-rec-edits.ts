@@ -58,6 +58,24 @@ export function targetCard(target: string): string | null {
   return null;
 }
 
+/**
+ * 시트 문구 칸에서 실제 권고 문장만 뽑는다. 현장은 「1-6-2-4를 1-5-1-1에 흡수하고 문구를 "…"로 수정한다」처럼 지시문째 쓴다.
+ * - 따옴표(“” "" 「」 『』 '') 안 문장이 있으면 가장 긴 것(닫는 따옴표가 없으면 여는 따옴표 뒤 전부)
+ * - 따옴표 없이 「…에 흡수시킨다」「흡수」처럼 지시만 있으면 원문(fallback)
+ */
+export function wordingOf(text: string, fallback: string): string {
+  const t = text.trim();
+  if (!t) return fallback;
+  const quoted = [...t.matchAll(/[“"「『']([^”"」』']{8,})[”"」』']/g)].map((m) => m[1].trim());
+  if (quoted.length) return quoted.sort((a, b) => b.length - a.length)[0];
+  const open = /[“"「『]([^”"」』]{8,})$/.exec(t);
+  if (open) return open[1].trim().replace(/["”]?\s*(로|으로)\s*(수정|변경)(한다|함)?\.?$/, '');
+  // 번호를 가리키며 흡수·이관·통합을 지시하는 짧은 문장(새 문구 없음) → 원문
+  const instruction = /\d-\d+-\d+/.test(t) && /(흡수|이관|통합|합치|합침|옮기|옮긴|이동)/.test(t) && t.length < 60;
+  if (instruction || /^(흡수|이관|통합|삭제|유지)\.?$/.test(t)) return fallback;
+  return t;
+}
+
 /** 카드 하나에 지금 보일 세부권고 목록 — 자기 세부권고(처리 반영) → 옮겨 온 것 → 추가. */
 export function cardRecList(source: RecsDivision, edits: readonly RecEdit[], cardNo: string): DisplayRec[] {
   const idx = recIndex(source);
@@ -67,7 +85,7 @@ export function cardRecList(source: RecsDivision, edits: readonly RecEdit[], car
   for (const r of card?.recs ?? []) {
     const e = byNo.get(r.no);
     const action = e?.action ?? '유지';
-    if (action === '수정' && e?.text.trim()) out.push({ no: r.no, text: e.text.trim(), mark: 'edited' });
+    if (action === '수정' && e?.text.trim()) out.push({ no: r.no, text: wordingOf(e.text, r.text), mark: 'edited' });
     else if (action === '삭제') out.push({ no: r.no, text: r.text, mark: 'deleted' });
     else if (MOVES.includes(action) && e) out.push({ no: r.no, text: r.text, mark: 'moved-out', ref: e.target.trim(), via: action as '이관' | '흡수' });
     else out.push({ no: r.no, text: r.text, mark: 'keep' });
@@ -75,14 +93,14 @@ export function cardRecList(source: RecsDivision, edits: readonly RecEdit[], car
   for (const e of edits) {
     if (!e.no || !MOVES.includes(e.action)) continue;
     if (targetCard(e.target) !== cardNo || cardOfRec(e.no) === cardNo) continue;
-    out.push({ no: e.no, text: e.text.trim() || idx.get(e.no)?.text || '', mark: 'incoming', ref: e.no, via: e.action as '이관' | '흡수' });
+    out.push({ no: e.no, text: wordingOf(e.text, idx.get(e.no)?.text || ''), mark: 'incoming', ref: e.no, via: e.action as '이관' | '흡수' });
   }
   // 나뉨·추가 = 카드 끝 번호 다음 새 번호(휴대폰 페이지 add_changes.py · 출력물 print_cards.py 와 같은 규칙, 시트 줄 순서)
   let next = Math.max(0, ...(card?.recs ?? []).map((r) => Number(r.no.split('-')[3]) || 0));
   for (const e of edits) {
     if (e.action === '추가' && e.card === cardNo && e.text.trim()) {
       next += 1;
-      out.push({ no: `${cardNo}-${next}`, text: e.text.trim(), mark: 'added', ...(e.from ? { ref: e.from } : {}) });
+      out.push({ no: `${cardNo}-${next}`, text: wordingOf(e.text, e.text.trim()), mark: 'added', ...(e.from ? { ref: e.from } : {}) });
     }
   }
   return out;
