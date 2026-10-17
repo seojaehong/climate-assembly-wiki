@@ -1363,6 +1363,8 @@ export type CeremonyItem = {
   enrolled?: number;
   present?: number;
   round?: number;
+  /** 'delegation' = 문구 작성 위임 의결(10/17) — 정책 권고안 수에 넣지 않고 따로 보인다. */
+  kind?: 'delegation';
 };
 
 /** 세리머니 항목 하나의 판정. 항목에 재적·참석이 박혀 있으면 그것을 쓴다. */

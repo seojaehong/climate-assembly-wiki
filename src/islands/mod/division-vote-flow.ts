@@ -19,6 +19,7 @@ import type {
 } from '../../lib/deliberation';
 import { MAX_BALLOT_ITEMS, MAX_STATEMENT_LENGTH } from './ballot-panel-logic';
 import { parseMotionStatement } from '../../lib/division-ballot-format';
+import { isDelegationMotion } from './division-reviewers';
 import {
   CRITERIA,
   CRITERION_LABELS,
@@ -794,8 +795,10 @@ export function qrHeadlineOf(record: Pick<BallotRecord, 'title' | 'statements' |
 
 /** 안마다 결과가 있는 마지막 차수로 세리머니 항목을 만든다(제외 안 빼고). 2차는 라벨에 표시한다. */
 export function storedCeremonyItems(state: PrepState): CeremonyItem[] {
-  const out: CeremonyItem[] = [];
+  const out: (CeremonyItem & { order: string; seq: number })[] = [];
+  let seq = 0;
   for (const m of state.motions) {
+    seq += 1;
     if (motionExcluded(state, m)) continue;
     // 결론이 아직 없는 안은 넣지 않는다 — 2차가 열려 있는데 1차 부결을 결과로 공개하면 안 된다(10/14).
     // 빠진 안은 ceremonyGaps 가 세리머니 설정 화면에 따로 띄운다.
@@ -804,18 +807,26 @@ export function storedCeremonyItems(state: PrepState): CeremonyItem[] {
     const r = rounds[rounds.length - 1];
     if (!r) continue;
     const t = roundTotals(r) as RoundTotals;
+    const b = state.ballots[r.requestId];
+    const delegation = isDelegationMotion(m);
     out.push({
       key: `${m.id}:r${r.round}`,
-      label: r.round > 1 ? `${m.id} · ${r.round}차 투표` : m.id,
+      label: delegation ? '문구 작성 위임 의결' : r.round > 1 ? `${m.id} · ${r.round}차 투표` : m.id,
       title: r.title,
       yeas: t.yes,
       nays: t.no,
       ...(r.enrolled !== null ? { enrolled: r.enrolled } : {}),
       ...(r.present !== null ? { present: r.present } : {}),
       round: r.round,
+      ...(delegation ? { kind: 'delegation' as const } : {}),
+      // 10/17 — 투표한 순서(그 차수를 연 시각). 시각이 없으면 안 순서대로 뒤에.
+      order: b?.openedAt ?? b?.createdAt ?? r.closedAt ?? '\uffff',
+      seq,
     });
   }
-  return out;
+  // 위임 의결은 맨 뒤, 나머지는 투표한 순서.
+  out.sort((a, b) => Number(a.kind === 'delegation') - Number(b.kind === 'delegation') || a.order.localeCompare(b.order) || a.seq - b.seq);
+  return out.map(({ order: _o, seq: _s, ...item }) => item);
 }
 
 const UNSETTLED: readonly MotionPhase[] = ['ready', 'revote', 'starting', 'open', 'counting'];
