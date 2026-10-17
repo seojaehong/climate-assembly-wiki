@@ -210,8 +210,21 @@ export function checkRecEdits(source: RecsDivision, rows: readonly RecEditRow[])
       continue;
     }
     if (!cards.has(e.card)) out.errors.push(`${where}: 권고카드 ${e.card || '(빈칸)'} 가 ${source.division}분과에 없습니다.`);
+    if (e.action === '추가' && e.no && idx.has(e.no)) {
+      // 번호를 적은 추가 줄 — 출력물·휴대폰 규칙: 그 번호의 첫 줄이면 그 세부권고의 변경 문구, 둘째 줄부터는 카드 끝 다음 번호로 나뉨
+      const rc = idx.get(e.no)!.card;
+      if (seen.has(e.no)) {
+        out.warnings.push(`${where}: ${e.no} 추가 → 새 번호로 나뉨(${rc} 끝 번호 다음).`);
+        out.edits.push({ no: null, card: rc, action: '추가', text: e.text || '(문구 비어 있음)', target: '', note: e.note, from: e.no });
+      } else {
+        seen.set(e.no, r.line);
+        if (!e.text) out.warnings.push(`${where}: ${e.no} 추가인데 문구가 없어 원안 그대로 둡니다.`);
+        else out.edits.push({ ...e, card: rc, action: '수정' });
+      }
+      continue;
+    }
     if (e.action === '추가') {
-      if (e.no) out.errors.push(`${where}: 추가 줄은 세부권고 번호를 비웁니다(${e.no}).`);
+      if (e.no) out.errors.push(`${where}: 세부권고 ${e.no} 가 ${source.division}분과에 없습니다.`);
       if (!e.text) out.errors.push(`${where}: 추가인데 수정 문구(새 세부권고)가 없습니다.`);
     } else {
       if (!e.no || !idx.has(e.no)) {
@@ -221,11 +234,9 @@ export function checkRecEdits(source: RecsDivision, rows: readonly RecEditRow[])
       if (idx.get(e.no)!.card !== e.card) out.errors.push(`${where}: 세부권고 ${e.no} 는 권고카드 ${e.card} 의 것이 아닙니다.`);
       if (seen.has(e.no)) {
         // 같은 번호 둘째 줄부터 = 수정 문구가 여럿 → 그 카드 끝 번호 다음 새 세부권고(「원번호에서 나뉨」)
-        if (!e.text) out.errors.push(`${where}: 세부권고 ${e.no} 가 ${seen.get(e.no)}행에도 있는데 수정 문구가 없습니다(나뉨 줄은 문구가 필요합니다).`);
-        else {
-          out.warnings.push(`${where}: ${e.no} 둘째 줄 이후 → 새 번호로 나뉨(${idx.get(e.no)!.card} 끝 번호 다음).`);
-          out.edits.push({ no: null, card: idx.get(e.no)!.card, action: '추가', text: e.text, target: '', note: e.note, from: e.no });
-        }
+        // 문구가 없어도 번호는 차지한다(출력물·휴대폰과 번호를 맞추려고) — 경고로 알린다
+        out.warnings.push(`${where}: ${e.no} 둘째 줄 이후 → 새 번호로 나뉨(${idx.get(e.no)!.card} 끝 번호 다음)${e.text ? '' : ' — 문구가 비어 있음'}.`);
+        out.edits.push({ no: null, card: idx.get(e.no)!.card, action: '추가', text: e.text || '(문구 비어 있음)', target: '', note: e.note, from: e.no });
         continue;
       }
       seen.set(e.no, r.line);

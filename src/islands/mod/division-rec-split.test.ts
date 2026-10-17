@@ -26,8 +26,16 @@ describe('같은 번호 여러 줄 = 나뉨, 카드 끝 번호 다음 새 번호
     expect(recLine(added[2])).toBe('1-9-1-11 (추가) 새 권고');
     expect(list.find((d) => d.no === '1-9-1-8')?.text).toBe('첫 문구');
   });
-  it('문구 없는 둘째 줄은 오류', () => {
-    const bad = checkRecEdits(source, [row(2, '1-9-1-8', '수정', 'a'), row(3, '1-9-1-8', '', '')]);
-    expect(bad.errors.length).toBe(1);
+  it('문구 없는 둘째 줄도 번호는 차지한다(경고)', () => {
+    const c = checkRecEdits(source, [row(2, '1-9-1-8', '수정', 'a'), row(3, '1-9-1-8', '', '')]);
+    expect(c.errors).toEqual([]);
+    expect(cardRecList(source, c.edits, '1-9-1').filter((d) => d.mark === 'added').map((d) => d.no)).toEqual(['1-9-1-9']);
+  });
+  it('번호를 적은 추가 줄 — 첫 줄은 그 세부권고 변경, 둘째 줄부터 나뉨', () => {
+    const c = checkRecEdits(source, [row(2, '1-9-1-2', '추가', '덧붙인 문구'), row(3, '1-9-1-2', '추가', '새 줄')]);
+    expect(c.errors).toEqual([]);
+    const list = cardRecList(source, c.edits, '1-9-1');
+    expect(list.find((d) => d.no === '1-9-1-2')?.text).toBe('덧붙인 문구');
+    expect(list.filter((d) => d.mark === 'added').map((d) => d.no)).toEqual(['1-9-1-9']);
   });
 });
