@@ -18,6 +18,7 @@
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { attachExpertOpinions, parseExpertFile } from '../src/islands/mod/division-expert';
+import { carryOverRecords, humanInput as humanInputOf } from '../src/islands/mod/division-reseed';
 import {
   createAgendaMotion,
   importSimilarGroups,
@@ -74,21 +75,8 @@ const agendaSpecs = (d: number) => [
   { key: 'baseline-delegate', title: `${d}분과 최종 권고안 문구 작성 위임 의결` },
 ];
 
-/** 사람이 화면에서 넣은 흔적 — 있으면 --replace 로도 덮지 않는다. */
-function humanInput(s: PrepState): string[] {
-  const out: string[] = [];
-  const preset = new Map(agendaSpecs(s.division).map((a) => [a.key, a.title]));
-  for (const m of s.motions) {
-    if (m.rounds.length) out.push(`${m.id} 투표 기록`);
-    if (m.title.trim() && !(m.key && preset.get(m.key) === m.title)) out.push(`${m.id} 제목`);
-    if (m.text.trim()) out.push(`${m.id} 수정 문안`);
-    if (m.otherOpinion.trim() || m.minorityOpinion.trim()) out.push(`${m.id} 의견 칸`);
-    if (Object.keys(m.grid).length) out.push(`${m.id} 권고 수준`);
-  }
-  if (s.attendance.enrolled !== null || s.attendance.present !== null) out.push('참석 인원');
-  if (Object.keys(s.ballots).length) out.push('투표');
-  return out;
-}
+/** 사람이 화면에서 넣은 흔적(헤쳐모여 기록·검토위원·카드 상태 포함) — 있으면 --force 없이는 --replace 로도 덮지 않는다. */
+const humanInput = (s: PrepState): string[] => humanInputOf(s, new Map(agendaSpecs(s.division).map((a) => [a.key, a.title])));
 
 const recs = parseImport(readFileSync(recsPath, 'utf8'));
 if (recs.kind !== 'recs') throw new Error(`권고안 파일이 아닙니다: ${recs.kind === 'error' ? recs.message : recs.kind}`);
@@ -161,9 +149,18 @@ for (const source of recs.divisions) {
       console.log(`${sub}: 통째로 바꾸지 않음 — ${why}.${names.length ? ` 빠진 최종 안건만 더함 ${names.join(',')}` : ''}${expert ? ' 전문가 의견 칸만 바꿈' : ''}`);
       next = added;
     }
+    if (cur && next === res.state) {
+      // 통째로 바꾼다 — 새 판에도 있는 묶음의 헤쳐모여 기록과 검토위원은 옮긴다.
+      const c = carryOverRecords(cur, next);
+      next = c.state;
+      if (c.carried.length || c.dropped.length) {
+        console.log(`${sub}: 옮긴 기록 ${c.carried.join(', ') || '없음'}${c.dropped.length ? ` · 새 판에 없어 버림 ${c.dropped.join(', ')}` : ''}`);
+      }
+    }
   }
   if (!apply) {
-    console.log(`${line} → ${row.version ? `판 ${row.version} 에 저장할 예정(${next === res.state ? "통째로 바꿈" : "안건만 더함"})` : '새로 넣을 예정'}`);
+    const whole = next.motions === res.state.motions;
+    console.log(`${line} → ${row.version ? `판 ${row.version} 에 저장할 예정(${whole ? "통째로 바꿈" : "안건만 더함"})` : '새로 넣을 예정'}`);
     continue;
   }
   const saved = await rpc('division_prep_save_v1', {
