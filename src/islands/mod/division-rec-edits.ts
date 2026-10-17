@@ -258,7 +258,7 @@ export type RecEditPlan = RecEditCheck & {
 };
 
 const editKey = (e: RecEdit) => (e.no ? `n:${e.no}` : `a:${e.card}:${e.text}`);
-const editText = (e: RecEdit) => `${e.no ?? `${e.card} 추가`} ${e.action}${e.target ? ` → ${e.target}` : ''}${e.text ? ` 「${e.text.length > 40 ? `${e.text.slice(0, 40)}…` : e.text}」` : ''}`;
+const editText = (e: RecEdit) => `${e.no ?? e.card} ${e.action}${e.target ? ` → ${e.target}` : ''}${e.text ? ` 「${e.text.length > 40 ? `${e.text.slice(0, 40)}…` : e.text}」` : ''}`;
 
 /**
  * 한 분과 판에 검토표를 적용한다 — 그 분과의 세부권고 처리 목록을 파일 것으로 통째로 바꾼다(전부 아니면 전무).
