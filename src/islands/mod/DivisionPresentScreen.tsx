@@ -83,7 +83,9 @@ export default function DivisionPresentScreen({ scope, access = null }: { scope:
         </p>
       ) : null}
 
-      {scene.kind === 'vote' ? (
+      {msg?.practice && !scene.kind.startsWith('ceremony') ? (
+        <BallotQrFullscreen key={msg.practice.id} ballot={msg.practice} headline={{ main: msg.practice.title, sub: '연습 투표', eyebrow: '연습' }} onExit={() => undefined} access={access} hideExit hideNames />
+      ) : scene.kind === 'vote' ? (
         (() => {
           const row = qrRowOf(scene.record, scene.count ?? 0);
           return row ? (

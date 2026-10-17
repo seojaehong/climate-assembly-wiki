@@ -6,6 +6,7 @@
  */
 import { currentRound, handPending, roundThreshold, roundTotals, roundVerdict } from './division-vote-flow';
 import type { BallotRecord, CeremonyItem, CeremonyStep, Motion, MotionRound, PrepState } from './division-vote-logic';
+import type { BallotListRow } from '../../lib/deliberation';
 
 /** 세리머니(10/17) — 노트북이 진행하는 세리머니를 발표 창이 그대로 그린다. 단계(step)는 노트북이 정한다. */
 export type PresentCeremony = {
@@ -33,6 +34,8 @@ export type PresentStateMessage = {
   names?: string | null;
   /** 세리머니 진행 중이면 그 내용·단계(10/17). 없거나 null 이면 평소 화면. */
   ceremony?: PresentCeremony | null;
+  /** 10/17 연습 투표 — 있으면 다른 장면보다 먼저 그 투표의 QR·실시간 수를 띄운다(준비판과 무관). */
+  practice?: BallotListRow | null;
 };
 /** 발표 창 → 운영 화면: 살아 있음. 운영 화면은 이것이 오면 QR 전체 화면을 노트북에 띄우지 않는다. */
 export type PresentAliveMessage = { kind: 'alive'; v: 1 };

@@ -156,6 +156,8 @@ import { downloadBlob } from './svg-to-png';
 import { TWO_STEP_MS, twoStepPress, type TwoStepArm } from './two-step';
 import { useDivisionPrep, type DivisionPrep, type PrepApi } from './use-division-prep';
 import DivisionRecList from './DivisionRecList';
+import PracticeBallotBox from './PracticeBallotBox';
+import { isPracticeBallot } from './division-practice';
 import { motionRecViews } from './division-rec-edits';
 
 /**
@@ -382,6 +384,8 @@ export default function DivisionVotePanel({
   /** 세리머니 진행 중이면 발표 창으로 보낼 내용·단계(10/17). */
   const [presentCeremony, setPresentCeremony] = useState<PresentCeremony | null>(null);
   const [presenterOn, setPresenterOn] = useState(false);
+  // 10/17 연습 투표 — 발표 화면에 띄운 단독 투표(준비판과 무관).
+  const [presentPractice, setPresentPractice] = useState<BallotListRow | null>(null);
   const presenterSeenAt = useRef(0);
   const presentCounts = useRef<Record<string, number>>({});
   const presentChannel = useRef<BroadcastChannel | null>(null);
@@ -413,10 +417,11 @@ export default function DivisionVotePanel({
       counts: presentCounts.current,
       names: presentNames,
       ceremony: presentCeremony,
+      practice: presentPractice,
     };
     presentLatest.current = m;
     presentChannel.current?.postMessage(m);
-  }, [state, presentFocus, presentNames, presentCeremony]);
+  }, [state, presentFocus, presentNames, presentCeremony, presentPractice]);
   useEffect(() => {
     postPresent();
   }, [postPresent]);
@@ -432,6 +437,7 @@ export default function DivisionVotePanel({
       focus: (id: string) => {
         setPresentFocus(id);
         setPresentNames(null);
+        setPresentPractice(null);
       },
       presenterAlive: () => Date.now() - presenterSeenAt.current < PRESENT_ALIVE_MS,
       current: presentFocus,
@@ -639,6 +645,9 @@ export default function DivisionVotePanel({
       </div>
 
       <div className="space-y-5 p-4 sm:p-6">
+        {access && !preview ? (
+          <PracticeBallotBox access={access} division={lockedDivision} presenting={presentPractice?.id ?? null} onPresent={setPresentPractice} />
+        ) : null}
         {/* 10/14 — 알림·운영팀 분과 띠는 화면 위에 붙어 있다. 아래 안 블록에서 일하는 중에도 보인다(operator-4·ops-6). */}
         {notice || (state && (isOps || view === 'vote')) ? (
           // /mod 안에서는 콘솔 위 띠(연결 상태·마감 배너, ModConsole 이 높이를 --mod-sticky-h 로 내려 줌) 바로 아래에 붙는다 —
@@ -2703,7 +2712,7 @@ function CeremonySetup({ state, api, isOps, preview }: { state: PrepState; api: 
     let alive = true;
     api
       .list()
-      .then((all) => alive && setRows(all.filter((b) => (b.subgroup ?? '').trim() === subgroup)))
+      .then((all) => alive && setRows(all.filter((b) => (b.subgroup ?? '').trim() === subgroup && !isPracticeBallot(b))))
       .catch((error) => {
         console.error('[division vote] ballot list failed', error);
         if (alive) setLoadMsg('투표 목록을 읽지 못했습니다.');
