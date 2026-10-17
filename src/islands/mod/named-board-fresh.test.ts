@@ -26,3 +26,21 @@ describe('「투표결과 보기」 — 앞 투표 이름이 남지 않는다', 
     expect(src).not.toMatch(/live \? POLL_MS : 0/);
   });
 });
+
+describe('제출자 대조 — 낸 사람 누구든 조·이름을 고칠 수 있다', () => {
+  it('상자에 「낸 사람 전체」 찾기 목록이 있고 줄마다 고치기 버튼(row) — 명단 밖·중복만이 아니다', () => {
+    const src = readFileSync(new URL('./VoterReconcileBox.tsx', import.meta.url), 'utf8');
+    expect(src).toContain('searchResponses(data.responses, query)');
+    expect(src).toMatch(/found\.map\(\(r\) => row\(r\)\)/);
+    expect(src).toContain('조·이름 고치기');
+    // 정정 호출은 조·이름만 보낸다(찬반 인자 없음)
+    expect(src).toMatch(/ballotVoterCorrect\(access, ballotId, edit\.id, edit\.team, displayVoterName\(edit\.name\)\)/);
+  });
+  it('분과 의결 안 카드는 투표 중에도 상자를 띄운다(지금 차수 기준), 다의제 투표 탭은 열림부터', () => {
+    const panel = readFileSync(new URL('./DivisionVotePanel.tsx', import.meta.url), 'utf8');
+    expect(panel).toContain('reconcileRoundOf(cur, last, state.ballots)');
+    expect(panel).toMatch(/reconcileRound && namedAccess \? \(\s*<VoterReconcileBox/);
+    const ballot = readFileSync(new URL('./BallotPanel.tsx', import.meta.url), 'utf8');
+    expect(ballot).toMatch(/ballot\.status !== 'draft' && access \? \(\s*<div className="mt-3">\s*<VoterReconcileBox/);
+  });
+});

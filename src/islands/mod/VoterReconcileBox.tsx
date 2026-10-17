@@ -7,6 +7,7 @@ import {
   reconcile,
   responseChoiceText,
   rosterTeams,
+  searchResponses,
   type NamedResponse,
 } from '../../lib/named-vote-logic';
 import { useNamedResponses } from './NamedResultBoard';
@@ -34,6 +35,8 @@ export default function VoterReconcileBox({
   const [edit, setEdit] = useState<{ id: string; team: string; name: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const found = useMemo(() => (data ? searchResponses(data.responses, query) : []), [data, query]);
 
   if (missing) return null;
 
@@ -145,6 +148,18 @@ export default function VoterReconcileBox({
               </div>
             ) : null}
             {msg ? <p className="text-[15px] font-bold text-[#1F4E79]">{msg}</p> : null}
+            <section data-testid="reconcile-all">
+              <h4 className="text-[16px] font-extrabold text-[#1F4E79]">낸 사람 전체 {data?.responses.length ?? 0} — 이름 찾기 · 조·이름 고치기(찬반은 고칠 수 없음)</h4>
+              <p className="text-[14px] text-[#5A6B73]">남의 이름을 잘못 골라 낸 경우: 그 줄의 [조·이름 고치기]로 실제 낸 사람 이름으로 바꾸면, 원래 이름의 주인이 다시 낼 수 있습니다.</p>
+              <input
+                className="mt-1 h-12 w-full rounded-lg border border-[#C4D8E4] px-3 text-[16px]"
+                value={query}
+                placeholder="이름이나 조로 찾기"
+                aria-label="낸 사람 찾기"
+                onChange={(e) => setQuery(e.target.value)}
+              />
+              <ul className="mt-2 max-h-80 space-y-1 overflow-auto">{found.map((r) => row(r))}</ul>
+            </section>
             <section>
               <h4 className="text-[16px] font-extrabold text-[#1F4E79]">QR 미제출 {rec.missingCount} (거수한 분 포함)</h4>
               <ul className="mt-1 space-y-1 text-[16px]">

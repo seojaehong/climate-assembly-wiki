@@ -270,3 +270,18 @@ function csvCell(v: string): string {
 export function namedCsvText(rows: readonly (readonly string[])[]): string {
   return `﻿${[NAMED_CSV_HEADER as readonly string[], ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n')}\r\n`;
 }
+
+/**
+ * 제출자 대조 — 낸 사람 전체에서 찾기(조·이름, 공백·대소문자 무시). 빈 검색어면 전부. 조 → 이름 순.
+ * 잘못 고른 이름(명단 안의 남의 이름)도 여기서 찾아 조·이름을 고친다 — 찬반은 고치지 않는다.
+ */
+export function searchResponses(responses: readonly NamedResponse[], query: string): NamedResponse[] {
+  const q = normalizeVoterName(query);
+  return responses
+    .filter((r) => !q || normalizeVoterName(`${r.voter_team ?? ''}${r.voter_name ?? ''}`).includes(q) || normalizeVoterName(r.voter_name).includes(q))
+    .sort(
+      (a, b) =>
+        compareTeam(a.voter_team ?? '', b.voter_team ?? '') ||
+        displayVoterName(a.voter_name).localeCompare(displayVoterName(b.voter_name), 'ko'),
+    );
+}

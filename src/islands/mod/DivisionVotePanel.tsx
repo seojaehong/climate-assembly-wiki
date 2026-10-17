@@ -20,6 +20,7 @@ import { createSafeBrowserStorage } from '../../lib/safe-browser-storage';
 import { BallotQrFullscreen } from './BallotPanel';
 import { NamedAccessContext, NamedResultBoard } from './NamedResultBoard';
 import VoterReconcileBox from './VoterReconcileBox';
+import { reconcileRoundOf } from './division-present';
 import DivisionBundleBoard from './DivisionBundleBoard';
 import ExpertNotes from './ExpertNotes';
 import ReviewerSlots from './ReviewerSlots';
@@ -2169,6 +2170,8 @@ export function MotionVoteBlock({ motion, state, update }: { motion: Motion; sta
   const [namesOpen, setNamesOpen] = useState(false);
   const lastBallotId = last ? state.ballots[last.requestId]?.ballotId ?? null : null;
   const namesOnBig = !!lastBallotId && present.names === lastBallotId;
+  // 제출자 대조는 투표 중에도(지금 차수) — 남의 이름을 잘못 고른 사람을 마감 전에 고친다. 없으면 마지막 결과 차수.
+  const reconcileRound = reconcileRoundOf(cur, last, state.ballots);
 
   // 두 번째 누름에서만 부른다(TwoStepButton). 칸이 비어 있으면 무장 문구가 그 사실을 알린다.
   const onMinority = () =>
@@ -2234,8 +2237,13 @@ export function MotionVoteBlock({ motion, state, update }: { motion: Motion; sta
           ) : null}
         </div>
       ) : null}
-      {last && lastBallotId && namedAccess ? (
-        <VoterReconcileBox access={namedAccess} ballotId={lastBallotId} csvName={`${divisionLabel(state.division)}_${motion.id}_${last.round}차`} />
+      {reconcileRound && namedAccess ? (
+        <VoterReconcileBox
+          key={reconcileRound.ballotId}
+          access={namedAccess}
+          ballotId={reconcileRound.ballotId}
+          csvName={`${divisionLabel(state.division)}_${motion.id}_${reconcileRound.round}차`}
+        />
       ) : null}
       {namesOpen && lastBallotId && last ? (
         <NamedResultBoard

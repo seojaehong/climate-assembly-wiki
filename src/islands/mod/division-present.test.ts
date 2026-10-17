@@ -153,3 +153,14 @@ describe('큰 화면 판정 — 판정 불가를 「부결」로 보이지 않�
     expect(html).not.toContain('부결');
   });
 });
+
+describe('제출자 대조 차수 — 투표 중에도 보인다', () => {
+  it('지금 차수(열림) → 그 투표, 무효면 마지막 결과 차수, 없으면 null', async () => {
+    const { reconcileRoundOf } = await import('./division-present');
+    const ballots = { a: { ballotId: 'A', voidedAt: undefined }, b: { ballotId: 'B', voidedAt: undefined }, c: { ballotId: null, voidedAt: undefined }, v: { ballotId: 'V', voidedAt: 'x' } };
+    expect(reconcileRoundOf({ requestId: 'b', round: 2 }, { requestId: 'a', round: 1 }, ballots)).toEqual({ ballotId: 'B', round: 2 });
+    expect(reconcileRoundOf({ requestId: 'c', round: 2 }, { requestId: 'a', round: 1 }, ballots)).toEqual({ ballotId: 'A', round: 1 });
+    expect(reconcileRoundOf({ requestId: 'v', round: 2 }, null, ballots)).toBeNull();
+    expect(reconcileRoundOf(null, null, ballots)).toBeNull();
+  });
+});

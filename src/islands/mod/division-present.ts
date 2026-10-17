@@ -130,3 +130,20 @@ export function presentVerdict(round: MotionRound, provisional: boolean): { word
   else if (v?.kind === 'invalid' && /참석 인원\(/.test(v.message)) reason = '찬반 합계가 참석 인원보다 많음';
   return { word: '판정불가', tone: 'warn', reason };
 }
+
+/**
+ * 제출자 대조 상자가 볼 차수 — 지금 차수(투표 중 포함)에 투표 번호가 있으면 그것, 아니면 마지막 결과 차수.
+ * 무효로 한 투표는 보지 않는다.
+ */
+export function reconcileRoundOf(
+  cur: Pick<MotionRound, 'requestId' | 'round'> | null | undefined,
+  last: Pick<MotionRound, 'requestId' | 'round'> | null | undefined,
+  ballots: Readonly<Record<string, Pick<BallotRecord, 'ballotId' | 'voidedAt'>>>,
+): { ballotId: string; round: number } | null {
+  for (const r of [cur, last]) {
+    if (!r) continue;
+    const b = ballots[r.requestId];
+    if (b?.ballotId && !b.voidedAt) return { ballotId: b.ballotId, round: r.round };
+  }
+  return null;
+}

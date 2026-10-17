@@ -219,3 +219,14 @@ describe('같은 이름 규칙', () => {
     expect(r.duplicates).toHaveLength(1);
   });
 });
+
+describe('제출자 찾기(정정용)', () => {
+  it('이름·조로 찾고, 명단 안의 이름도 나온다(남의 이름을 고른 경우 고치려고)', async () => {
+    const { searchResponses } = await import('./named-vote-logic');
+    const list = [resp('1분과 2조', '라마바'), resp('1분과 1조', '가나다'), resp('1분과 10조', '사 아자'), resp(null, null)];
+    expect(searchResponses(list, '').map((r) => r.voter_name)).toEqual([null, '가나다', '라마바', '사 아자']);
+    expect(searchResponses(list, '사아').map((r) => r.voter_name)).toEqual(['사 아자']);
+    expect(searchResponses(list, '2조').map((r) => r.voter_name)).toEqual(['라마바']);
+    expect(searchResponses(list, '1분과1조가나').map((r) => r.voter_name)).toEqual(['가나다']);
+  });
+});
