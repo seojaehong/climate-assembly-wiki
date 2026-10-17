@@ -64,7 +64,7 @@ if (bad.length) {
 const divisions = [...new Set(rows.map((r) => r.division as number))].sort();
 
 function report(sub: string, version: number | string, cur: PrepState) {
-  const p = planRecEdits(cur, rows);
+  const p = planRecEdits(cur, rows, process.argv.includes('--allow-voted'));
   const overwrites = p.changes.filter((c) => c.startsWith('바뀜') || c.startsWith('없어짐'));
   const mine = rows.filter((r) => r.division === cur.division);
   console.log(

@@ -209,7 +209,25 @@ export function checkRecEdits(source: RecsDivision, rows: readonly RecEditRow[])
       out.errors.push(`${where}: 처리 「${r.rawAction}」 — 유지·수정·삭제·이관·흡수·추가 중 하나여야 합니다.`);
       continue;
     }
-    if (!cards.has(e.card)) out.errors.push(`${where}: 권고카드 ${e.card || '(빈칸)'} 가 ${source.division}분과에 없습니다.`);
+    if (!cards.has(e.card)) {
+      if (e.action === '추가' && !e.no) {
+        out.warnings.push(`${where}: 추가 줄의 권고카드가 ${e.card || '(빈칸)'} 라 넣지 않습니다 — 시트에 카드 번호를 적어 주세요.`);
+        continue;
+      }
+      out.errors.push(`${where}: 권고카드 ${e.card || '(빈칸)'} 가 ${source.division}분과에 없습니다.`);
+    }
+    if (MOVES.includes(e.action) && !e.target) {
+      // 대상 칸이 비면 문구(예 「1-8-1-2를 1-8-2-1에 흡수」)에서 다른 번호를 찾아 본다
+      const nums = (e.text.match(/\d-\d+-\d+(?:-\d+)?/g) ?? []).filter((n) => n !== e.no);
+      if (nums.length) {
+        e.target = nums[0];
+        out.warnings.push(`${where}: 대상 칸이 비어 문구에서 ${nums[0]} 를 대상으로 읽음.`);
+      } else {
+        out.warnings.push(`${where}: ${e.action}인데 대상 번호가 없어 「→ (대상 미기재)」로 표시만 합니다.`);
+        out.edits.push({ ...e, target: '(대상 미기재)' });
+        continue;
+      }
+    }
     if (e.action === '추가' && e.no && idx.has(e.no)) {
       // 번호를 적은 추가 줄 — 출력물·휴대폰 규칙: 그 번호의 첫 줄이면 그 세부권고의 변경 문구, 둘째 줄부터는 카드 끝 다음 번호로 나뉨
       const rc = idx.get(e.no)!.card;
@@ -242,6 +260,19 @@ export function checkRecEdits(source: RecsDivision, rows: readonly RecEditRow[])
       seen.set(e.no, r.line);
     }
     if (e.action === '수정' && !e.text) out.errors.push(`${where}: 수정인데 수정 문구가 없습니다.`);
+    if (MOVES.includes(e.action) && e.target) {
+      // 현장 시트는 「2-4-1-4, 2-4-2-4(합침)」「2-1-1-4와 합치기」처럼 쓴다 — 앞의 번호 하나를 대상으로 읽고, 못 읽으면 글 그대로 표시만 한다
+      const m = /\d-\d+-\d+(?:-\d+)?/.exec(e.target);
+      const raw = e.target;
+      if (m && (isCardNo(m[0]) ? cards.has(m[0]) : idx.has(m[0]))) {
+        if (m[0] !== raw.trim()) out.warnings.push(`${where}: 대상 「${raw}」 → ${m[0]} 로 읽음.`);
+        e.target = m[0];
+      } else {
+        out.warnings.push(`${where}: 대상 「${raw}」 를 번호로 읽지 못해 표시만 합니다(받는 카드에는 안 붙음).`);
+        out.edits.push({ ...e });
+        continue;
+      }
+    }
     if (MOVES.includes(e.action)) {
       if (!e.target) out.errors.push(`${where}: ${e.action}인데 대상 번호가 없습니다.`);
       else {
@@ -251,7 +282,10 @@ export function checkRecEdits(source: RecsDivision, rows: readonly RecEditRow[])
           const other = tc && !tc.startsWith(`${source.division}-`);
           out.errors.push(`${where}: 대상 ${e.target} ${other ? '은 다른 분과입니다(분과를 넘는 이관·흡수는 안 됩니다).' : `가 ${source.division}분과에 없습니다.`}`);
         } else if (e.no && (e.target === e.no || (isCardNo(e.target) && e.target === cardOfRec(e.no)))) {
-          out.errors.push(`${where}: ${e.no} 의 대상이 자기 자신(또는 자기 카드)입니다.`);
+          // 자기 카드 안에서 정리한 것 — 문구가 있으면 수정으로, 없으면 원안 유지로 본다
+          out.warnings.push(`${where}: ${e.no} 의 대상이 자기 카드라 ${e.text ? '수정' : '원안 유지'}으로 봅니다.`);
+          if (e.text) out.edits.push({ ...e, action: '수정', target: '' });
+          continue;
         }
       }
     } else if (e.target && e.action !== '유지') out.warnings.push(`${where}: ${e.action}인데 대상 번호(${e.target})가 있어 무시합니다.`);
@@ -290,10 +324,11 @@ const editText = (e: RecEdit) => `${e.no ?? e.card} ${e.action}${e.target ? ` �
  * 한 분과 판에 검토표를 적용한다 — 그 분과의 세부권고 처리 목록을 파일 것으로 통째로 바꾼다(전부 아니면 전무).
  * 투표 기록이 있는 판은 오류.
  */
-export function planRecEdits(current: import('./division-vote-logic').PrepState, rows: readonly RecEditRow[]): RecEditPlan {
+export function planRecEdits(current: import('./division-vote-logic').PrepState, rows: readonly RecEditRow[], allowVoted = false): RecEditPlan {
   const check = checkRecEdits(current.source, rows);
   const plan: RecEditPlan = { ...check, division: current.division, cardDiff: [], changes: [], emptied: [], state: current };
-  if (Object.keys(current.ballots).length || current.motions.some((m) => m.rounds.length)) {
+  // allowVoted: 세부권고 표시(처리 목록)만 바꾼다 — 투표·차수 기록은 손대지 않는다(현장 결정 10/17 16시)
+  if (!allowVoted && (Object.keys(current.ballots).length || current.motions.some((m) => m.rounds.length))) {
     plan.errors.unshift('이 분과는 투표 기록이 있어 바꾸지 않습니다.');
     return plan;
   }
