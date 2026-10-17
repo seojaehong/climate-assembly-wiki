@@ -9,6 +9,7 @@
 import { readFileSync } from 'node:fs';
 import { importSimilarGroups, initPrepState, parseImport, parseSimilarGroups } from '../src/islands/mod/division-vote-logic';
 import { bundleViews } from '../src/islands/mod/division-bundle';
+import { cardMotionsState } from '../src/islands/mod/division-card-seed';
 import { attachExpertOpinions, parseExpertFile } from '../src/islands/mod/division-expert';
 
 const arg = (k: string) => {
@@ -43,6 +44,13 @@ for (const source of recs.divisions) {
       ` · 두 번 든 카드 ${twice.length}${twice.length ? `(${twice.join(',')})` : ''} · 조 없는 카드 ${noTeam.length}`,
   );
   if (res.failed.length || missing.length || twice.length || noTeam.length) bad = true;
+  if (process.argv.includes('--per-card')) {
+    const pc = cardMotionsState(source, mine);
+    const order = pc.state.motions.map((m) => `${m.group?.letter ?? '?'}${m.cardNos[0]}`);
+    const untitled = pc.state.motions.filter((m) => m.title === '(제목 미정)').length;
+    console.log(`  카드별: 안 ${pc.created} · 못 만듦 ${pc.failed.length}${pc.failed.length ? `(${pc.failed.map((f) => f.card).join(',')})` : ''} · 제목 미정 ${untitled} · 순서 ${order.slice(0, 6).join(' ')} …`);
+    if (pc.failed.length || pc.created !== all.length) bad = true;
+  }
   if (expert) {
     const recCount = source.topics.reduce((n, t) => n + t.cards.reduce((m, c) => m + c.recs.length, 0), 0);
     const r = attachExpertOpinions(res.state, expert);

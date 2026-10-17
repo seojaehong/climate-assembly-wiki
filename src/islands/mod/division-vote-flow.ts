@@ -20,6 +20,19 @@ import type {
 import { MAX_BALLOT_ITEMS, MAX_STATEMENT_LENGTH } from './ballot-panel-logic';
 import { parseMotionStatement } from '../../lib/division-ballot-format';
 import { isDelegationMotion } from './division-reviewers';
+import { cardRecList, recDescription, recLine, remainingRecs } from './division-rec-edits';
+
+/** 안 하나의 남은 세부권고(카드 여럿이면 이어서) — 세부권고 처리가 없으면 빈 글. */
+export function motionRecDescription(state: Pick<PrepState, 'source' | 'recEdits'>, m: Pick<Motion, 'cardNos'>): string {
+  if (!state.recEdits) return '';
+  return m.cardNos.map((c) => recDescription(cardRecList(state.source, state.recEdits ?? [], c))).filter(Boolean).join('\n');
+}
+
+/** 결과 CSV 「최종 세부권고」 칸 — 남은 세부권고 한 줄씩(번호·표시 포함). */
+export function motionRecCsv(state: Pick<PrepState, 'source' | 'recEdits'>, m: Pick<Motion, 'cardNos'>): string {
+  if (!state.recEdits) return '';
+  return m.cardNos.flatMap((c) => remainingRecs(cardRecList(state.source, state.recEdits ?? [], c)).map(recLine)).join('\n');
+}
 import {
   CRITERIA,
   CRITERION_LABELS,
@@ -337,6 +350,8 @@ export function beginVote(state: PrepState, motionIds: readonly string[], reques
     instructions: plan.payload.instructions ?? '',
     subgroup: plan.payload.subgroup,
     statements: plan.payload.items.map((it) => it.statement),
+    // 10/17 카드별 투표 — 세부권고 처리가 있으면 휴대폰에 남은 세부권고를 문항 설명으로 보낸다(시작할 때 고정).
+    ...(state.recEdits ? { descriptions: motions.map((m) => motionRecDescription(state, m)) } : {}),
     motionIds: motions.map((m) => m.id),
     round,
     stage: 'creating',
@@ -385,7 +400,13 @@ export function createInputOf(record: BallotRecord): BallotCreateInput {
     title: record.title,
     instructions: record.instructions,
     subgroup: record.subgroup,
-    items: record.statements.map((statement, i) => ({ ordinal: i + 1, statement, scale: 2, required: true })),
+    items: record.statements.map((statement, i) => ({
+      ordinal: i + 1,
+      statement,
+      ...(record.descriptions?.[i] ? { description: record.descriptions[i] } : {}),
+      scale: 2,
+      required: true,
+    })),
   };
 }
 
@@ -862,6 +883,8 @@ export const CSV_COLUMNS = [
   '기타의견', '소수의견', '투표ID', '마감시각',
   // 10/15 — 14:45~16:00 문안 수정 시간에 고친 문안(안 카드 「수정 문안」 칸). 투표 제목(가결 기록)과 따로 남긴다.
   '수정문안',
+  // 10/17 오후 — 카드별 투표: 오전 검토 뒤 남은 세부권고(한 줄씩).
+  '최종세부권고',
 ] as const;
 
 /** 서울 시각 「2026-10-17 14:05:09」. 읽을 수 없으면 빈칸. */
@@ -913,6 +936,7 @@ export function resultCsvRows(state: PrepState): string[][] {
       r ? state.ballots[r.requestId]?.ballotId ?? '' : '',
       r ? formatKst(r.closedAt) : '',
       m.text,
+      motionRecCsv(state, m),
     ];
     const last = currentRound(m);
     m.rounds.forEach((r) => {

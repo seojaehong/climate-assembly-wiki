@@ -46,6 +46,9 @@ export function carryOverRecords(cur: PrepState, next: PrepState): { state: Prep
       carried.push(`묶음 ${id}`);
     } else dropped.push(`묶음 ${id}`);
   }
+  // 세부권고 처리(10/17 오후)도 옮긴다 — 카드 번호는 다시 깔아도 같다.
+  const recEdits = cur.recEdits ? cur.recEdits.map((e) => ({ ...e })) : undefined;
+  if (recEdits?.length) carried.push(`세부권고 처리 ${recEdits.length}건`);
   const reviewers = { ...(cur.reviewers ?? {}) };
   const hasReviewers = Object.values(reviewers).some((v) => v && v.trim());
   if (hasReviewers) carried.push('검토위원');
@@ -54,6 +57,7 @@ export function carryOverRecords(cur: PrepState, next: PrepState): { state: Prep
       ...next,
       ...(Object.keys(bundles).length ? { bundles } : {}),
       ...(hasReviewers ? { reviewers: { ...(next.reviewers ?? {}), ...reviewers } } : {}),
+      ...(recEdits ? { recEdits } : {}),
     },
     carried,
     dropped,

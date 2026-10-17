@@ -11,6 +11,8 @@
  * - --force 를 --replace 와 함께 주면(10/17 A–G 묶음으로 다시 깔기, 사용자 승인) 사람이 넣은 제목·의견·참석도 버리고 바꾼다.
  *   ★ 그래도 투표 기록(차수·투표)이 있는 분과는 절대 바꾸지 않는다. 미리보기에서 버려질 항목을 먼저 확인할 것.
  * - --groups 에 bundles_ag_1017.json(A–G 묶음)을 주면 그 묶음으로 안을 만든다(유사 묶음 파일과 같은 모양 + letter·card_teams).
+ * - --per-card(10/17 오후 결정): 카드(3자리) 하나 = 안 하나, 제목은 카드 원 제목(빈 제목은 「(제목 미정)」), 순서는 묶음 A..G → 카드 번호.
+ *   --groups 의 A–G 묶음은 줄 세우기·묶어 보기에만 쓴다. 투표 기록이 있는 분과는 바꾸지 않는다(--replace --force 필요).
  * - --apply 는 --after-deploy 와 함께만 된다(판 번호 5 — 배포·전 화면 새로고침 뒤).
  * - --expert <expert_1017.json> 을 주면 세부권고마다 전문가 의견을 원천에 붙인다. 이미 있는 판도 그 칸만 바꿔 저장한다
  *   (사람이 넣은 내용은 그대로). 공개 저장소·번들에는 넣지 않는다.
@@ -19,6 +21,7 @@ import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { attachExpertOpinions, parseExpertFile } from '../src/islands/mod/division-expert';
 import { carryOverRecords, humanInput as humanInputOf } from '../src/islands/mod/division-reseed';
+import { cardMotionsState } from '../src/islands/mod/division-card-seed';
 import {
   createAgendaMotion,
   importSimilarGroups,
@@ -43,6 +46,7 @@ const groupsPath = arg('--groups');
 const apply = process.argv.includes('--apply');
 const replace = process.argv.includes('--replace');
 const force = process.argv.includes('--force');
+const perCard = process.argv.includes('--per-card');
 // 이 로더는 판 번호 5(전문가 의견·검토위원 칸)로 쓴다. v4 화면(8188aec)이 떠 있으면 그 화면은 이 판을 못 읽는다.
 if (apply && !process.argv.includes('--after-deploy')) {
   throw new Error('판 번호 5로 씁니다. (3)+(4) 배포 → 모든 분과 PC·운영 노트북·발표 창 새로고침 뒤에 --after-deploy 를 붙여 다시 실행하십시오.');
@@ -94,7 +98,13 @@ for (const source of recs.divisions) {
   const sub = `${source.division}분과`;
   const row = (got.rows ?? []).find((r: { subgroup: string }) => r.subgroup === sub) ?? { version: 0, state: null };
   const mine = groups.groups.filter((g) => g.division === source.division);
-  const res = importSimilarGroups(initPrepState(source), mine);
+  // --per-card(10/17 오후): 카드 하나 = 안 하나(제목은 카드 원 제목), 묶음 A..G → 카드 번호 순. 아니면 묶음 하나 = 안 하나.
+  const res: { state: PrepState; created: { length: number }; failed: { groupId: string; reason: string }[] } = perCard
+    ? (() => {
+        const r = cardMotionsState(source, mine);
+        return { state: r.state, created: { length: r.created }, failed: r.failed.map((f) => ({ groupId: f.card, reason: f.reason })) };
+      })()
+    : importSimilarGroups(initPrepState(source), mine);
   for (const a of agendaSpecs(source.division)) {
     const made = createAgendaMotion(res.state, { title: a.title, text: '', key: a.key });
     if (!made.ok) throw new Error(`${sub} 안건 만들기 실패: ${made.error}`);
@@ -103,7 +113,7 @@ for (const source of recs.divisions) {
   res.state = withExpert(res.state, sub);
   const cards = Object.keys(res.state.cards).length;
   const agendas = res.state.motions.filter((m) => m.cardNos.length === 0).map((m) => m.id);
-  const line = `${sub}: 카드 ${cards} · 묶음 안 ${res.created.length} · 최종 안건 ${agendas.join(',')}${res.failed.length ? ` · 못 만듦 ${res.failed.map((f) => f.groupId).join(',')}` : ''}`;
+  const line = `${sub}: 카드 ${cards} · ${perCard ? '카드별 안' : '묶음 안'} ${res.created.length} · 최종 안건 ${agendas.join(',')}${res.failed.length ? ` · 못 만듦 ${res.failed.map((f) => f.groupId).join(',')}` : ''}`;
   if (res.failed.length) failed = true;
   let next = res.state;
   if (row.version && row.state) {

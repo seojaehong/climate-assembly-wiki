@@ -179,7 +179,7 @@ describe('준비판 v2 — 옛 저장(v1)도 읽는다', () => {
     bad5.ballots['req-1'].stage = 'open';
     bad5.ballots['req-1'].ballotId = null; // 열렸는데 id 없음
     const bad6 = j();
-    bad6.v = 6; // 모르는 판(3 은 10/14 판, 4·5 는 10/17 묶음 기록·전문가 의견 판)
+    bad6.v = 7; // 모르는 판(3 은 10/14 판, 4·5·6 은 10/17 판)
     for (const b of [bad1, bad2, bad3, bad4, bad5, bad6]) expect(migratePrep(b)).toBeNull();
     expect(migratePrep(null)).toBeNull();
     expect(migratePrep('문자열')).toBeNull();
@@ -629,9 +629,10 @@ describe('세리머니 — 저장된 결과 공개', () => {
 });
 
 describe('결과 CSV', () => {
-  it('머리줄 25칸이 정한 순서 · 기준 이름이 화면과 같다', () => {
-    expect(CSV_COLUMNS).toHaveLength(25);
+  it('머리줄 26칸이 정한 순서 · 기준 이름이 화면과 같다', () => {
+    expect(CSV_COLUMNS).toHaveLength(26);
     expect(CSV_COLUMNS[24]).toBe('수정문안');
+    expect(CSV_COLUMNS[25]).toBe('최종세부권고');
     expect(CSV_COLUMNS.slice(15, 20)).toEqual(CRITERIA_COLUMN_LABELS);
     const csv = toCsv([]);
     expect(csv.startsWith('﻿분과,안번호,제목,원카드번호,차수,')).toBe(true);
@@ -662,11 +663,11 @@ describe('결과 CSV', () => {
       '2분과', '2-1-안1', '다회용기 확대', '2-1-1', '1차', '60', '45',
       '28', '10', '3', '1', '31', '11', '30', '가결',
       '충족', '미충족(직접)', '-', '-', '동수',
-      '의견, 하나', '', 'ballot-req-1', '2026-10-17 14:05:09', '문안 수정 시간에 다듬은 문구',
+      '의견, 하나', '', 'ballot-req-1', '2026-10-17 14:05:09', '문안 수정 시간에 다듬은 문구', '',
     ]);
     expect(rows[1].slice(0, 5)).toEqual(['2분과', '2-1-안2', '회수 체계', '2-1-2', '']);
     expect(rows[1][14]).toBe('미투표');
-    expect(rows.every((r) => r.length === 25)).toBe(true);
+    expect(rows.every((r) => r.length === 26)).toBe(true);
     const csv = toCsv(rows);
     expect(csv).toContain('"의견, 하나"');
     expect(csv.split('\r\n')).toHaveLength(5); // 머리줄 + 3줄 + 끝 빈칸

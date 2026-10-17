@@ -11,6 +11,7 @@
  *   누구나 내려받는다. 화면이 「JSON 가져오기」로 받아 브라우저 저장소에만 둔다.
  */
 
+import { REC_ACTIONS, type RecAction, type RecEdit } from './division-rec-edits';
 import { computeQuorum } from '../quorum/quorum';
 import type {
   BallotCreateInput,
@@ -173,6 +174,8 @@ export type Motion = {
    * 안1 → 안2). 이 화면의 뒤이은 고침은 번호가 아니라 이 열쇠로 안을 찾는다(motionRef·onMotion). 옛 안에는 없다(그때는 id).
    */
   key?: string;
+  /** 10/17 카드별 투표 — 화면 순서(묶음 A..G → 카드 번호). 있으면 이것으로 먼저 줄 세운다. 옛 안에는 없다. */
+  order?: number;
 };
 
 export type MotionGroup = {
@@ -225,6 +228,8 @@ export type BallotRecord = {
   instructions: string;
   subgroup: string;
   statements: string[];
+  /** 문항 설명(휴대폰에 보이는 남은 세부권고, 10/17 카드별 투표). 있으면 statements 와 같은 길이. 재시도 때 같은 내용을 보낸다. */
+  descriptions?: string[];
   /** statements 와 같은 순서(문항 번호 = 자리 + 1). */
   motionIds: string[];
   round: number;
@@ -249,7 +254,8 @@ export type Attendance = { enrolled: number | null; present: number | null };
  * 2 를 읽는 옛 화면(5f9920b)은 모르는 칸을 버리고 다시 저장하므로 — 무효가 되살아나고 묶음·거수 확인이 사라진다 —
  * 새 화면은 3 으로 쓴다. 옛 화면은 3 을 「읽을 수 없는 판」으로 보고 저장하지 않는다. 읽기는 1·2·3 모두.
  */
-export const PREP_VERSION = 5;
+export const PREP_VERSION = 6;
+// 6(10/17 오후) = 카드별 투표 — 안 순서(order)·세부권고 처리(recEdits)·투표 문항 설명(ballots[].descriptions). 5 화면은 이 칸을 버린다.
 // 5(10/17 오후) = 세부권고 전문가 의견(source…recs[].expert)·위임 안건 검토위원(reviewers). 4 를 쓰는 화면은 이 칸들을 버리고 저장하므로 다시 올렸다.
 // 4(10/17) = 묶음 기록(bundles)·A–G 묶음 칸(letter·level·common·cardTeams)이 들어간 판. 3 을 쓰는 옛 화면은 이 칸들을
 // 버리고 저장하므로, 4 를 「읽을 수 없는 판」으로 보고 저장하지 않게 판 번호를 올렸다(새로고침하면 새 화면).
@@ -267,6 +273,8 @@ export type PrepState = {
   bundles?: Record<string, BundleRecord>;
   /** 위임 안건의 검토위원(시민대표) — 조 번호('1'..'5') → 이름. 연락처는 두지 않는다. */
   reviewers?: Partial<Record<TeamNo, string>>;
+  /** 오전 검토표의 세부권고 처리(10/17 오후, division-rec-edits.ts). 유지는 넣지 않는다. */
+  recEdits?: RecEdit[];
 };
 
 export function initPrepState(source: RecsDivision): PrepState {
@@ -615,7 +623,9 @@ export function sortMotions(source: RecsDivision, motions: Motion[]): Motion[] {
     return i < 0 ? topicOrder.length : i;
   };
   const k = (motion: Motion) => Number(motion.id.slice(`${motion.topicNo}-안`.length)) || 0;
-  return [...motions].sort((a, b) => t(a) - t(b) || k(a) - k(b));
+  // 순서(order)가 있는 안이 먼저, 그 안에서는 순서대로. 없는 안(옛 안·최종 안건)은 그 뒤에 주제·번호 순.
+  const o = (motion: Motion) => (motion.order === undefined ? 1 : 0);
+  return [...motions].sort((a, b) => o(a) - o(b) || (a.order ?? 0) - (b.order ?? 0) || t(a) - t(b) || k(a) - k(b));
 }
 
 /** 화면이 안을 가리킬 때 쓰는 값 — 열쇠가 있으면 열쇠, 없으면(옛 안) 안 번호. */
@@ -966,6 +976,7 @@ function readMotion(x: unknown, source: RecsDivision, v: 1 | 2 | 3): Motion | nu
     group = { id: g.id, name: g.name, recs, teams, ...extras };
   }
   if (x.key !== undefined && (!isStr(x.key) || !x.key)) return null;
+  if (x.order !== undefined && !(typeof x.order === 'number' && Number.isFinite(x.order))) return null;
   const base = {
     id: x.id,
     topicNo: x.topicNo,
@@ -974,6 +985,7 @@ function readMotion(x: unknown, source: RecsDivision, v: 1 | 2 | 3): Motion | nu
     text: x.text,
     ...(group ? { group } : {}),
     ...(x.key !== undefined ? { key: x.key as string } : {}),
+    ...(x.order !== undefined ? { order: x.order as number } : {}),
   };
   if (v === 1) {
     if (!isObj(x.criteria)) return null;
@@ -1025,7 +1037,9 @@ function readBallot(key: string, x: unknown): BallotRecord | null {
   if (x.stage !== 'creating' && (!ballotId || !token)) return null;
   if (x.createdAt !== undefined && !isStr(x.createdAt)) return null;
   if (x.voidedAt !== undefined && !isStr(x.voidedAt)) return null;
+  if (x.descriptions !== undefined && (!Array.isArray(x.descriptions) || !x.descriptions.every(isStr) || x.descriptions.length !== x.statements.length)) return null;
   return {
+    ...(x.descriptions !== undefined ? { descriptions: [...(x.descriptions as string[])] } : {}),
     ...(x.createdAt !== undefined ? { createdAt: x.createdAt as string } : {}),
     ...(x.voidedAt !== undefined ? { voidedAt: x.voidedAt as string } : {}),
     requestId: key,
@@ -1062,8 +1076,8 @@ function readAttendance(x: unknown): Attendance | null {
 }
 
 function readPrep(x: Record<string, unknown>): PrepState | null {
-  if ((x.v !== 1 && x.v !== 2 && x.v !== 3 && x.v !== 4 && x.v !== PREP_VERSION) || !Number.isInteger(x.division)) return null;
-  const v = (x.v === 4 || x.v === PREP_VERSION ? 3 : x.v) as 1 | 2 | 3;
+  if ((x.v !== 1 && x.v !== 2 && x.v !== 3 && x.v !== 4 && x.v !== 5 && x.v !== PREP_VERSION) || !Number.isInteger(x.division)) return null;
+  const v = (x.v === 4 || x.v === 5 || x.v === PREP_VERSION ? 3 : x.v) as 1 | 2 | 3;
   const source = readDivision(x.source);
   if (!source || source.division !== x.division) return null;
   if (!isObj(x.cards) || !Array.isArray(x.motions)) return null;
@@ -1094,6 +1108,16 @@ function readPrep(x: Record<string, unknown>): PrepState | null {
   for (const m of motions as Motion[]) {
     if (m.rounds.some((r) => !ballots[r.requestId])) return null;
   }
+  let recEdits: RecEdit[] | undefined;
+  if (x.recEdits !== undefined) {
+    if (!Array.isArray(x.recEdits)) return null;
+    recEdits = [];
+    for (const e of x.recEdits) {
+      if (!isObj(e) || !(e.no === null || isStr(e.no)) || !isStr(e.card) || !isStr(e.text) || !isStr(e.target) || !isStr(e.note)) return null;
+      if (!REC_ACTIONS.includes(e.action as RecAction)) return null;
+      recEdits.push({ no: e.no as string | null, card: e.card, action: e.action as RecAction, text: e.text, target: e.target, note: e.note });
+    }
+  }
   let reviewers: Partial<Record<TeamNo, string>> | undefined;
   if (x.reviewers !== undefined) {
     if (!isObj(x.reviewers)) return null;
@@ -1123,6 +1147,7 @@ function readPrep(x: Record<string, unknown>): PrepState | null {
     ballots,
     ...(bundles ? { bundles } : {}),
     ...(reviewers ? { reviewers } : {}),
+    ...(recEdits ? { recEdits } : {}),
   };
 }
 

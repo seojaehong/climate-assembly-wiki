@@ -386,16 +386,17 @@ describe('major — 판 번호 3', () => {
     s = importSimilarGroups(v.state, [{ id: '유사1', division: 2, name: '공통', recs: [], cards: ['2-1-2'], teams: [] }]).state;
     const j = JSON.parse(serializePrep(s));
     // 10/17 — 판 번호 5(묶음 기록·A–G 칸 = 4, 전문가 의견 = 5). 3·4 는 그대로 읽는다.
-    expect(j.v).toBe(5);
-    expect(PREP_VERSION).toBe(5);
+    expect(j.v).toBe(6);
+    expect(PREP_VERSION).toBe(6);
     const back = migratePrep(j);
     expect(back).toEqual(s);
     // 옛 판 번호(2·3·4)로 적힌 같은 내용도 읽고, 쓰면 5
     const asV2 = migratePrep({ ...j, v: 2 });
-    expect(asV2?.v).toBe(5);
-    expect(migratePrep({ ...j, v: 3 })?.v).toBe(5);
-    expect(migratePrep({ ...j, v: 4 })?.v).toBe(5);
-    expect(migratePrep({ ...j, v: 6 })).toBeNull();
+    expect(asV2?.v).toBe(6);
+    expect(migratePrep({ ...j, v: 3 })?.v).toBe(6);
+    expect(migratePrep({ ...j, v: 4 })?.v).toBe(6);
+    expect(migratePrep({ ...j, v: 5 })?.v).toBe(6);
+    expect(migratePrep({ ...j, v: 7 })).toBeNull();
     // 빈 열쇠는 거절
     const badKey = JSON.parse(serializePrep(s));
     badKey.motions[0].key = '';
