@@ -90,6 +90,7 @@ for (const d of divisions) {
   console.log(`\n── ${sub} (서버 판 ${row.version}) — 바뀜 ${r.changes.length} · 덮어씀 ${r.overwrites.length} · 오류 ${r.errors.length} · 경고 ${r.warnings.length}`);
   for (const c of r.changes) console.log(`  바뀜  ${c}`);
   for (const o of r.overwrites) console.log(`  덮어씀 ${o}`);
+  for (const u of r.unchanged) console.log(`  그대로 ${u}`);
   for (const w of r.warnings) console.log(`  경고  ${w}`);
   for (const e of r.errors) console.log(`  오류  ${e}`);
   if (r.errors.length) {

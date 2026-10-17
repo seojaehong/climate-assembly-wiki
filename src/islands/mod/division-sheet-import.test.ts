@@ -152,3 +152,33 @@ describe('시트 적용', () => {
     expect(sheetFileErrors(sheet.rows, [1, 2, 3])).toHaveLength(1);
   });
 });
+
+describe('다시 넣기 — 안번호 빈 줄은 같은 제목의 안을 다시 만들지 않는다', () => {
+  it('같은 CSV 를 두 번 적용해도 안 수가 그대로, 둘째에는 「그대로」', () => {
+    const s0 = seeded();
+    const a1 = bundleViews(s0)[0].motions[0].id;
+    const text = csv([
+      `2분과,2A,묶음2A,높음,,합친다,1조 3조,${a1},첫 안,,`,
+      `2분과,2A,묶음2A,높음,,합친다,1조 3조,,보증금 제도는 따로,,`,
+    ]);
+    const sheet = readSheet(text);
+    if (!sheet.ok) throw new Error();
+    const once = applySheet(s0, sheet.rows);
+    expect(once.errors).toEqual([]);
+    const twice = applySheet(once.state, sheet.rows);
+    expect(twice.errors).toEqual([]);
+    expect(twice.changes).toEqual([]);
+    expect(twice.unchanged).toHaveLength(1);
+    expect(twice.state).toEqual(once.state);
+    expect(ids(twice.state)['2A']).toHaveLength(2);
+  });
+  it('앞뒤 공백만 다른 제목도 같은 안으로 본다', () => {
+    const s0 = seeded();
+    const first = readSheet(csv([`2분과,2B,묶음2B,높음,,합친다,2조,,순환센터 설치,,`]));
+    const again = readSheet(csv([`2분과,2B,묶음2B,높음,,합친다,2조,,  순환센터 설치 ,,`]));
+    if (!first.ok || !again.ok) throw new Error();
+    const a = applySheet(s0, first.rows);
+    const b = applySheet(a.state, again.rows);
+    expect(ids(b.state)['2B']).toEqual(ids(a.state)['2B']);
+  });
+});

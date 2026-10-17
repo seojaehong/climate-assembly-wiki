@@ -149,6 +149,8 @@ export type SheetResult = {
   changes: string[];
   /** 서버에 사람이 넣은 값이 다른 값으로 바뀌는 것 — --force 없이는 쓰지 않는다. */
   overwrites: string[];
+  /** 안번호 빈 줄인데 같은 제목의 안이 이미 있어 그대로 둔 것(다시 넣기). */
+  unchanged: string[];
 };
 
 const short = (s: string, n = 40) => (s.length > n ? `${s.slice(0, n)}…` : s);
@@ -163,7 +165,7 @@ export function applySheet(
   roster?: ReadonlyMap<string, readonly string[]>,
 ): SheetResult {
   const division = current.division;
-  const out: SheetResult = { division, state: current, errors: [], warnings: [], changes: [], overwrites: [] };
+  const out: SheetResult = { division, state: current, errors: [], warnings: [], changes: [], overwrites: [], unchanged: [] };
   const mine = rows.filter((r) => r.division === division);
   if (Object.keys(current.ballots).length || current.motions.some((m) => m.rounds.length)) {
     out.errors.push('이 분과는 투표 기록이 있어 시트로 바꾸지 않습니다.');
@@ -213,6 +215,12 @@ export function applySheet(
     if (!v) continue;
     if (!r.motionId) {
       if (!r.title.trim()) continue; // 기록만 있는 줄
+      // 같은 파일을 다시 넣어도 안이 늘지 않게 — 이 묶음에 같은 제목(앞뒤 공백 무시)의 안이 있으면 그 안을 쓴다.
+      const same = s.motions.find((m) => m.group?.id === r.bundle && m.title.trim() === r.title.trim());
+      if (same) {
+        out.unchanged.push(`${r.line}행: ${same.id} 그대로(같은 제목의 안이 이미 있음)`);
+        continue;
+      }
       const made = addBundleMotion(s, r.bundle, nextBundleMotionNo(s, r.bundle));
       if (!made.motionId) {
         out.errors.push(`${r.line}행: 묶음 ${r.bundle}에 안을 더하지 못했습니다.`);
