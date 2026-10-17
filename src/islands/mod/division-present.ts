@@ -4,7 +4,7 @@
  * 같은 PC 안 창끼리라 서버를 거치지 않고 글자를 치는 대로 바로 보인다. 발표 창은 아무것도 저장하지 않는다.
  * 순수 로직이라 vitest 로 검증한다.
  */
-import { currentRound, handPending, roundThreshold, roundTotals } from './division-vote-flow';
+import { currentRound, handPending, roundThreshold, roundTotals, roundVerdict } from './division-vote-flow';
 import type { BallotRecord, Motion, MotionRound, PrepState } from './division-vote-logic';
 
 export const PRESENT_QUERY = 'present';
@@ -114,4 +114,19 @@ export function presentNamesBallot(
   const m = msgNames ?? null;
   const eff = local && local.msgNames === m ? local.show : m;
   return eff && sceneBallotId && eff === sceneBallotId ? eff : null;
+}
+
+/**
+ * 큰 화면 판정 글자(10/17 점검 HIGH) — 판정 불가(참석 인원 비었음·찬반 합계가 참석보다 많음·의사정족수 미달)를
+ * 「부결」로 보이지 않는다. 거수 확인 전이면 「집계 중」.
+ */
+export function presentVerdict(round: MotionRound, provisional: boolean): { word: '가결' | '부결' | '판정불가' | '집계 중'; tone: 'pass' | 'fail' | 'warn'; reason: string | null } {
+  if (provisional) return { word: '집계 중', tone: 'warn', reason: null };
+  const v = roundVerdict(round);
+  if (v && v.kind === 'decided') return v.passed ? { word: '가결', tone: 'pass', reason: null } : { word: '부결', tone: 'fail', reason: null };
+  let reason = '판정 조건 확인 필요';
+  if (round.enrolled === null || round.present === null) reason = '참석 인원 확인 중';
+  else if (v?.kind === 'no-quorum') reason = '의사정족수 미달';
+  else if (v?.kind === 'invalid' && /참석 인원\(/.test(v.message)) reason = '찬반 합계가 참석 인원보다 많음';
+  return { word: '판정불가', tone: 'warn', reason };
 }

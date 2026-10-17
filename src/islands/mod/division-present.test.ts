@@ -112,3 +112,44 @@ describe('발표 창 이름 화면 — 노트북 값이 기준, 돌아가기가 
     expect(presentNamesBallot('b1', null, null)).toBeNull();
   });
 });
+
+describe('큰 화면 판정 — 판정 불가를 「부결」로 보이지 않는다', () => {
+  const R = (o: Partial<import('./division-vote-logic').MotionRound>) => ({
+    round: 1, requestId: 'a', title: 't', onlineYes: 30, onlineNo: 5, handYes: 0, handNo: 0,
+    enrolled: 60, present: 45, verdict: null, closedAt: '2026-10-17T07:00:00Z', ...o,
+  }) as import('./division-vote-logic').MotionRound;
+  it('가결·부결은 그대로', async () => {
+    const { presentVerdict } = await import('./division-present');
+    expect(presentVerdict(R({}), false).word).toBe('가결');
+    expect(presentVerdict(R({ onlineYes: 5, onlineNo: 30 }), false).word).toBe('부결');
+  });
+  it('참석 인원 비었음·찬반이 참석보다 많음·정족수 미달 → 판정불가 + 짧은 이유', async () => {
+    const { presentVerdict } = await import('./division-present');
+    const a = presentVerdict(R({ present: null }), false);
+    expect(a).toEqual({ word: '판정불가', tone: 'warn', reason: '참석 인원 확인 중' });
+    const b = presentVerdict(R({ onlineYes: 40, onlineNo: 10 }), false);
+    expect(b.word).toBe('판정불가');
+    expect(b.reason).toBe('찬반 합계가 참석 인원보다 많음');
+    const c = presentVerdict(R({ present: 10 , onlineYes: 5, onlineNo: 1 }), false);
+    expect(c.word).toBe('판정불가');
+    expect(c.reason).toBe('의사정족수 미달');
+  });
+  it('거수 확인 전은 집계 중', async () => {
+    const { presentVerdict } = await import('./division-present');
+    expect(presentVerdict(R({ present: null }), true).word).toBe('집계 중');
+  });
+  it('발표 창 결과 화면이 판정불가를 그린다', async () => {
+    const { createElement } = await import('react');
+    const { renderToStaticMarkup } = await import('react-dom/server');
+    const { ResultView } = await import('./DivisionPresentScreen');
+    const { presentVerdict } = await import('./division-present');
+    const html = renderToStaticMarkup(
+      createElement(ResultView, {
+        division: 1, motion: { id: '1-1-안1' } as never, title: '안', yes: 40, no: 10, threshold: null,
+        verdict: presentVerdict(R({ onlineYes: 40, onlineNo: 10 }), false), roundNo: 1,
+      }),
+    );
+    expect(html).toContain('data-verdict="판정불가"');
+    expect(html).not.toContain('부결');
+  });
+});

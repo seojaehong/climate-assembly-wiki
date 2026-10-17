@@ -10,6 +10,7 @@ import {
   presentChannelName,
   presentScene,
   presentNamesBallot,
+  presentVerdict,
   presentTitleSize,
   type PresentNamesLocal,
   type PresentStateMessage,
@@ -120,8 +121,7 @@ export default function DivisionPresentScreen({ scope, access = null }: { scope:
           yes={scene.yes}
           no={scene.no}
           threshold={scene.threshold}
-          provisional={scene.provisional}
-          passed={scene.round.verdict === 'passed'}
+          verdict={presentVerdict(scene.round, scene.provisional)}
           roundNo={scene.round.round}
         />
         </>
@@ -197,19 +197,18 @@ function MotionView({ state, motion }: { state: PrepState; motion: Motion }) {
   );
 }
 
-function ResultView(props: {
+export function ResultView(props: {
   division: number;
   motion: Motion;
   title: string;
   yes: number;
   no: number;
   threshold: number | null;
-  provisional: boolean;
-  passed: boolean;
+  verdict: ReturnType<typeof presentVerdict>;
   roundNo: number;
 }) {
-  const { division, motion, title, yes, no, threshold, provisional, passed, roundNo } = props;
-  const color = provisional ? '#FBBF24' : passed ? '#34D399' : '#F87171';
+  const { division, motion, title, yes, no, threshold, verdict, roundNo } = props;
+  const color = verdict.tone === 'pass' ? '#34D399' : verdict.tone === 'fail' ? '#F87171' : '#FBBF24';
   return (
     <div className="flex flex-1 flex-col gap-8 px-20 pb-12 pt-14">
       <p className="text-[36px] font-extrabold text-[#7FC8DE] tr-num">
@@ -229,9 +228,10 @@ function ResultView(props: {
           <p data-testid="present-no" className="text-[150px] font-black leading-none text-[#F87171] tr-num">{no}</p>
         </div>
         <div className="ml-auto text-right">
-          <p data-testid="present-verdict" className="rounded-3xl border-[10px] px-12 py-4 text-[120px] font-black leading-none" style={{ borderColor: color, color }}>
-            {provisional ? '집계 중' : passed ? '가결' : '부결'}
+          <p data-testid="present-verdict" data-verdict={verdict.word} className="rounded-3xl border-[10px] px-12 py-4 text-[120px] font-black leading-none" style={{ borderColor: color, color }}>
+            {verdict.word}
           </p>
+          {verdict.reason ? <p data-testid="present-verdict-reason" className="mt-3 text-[34px] font-extrabold text-[#FDE68A]">{verdict.reason}</p> : null}
           {threshold !== null ? <p className="mt-4 text-[34px] font-extrabold text-[#FDE68A] tr-num">가결선 찬성 {threshold}표 이상</p> : null}
         </div>
       </div>
