@@ -9,7 +9,9 @@ import {
   isPresentMessage,
   presentChannelName,
   presentScene,
+  presentNamesBallot,
   presentTitleSize,
+  type PresentNamesLocal,
   type PresentStateMessage,
 } from './division-present';
 
@@ -18,7 +20,7 @@ import {
  * 200명·8~15m 시청 기준: 제목 44~96px, 숫자 140px, 본문 28px 이상, 진한 배경에 흰 글자.
  */
 export default function DivisionPresentScreen({ scope, access = null }: { scope: string; access?: WorkshopAuthorization | null }) {
-  const [namesFor, setNamesFor] = useState<string | null>(null);
+  const [namesLocal, setNamesLocal] = useState<PresentNamesLocal | null>(null);
   const [msg, setMsg] = useState<PresentStateMessage | null>(null);
   const [lastAt, setLastAt] = useState(0);
   const [now, setNow] = useState(() => Date.now());
@@ -52,6 +54,11 @@ export default function DivisionPresentScreen({ scope, access = null }: { scope:
   }, []);
 
   const scene = useMemo(() => presentScene(msg), [msg]);
+  const namesBallot = presentNamesBallot(
+    msg?.names,
+    namesLocal,
+    scene.kind === 'result' ? msg?.state.ballots[scene.round.requestId]?.ballotId : null,
+  );
   const stale = msg !== null && now - lastAt > 8000;
 
   return (
@@ -83,14 +90,14 @@ export default function DivisionPresentScreen({ scope, access = null }: { scope:
             </Center>
           );
         })()
-      ) : scene.kind === 'result' && access && (namesFor ?? msg?.names) && (namesFor ?? msg?.names) === msg?.state.ballots[scene.round.requestId]?.ballotId ? (
+      ) : scene.kind === 'result' && access && namesBallot ? (
         <NamedResultBoard
-          key={(namesFor ?? msg?.names) as string}
+          key={namesBallot}
           access={access}
-          ballotId={(namesFor ?? msg?.names) as string}
+          ballotId={namesBallot}
           title={scene.round.title}
           sub={`${divisionLabel(scene.division)} · ${scene.motion.id}${scene.round.round > 1 ? ` · ${scene.round.round}차` : ''} · QR 투표`}
-          onBack={() => setNamesFor(null)}
+          onBack={() => setNamesLocal({ msgNames: msg?.names ?? null, show: null })}
           backLabel="결과로 돌아가기"
           live={false}
         />
@@ -100,7 +107,7 @@ export default function DivisionPresentScreen({ scope, access = null }: { scope:
           <button
             type="button"
             data-testid="present-show-names"
-            onClick={() => setNamesFor(msg.state.ballots[scene.round.requestId]?.ballotId ?? null)}
+            onClick={() => setNamesLocal({ msgNames: msg.names ?? null, show: msg.state.ballots[scene.round.requestId]?.ballotId ?? null })}
             className="absolute bottom-6 right-6 z-10 min-h-12 rounded-xl bg-white/90 px-5 text-[20px] font-extrabold text-[#0B2233]"
           >
             투표결과 보기

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createMotion, initPrepState, type PrepState } from './division-vote-logic';
 import { applyBallotResults, beginVote, confirmHandCount, markBallotCreated, markBallotOpened, requestRevote } from './division-vote-flow';
 import { DIVISION_VOTE_FIXTURE } from './division-vote-fixture';
-import { isPresentMessage, presentScene, presentTitleSize, type PresentStateMessage } from './division-present';
+import { isPresentMessage, presentNamesBallot, presentScene, presentTitleSize, type PresentStateMessage } from './division-present';
 import type { BallotResults } from '../../lib/deliberation';
 
 const div2 = DIVISION_VOTE_FIXTURE.find((d) => d.division === 2)!;
@@ -92,5 +92,23 @@ describe('실명 투표(10/17) — 발표 창 이름 화면 신호', () => {
     const base = { kind: 'state', v: 1, state: {}, focus: null, counts: {} };
     expect(isPresentMessage(base)).toBe(true);
     expect(isPresentMessage({ ...base, names: 'ballot-1' })).toBe(true);
+  });
+});
+
+describe('발표 창 이름 화면 — 노트북 값이 기준, 돌아가기가 먹는다', () => {
+  it('노트북이 보내면 띄우고, 발표 창 [돌아가기]는 그 값이 그대로인 동안만 이긴다', () => {
+    expect(presentNamesBallot('b1', null, 'b1')).toBe('b1');
+    // 발표 창에서 돌아가기
+    const back = { msgNames: 'b1', show: null };
+    expect(presentNamesBallot('b1', back, 'b1')).toBeNull();
+    // 노트북이 다시 보내면(값이 바뀌면) 발표 창 누름은 잊는다
+    expect(presentNamesBallot('b2', back, 'b2')).toBe('b2');
+    // 노트북이 끄면 발표 창에서 직접 연 것도 그 값(null)에 묶여 있을 때만 남는다
+    expect(presentNamesBallot(null, { msgNames: null, show: 'b1' }, 'b1')).toBe('b1');
+    expect(presentNamesBallot(null, { msgNames: 'b1', show: 'b1' }, 'b1')).toBeNull();
+  });
+  it('지금 결과 장면의 투표가 아니면 띄우지 않는다', () => {
+    expect(presentNamesBallot('b1', null, 'b2')).toBeNull();
+    expect(presentNamesBallot('b1', null, null)).toBeNull();
   });
 });

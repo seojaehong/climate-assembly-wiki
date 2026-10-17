@@ -98,3 +98,20 @@ export function presentTitleSize(text: string): number {
   if (n <= 180) return 54;
   return 44;
 }
+
+/** 발표 창에서 직접 누른 「투표결과 보기」·「결과로 돌아가기」 — 그때 노트북이 보낸 값(msgNames)에 묶는다. */
+export type PresentNamesLocal = { msgNames: string | null; show: string | null };
+
+/**
+ * 발표 창에 이름 화면을 띄울 투표(10/17). 노트북이 보낸 값이 기준이다 — 노트북 값이 바뀌면 발표 창에서 누른 것은 잊는다.
+ * 노트북 값이 그대로인 동안에는 발표 창에서 누른 것(보기·돌아가기)이 이긴다. 지금 결과 장면의 투표가 아니면 띄우지 않는다.
+ */
+export function presentNamesBallot(
+  msgNames: string | null | undefined,
+  local: PresentNamesLocal | null,
+  sceneBallotId: string | null | undefined,
+): string | null {
+  const m = msgNames ?? null;
+  const eff = local && local.msgNames === m ? local.show : m;
+  return eff && sceneBallotId && eff === sceneBallotId ? eff : null;
+}
