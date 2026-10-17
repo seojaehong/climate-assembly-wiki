@@ -72,3 +72,65 @@ describe('발표 창 결과 화면', () => {
     expect(src).toMatch(/access=\{access\} hideExit hideNames/);
   });
 });
+
+describe('10/17 v2 — 세리머니 요약·번호, 발표 창 집계 중', () => {
+  const long = (k: number) => `${'아주 긴 합친 문구 '.repeat(20)}${k}`;
+  const many = (n: number): CeremonyItem[] => [
+    ...Array.from({ length: n }, (_, i) => ({ key: `p${i}`, label: `2-${i + 1}-안1`, title: long(i), yeas: 40, nays: 5 })),
+    ...Array.from({ length: n }, (_, i) => ({ key: `f${i}`, label: `2-${i + 1}-안2`, title: long(i), yeas: 10, nays: 35 })),
+    { key: 'd', label: '문구 작성 위임 의결', title: '위임', yeas: 44, nays: 1, kind: 'delegation' as const },
+  ];
+  it('가결은 빠짐없이 — 그린 가결 줄 수 == 머리 「의결 N건」, 부결도 전부, 위임 줄 하나', async () => {
+    for (const n of [3, 7, 15]) {
+      const html = renderToStaticMarkup(
+        createElement(DivisionCeremony, { division: 2, enrolled: 60, present: 45, items: many(n), sourceLabel: 's', onExit: () => undefined, controlledStep: { phase: 'summary', index: 0 }, displayOnly: true }),
+      );
+      const passedBlock = html.slice(html.indexOf('data-testid="ceremony-summary-passed"'), html.indexOf('data-testid="ceremony-summary-failed"'));
+      const failedBlock = html.slice(html.indexOf('data-testid="ceremony-summary-failed"'), html.indexOf('data-testid="ceremony-summary-delegation"'));
+      expect((passedBlock.match(/data-testid="ceremony-summary-item"/g) ?? []).length).toBe(n);
+      expect(html).toContain(`data-passed-count="${n}"`);
+      expect((failedBlock.match(/data-testid="ceremony-summary-item"/g) ?? []).length).toBe(n);
+      expect((html.match(/data-testid="ceremony-summary-delegation"/g) ?? []).length).toBe(1);
+      // 줄마다 한 줄(말줄임) — 긴 제목이 줄을 늘려 겹치지 않게
+      expect(passedBlock).toContain('whitespace-nowrap');
+    }
+  });
+  it('요약 배치 — 줄 수 × 줄 높이가 예산 안(15+15까지 22px 이상)', async () => {
+    const { summaryLayout, SUMMARY_LIST_BUDGET } = await import('./ceremony-layout');
+    for (const [p, f] of [[0, 0], [7, 3], [10, 10], [15, 15]]) {
+      const l = summaryLayout(p, f);
+      const rows = Math.ceil(p / l.columns) + Math.ceil(f / l.columns);
+      expect(rows * l.lineH).toBeLessThanOrEqual(SUMMARY_LIST_BUDGET);
+      expect(l.fontPx).toBeGreaterThanOrEqual(22);
+    }
+    expect(summaryLayout(3, 3).columns).toBe(1);
+  });
+  it('머리줄 번호는 정책 권고안만 「안 k / N」, 위임 단계는 이름만', async () => {
+    const { ceremonyCounter } = await import('./ceremony-layout');
+    const its = [{}, { kind: 'delegation' as const }, {}, {}];
+    expect(ceremonyCounter(its, 0)).toBe('안 1 / 3');
+    expect(ceremonyCounter(its, 1)).toBe('문구 작성 위임 의결');
+    expect(ceremonyCounter(its, 3)).toBe('안 3 / 3');
+    expect(ceremonyCounter(its, 9)).toBeNull();
+    const html = renderToStaticMarkup(
+      createElement(DivisionCeremony, { division: 2, enrolled: 60, present: 45, items: many(1), sourceLabel: 's', onExit: () => undefined, controlledStep: { phase: 'title', index: 2 }, displayOnly: true }),
+    );
+    expect(html).toContain('data-testid="ceremony-counter"');
+    expect(html).toContain('문구 작성 위임 의결');
+    expect(html).not.toMatch(/안 3 \/ 3/);
+  });
+  it('발표 창 — 거수 확인 전(집계 중)에는 찬반 숫자를 띄우지 않는다', () => {
+    const r = { round: 1, requestId: 'a', title: 't', onlineYes: 40, onlineNo: 5, handYes: 0, handNo: 0, enrolled: 60, present: 45, verdict: 'passed', closedAt: 'x' } as MotionRound;
+    const props = { division: 2, motion: { id: '2-1-안1' } as never, title: 't', yes: 40, no: 5, threshold: 30, roundNo: 1 };
+    const pending = renderToStaticMarkup(createElement(ResultView, { ...props, verdict: presentVerdict(r, true) }));
+    expect(pending).toContain('집계 중');
+    expect(pending).not.toContain('data-testid="present-yes"');
+    expect(pending).not.toContain('data-testid="present-no"');
+    const final = renderToStaticMarkup(createElement(ResultView, { ...props, verdict: presentVerdict(r, false) }));
+    expect(final).toContain('data-testid="present-yes"');
+  });
+  it('결과 머리줄은 오른쪽 위 「전체 화면」 단추 자리를 비운다', () => {
+    const src = readFileSync(new URL('./DivisionPresentScreen.tsx', import.meta.url), 'utf8');
+    expect(src).toContain('pr-[min(520px,30vw)]');
+  });
+});

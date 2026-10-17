@@ -237,7 +237,8 @@ export function ResultView(props: {
   const color = verdict.tone === 'pass' ? '#34D399' : verdict.tone === 'fail' ? '#F87171' : '#FBBF24';
   return (
     <div className="flex flex-1 flex-col gap-8 px-20 pb-12 pt-14">
-      <div className="flex items-center gap-6">
+      {/* 오른쪽 위 「전체 화면」 단추(전체 화면 전)와 한 줄에 겹치지 않게 오른쪽을 비운다(10/17 v2). */}
+      <div className="flex items-center gap-6 pr-[min(520px,30vw)]">
         <p className="min-w-0 flex-1 text-[36px] font-extrabold text-[#7FC8DE] tr-num">
           {divisionLabel(division)} · {motion.id}
           {roundNo > 1 ? ` · ${roundNo}차` : ''} · 투표 결과
@@ -257,6 +258,9 @@ export function ResultView(props: {
         {title}
       </p>
       <div className="mt-auto flex flex-wrap items-end gap-16">
+        {/* 거수 확인 전(집계 중)에는 잠정 숫자를 띄우지 않는다 — 거수로 바뀔 수 있다(10/17 v2). */}
+        {verdict.word === '집계 중' ? null : (
+        <>
         <div>
           <p className="text-[40px] font-extrabold text-[#BFE3F0]">찬성</p>
           <p data-testid="present-yes" className="text-[150px] font-black leading-none text-[#34D399] tr-num">{yes}</p>
@@ -265,6 +269,8 @@ export function ResultView(props: {
           <p className="text-[40px] font-extrabold text-[#BFE3F0]">반대</p>
           <p data-testid="present-no" className="text-[150px] font-black leading-none text-[#F87171] tr-num">{no}</p>
         </div>
+        </>
+        )}
         <div className="ml-auto text-right">
           <p data-testid="present-verdict" data-verdict={verdict.word} className="rounded-3xl border-[10px] px-12 py-4 text-[120px] font-black leading-none" style={{ borderColor: color, color }}>
             {verdict.word}

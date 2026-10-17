@@ -14,6 +14,7 @@ import {
   type CeremonyItem,
   type CeremonyStep,
 } from './division-vote-logic';
+import { ceremonyCounter, summaryLayout } from './ceremony-layout';
 
 /**
  * 10/17 분과 의결 세리머니 — 대형 화면(200명) 풀스크린.
@@ -195,8 +196,8 @@ export default function DivisionCeremony({
         <div className="min-w-0 text-[clamp(24px,1.8vw,34px)] font-extrabold" style={{ color: C.sub }}>
           {label} 의결
           {current ? (
-            <span className="ml-4 tr-num" style={{ color: C.text }}>
-              안 {step.index + 1} / {total}
+            <span data-testid="ceremony-counter" className="ml-4 tr-num" style={{ color: C.text }}>
+              {ceremonyCounter(items, step.index)}
             </span>
           ) : null}
         </div>
@@ -444,17 +445,29 @@ function SummaryView({
   /** 문구 작성 위임 의결 — 정책 권고안 수와 따로(10/17). */
   delegations?: { item: CeremonyItem; verdict: ReturnType<typeof ceremonyVerdict> }[];
 }) {
-  const MAX_ROWS = 12;
-  const shown = summary.passed.slice(0, MAX_ROWS);
-  const rest = summary.passed.length - shown.length;
+  // 10/17 v2 — 가결·부결을 빠짐없이(자르지 않는다), 줄마다 한 줄. 글자 크기·단 수는 줄 수로 정한다(ceremony-layout.ts).
+  const shown = summary.passed;
   const rejected = [...summary.failed, ...summary.invalid];
-  const MAX_FAILED = 6;
-  const shownFailed = rejected.slice(0, MAX_FAILED);
-  const restFailed = rejected.length - shownFailed.length;
+  const layout = summaryLayout(shown.length, rejected.length);
+  const listStyle = (n: number): React.CSSProperties => ({
+    display: 'grid',
+    gridTemplateColumns: `repeat(${Math.min(layout.columns, Math.max(1, n))},minmax(0,1fr))`,
+    columnGap: '40px',
+    fontSize: `${layout.fontPx}px`,
+    lineHeight: `${layout.lineH}px`,
+  });
+  const row = (item: CeremonyItem, labelColor: string, textColor: string) => (
+    <li key={item.key} data-testid="ceremony-summary-item" className="flex min-w-0 items-baseline gap-4 font-bold" style={{ color: textColor, height: `${layout.lineH}px` }}>
+      <span className="shrink-0 tr-num" style={{ color: labelColor }}>
+        {item.label}
+      </span>
+      <span className="min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">{item.title}</span>
+    </li>
+  );
   return (
-    <div className="flex min-h-0 flex-col" style={{ gap: 'clamp(12px,2.4vh,32px)' }}>
-      <div className="flex flex-wrap items-baseline gap-x-8 gap-y-2">
-        <h1 data-testid="ceremony-summary" className="text-[clamp(56px,5vw,96px)] font-black leading-none" style={{ color: C.text }}>
+    <div className="flex min-h-0 flex-col" style={{ gap: 'clamp(10px,1.6vh,24px)' }}>
+      <div className="flex shrink-0 flex-wrap items-baseline gap-x-8 gap-y-2">
+        <h1 data-testid="ceremony-summary" data-passed-count={summary.passed.length} className="text-[clamp(56px,5vw,96px)] font-black leading-none" style={{ color: C.text }}>
           {label} 의결 <span className="tr-num" style={{ color: C.gold, fontSize: 'clamp(80px,8vw,150px)' }}>{summary.passed.length}</span>건
         </h1>
         <p className="text-[clamp(28px,2.2vw,44px)] font-extrabold tr-num" style={{ color: C.sub }}>
@@ -467,44 +480,22 @@ function SummaryView({
         </p>
       </div>
       {shown.length > 0 ? (
-        <ol className="grid min-h-0 overflow-y-auto gap-x-10 gap-y-2" style={{ gridTemplateColumns: shown.length > 6 ? 'repeat(2,minmax(0,1fr))' : 'minmax(0,1fr)' }}>
-          {shown.map((item) => (
-            <li key={item.key} className="flex min-w-0 items-baseline gap-4 text-[clamp(24px,1.8vw,34px)] font-bold">
-              <span className="shrink-0 tr-num" style={{ color: C.gold }}>
-                {item.label}
-              </span>
-              <span className="min-w-0 break-keep" style={{ overflowWrap: 'anywhere' }}>
-                {item.title}
-              </span>
-            </li>
-          ))}
+        <ol data-testid="ceremony-summary-passed" className="shrink-0" style={listStyle(shown.length)}>
+          {shown.map((item) => row(item, C.gold, C.text))}
         </ol>
       ) : null}
-      {rest > 0 ? (
-        <p className="text-[24px] font-bold" style={{ color: C.sub }}>
-          외 {rest}건
-        </p>
-      ) : null}
-      {shownFailed.length > 0 ? (
-        <section data-testid="ceremony-summary-failed" className="min-h-0">
-          <p className="text-[clamp(26px,2vw,38px)] font-extrabold" style={{ color: C.fail }}>
+      {rejected.length > 0 ? (
+        <section data-testid="ceremony-summary-failed" className="shrink-0">
+          <p className="text-[clamp(26px,2vw,36px)] font-extrabold leading-tight" style={{ color: C.fail }}>
             부결{summary.invalid.length ? '·판정 불가' : ''} {rejected.length}건
           </p>
-          <ol className="mt-1 grid gap-x-10 gap-y-1" style={{ gridTemplateColumns: shownFailed.length > 3 ? 'repeat(2,minmax(0,1fr))' : 'minmax(0,1fr)' }}>
-            {shownFailed.map((item) => (
-              <li key={item.key} className="flex min-w-0 items-baseline gap-4 text-[clamp(22px,1.6vw,30px)] font-bold" style={{ color: C.sub }}>
-                <span className="shrink-0 tr-num">{item.label}</span>
-                <span className="min-w-0 break-keep" style={{ overflowWrap: 'anywhere' }}>
-                  {item.title}
-                </span>
-              </li>
-            ))}
+          <ol className="mt-1" style={listStyle(rejected.length)}>
+            {rejected.map((item) => row(item, C.sub, C.sub))}
           </ol>
-          {restFailed > 0 ? <p className="text-[22px] font-bold" style={{ color: C.sub }}>외 {restFailed}건</p> : null}
         </section>
       ) : null}
       {delegations.map(({ item, verdict }) => (
-        <p key={item.key} data-testid="ceremony-summary-delegation" className="text-[clamp(26px,2vw,38px)] font-extrabold" style={{ color: C.text }}>
+        <p key={item.key} data-testid="ceremony-summary-delegation" className="shrink-0 text-[clamp(26px,2vw,36px)] font-extrabold leading-tight" style={{ color: C.text }}>
           문구 작성 위임 의결:{' '}
           <span style={{ color: verdict.kind === 'decided' ? (verdict.passed ? C.pass : C.fail) : C.warn }}>
             {verdict.kind === 'decided' ? (verdict.passed ? '가결' : '부결') : '판정 불가'}

@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import DivisionVotePanel from './DivisionVotePanel';
 import { BallotQrFullscreen } from './BallotPanel';
 import { NamedResultBoard } from './NamedResultBoard';
+import DivisionCeremony from './DivisionCeremony';
 import type { BallotNamedResponses } from '../../lib/deliberation';
 
 /** ?board=qr|names — 큰 화면 두 장(QR · 투표결과 보기)을 가상 데이터로 본다(1920×1080 육안 확인용). */
@@ -69,6 +70,27 @@ export default function DivisionVoteLab() {
       <BallotQrFullscreen
         ballot={{ id: 'lab', title: 'lab', status: 'open', token: 'f'.repeat(32), subgroup: '1분과', item_count: 1, response_count: 42, created_at: '' }}
         headline={{ main: LAB_LONG_TITLE, sub: '1-1 안1' }}
+        onExit={() => undefined}
+      />
+    );
+  }
+  if (board === 'ceremony') {
+    // 가결 n · 부결 n · 위임 1, 긴 제목 — 요약 겹침 확인(10/17 v2). 재적 60 · 참석 45 → 가결선 30.
+    const longT = (k: number) => `${LAB_LONG_TITLE.slice(0, 90)} ${k}`;
+    const items = [
+      ...Array.from({ length: boardN }, (_, i) => ({ key: `p${i}`, label: `2-${i + 1}-안1`, title: longT(i), yeas: 40, nays: 5 })),
+      ...Array.from({ length: boardN }, (_, i) => ({ key: `f${i}`, label: `2-${i + 1}-안2`, title: longT(i), yeas: 10, nays: 35 })),
+      { key: 'd', label: '문구 작성 위임 의결', title: '위임', yeas: 44, nays: 1, kind: 'delegation' as const },
+    ];
+    return (
+      <DivisionCeremony
+        division={2}
+        enrolled={60}
+        present={45}
+        items={items}
+        sourceLabel="미리보기"
+        controlledStep={{ phase: 'summary', index: 0 }}
+        displayOnly
         onExit={() => undefined}
       />
     );
