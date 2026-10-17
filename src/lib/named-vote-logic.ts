@@ -230,7 +230,17 @@ export function nameGridLayout(count: number, height = 640): { columns: number; 
 
 // ── 실명 CSV ─────────────────────────────────────────────────────────
 
-export const NAMED_CSV_HEADER = ['투표', '조', '이름', '찬반', '명단 여부', '제출 시각'] as const;
+export const NAMED_CSV_HEADER = ['투표', '조', '이름', '찬반', '명단 여부', '제출 시각(KST)'] as const;
+
+/** 서울 시각 「2026-10-17 16:05:09」(기계 시간대와 무관). 읽을 수 없으면 원문 그대로. */
+export function kstText(iso: string | null | undefined): string {
+  if (!iso) return '';
+  const t = Date.parse(iso);
+  if (Number.isNaN(t)) return iso;
+  const d = new Date(t + 9 * 3600 * 1000);
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getUTCFullYear()}-${p(d.getUTCMonth() + 1)}-${p(d.getUTCDate())} ${p(d.getUTCHours())}:${p(d.getUTCMinutes())}:${p(d.getUTCSeconds())}`;
+}
 
 /** 투표 하나의 실명 CSV 행(머리행 제외). 조 → 이름 순. */
 export function namedCsvRows(title: string, items: readonly NamedItem[], responses: readonly NamedResponse[]): string[][] {
@@ -246,7 +256,7 @@ export function namedCsvRows(title: string, items: readonly NamedItem[], respons
       displayVoterName(r.voter_name),
       responseChoiceText(r.answers ?? {}, items),
       r.voter_name ? (r.voter_in_roster ? '명단' : '명단에 없음') : '이름 없음',
-      r.submitted_at,
+      kstText(r.submitted_at),
     ]);
 }
 

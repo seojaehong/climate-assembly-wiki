@@ -187,6 +187,8 @@ describe('실명 CSV', () => {
       ['1분과 2조', '라마바', '반대', '명단'],
     ]);
     expect(rows[0][0]).toBe('1분과 의결 1-1');
+    // 제출 시각은 서울 시각(UTC+9)
+    expect(rows.every((r) => /^2026-10-17 16:\d\d:00$/.test(r[5]))).toBe(true);
   });
 });
 
@@ -194,7 +196,26 @@ describe('실명 CSV 글', () => {
   it('BOM·머리행·따옴표·수식 주입 방지', async () => {
     const { namedCsvText } = await import('./named-vote-logic');
     const t = namedCsvText([['a,b', '=1+1', '홍"길동', '찬성', '명단', 'x']]);
-    expect(t.startsWith('﻿투표,조,이름,찬반,명단 여부,제출 시각\r\n')).toBe(true);
+    expect(t.startsWith('﻿투표,조,이름,찬반,명단 여부,제출 시각(KST)\r\n')).toBe(true);
     expect(t).toContain('"a,b",\'=1+1,"홍""길동",찬성');
+  });
+});
+
+describe('서울 시각', () => {
+  it('UTC → KST, 날짜 넘김, 못 읽으면 원문', async () => {
+    const { kstText } = await import('./named-vote-logic');
+    expect(kstText('2026-10-17T07:05:09Z')).toBe('2026-10-17 16:05:09');
+    expect(kstText('2026-10-17T15:30:00+00:00')).toBe('2026-10-18 00:30:00');
+    expect(kstText('x')).toBe('x');
+    expect(kstText(null)).toBe('');
+  });
+});
+
+describe('같은 이름 규칙', () => {
+  it('한 투표 안에서 같은 이름(공백·대소문자 무시)은 조가 달라도 한 번만 — 서버가 대조 키로 거부한다', () => {
+    // 명단에 같은 분과 동명이인이 있으면 이 규칙이 그 사람을 막는다. 10/17 명단은 분과 안 동명이인 0(로더 점검과 별도로 확인).
+    expect(normalizeVoterName('홍 길동')).toBe(normalizeVoterName('홍길동'));
+    const r = reconcile([], [resp('1분과 1조', '홍길동'), resp('1분과 2조', '홍 길동')]);
+    expect(r.duplicates).toHaveLength(1);
   });
 });
