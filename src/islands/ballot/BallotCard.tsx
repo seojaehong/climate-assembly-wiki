@@ -16,6 +16,7 @@ import {
   ballotChoices,
   decisionChoiceOf,
   getLocalSubmit,
+  anonymousSubmitGate,
   getLocalVoter,
   isComplete,
   isLocalSubmitStoragePersistent,
@@ -882,6 +883,29 @@ export default function BallotCard() {
       setSubmitting(false);
       setError('조와 이름을 먼저 골라 주세요.');
       return;
+    }
+    if (!named) {
+      // 무기명으로 내기 직전에 명단을 한 번 더 본다 — 화면을 연 뒤 실명으로 바뀌었으면 조·이름부터 받는다.
+      // 명단 조회가 실패하면 무기명으로 내지 않는다(이름을 조용히 빼먹지 않게).
+      let fresh: RosterRow[] | 'error';
+      try {
+        fresh = await fetchBallotRoster(token);
+      } catch (rosterError: unknown) {
+        console.error('명단을 다시 확인하지 못했습니다.', rosterError);
+        fresh = 'error';
+      }
+      const gate = anonymousSubmitGate(fresh);
+      if (gate !== 'anonymous') {
+        setConfirmOpen(false);
+        setSubmitting(false);
+        if (gate === 'need-voter' && fresh !== 'error') {
+          setRoster(fresh);
+          setError('실명 투표입니다. 위에서 조와 이름을 골라 주세요.');
+        } else {
+          setError('연결을 확인하지 못했습니다. 잠시 뒤 다시 제출해 주세요.');
+        }
+        return;
+      }
     }
     try {
       let result = named

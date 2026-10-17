@@ -226,3 +226,14 @@ export function refreshNoticeMessage(ballot: Ballot): string | null {
   if (ballot.status !== 'open') return null;
   return '아직 투표가 진행 중입니다. 마감 후 다시 확인해 주세요.';
 }
+
+/**
+ * 실명 투표(s28) — 명단 없이(무기명으로) 내기 직전 다시 받은 명단으로 정한다.
+ * - 'anonymous': 명단이 비었다(명단 없는 세션·실명 수집 꺼짐·함수 없음) → 지금처럼 무기명
+ * - 'need-voter': 그 사이 실명으로 바뀌었다 → 조·이름부터 받는다
+ * - 'retry': 명단을 확인하지 못했다(네트워크·서버 오류) → 무기명으로 내지 않고 다시 시도하게
+ */
+export function anonymousSubmitGate(fresh: readonly unknown[] | 'error'): 'anonymous' | 'need-voter' | 'retry' {
+  if (fresh === 'error') return 'retry';
+  return fresh.length > 0 ? 'need-voter' : 'anonymous';
+}

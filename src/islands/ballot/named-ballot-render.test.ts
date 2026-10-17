@@ -64,3 +64,23 @@ describe('완료 문구', () => {
     expect(namedDoneText({ team: '기획참여단 분과A', name: '홍길동', choice: null })).toBe('기획참여단 분과A 홍길동 님 — 제출되었습니다');
   });
 });
+
+describe('무기명 제출 직전 명단 재확인', () => {
+  it('명단 비었음 → 무기명, 새 명단 있음 → 조·이름부터, 조회 실패 → 다시 시도(무기명으로 내지 않음)', async () => {
+    const { anonymousSubmitGate } = await import('./ballot-logic');
+    expect(anonymousSubmitGate([])).toBe('anonymous');
+    expect(anonymousSubmitGate([{ team: '1분과 1조', no: 1, name: '가나다' }])).toBe('need-voter');
+    expect(anonymousSubmitGate('error')).toBe('retry');
+  });
+  it('BallotCard 는 무기명 submitBallot 전에 명단을 다시 읽고 gate 를 거친다', async () => {
+    const { readFileSync } = await import('node:fs');
+    const src = readFileSync(new URL('./BallotCard.tsx', import.meta.url), 'utf8');
+    const body = src.slice(src.indexOf('const handleSubmit'));
+    const refetch = body.indexOf('fetchBallotRoster(token)');
+    const gate = body.indexOf('anonymousSubmitGate(fresh)');
+    const anon = body.indexOf('await submitBallot(token');
+    expect(refetch).toBeGreaterThan(-1);
+    expect(gate).toBeGreaterThan(refetch);
+    expect(anon).toBeGreaterThan(gate);
+  });
+});
