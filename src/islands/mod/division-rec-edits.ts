@@ -140,7 +140,7 @@ export function compactRecLines(list: readonly DisplayRec[], max: number): strin
 
 /** 투표 문항 설명(휴대폰 「세부권고 보기」) — 처리 표시를 붙인 전부(삭제·옮겨 간 것도 표시해 남긴다). 서버 설명 칸에 들어간다. */
 export function recDescription(list: readonly DisplayRec[]): string {
-  return list.map((d, i) => recPlainLine(recView(d, i))).join('\n');
+  return remainingRecs(list).map((d, i) => recPlainLine({ ...recView(d, i), tag: '' })).join('\n');
 }
 
 
@@ -159,7 +159,8 @@ export function recView(d: DisplayRec, i = 0): RecView {
 /** 안(카드 여럿일 수 있다)의 세부권고 표시 목록 — 처리 기록이 없으면 빈 배열(옛 판은 아무것도 안 그린다). */
 export function motionRecViews(source: RecsDivision, edits: readonly RecEdit[] | undefined, cardNos: readonly string[]): RecView[] {
   if (!edits) return [];
-  return cardNos.flatMap((c) => cardRecList(source, edits, c)).map((d, i) => recView(d, i));
+  // 10/17 저녁 결정: 시민 화면에는 남은 세부권고만, 처리 표시 없이(삭제·이동은 숨기고 들어온 것·추가는 문장만)
+  return remainingRecs(cardNos.flatMap((c) => cardRecList(source, edits, c))).map((d, i) => ({ ...recView(d, i), tag: '', struck: false }));
 }
 
 /**
