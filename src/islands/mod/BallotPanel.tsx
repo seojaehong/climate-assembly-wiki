@@ -150,6 +150,7 @@ export function BallotQrFullscreen({
   if (showNames && access) {
     return (
       <NamedResultBoard
+        key={ballot.id}
         access={access}
         ballotId={ballot.id}
         title={title}
@@ -1176,7 +1177,7 @@ export default function BallotPanel({
       {namesId && access ? (() => {
         const b = ballots?.find((x) => x.id === namesId);
         return b ? (
-          <NamedResultBoard access={access} ballotId={b.id} title={b.title} onBack={() => setNamesId(null)} backLabel="닫기" live={b.status === 'open'} />
+          <NamedResultBoard key={b.id} access={access} ballotId={b.id} title={b.title} onBack={() => setNamesId(null)} backLabel="닫기" live={b.status === 'open'} />
         ) : null;
       })() : null}
       {qrBallot ? <BallotQrFullscreen ballot={qrBallot} onExit={() => setQrId(null)} access={access} /> : null}

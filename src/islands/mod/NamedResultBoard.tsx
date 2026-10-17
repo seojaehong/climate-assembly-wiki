@@ -57,6 +57,14 @@ export function useNamedResponses(
   const [missing, setMissing] = useState(false);
   const [failed, setFailed] = useState(false);
   const [key, setKey] = useState(0);
+  // 투표가 바뀌면 앞 투표의 응답을 버린다(새 응답을 못 받아도 앞 투표 이름이 남지 않게).
+  const [shownFor, setShownFor] = useState<string | null>(ballotId);
+  if (shownFor !== ballotId) {
+    setShownFor(ballotId);
+    setData(null);
+    setMissing(false);
+    setFailed(false);
+  }
   useEffect(() => {
     if (!access || !ballotId || !enabled) return undefined;
     let cancelled = false;
@@ -79,8 +87,16 @@ export function useNamedResponses(
       if (id) clearInterval(id);
     };
   }, [access, ballotId, enabled, pollMs, key]);
-  return { data, missing, failed, reload: () => setKey((k) => k + 1) };
+  return { data: freshFor(data, ballotId), missing, failed, reload: () => setKey((k) => k + 1) };
 }
+
+/** 응답이 지금 보는 투표의 것일 때만 — 아니면 null(앞 투표 이름을 띄우지 않는다). */
+export function freshFor<T extends { id: string }>(data: T | null, ballotId: string | null): T | null {
+  return data && ballotId && data.id === ballotId ? data : null;
+}
+
+/** 닫힌 투표도 이 간격으로 다시 읽는다 — 「큰 화면에 이름」을 끄면 열어 둔 화면에서도 이름이 사라지게. */
+export const CLOSED_POLL_MS = 10000;
 
 function NameColumn({ label, count, names, anonymous, tone, columns, fontPx }: {
   label: string;
@@ -144,7 +160,7 @@ export function NamedResultBoard({
   /** 미리보기 — 주면 서버를 부르지 않고 이 값을 그린다. */
   fixture?: BallotNamedResponses | null;
 }) {
-  const remote = useNamedResponses(access, ballotId, !fixture, live ? POLL_MS : 0);
+  const remote = useNamedResponses(access, ballotId, !fixture, live ? POLL_MS : CLOSED_POLL_MS);
   const data = fixture ?? remote.data;
   const missing = fixture ? false : remote.missing;
   const failed = fixture ? false : remote.failed;

@@ -2239,6 +2239,7 @@ export function MotionVoteBlock({ motion, state, update }: { motion: Motion; sta
       ) : null}
       {namesOpen && lastBallotId && last ? (
         <NamedResultBoard
+          key={lastBallotId}
           access={namedAccess}
           ballotId={lastBallotId}
           title={last.title}

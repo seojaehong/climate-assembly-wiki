@@ -85,6 +85,7 @@ export default function DivisionPresentScreen({ scope, access = null }: { scope:
         })()
       ) : scene.kind === 'result' && access && (namesFor ?? msg?.names) && (namesFor ?? msg?.names) === msg?.state.ballots[scene.round.requestId]?.ballotId ? (
         <NamedResultBoard
+          key={(namesFor ?? msg?.names) as string}
           access={access}
           ballotId={(namesFor ?? msg?.names) as string}
           title={scene.round.title}
