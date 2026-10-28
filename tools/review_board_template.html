@@ -1,0 +1,387 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow, noarchive">
+<title>권고 문구 검토</title>
+<style>
+:root {
+  --ink: #1d2733; --sub: #5b6876; --line: #d5dce4; --bg: #f4f6f8; --card: #fff;
+  --navy: #1f3a5f; --blue: #2f6fb3; --mod: #fff6e5; --mod-line: #e8c37a; --cit: #eaf4ff; --cit-line: #8fb9e6;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--bg); color: var(--ink);
+  font: 16px/1.6 "Malgun Gothic", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif; }
+button, input, textarea, select { font: inherit; }
+button { cursor: pointer; border: 1px solid var(--line); background: #fff; border-radius: 6px; padding: 6px 12px; }
+button.primary { background: var(--navy); border-color: var(--navy); color: #fff; }
+button.link { border: 0; background: none; color: var(--blue); padding: 2px 4px; }
+.hidden { display: none !important; }
+
+/* 들어가기 */
+#gate { max-width: 460px; margin: 10vh auto; background: var(--card); border: 1px solid var(--line);
+  border-radius: 10px; padding: 28px 24px; }
+#gate h1 { font-size: 22px; margin: 0 0 6px; color: var(--navy); }
+#gate p { color: var(--sub); margin: 0 0 18px; }
+#gate input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; }
+#gate .row { margin-bottom: 14px; }
+#gate .err { color: #b3261e; min-height: 1.5em; }
+.names { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin: 6px 0 14px; }
+.names button { padding: 10px 4px; }
+.names-h { font-weight: 700; margin-top: 10px; }
+
+/* 머리 */
+header { position: sticky; top: 0; z-index: 5; background: var(--navy); color: #fff; }
+header .in { display: flex; align-items: center; gap: 12px; padding: 10px 16px; flex-wrap: wrap; }
+header h1 { font-size: 18px; margin: 0; flex: 1 1 auto; }
+header .who { font-size: 15px; }
+header button { background: transparent; color: #fff; border-color: rgba(255,255,255,.5); padding: 4px 10px; }
+.tabs { display: flex; gap: 4px; padding: 0 16px; }
+.tabs button { background: transparent; color: #cfe0f5; border: 0; border-radius: 6px 6px 0 0; padding: 8px 16px; }
+.tabs button.on { background: var(--bg); color: var(--navy); font-weight: 700; }
+
+main { display: grid; grid-template-columns: 300px 1fr; gap: 16px; padding: 16px; max-width: 1500px; margin: 0 auto; }
+#list { background: var(--card); border: 1px solid var(--line); border-radius: 8px; overflow: auto;
+  max-height: calc(100vh - 130px); position: sticky; top: 112px; align-self: start; }
+#list a { display: flex; gap: 8px; padding: 9px 12px; border-bottom: 1px solid var(--line); color: inherit;
+  text-decoration: none; font-size: 14.5px; line-height: 1.45; }
+#list a:hover { background: #f0f4f9; }
+#list a.on { background: #e3ecf7; }
+#list .no { font-weight: 700; min-width: 38px; color: var(--navy); }
+#list .t { flex: 1; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+#list .cnt { font-size: 12px; align-self: center; white-space: nowrap; }
+.pill { display: inline-block; border-radius: 10px; padding: 0 7px; margin-left: 2px; }
+.pill.m { background: var(--mod); border: 1px solid var(--mod-line); }
+.pill.c { background: var(--cit); border: 1px solid var(--cit-line); }
+#pick { display: none; }
+
+#view { min-width: 0; }
+.help { background: var(--card); border: 1px solid var(--line); border-radius: 8px; margin-bottom: 14px; }
+.help summary { padding: 10px 14px; cursor: pointer; font-weight: 700; color: var(--navy); }
+.help .body { padding: 0 16px 14px; }
+.help ol { margin: 6px 0; padding-left: 22px; }
+.help .ex { border: 1px dashed var(--line); border-radius: 6px; padding: 10px 12px; background: #fafbfc; margin-top: 8px; }
+
+.cardhead { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; margin: 4px 0 10px; }
+.cardhead h2 { margin: 0; font-size: 22px; color: var(--navy); }
+.cardhead .vote { color: var(--sub); font-size: 14px; }
+.cardhead .nav { margin-left: auto; display: flex; gap: 6px; }
+
+table.rv { width: 100%; border-collapse: collapse; background: var(--card); table-layout: fixed; }
+table.rv th, table.rv td { border: 1px solid var(--line); padding: 10px 12px; vertical-align: top; text-align: left; }
+table.rv thead th { background: #e9eef4; font-size: 15px; }
+table.rv thead th.m { background: var(--mod); }
+table.rv thead th.c { background: var(--cit); }
+table.rv col.f { width: 92px; } table.rv col.d { width: 38%; }
+table.rv th.f { background: #f3f5f8; font-weight: 700; color: var(--navy); }
+.draft { white-space: pre-wrap; word-break: keep-all; overflow-wrap: anywhere; }
+.draft.fixed { color: var(--sub); }
+.note { border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; }
+.note.m { background: var(--mod); border: 1px solid var(--mod-line); }
+.note.c { background: var(--cit); border: 1px solid var(--cit-line); }
+.note .b { white-space: pre-wrap; overflow-wrap: anywhere; }
+.note .meta { font-size: 12.5px; color: var(--sub); margin-top: 4px; display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.note .meta .sp { flex: 1; }
+.add { font-size: 14px; }
+.editor textarea { width: 100%; min-height: 110px; padding: 8px 10px; border: 1px solid var(--blue); border-radius: 6px; resize: vertical; }
+.editor .acts { display: flex; gap: 6px; justify-content: flex-end; margin-top: 6px; }
+.flabel { display: none; }
+.foot { color: var(--sub); font-size: 13px; margin: 14px 0 30px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+#toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); background: #1d2733; color: #fff;
+  padding: 8px 16px; border-radius: 6px; font-size: 14px; z-index: 20; }
+
+@media (max-width: 860px) {
+  header { position: static; }
+  main { grid-template-columns: 1fr; padding: 12px; }
+  #list { display: none; }
+  #pick { display: block; width: 100%; padding: 10px; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 12px; background: #fff; }
+  table.rv, table.rv tbody, table.rv tr, table.rv td, table.rv th { display: block; width: 100%; }
+  table.rv thead, table.rv colgroup { display: none; }
+  table.rv tr { margin-bottom: 14px; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--card); }
+  table.rv td, table.rv th { border: 0; border-top: 1px solid var(--line); }
+  table.rv th.f { border-top: 0; }
+  .flabel { display: block; font-size: 13px; font-weight: 700; color: var(--sub); margin-bottom: 4px; }
+  .cardhead .nav { margin-left: 0; }
+}
+</style>
+</head>
+<body>
+<section id="gate">
+  <h1>권고 문구 검토</h1>
+  <p>2차 검토회의(10/27) 후속 · 분과 대표와 모더레이터가 함께 쓰는 화면입니다.</p>
+  <div id="g-pass">
+    <div class="row"><input id="pass" type="password" placeholder="참여 암호" autocomplete="current-password"></div>
+    <button class="primary" id="go">들어가기</button>
+  </div>
+  <div id="g-name" class="hidden">
+    <div>본인 이름을 누르세요.</div>
+    <div id="namebox"></div>
+  </div>
+  <div id="g-mod" class="hidden">
+    <div class="row"><input id="modpass" type="password" placeholder="모더레이터 암호"></div>
+    <button class="primary" id="modgo">확인</button> <button id="modback">이름 다시 고르기</button>
+  </div>
+  <div class="err" id="gerr"></div>
+</section>
+
+<div id="app" class="hidden">
+  <header>
+    <div class="in">
+      <h1>권고 문구 검토 <span style="font-weight:400;font-size:14px">· 권고카드 v3(70장) 기준</span></h1>
+      <span class="who" id="who"></span>
+      <button id="swap">이름 바꾸기</button>
+    </div>
+    <nav class="tabs" id="tabs"></nav>
+  </header>
+  <main>
+    <aside id="list"></aside>
+    <section id="view">
+      <details class="help" id="help">
+        <summary>이렇게 쓰세요 (처음 한 번 읽어 주세요)</summary>
+        <div class="body">
+          <ol>
+            <li>왼쪽(휴대폰은 위쪽 선택 칸)에서 권고 카드를 고릅니다.</li>
+            <li>항목(권고안·제안배경·주요내용·기대효과·이행일정)마다 세 칸이 있습니다.
+              <b>초안</b>은 지금 문구, <b>수정제안</b>은 모더레이터가 다듬어 올린 문구, <b>검토의견</b>은 분과 대표님 의견입니다.</li>
+            <li>대표님은 <b>검토의견</b> 칸의 「의견 쓰기」를 눌러 적고 저장합니다. 한글·메모장에 먼저 써 두었다가 붙여 넣어도 됩니다.</li>
+            <li>고칠 문구가 있으면 「바꿀 부분 → 바꾼 문구」로, 그대로 좋으면 「초안 유지」라고만 적어도 됩니다.</li>
+            <li>본인이 쓴 글은 언제든 고치거나 지울 수 있습니다. 다른 대표님 글도 모두 보입니다.</li>
+          </ol>
+          <div class="ex"><b>예시 · 1-1 제안배경</b><br>
+            초안: 초기 인프라 구축에 따른 경제적·구조적 어려움이 있으며 시설의 유지·보수 부담과 폐기물 발생 문제가 우려된다.<br>
+            수정제안(모더레이터): ○ 초기 인프라 구축 시 경제적·구조적 어려움 / ○ 시설 유지·보수 부담 및 폐기물 발생 문제 우려<br>
+            검토의견(시민대표): 수정제안에 동의합니다. 「우려」 뒤에 「가 있음」을 붙이면 더 자연스러울 것 같습니다.</div>
+          <p style="margin:8px 0 0">일정: 10. 28.(수)~11. 3.(화) 분과별 검토 → 11. 4.(수) 3차 검토회의에서 함께 봅니다.</p>
+        </div>
+      </details>
+      <select id="pick"></select>
+      <div id="card"></div>
+      <div class="foot">
+        <span id="sync"></span>
+        <button class="link" id="reload">새로 불러오기</button>
+        <button class="link hidden" id="csv">의견 전체 내려받기(CSV)</button>
+      </div>
+    </section>
+  </main>
+</div>
+<div id="toast" class="hidden"></div>
+
+<script>
+const SB_URL = '__SB_URL__';
+const SB_KEY = '__SB_KEY__';
+const CARDS = __CARDS__;
+const FIELDS = [
+  ['title', '권고안'], ['background', '제안배경'], ['content', '주요내용'],
+  ['effect', '기대효과'], ['schedule', '이행일정'], ['general', '카드 전체'],
+];
+const st = { pass: null, mod: null, me: null, members: [], notes: [], div: 1, card: null, editing: 0 };
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const store = {
+  get(k) { try { return localStorage.getItem('rv1028.' + k); } catch { return null; } },
+  set(k, v) { try { v == null ? localStorage.removeItem('rv1028.' + k) : localStorage.setItem('rv1028.' + k, v); } catch {} },
+};
+
+async function rpc(fn, args) {
+  const r = await fetch(`${SB_URL}/rest/v1/rpc/${fn}`, {
+    method: 'POST',
+    headers: { apikey: SB_KEY, Authorization: `Bearer ${SB_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify(args),
+  });
+  const txt = await r.text();
+  const data = txt ? JSON.parse(txt) : null;
+  if (!r.ok) throw new Error((data && data.message) || r.status);
+  return data;
+}
+const MSG = { 'bad passcode': '암호가 맞지 않습니다.', 'moderator passcode required': '모더레이터 암호가 필요합니다.',
+  'not your note': '본인 글만 고칠 수 있습니다.', 'unknown author': '이름을 다시 골라 주세요.' };
+const say = (e) => MSG[e.message] || ('저장하지 못했습니다: ' + e.message);
+function toast(t) { const el = $('#toast'); el.textContent = t; el.classList.remove('hidden'); clearTimeout(toast.h); toast.h = setTimeout(() => el.classList.add('hidden'), 2200); }
+
+/* ---------- 들어가기 ---------- */
+async function load() {
+  const d = await rpc('rv_load', { p_pass: st.pass });
+  st.members = d.members; st.notes = d.notes;
+  $('#sync').textContent = '마지막으로 불러온 시각 ' + new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+}
+async function enter(pass) {
+  st.pass = pass;
+  try { await load(); } catch (e) { st.pass = null; store.set('pass', null); $('#gerr').textContent = say(e); return; }
+  store.set('pass', pass);
+  const saved = store.get('me');
+  const m = st.members.find((x) => x.name === saved);
+  if (m && m.role === 'citizen') return start(m);
+  if (m && m.role === 'moderator' && store.get('mod')) {
+    if (await rpc('rv_mod_ok', { p_mod_pass: store.get('mod') })) { st.mod = store.get('mod'); return start(m); }
+  }
+  showNames();
+}
+function showNames() {
+  $('#gate').classList.remove('hidden'); $('#app').classList.add('hidden');
+  $('#g-pass').classList.add('hidden'); $('#g-mod').classList.add('hidden'); $('#g-name').classList.remove('hidden');
+  const grp = [[1, '1분과'], [2, '2분과'], [3, '3분과'], [0, '모더레이터·운영진']];
+  $('#namebox').innerHTML = grp.map(([d, label]) => `<div class="names-h">${label}</div><div class="names">` +
+    st.members.filter((m) => m.division === d).map((m) => `<button data-n="${esc(m.name)}">${esc(m.name)}</button>`).join('') + '</div>').join('');
+}
+$('#namebox').addEventListener('click', (ev) => {
+  const b = ev.target.closest('button[data-n]'); if (!b) return;
+  const m = st.members.find((x) => x.name === b.dataset.n);
+  if (m.role === 'moderator') { st.pending = m; $('#g-name').classList.add('hidden'); $('#g-mod').classList.remove('hidden'); $('#modpass').focus(); return; }
+  start(m);
+});
+$('#modgo').onclick = async () => {
+  const p = $('#modpass').value.trim();
+  if (!(await rpc('rv_mod_ok', { p_mod_pass: p }))) { $('#gerr').textContent = '모더레이터 암호가 맞지 않습니다.'; return; }
+  st.mod = p; store.set('mod', p); start(st.pending);
+};
+$('#modback').onclick = () => { $('#gerr').textContent = ''; showNames(); };
+$('#go').onclick = () => { $('#gerr').textContent = ''; enter($('#pass').value.trim()); };
+$('#pass').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#go').click(); });
+$('#modpass').addEventListener('keydown', (e) => { if (e.key === 'Enter') $('#modgo').click(); });
+$('#swap').onclick = () => { store.set('me', null); st.me = null; st.mod = null; showNames(); };
+
+function start(m) {
+  st.me = m; store.set('me', m.name); $('#gerr').textContent = '';
+  $('#gate').classList.add('hidden'); $('#app').classList.remove('hidden');
+  $('#who').textContent = m.role === 'moderator' ? `${m.name} (모더레이터)` : `${m.division}분과 ${m.name} 대표님`;
+  $('#csv').classList.toggle('hidden', m.role !== 'moderator');
+  if (!store.get('helpseen')) { $('#help').open = true; store.set('helpseen', '1'); }
+  const fromHash = decodeURIComponent(location.hash.slice(1));
+  const c = CARDS.find((x) => x.no === fromHash);
+  st.div = c ? +c.no[0] : (m.division || +(store.get('div') || 1));
+  store.set('div', st.div);
+  st.card = c ? c.no : (store.get('card.' + st.div) || `${st.div}-1`);
+  render();
+}
+
+/* ---------- 화면 ---------- */
+const isMod = () => st.me && st.me.role === 'moderator';
+const notesOf = (no, f, kind) => st.notes.filter((n) => n.card_no === no && n.field === f && n.kind === kind);
+const when = (t) => new Date(t).toLocaleString('ko-KR', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+
+function renderTabs() {
+  $('#tabs').innerHTML = [1, 2, 3].map((d) => `<button data-d="${d}" class="${d === st.div ? 'on' : ''}">${d}분과</button>`).join('');
+}
+$('#tabs').addEventListener('click', (e) => {
+  const b = e.target.closest('button[data-d]'); if (!b) return; if (st.editing) return guard();
+  st.div = +b.dataset.d; store.set('div', st.div); st.card = store.get('card.' + st.div) || `${st.div}-1`; render();
+});
+function renderList() {
+  const cards = CARDS.filter((c) => +c.no[0] === st.div);
+  $('#list').innerHTML = cards.map((c) => {
+    const m = st.notes.filter((n) => n.card_no === c.no && n.kind === 'proposal').length;
+    const k = st.notes.filter((n) => n.card_no === c.no && n.kind === 'opinion').length;
+    return `<a href="#${c.no}" data-c="${c.no}" class="${c.no === st.card ? 'on' : ''}"><span class="no">${c.no}</span>` +
+      `<span class="t">${esc(c.title)}</span><span class="cnt">${m ? `<span class="pill m">${m}</span>` : ''}${k ? `<span class="pill c">${k}</span>` : ''}</span></a>`;
+  }).join('');
+  $('#pick').innerHTML = cards.map((c) => {
+    const k = st.notes.filter((n) => n.card_no === c.no).length;
+    return `<option value="${c.no}" ${c.no === st.card ? 'selected' : ''}>${c.no}  ${esc(c.title.slice(0, 34))}${k ? `  (${k})` : ''}</option>`;
+  }).join('');
+}
+$('#list').addEventListener('click', (e) => { const a = e.target.closest('a[data-c]'); if (!a) return; e.preventDefault(); go(a.dataset.c); });
+$('#pick').addEventListener('change', (e) => go(e.target.value));
+function guard() { toast('쓰던 글을 먼저 저장하거나 취소해 주세요.'); }
+function go(no) {
+  if (st.editing) { $('#pick').value = st.card; return guard(); }
+  st.card = no; store.set('card.' + st.div, no); history.replaceState(null, '', '#' + no); render(); window.scrollTo({ top: 0 });
+}
+
+function noteHtml(n) {
+  const mine = st.me && n.author === st.me.name;
+  return `<div class="note ${n.kind === 'proposal' ? 'm' : 'c'}" data-id="${n.id}"><div class="b">${esc(n.body)}</div>` +
+    `<div class="meta"><span>${esc(n.author)}</span><span>${when(n.updated_at)}${n.updated_at !== n.created_at ? ' 고침' : ''}</span><span class="sp"></span>` +
+    (mine ? `<button class="link" data-act="edit" data-id="${n.id}">고치기</button><button class="link" data-act="del" data-id="${n.id}">지우기</button>` : '') +
+    '</div></div>';
+}
+function cellHtml(c, f, kind) {
+  const can = kind === 'proposal' ? isMod() : !isMod();
+  const label = kind === 'proposal' ? '수정제안(모더레이터)' : '검토의견(시민대표)';
+  return `<span class="flabel">${label}</span>` + notesOf(c.no, f, kind).map(noteHtml).join('') +
+    (can ? `<button class="add" data-act="add" data-f="${f}" data-k="${kind}">+ ${kind === 'proposal' ? '수정제안 쓰기' : '의견 쓰기'}</button>` : '');
+}
+function renderCard() {
+  const c = CARDS.find((x) => x.no === st.card) || CARDS.find((x) => +x.no[0] === st.div);
+  st.card = c.no;
+  const cards = CARDS.filter((x) => +x.no[0] === st.div);
+  const i = cards.indexOf(c);
+  const rows = FIELDS.map(([f, label]) => {
+    const draft = f === 'general' ? '<span class="draft fixed">카드 전체에 대한 의견(제목·순서·통합 등)</span>' :
+      `<div class="draft ${f === 'schedule' ? 'fixed' : ''}">${esc(c[f])}</div>`;
+    return `<tr><th class="f">${label}</th><td><span class="flabel">초안</span>${draft}</td>` +
+      `<td>${cellHtml(c, f, 'proposal')}</td><td>${cellHtml(c, f, 'opinion')}</td></tr>`;
+  }).join('');
+  $('#card').innerHTML = `<div class="cardhead"><h2>${c.no}</h2><span class="vote">${esc(c.vote)}</span>` +
+    `<span class="nav"><button data-act="prev" ${i ? '' : 'disabled'}>◀ 이전</button><button data-act="next" ${i < cards.length - 1 ? '' : 'disabled'}>다음 ▶</button></span></div>` +
+    `<table class="rv"><colgroup><col class="f"><col class="d"><col><col></colgroup>` +
+    `<thead><tr><th>항목</th><th>초안</th><th class="m">수정제안(모더레이터)</th><th class="c">검토의견(시민대표)</th></tr></thead>` +
+    `<tbody>${rows}<tr><th class="f">실행주체</th><td colspan="3"><div class="draft fixed">${esc(c.actor)} (작성 불요)</div></td></tr></tbody></table>`;
+}
+function render() { renderTabs(); renderList(); renderCard(); }
+
+/* ---------- 쓰기 ---------- */
+function openEditor(host, { f, k, id, body }) {
+  if (st.editing) return guard();
+  st.editing = 1;
+  const ed = document.createElement('div');
+  ed.className = 'editor';
+  ed.innerHTML = `<textarea placeholder="여기에 적거나 붙여 넣으세요"></textarea><div class="acts"><button data-act="cancel">취소</button><button class="primary" data-act="save">저장</button></div>`;
+  ed.querySelector('textarea').value = body || '';
+  host.replaceWith(ed);
+  const ta = ed.querySelector('textarea'); ta.focus();
+  ed.querySelector('[data-act=cancel]').onclick = () => { st.editing = 0; renderCard(); };
+  ed.querySelector('[data-act=save]').onclick = async (e) => {
+    const text = ta.value.trim(); if (!text) return toast('내용이 비어 있습니다.');
+    e.target.disabled = true;
+    try {
+      await rpc('rv_save', { p_pass: st.pass, p_mod_pass: st.mod, p_id: id || null, p_card: st.card, p_field: f, p_kind: k, p_author: st.me.name, p_body: text });
+      st.editing = 0; await load(); render(); toast('저장했습니다.');
+    } catch (err) { e.target.disabled = false; toast(say(err)); }
+  };
+}
+$('#card').addEventListener('click', async (e) => {
+  const b = e.target.closest('button[data-act]'); if (!b) return;
+  const act = b.dataset.act;
+  const cards = CARDS.filter((x) => +x.no[0] === st.div);
+  const i = cards.findIndex((x) => x.no === st.card);
+  if (act === 'prev') return go(cards[i - 1].no);
+  if (act === 'next') return go(cards[i + 1].no);
+  if (act === 'add') return openEditor(b, { f: b.dataset.f, k: b.dataset.k });
+  const n = st.notes.find((x) => x.id === +b.dataset.id);
+  if (act === 'edit') return openEditor(b.closest('.note'), { f: n.field, k: n.kind, id: n.id, body: n.body });
+  if (act === 'del') {
+    if (b.dataset.sure !== '1') { b.dataset.sure = '1'; b.textContent = '정말 지우기'; return; }
+    try { await rpc('rv_delete', { p_pass: st.pass, p_mod_pass: st.mod, p_id: n.id, p_author: st.me.name }); await load(); render(); toast('지웠습니다.'); }
+    catch (err) { toast(say(err)); }
+  }
+});
+window.addEventListener('beforeunload', (e) => { if (st.editing) { e.preventDefault(); e.returnValue = ''; } });
+
+/* ---------- 새로 불러오기·내려받기 ---------- */
+async function refresh(manual) {
+  if (!st.me) return;
+  if (st.editing) { if (manual) guard(); return; }
+  try { await load(); renderList(); renderCard(); if (manual) toast('새로 불러왔습니다.'); } catch (e) { if (manual) toast(say(e)); }
+}
+$('#reload').onclick = () => refresh(true);
+setInterval(() => { if (!document.hidden) refresh(false); }, 60000);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(false); });
+$('#csv').onclick = () => {
+  const fl = Object.fromEntries(FIELDS);
+  const q = (s) => '"' + String(s).replace(/"/g, '""') + '"';
+  const lines = [['분과', '권고번호', '항목', '구분', '작성자', '내용', '작성', '고침'].map(q).join(',')];
+  const order = (no) => CARDS.findIndex((c) => c.no === no);
+  [...st.notes].sort((a, b) => order(a.card_no) - order(b.card_no) || a.id - b.id).forEach((n) => lines.push([
+    n.card_no[0] + '분과', n.card_no, fl[n.field], n.kind === 'proposal' ? '수정제안' : '검토의견', n.author, n.body, when(n.created_at), when(n.updated_at),
+  ].map(q).join(',')));
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+  a.download = `권고문구검토_${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+};
+
+const saved = store.get('pass');
+if (saved) enter(saved);
+</script>
+</body>
+</html>

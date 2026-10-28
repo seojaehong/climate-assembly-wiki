@@ -61,3 +61,7 @@
 /qr/*
   X-Robots-Tag: noindex, nofollow
   Cache-Control: no-store
+
+/r-phj4az8h2j8s/*
+  X-Robots-Tag: noindex, nofollow, noarchive
+  Cache-Control: no-store
