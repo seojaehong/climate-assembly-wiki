@@ -4,6 +4,8 @@ import {
   createSubmitLatch,
   getLocalSubmit,
   isComplete,
+  NAME_TAKEN_MESSAGE,
+  requiresAllItems,
   isLocalSubmitStoragePersistent,
   parseBallotUrl,
   recordLocalSubmit,
@@ -309,5 +311,28 @@ describe('ItemBlock — 분과 의결 투표는 안 제목을 크게, 안 번호
     );
     expect(html).toContain('의제 1 응답');
     expect(html).not.toContain('안 번호');
+  });
+});
+
+describe('(11/10 결정) 전체회의 의결 — 기권 불인정 · 재투표 불가 문구', () => {
+  const list = [
+    item({ id: 'a', ordinal: 1, statement: '1-1-안1 가', scale: 2, required: false }),
+    item({ id: 'b', ordinal: 2, statement: '1-2-안1 나', scale: 2, required: false }),
+  ];
+  it('전체회의 의결 투표지만 모든 건이 필수다', () => {
+    expect(requiresAllItems({ title: '전체회의 의결 의제1 가상', subgroup: null })).toBe(true);
+    expect(requiresAllItems({ title: '전체회의 의결 의제1', subgroup: '' })).toBe(true);
+    expect(requiresAllItems({ title: '1분과 의결', subgroup: '1분과' })).toBe(false);
+    expect(requiresAllItems({ title: '폐회 투표', subgroup: null })).toBe(false);
+  });
+  it('목록 화면(?view=list)도 전건 필수면 required=false 문항까지 다 눌러야 완결', () => {
+    expect(isComplete(list, { a: 2 })).toBe(true);
+    expect(isComplete(list, { a: 2 }, true)).toBe(false);
+    expect(isComplete(list, { a: 2, b: 1 }, true)).toBe(true);
+  });
+  it('이미 같은 이름으로 낸 경우 — 다시 투표할 수 없다고 분명히 말한다', () => {
+    expect(NAME_TAKEN_MESSAGE.startsWith('이미 이 이름으로 제출되었습니다.')).toBe(true);
+    expect(NAME_TAKEN_MESSAGE).toContain('다시 투표할 수 없습니다');
+    expect(NAME_TAKEN_MESSAGE).toContain('운영팀');
   });
 });

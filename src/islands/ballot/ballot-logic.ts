@@ -1,4 +1,5 @@
 import type { Ballot, BallotItem } from '../../lib/ballot';
+import { decisionBallotKind } from '../../lib/division-ballot-format';
 import { createSafeBrowserStorage } from '../../lib/safe-browser-storage';
 
 /** URL 쿼리에서 ballot 토큰(`?t=...`)을 파싱한다. 없거나 공백뿐이면 null. */
@@ -161,12 +162,28 @@ export function answeredCount(items: BallotItem[], answers: Record<string, numbe
 }
 
 /**
+ * 11/14 전체회의 의결 투표지는 기권을 받지 않는다(11/10 주최 결정) — 문항이 required=false 로 만들어졌어도
+ * 모든 건을 눌러야 제출된다. 넘김식 · 목록 화면(?view=list)이 같이 쓴다. 분과 의결 · 일반 투표는 문항 required 그대로.
+ */
+export function requiresAllItems(ballot: { title?: string | null; subgroup?: string | null }): boolean {
+  return decisionBallotKind(ballot) === 'plenary';
+}
+
+/**
  * 제출 가능 여부 — required 문항 전부에 유효 답변이 있어야 true.
  * (ballot_submit의 서버 가드와 동일 조건. optional 문항은 비워도 된다.)
+ * allRequired(전체회의 의결) 이면 optional 문항까지 전부.
  */
-export function isComplete(items: BallotItem[], answers: Record<string, number>): boolean {
-  return items.filter((item) => item.required).every((item) => hasValidAnswer(item, answers));
+export function isComplete(items: BallotItem[], answers: Record<string, number>, allRequired = false): boolean {
+  return items.filter((item) => allRequired || item.required).every((item) => hasValidAnswer(item, answers));
 }
+
+/**
+ * 같은 이름이 이미 제출됨(name_taken). 재투표 불가(11/10 주최 결정) — 다시 낼 수 없다고 분명히 말한다.
+ * 이 기기는 잠그지 않는다(남의 이름을 잘못 눌렀으면 자기 이름으로 고쳐 낸다).
+ */
+export const NAME_TAKEN_MESSAGE =
+  '이미 이 이름으로 제출되었습니다. 같은 이름으로는 다시 투표할 수 없습니다. 이름을 잘못 눌렀으면 고쳐 주시고, 낸 적이 없으면 손을 들어 운영팀에 알려 주세요.';
 
 // ── 로컬 제출 기록 ──────────────────────────────────────────────────
 // 제출 성공/중복 확인 시 localStorage에 시각을 남겨, 재진입(QR 재스캔)하면

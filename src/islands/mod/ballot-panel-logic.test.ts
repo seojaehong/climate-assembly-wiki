@@ -23,6 +23,7 @@ import {
   validateBallotForm,
   parseBulkBallotItems,
   plenaryFormWarnings,
+  plenaryLocksRequired,
   type BallotFormItem,
 } from './ballot-panel-logic';
 import type { BallotStatus } from '../../lib/deliberation';
@@ -429,13 +430,25 @@ describe('(11/14) 여러 건 붙여넣기 · 전체회의 의결 투표지 점�
     ]);
   });
 
-  it('「누르지 않은 건 허용」이면 문항이 선택(required=false)으로 서버에 간다', () => {
+  it('(일반 투표) 「누르지 않은 건 허용」이면 문항이 선택(required=false)으로 서버에 간다', () => {
     const items = parseBulkBallotItems(pasted, { optional: true });
-    const r = validateBallotForm('전체회의 의결 의제1', items);
+    const r = validateBallotForm('폐회 일괄 투표', items);
     expect(r.ok && r.items.every((it) => it.required === false && it.scale === 2)).toBe(true);
     // 옛 폼 항목(required 없음)은 지금처럼 필수.
     const old = validateBallotForm('제목', [{ statement: '의제', scale: 5 }]);
     expect(old.ok && old.items[0].required).toBe(true);
+  });
+
+  it('(11/10 결정 · 기권 불인정) 전체회의 의결 제목이면 「허용」을 골랐어도 모든 건이 필수(required=true)로 서버에 간다', () => {
+    const items = parseBulkBallotItems(pasted, { optional: true });
+    for (const title of ['전체회의 의결 의제1 기업 온실가스 감축 촉진', '전체회의 의결 의제1', '  전체회의 의결 의제 1']) {
+      const r = validateBallotForm(title, items);
+      expect(r.ok && r.items.every((it) => it.required === true)).toBe(true);
+    }
+    expect(plenaryLocksRequired('전체회의 의결 의제3 가상')).toBe(true);
+    expect(plenaryLocksRequired(' 전체회의 의결 의제①')).toBe(true);
+    expect(plenaryLocksRequired('폐회 일괄 투표')).toBe(false);
+    expect(plenaryLocksRequired('1분과 의결 1-1-안1')).toBe(false);
   });
 
   it('28건도 한 번에 — 상한(30) 안', () => {

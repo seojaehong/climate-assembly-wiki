@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import type { BallotItem } from '../../lib/ballot';
-import { PagerItemView, PagerSummaryView } from './BallotPager';
+import BallotPager, { PagerItemView, PagerSummaryView } from './BallotPager';
 
 const items: BallotItem[] = Array.from({ length: 28 }, (_, i) => ({
   id: `item-${i + 1}`,
@@ -104,5 +104,67 @@ describe('넘김식 — 요약 화면', () => {
     );
     expect(h).not.toMatch(/data-testid="pager-submit"[^>]*disabled=""|disabled=""[^>]*data-testid="pager-submit"/);
     expect(h).toContain('제출하면 바꿀 수 없습니다');
+  });
+});
+
+describe('(11/10 결정 · 기권 불인정) 넘김식 요약 — 미응답 건으로 안내 · 이동', () => {
+  const optionalItems = items.map((it) => ({ ...it, required: false }));
+  const partial: Record<string, number> = {};
+  optionalItems.forEach((it, i) => {
+    if (i === 10 || i === 22) return; // 2-11 · 2-23 미응답
+    partial[it.id] = 2;
+  });
+  const disabledSubmit = /data-testid="pager-submit"[^>]*disabled=""|disabled=""[^>]*data-testid="pager-submit"/;
+
+  it('전건 필수(allRequired)면 문항이 required=false 여도 제출이 꺼지고 기권 안내가 없다', () => {
+    const html = renderToStaticMarkup(
+      createElement(PagerSummaryView, {
+        title: '전체회의 의결 의제2', items: optionalItems, answers: partial, submitting: false, error: null,
+        onGo: noop, onSubmit: noop, voterLine: null, allRequired: true,
+      }),
+    );
+    expect(html).toMatch(disabledSubmit);
+    expect(html).toContain('모든 권고안에 찬성 또는 반대를 눌러야 제출됩니다');
+    expect(html).not.toContain('기권으로 기록');
+  });
+
+  it('빠진 건이 있으면 첫 미응답 건으로 가는 단추가 있다', () => {
+    const html = renderToStaticMarkup(
+      createElement(PagerSummaryView, {
+        title: '전체회의 의결 의제2', items: optionalItems, answers: partial, submitting: false, error: null,
+        onGo: noop, onSubmit: noop, voterLine: null, allRequired: true,
+      }),
+    );
+    expect(html).toContain('data-testid="pager-goto-missing"');
+    expect(html).toMatch(/data-testid="pager-goto-missing"[^>]*>[^<]*2-11/);
+  });
+
+  const pager = (title: string, subgroup: string | null) =>
+    renderToStaticMarkup(
+      createElement(BallotPager, {
+        ballot: { id: 'b-1', title, instructions: null, status: 'open', subgroup, items: optionalItems },
+        initialAnswers: partial,
+        initialPos: 'summary',
+        onChange: noop,
+        onSubmit: noop,
+        submitting: false,
+        error: null,
+        teams: [],
+        voter: { team: null, name: '' },
+        onVoter: noop,
+      }),
+    );
+
+  it('전체회의 의결 투표지는 「누르지 않은 건 허용」으로 만들어졌어도 기권 제출 길이 없다', () => {
+    const html = pager('전체회의 의결 의제2 가상 의제', null);
+    expect(html).toMatch(disabledSubmit);
+    expect(html).not.toContain('기권으로 기록');
+    expect(html).toContain('data-testid="pager-goto-missing"');
+  });
+
+  it('(그대로) 분과 의결 투표지의 미표시 허용은 지금처럼 기권 확인을 거쳐 제출', () => {
+    const html = pager('2분과 의결', '2분과');
+    expect(html).not.toMatch(disabledSubmit);
+    expect(html).toContain('누르지 않은 건은 기권으로 기록됩니다');
   });
 });

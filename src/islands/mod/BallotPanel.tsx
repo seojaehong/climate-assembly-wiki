@@ -40,6 +40,7 @@ import {
   emptyBallotFormItem,
   parseBulkBallotItems,
   plenaryFormWarnings,
+  plenaryLocksRequired,
   primaryAction,
   scaleLabel,
   sessionSubgroups,
@@ -561,6 +562,33 @@ function BallotResultsFullscreen({
 // 생성 폼 — 제목·안내문·의제 행(문장 + 척도 2/4/5/7)
 // ============================================================
 
+/**
+ * 「누르지 않은 건 허용」 체크. 전체회의 의결 제목이면(locked) 꺼진 채 잠근다 — 기권 불인정(11/10 주최 결정).
+ * 잠겨도 만들기 페이로드는 validateBallotForm 이 필수로 바꾼다(체크를 먼저 켜고 제목을 나중에 쓴 경우).
+ */
+export function SkipMissingToggle({ locked, checked, onChange }: { locked: boolean; checked: boolean; onChange: (next: boolean) => void }) {
+  return (
+    <div>
+      <label className={`flex items-center gap-2 text-[15px] ${locked ? 'text-[#5A6B73]' : 'text-[#1F2933]'}`}>
+        <input
+          type="checkbox"
+          data-testid="ballot-optional"
+          checked={checked && !locked}
+          disabled={locked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="h-5 w-5"
+        />
+        누르지 않은 건 허용 (그 건은 기권으로 기록)
+      </label>
+      {locked ? (
+        <p data-testid="ballot-optional-locked" className="mt-1 text-[14px] font-bold text-[#8A4B08]">
+          전체회의 의결 투표지는 모든 건을 눌러야 제출됩니다(기권 불인정).
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
 export function CreateForm({
   submitting,
   subgroup,
@@ -756,10 +784,7 @@ export function CreateForm({
             placeholder="예: 1-1-안1 권고 제목"
             className="w-full min-w-0 rounded-xl border border-[#C4D8E4] focus:border-[#23B2C3] px-3 py-2 text-[16px] text-[#1F2933] outline-none resize-y"
           />
-          <label className="flex items-center gap-2 text-[15px] text-[#1F2933]">
-            <input type="checkbox" data-testid="ballot-optional" checked={optional} onChange={(e) => toggleOptional(e.target.checked)} className="h-5 w-5" />
-            누르지 않은 건 허용 (그 건은 기권으로 기록)
-          </label>
+          <SkipMissingToggle locked={plenaryLocksRequired(title)} checked={optional} onChange={toggleOptional} />
           <button
             type="button"
             data-testid="ballot-bulk-apply"

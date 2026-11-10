@@ -92,7 +92,10 @@ export function scaleLabel(scale: BallotScale): string {
 
 // ── 생성 폼 ──────────────────────────────────────────────────
 
-/** required 가 없으면 필수(옛 폼 그대로). false = 누르지 않아도 제출되고 그 건은 기권으로 남는다. */
+/**
+ * required 가 없으면 필수(옛 폼 그대로). false = 누르지 않아도 제출되고 그 건은 기권으로 남는다.
+ * 전체회의 의결 제목이면 false 여도 validateBallotForm 이 true 로 바꾼다(기권 불인정).
+ */
 export type BallotFormItem = { statement: string; scale: BallotScale; required?: boolean };
 
 export type BallotFormResult =
@@ -131,6 +134,9 @@ export function validateBallotForm(title: string, items: BallotFormItem[]): Ball
     return { ok: false, error: `${badScaleIndex + 1}번 의제의 척도가 올바르지 않습니다(2·4·5·7점만 가능).` };
   }
 
+  // 전체회의 의결은 기권 불인정(11/10 주최 결정) — 「누르지 않은 건 허용」을 골랐어도 모든 건을 필수로 보낸다.
+  // 만들기 페이로드는 이 함수 결과로만 만들어진다(handleCreate) — 체크를 먼저 켜고 제목을 나중에 써도 여기서 막힌다.
+  const allRequired = plenaryLocksRequired(trimmedTitle);
   return {
     ok: true,
     title: trimmedTitle,
@@ -138,14 +144,23 @@ export function validateBallotForm(title: string, items: BallotFormItem[]): Ball
       ordinal: index + 1,
       statement: item.statement,
       scale: item.scale,
-      required: item.required ?? true,
+      required: allRequired ? true : item.required ?? true,
     })),
   };
 }
 
 /**
+ * (11/14) 「전체회의 의결」로 시작하는 제목 — 기권 불인정(11/10 주최 결정)이라 「누르지 않은 건 허용」을 쓸 수 없다.
+ * 모양이 어긋난 제목(「의제 1」 · 「의제①」)도 잠근다(그런 제목은 plenaryFormWarnings 가 따로 막는다).
+ */
+export function plenaryLocksRequired(title: string): boolean {
+  return title.trim().startsWith('전체회의 의결');
+}
+
+/**
  * (11/14) 여러 건 붙여넣기 — 한 줄 = 한 건, 빈 줄은 버린다. 의결 투표지라 전부 찬반(2점).
  * optional = 「누르지 않은 건 허용」(문항 required=false → 넘김식이 「기권으로 두고 제출」 확인을 띄운다).
+ * 전체회의 의결 제목에서는 쓸 수 없다(폼 체크 잠김 · validateBallotForm 이 필수로 바꿈, 11/10 결정).
  */
 export function parseBulkBallotItems(text: string, { optional }: { optional: boolean }): BallotFormItem[] {
   return text

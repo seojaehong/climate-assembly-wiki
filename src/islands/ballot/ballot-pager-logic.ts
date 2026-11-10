@@ -3,7 +3,8 @@
  *
  * 한 화면에 권고안 1건. [찬성]/[반대]를 누르면 고른 표시를 0.4초 보인 뒤 다음 건으로 넘어가고,
  * 넘어간 직후 0.5초는 누름을 받지 않는다(연달아 눌러 다음 건에 같은 값이 들어가는 일을 막는다).
- * 마지막 건 뒤에는 요약(찬성 · 반대 · 미응답 + 번호) → [제출] 한 번.
+ * 마지막 건 뒤에는 요약(찬성 · 반대 · 미응답 + 번호) → [제출] 한 번. 전체회의 의결은 기권을 받지 않아(11/10 주최 결정)
+ * 미응답 건이 남으면 제출하지 않고 그 건으로 보낸다.
  *
  * 저장값은 지금과 같다: 1 = 반대, 2 = 찬성(집계 · 세리머니 · 결과 내보내기가 이 값에 기댄다).
  * 근거 = 20_투표_최종안 ④-1 · W04 · 00_고정조건 C-7.
@@ -112,27 +113,38 @@ export function pagerSummary(items: readonly BallotItem[], answers: Record<strin
   return out;
 }
 
-/** 제출 완료 화면의 본인 선택 문구. 누르지 않은 건은 기권으로 기록되므로 「기권」으로 적는다. */
+/**
+ * 제출 완료 화면의 본인 선택 문구. 누르지 않은 건은 기권으로 기록되므로 「기권」으로 적는다.
+ * 다 누른 표(전체회의 의결은 늘 그렇다 — 기권 불인정)에는 「기권 0건」을 붙이지 않는다.
+ */
 export function pagerChoiceText(items: readonly BallotItem[], answers: Record<string, number>): string {
   const s = pagerSummary(items, answers);
-  return `찬성 ${s.yes}건 · 반대 ${s.no}건 · 기권 ${s.unanswered}건`;
+  const base = `찬성 ${s.yes}건 · 반대 ${s.no}건`;
+  return s.unanswered > 0 ? `${base} · 기권 ${s.unanswered}건` : base;
 }
 
 /**
  * 요약 화면 [제출하기]의 상태.
  * - none-answered: 한 건도 고르지 않았다 → 제출 불가
- * - required-missing: 전건 필수(문항 required)인데 빠진 건이 있다 → 제출 불가, 번호로 돌아가게
+ * - required-missing: 전건 필수(문항 required 또는 allRequired)인데 빠진 건이 있다 → 제출 불가, 첫 미응답 건으로 보낸다
  * - confirm-missing: 미표시 허용인데 빠진 건이 있다 → 「기권으로 두고 제출」 한 번 더 확인
  * - ready: 바로 제출
+ * allRequired = 전체회의 의결 투표지(기권 불인정, 11/10 주최 결정). 문항이 required=false 로 만들어졌어도 confirm-missing 이 없다.
  */
 export type PagerSubmitGate = 'none-answered' | 'required-missing' | 'confirm-missing' | 'ready';
 
-export function pagerSubmitGate(items: readonly BallotItem[], answers: Record<string, number>): PagerSubmitGate {
+export function pagerSubmitGate(items: readonly BallotItem[], answers: Record<string, number>, allRequired = false): PagerSubmitGate {
   const answered = items.filter((it) => validValue(it, answers[it.id]));
   if (answered.length === 0) return 'none-answered';
   const missing = items.filter((it) => !validValue(it, answers[it.id]));
   if (missing.length === 0) return 'ready';
-  return missing.some((it) => it.required) ? 'required-missing' : 'confirm-missing';
+  return allRequired || missing.some((it) => it.required) ? 'required-missing' : 'confirm-missing';
+}
+
+/** 첫 미응답 건 위치(0부터). 다 눌렀으면 null. */
+export function firstMissingPos(items: readonly BallotItem[], answers: Record<string, number>): number | null {
+  const i = items.findIndex((it) => !validValue(it, answers[it.id]));
+  return i >= 0 ? i : null;
 }
 
 // ── 임시 저장 ────────────────────────────────────────────────────────

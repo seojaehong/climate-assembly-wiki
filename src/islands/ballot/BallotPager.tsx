@@ -10,9 +10,11 @@ import type { Ballot, BallotItem } from '../../lib/ballot';
 import { parseMotionStatement } from '../../lib/division-ballot-format';
 import { voterReady, type RosterTeam } from '../../lib/named-vote-logic';
 import { useModalDialog } from '../mod/use-modal-dialog';
+import { requiresAllItems } from './ballot-logic';
 import {
   NO,
   YES,
+  firstMissingPos,
   initialPagerState,
   motionNumber,
   pagerGo,
@@ -220,6 +222,7 @@ export function PagerSummaryView({
   onGo,
   onSubmit,
   voterLine,
+  allRequired = false,
 }: {
   title: string;
   items: readonly BallotItem[];
@@ -229,10 +232,13 @@ export function PagerSummaryView({
   onGo: (target: PagerPos) => void;
   onSubmit: () => void;
   voterLine: string | null;
+  /** 전체회의 의결 — 기권 불인정(11/10 주최 결정). 문항 required 와 상관없이 모든 건을 눌러야 제출. */
+  allRequired?: boolean;
 }) {
   const s = pagerSummary(items, answers);
-  const gate = pagerSubmitGate(items, answers);
+  const gate = pagerSubmitGate(items, answers, allRequired);
   const blocked = gate === 'none-answered' || gate === 'required-missing';
+  const firstMissing = s.unansweredItems[0] ?? null;
   return (
     <Frame>
       <div className="border-b border-[#DCE7EE] px-5 pt-4 pb-3">
@@ -291,6 +297,17 @@ export function PagerSummaryView({
           <p className="mt-6 text-[19px] font-bold text-[#8A4B08]" style={KEEP}>
             모든 권고안에 찬성 또는 반대를 눌러야 제출됩니다.
           </p>
+        ) : null}
+        {blocked && firstMissing ? (
+          <button
+            type="button"
+            data-testid="pager-goto-missing"
+            onClick={() => onGo(firstMissing.pos)}
+            className="mt-3 min-h-[72px] w-full rounded-2xl border-[3px] border-[#8A4B08] bg-[#FFF4D6] text-[22px] font-black text-[#8A4B08] tr-num"
+            style={KEEP}
+          >
+            누르지 않은 권고안 {firstMissing.number}부터 고르기
+          </button>
         ) : null}
         {gate === 'confirm-missing' ? (
           <p className="mt-6 text-[18px] font-bold text-[#8A4B08]" style={KEEP}>
@@ -409,6 +426,8 @@ export default function BallotPager({
   const [confirmMissing, setConfirmMissing] = useState(false);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const total = ballot.items.length;
+  // 전체회의 의결 — 기권 불인정(11/10 주최 결정). 「기권으로 두고 제출」 확인 길을 열지 않는다.
+  const allRequired = requiresAllItems(ballot);
 
   useEffect(() => {
     onChange(state.answers, state.pos);
@@ -442,8 +461,17 @@ export default function BallotPager({
   }
 
   if (state.pos === 'summary') {
-    const gate = pagerSubmitGate(ballot.items, state.answers);
+    const gate = pagerSubmitGate(ballot.items, state.answers, allRequired);
     const missing = pagerSummary(ballot.items, state.answers).unanswered;
+    const submitOrGuide = () => {
+      if (gate === 'ready') onSubmit(state.answers);
+      else if (gate === 'confirm-missing') setConfirmMissing(true);
+      else {
+        // 빠진 건이 있으면 내지 않고 그 건으로 보낸다(단추가 꺼져 있어도 한 번 더 막는다).
+        const pos = firstMissingPos(ballot.items, state.answers);
+        if (pos !== null) go(pos);
+      }
+    };
     return (
       <>
         <PagerSummaryView
@@ -453,8 +481,9 @@ export default function BallotPager({
           submitting={submitting}
           error={error}
           onGo={go}
-          onSubmit={() => (gate === 'confirm-missing' ? setConfirmMissing(true) : onSubmit(state.answers))}
+          onSubmit={submitOrGuide}
           voterLine={voterLine}
+          allRequired={allRequired}
         />
         {confirmMissing ? (
           <MissingConfirm

@@ -21,7 +21,9 @@ import {
   getLocalVoter,
   isComplete,
   isLocalSubmitStoragePersistent,
+  NAME_TAKEN_MESSAGE,
   parseBallotUrl,
+  requiresAllItems,
   recordLocalSubmit,
   recordLocalVoter,
   namedDoneText,
@@ -626,7 +628,7 @@ function VotingScreen({
   const answered = answeredCount(ballot.items, answers);
   const named = teams.length > 0;
   const voterOk = !named || voterReady(voter.team, voter.name, teams);
-  const complete = isComplete(ballot.items, answers) && voterOk;
+  const complete = isComplete(ballot.items, answers, requiresAllItems(ballot)) && voterOk;
   const decisionKind = decisionBallotKind(ballot);
   const decision = decisionKind !== null;
   const copy = voterCopy(decisionKind);
@@ -988,7 +990,7 @@ export default function BallotCard() {
         : null;
       if (result === 'name_taken') {
         // 같은 이름이 이미 제출됨 — 이 기기는 잠그지 않는다(조·이름을 잘못 눌렀을 수 있다).
-        setError('이미 이 이름으로 제출되었습니다. 운영팀에 알려 주세요.');
+        setError(NAME_TAKEN_MESSAGE);
       } else if (result === 'ok') {
         recordLocalSubmit(ballot.id);
         clearPagerDraft(pagerStorage, ballot.id);

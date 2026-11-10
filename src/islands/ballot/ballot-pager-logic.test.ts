@@ -4,6 +4,7 @@ import {
   ADVANCE_DELAY_MS,
   INPUT_LOCK_MS,
   clearPagerDraft,
+  firstMissingPos,
   initialPagerState,
   loadPagerDraft,
   motionNumber,
@@ -145,6 +146,10 @@ describe('요약', () => {
     expect(pagerChoiceText(list, answers)).toBe('찬성 2건 · 반대 2건 · 기권 2건');
     expect(pagerChoiceText(list, {})).toBe('찬성 0건 · 반대 0건 · 기권 6건');
   });
+  it('(11/10 결정) 다 누른 표에는 「기권 0건」을 적지 않는다', () => {
+    const full = Object.fromEntries(list.map((it, i) => [it.id, i < 4 ? 2 : 1]));
+    expect(pagerChoiceText(list, full)).toBe('찬성 4건 · 반대 2건');
+  });
 });
 
 describe('제출 가부', () => {
@@ -160,6 +165,17 @@ describe('제출 가부', () => {
   });
   it('다 골랐으면 바로 제출', () => {
     expect(pagerSubmitGate(items(2), { 'item-1': 2, 'item-2': 1 })).toBe('ready');
+  });
+  it('(11/10 결정 · 기권 불인정) 전건 필수 투표지면 문항이 required=false 여도 「기권으로 두고 제출」이 없다', () => {
+    expect(pagerSubmitGate(items(3, false), { 'item-1': 2 }, true)).toBe('required-missing');
+    expect(pagerSubmitGate(items(3, false), {}, true)).toBe('none-answered');
+    expect(pagerSubmitGate(items(3, false), { 'item-1': 2, 'item-2': 1, 'item-3': 2 }, true)).toBe('ready');
+    expect(pagerSubmitGate(items(3, false), { 'item-1': 2, 'item-2': 1, 'item-3': 9 }, true)).toBe('required-missing');
+  });
+  it('첫 미응답 건 위치 — 없으면 null', () => {
+    expect(firstMissingPos(items(4), { 'item-1': 2, 'item-3': 1 })).toBe(1);
+    expect(firstMissingPos(items(4), {})).toBe(0);
+    expect(firstMissingPos(items(2), { 'item-1': 2, 'item-2': 1 })).toBeNull();
   });
 });
 

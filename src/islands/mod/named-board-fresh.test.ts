@@ -44,3 +44,12 @@ describe('제출자 대조 — 낸 사람 누구든 조·이름을 고칠 수 �
     expect(ballot).toMatch(/ballot\.status !== 'draft' && access \? \(\s*<div className="mt-3">\s*<VoterReconcileBox/);
   });
 });
+
+describe('(11/10 결정) 제출자 대조 — 직접 입력은 유효표', () => {
+  it('명단에 없는 조·이름을 「오타 의심」이 아니라 직접 입력 · 유효표로 적는다', () => {
+    const src = readFileSync(new URL('./VoterReconcileBox.tsx', import.meta.url), 'utf8');
+    expect(src).toContain('직접 입력');
+    expect(src).toContain('유효표');
+    expect(src).not.toContain('오타 의심');
+  });
+});
