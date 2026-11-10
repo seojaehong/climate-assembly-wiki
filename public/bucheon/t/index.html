@@ -17,12 +17,12 @@
   .tabs { display: flex; gap: 4px; margin: 0 0 16px; background: var(--paper); padding: 4px; border-radius: 12px; }
   .tabs button { flex: 1; min-width: 0; padding: 12px 8px; font-size: 16px; font-weight: 700; border-radius: 9px;
                  border: 0; background: transparent; color: var(--ink-3); cursor: pointer; }
-  .tabs button[aria-selected="true"] { background: var(--band); color: var(--band-ink); }
+  .tabs button[aria-selected="true"] { background: var(--cobalt); color: var(--on-cobalt); }
   .card { background: var(--paper); border-radius: var(--r-panel); padding: 16px; margin-bottom: 12px; }
   label.f { display: block; font-weight: 800; font-size: 17px; margin: 0 0 4px; }
-  .help { color: var(--ink-3); font-size: 14px; margin: 0 0 10px; }
+  .help { color: var(--ink-2); font-size: 15px; margin: 0 0 10px; }
   textarea, input[type=text] { width: 100%; font-size: 17px; padding: 12px 14px; border-radius: var(--r-ctl);
-             border: 2px solid var(--rule); background: var(--ground); color: var(--ink); }
+             border: 2px solid var(--field-line); background: var(--paper); color: var(--ink); }
   textarea:focus, input[type=text]:focus { border-color: var(--cobalt); background: var(--paper); outline: none; }
   textarea { min-height: 110px; resize: vertical; }
   #code { font-size: 26px; font-weight: 800; letter-spacing: .2em; text-align: center; }
@@ -32,13 +32,13 @@
   .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
   .seg button { min-width: 0; min-height: 46px; padding: 8px 6px; font-size: 15px; border-radius: 9px; border: 2px solid var(--rule);
                 background: var(--paper); color: var(--ink); cursor: pointer; }
-  .seg button[aria-pressed="true"] { background: var(--cobalt); color: #fff; border-color: var(--cobalt); font-weight: 800; }
+  .seg button[aria-pressed="true"] { background: var(--cobalt); color: var(--on-cobalt); border-color: var(--cobalt); font-weight: 800; }
   .rank button.item { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 12px;
                 margin-bottom: 6px; border-radius: 12px; border: 2px solid transparent; background: var(--paper); color: var(--ink); font-size: 16px; cursor: pointer; }
   .rank .badge { flex: 0 0 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; font-weight: 800;
                  background: var(--ground); color: var(--ink-3); }
-  .rank button.on .badge { background: var(--vest); color: #0f1e36; }
-  .rank button.on { border-color: var(--ink); }
+  .rank button.on .badge { background: var(--cobalt); color: var(--on-cobalt); }
+  .rank button.on { border-color: var(--cobalt); }
   .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; margin: 0 0 10px; }
   .row .help { margin: 0; }
   .bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--paper); padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
