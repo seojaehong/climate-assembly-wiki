@@ -129,10 +129,30 @@ describe('validateBallotForm — 생성 폼 검증', () => {
     expect(validateBallotForm('제목', []).ok).toBe(false);
   });
 
-  it('의제 20개까지는 허용, 21개는 거부한다', () => {
-    const twenty = Array.from({ length: MAX_BALLOT_ITEMS }, (_, i) => item(`의제 ${i + 1}`));
-    expect(validateBallotForm('제목', twenty).ok).toBe(true);
-    expect(validateBallotForm('제목', [...twenty, item('초과')]).ok).toBe(false);
+  it('의제 30개까지는 허용, 31개는 거부한다(s31 — RPC 상한 1..30 과 같은 값)', () => {
+    expect(MAX_BALLOT_ITEMS).toBe(30);
+    const thirty = Array.from({ length: 30 }, (_, i) => item(`의제 ${i + 1}`));
+    expect(validateBallotForm('제목', thirty).ok).toBe(true);
+    expect(validateBallotForm('제목', [...thirty, item('초과')])).toEqual({
+      ok: false,
+      error: '의제는 최대 30개까지 담을 수 있습니다.',
+    });
+  });
+
+  it('11/14 의제별 투표지 최대 28건이 통과한다', () => {
+    const items28 = Array.from({ length: 28 }, (_, i) => item(`의제 ${i + 1}`));
+    expect(validateBallotForm('제목', items28).ok).toBe(true);
+  });
+
+  it('화면 상한 = ballot_create_v3 최신 마이그레이션의 상한(s31)', () => {
+    const sql = readFileSync(
+      new URL('../../../supabase/migrations/20261110_s31_ballot_limit_30.sql', import.meta.url),
+      'utf8',
+    );
+    expect(sql).toMatch(/function climate_vote\.ballot_create_v3\(/i);
+    expect(sql).toContain(`jsonb_array_length(p_items)>${MAX_BALLOT_ITEMS} then raise exception 'items must be array of 1..${MAX_BALLOT_ITEMS}'`);
+    const code = sql.split('\n').filter((line) => !line.trimStart().startsWith('--')).join('\n');
+    expect(code).not.toMatch(/>\s*20\b/);
   });
 
   it('빈 문장은 몇 번째 줄인지 짚어 거부한다', () => {

@@ -2,12 +2,12 @@ import type { BallotItemInput, BallotScale, BallotStatus } from '../../lib/delib
 
 /**
  * 다의제 투표(ballot) 패널의 순수 로직 — 상태 전이 가드, 생성 폼 검증, 결과 분포 계산.
- * 서버 규칙(20260808_s2_ballot_multi_agenda.sql)의 UI측 거울이다: RPC가 마지막 방어선이고,
+ * 서버 규칙(20260808_s2_ballot_multi_agenda.sql → 상한은 20261110_s31_ballot_limit_30.sql)의 UI측 거울이다: RPC가 마지막 방어선이고,
  * 여기서는 사용자가 그 방어선에 부딪히기 전에 버튼 자체를 막는다.
  */
 
 export const BALLOT_SCALES: readonly BallotScale[] = [2, 4, 5, 7] as const;
-export const MAX_BALLOT_ITEMS = 20;
+export const MAX_BALLOT_ITEMS = 30; // s31(11/14 의제별 투표지 최대 28건) — 20261110_s31_ballot_limit_30.sql 과 같은 값
 export const MAX_STATEMENT_LENGTH = 300;
 export const MAX_TITLE_LENGTH = 200;
 
@@ -103,7 +103,7 @@ export function emptyBallotFormItem(): BallotFormItem {
 
 /**
  * 생성 폼 검증 → ballot_create p_items 페이로드.
- * RPC와 같은 한계(1~20개, 문장 필수)를 클라이언트에서 먼저 잡고,
+ * RPC와 같은 한계(1~30개, 문장 필수)를 클라이언트에서 먼저 잡고,
  * 몇 번째 줄이 문제인지 사람 말로 알려 준다.
  */
 export function validateBallotForm(title: string, items: BallotFormItem[]): BallotFormResult {

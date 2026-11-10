@@ -1413,7 +1413,7 @@ async function measureBatches(page, div) {
     if (size === Number.POSITIVE_INFINITY) {
       await batchBtns(page).first().click();
       const alert = await page.locator('[data-testid=division-vote-panel] ul[role=alert]').textContent().catch(() => '');
-      s.c2 = { total: screenIds.length, disabled: await page.locator('[data-testid=division-ballot-create]').isDisabled(), alert: alert.slice(0, 60), cap: /20개/.test(alert) };
+      s.c2 = { total: screenIds.length, disabled: await page.locator('[data-testid=division-ballot-create]').isDisabled(), alert: alert.slice(0, 60), cap: /30개/.test(alert) };
     }
     out.sizes[name] = s;
   }
@@ -2047,7 +2047,7 @@ function judgeBatch() {
   const c1 = B.c1;
   record('C1', !!c1 && c1.foreign >= 2 && c1.div2.list === 0 && c1.div2.picks === 0 && c1.div2.voteTab === 0 && c1.div2.ownSeen && c1.btns.div1 === 0 && c1.btns.div3 === 0 && c1.btns.div2 === 1, c1 ? `타 분과 투표 ${c1.foreign}개 — 의결 목록 ${c1.div2.list}·세리머니 체크 ${c1.div2.picks}·투표 탭 ${c1.div2.voteTab} · 자기 투표 보임 ${c1.div2.ownSeen} · 분과 버튼 1:${c1.btns.div1} 2:${c1.btns.div2} 3:${c1.btns.div3}` : '미측정');
   const c2 = divs.map((d) => B.measure?.[d]?.sizes?.['전체 한 번']?.c2);
-  record('C2', c2.every((x) => x && x.total > 20 && x.disabled && x.cap), `전체 한 번 — ${c2.map((x, i) => (x ? `${i + 1}분과 ${x.total}안 비활성 ${x.disabled} 「${x.alert}」` : '미측정')).join(' · ')}`);
+  record('C2', c2.every((x) => x && x.total > 30 && x.disabled && x.cap), `전체 한 번 — ${c2.map((x, i) => (x ? `${i + 1}분과 ${x.total}안 비활성 ${x.disabled} 「${x.alert}」` : '미측정')).join(' · ')}`);
   record('C3', !!B.c3 && B.c3.rows === 1, B.c3 ? `「${B.c3.title}」 DB ${B.c3.rows}개` : '미측정');
   const nonePicked = [B.b5?.cer?.['1920']?.disabledNone, B.b5?.cer?.['1280']?.disabledNone];
   record('C4', nonePicked.every((x) => x === true) && !!B.c4open && B.c4open.status === 'open' && B.c4open.publicResults === null, `선택 0 「결과 불러오기」 비활성 ${nonePicked} · 열린 투표 공개결과 ${JSON.stringify(B.c4open?.publicResults)}`);

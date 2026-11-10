@@ -319,9 +319,10 @@ describe('투표 열기 — ballot_create_v3 페이로드', () => {
     ]);
   });
 
-  it('20개까지는 통과, 21개부터 경고(1단계는 상한을 올리지 않는다)', () => {
-    expect(buildDivisionBallot(1, motions(20)).problems).toEqual([]);
-    expect(buildDivisionBallot(1, motions(21)).problems[0]).toContain('20개');
+  it('30개까지는 통과, 31개부터 경고(s31 — 11/14 의제별 투표지 최대 28건)', () => {
+    expect(buildDivisionBallot(1, motions(28)).problems).toEqual([]);
+    expect(buildDivisionBallot(1, motions(30)).problems).toEqual([]);
+    expect(buildDivisionBallot(1, motions(31)).problems[0]).toContain('30개');
     expect(buildDivisionBallot(1, []).problems).toHaveLength(1);
   });
 
@@ -343,7 +344,7 @@ describe('투표 열기 — ballot_create_v3 페이로드', () => {
 
   it('문제가 있으면 create 를 부르지 않는다', async () => {
     const create = vi.fn();
-    await expect(openDivisionBallot(create, buildDivisionBallot(2, motions(21)), 'k')).rejects.toThrow('20개');
+    await expect(openDivisionBallot(create, buildDivisionBallot(2, motions(31)), 'k')).rejects.toThrow('30개');
     expect(create).not.toHaveBeenCalled();
   });
 });
