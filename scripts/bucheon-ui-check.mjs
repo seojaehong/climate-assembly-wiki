@@ -110,9 +110,7 @@ for (const v of [1, 2, 3, 4]) {
   ok(m.over <= 0 && !m.hs, `본부 화면 ${v}: 넘침 없음`, `세로 초과 ${m.over}px`);
   await shot('hq' + v);
 }
-await page.keyboard.press('2'); await page.keyboard.press('ArrowRight'); await sleep(300);
-ok((await page.$eval('.pager', (e) => e.textContent)).startsWith('2 /'), '본부 질문 화면 → 로 2쪽');
-await shot('hq2b');
+// 질문 화면 쪽 넘김·묶기·정리 모드는 scripts/bucheon-questions-check.mjs (261110 조당 1개·카톡 브리지)
 
 ok(errors.length === 0, '콘솔 오류 없음', errors.slice(0, 3).join(' | '));
 await browser.close();

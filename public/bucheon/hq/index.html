@@ -44,6 +44,19 @@
   .qcol .q { margin: 0 0 14px; padding-left: 14px; border-left: 6px solid var(--accent); }
   .qcol .q small { display: block; font-size: 24px; color: var(--muted); font-weight: 700; }
   .pager { font-size: 24px; color: var(--muted); text-align: right; margin-top: 8px; }
+  .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 16px; flex: 1; min-height: 0; }
+  .card { background: var(--panel); border-radius: 16px; padding: 14px 20px; overflow: hidden; display: flex; gap: 18px; align-items: flex-start; }
+  .card .no { font-size: 30px; font-weight: 800; color: var(--accent); white-space: nowrap; min-width: 92px; }
+  .card .body { min-width: 0; flex: 1; }
+  .card .q { margin: 0; font-weight: 700; }
+  .card .also { margin: 6px 0 0; font-size: 24px; color: var(--muted); }
+  .card .ctl { display: none; gap: 8px; align-items: center; font-size: 24px; margin-top: 8px; }
+  .editing .card .ctl { display: flex; }
+  .cards.editing { grid-auto-rows: auto; overflow: auto; }
+  .editing .card { overflow: visible; }
+  .editing .card.off { opacity: .45; }
+  .ctl select, .ctl button { font: inherit; font-size: 24px; padding: 4px 10px; border-radius: 8px; border: 2px solid var(--line); background: var(--bg); color: var(--ink); }
+  .qhead { display: flex; justify-content: space-between; font-size: 24px; color: var(--muted); margin-bottom: 10px; }
   /* 우선순위 */
   .legend { display: flex; gap: 28px; font-size: 24px; margin-bottom: 12px; align-items: center; }
   .legend i { display: inline-block; width: 28px; height: 28px; border-radius: 6px; vertical-align: -5px; margin-right: 8px; }
@@ -74,6 +87,11 @@
     .qcol { background: none; padding: 0 0 12px; break-inside: avoid; }
     .qcol h2 { font-size: 18px; margin: 8px 0 4px; }
     .qcol .q small { font-size: 12px; }
+    .qhead { font-size: 14px; }
+    .cards { display: block; }
+    .card { background: none; padding: 0 0 10px; font-size: 14px !important; break-inside: avoid; }
+    .card .no { font-size: 16px; min-width: 70px; }
+    .card .also { font-size: 13px; }
   }
 </style>
 </head>
@@ -95,7 +113,7 @@
   var el = BF.el;
   var params = new URLSearchParams(location.search);
   var key = params.get('key') || BF.store('bf_hq_key') || '';
-  var data = null, view = 1, page = 0, failures = 0;
+  var data = null, view = 1, page = 0, failures = 0, editing = false;
   var TERM_COLOR = { S: 'var(--S)', M: 'var(--M)', LI: 'var(--LI)', LR: 'var(--LR)' };
   var TERM_LABEL = { S: '단기', M: '중기', LI: '장기·중요도', LR: '장기·현실제약' };
   var SURVEY_LABEL = { overall: '전반 만족', info: '발표 이해', talk: '의견 발언', reflect: '정책 반영 기대' };
@@ -117,7 +135,8 @@
       data = d; failures = 0; BF.store('bf_hq_key', key);
       document.getElementById('stamp').textContent = '갱신 ' + BF.hhmm(d.now);
       document.getElementById('stamp').className = 'stamp';
-      render();
+      // 정리 모드에서 목록 상자를 펼친 채로 화면이 다시 그려지면 선택이 끊긴다
+      if (!(editing && document.activeElement && document.activeElement.tagName === 'SELECT')) render();
     }).catch(function (e) {
       if (e.raw === 'invalid hq key') { BF.store('bf_hq_key', null); key = ''; return gate(e.message); }
       failures++;
@@ -154,27 +173,90 @@
     ]));
   }
 
+  // 조당 질문 1개. 본부가 같은 취지의 질문을 묶으면(group_lead) 「3조·7조」 카드 하나로 보인다.
+  function questionCards(includeHidden) {
+    var q = byTeam(data.questions), cards = [], byLead = {};
+    data.questions.forEach(function (x) {
+      var lead = x.group_lead && q[x.group_lead] && !q[x.group_lead].group_lead ? x.group_lead : null;
+      if (lead && (includeHidden || !q[lead].hidden)) (byLead[lead] = byLead[lead] || []).push(x);
+    });
+    data.questions.slice().sort(function (a, b) { return a.team_no - b.team_no; }).forEach(function (x) {
+      if (x.hidden && !includeHidden) return;
+      var lead = x.group_lead && q[x.group_lead] && !q[x.group_lead].group_lead ? x.group_lead : null;
+      if (lead && (includeHidden || !q[lead].hidden)) return;
+      var members = (byLead[x.team_no] || []).filter(function (m) { return includeHidden || !m.hidden; });
+      cards.push({ lead: x, members: members });
+    });
+    return cards;
+  }
+
+  function editQuestion(team, lead, hidden) {
+    BF.rpc('bucheon_question_edit', { p_key: key, p_team_no: team, p_group_lead: lead, p_hidden: hidden })
+      .then(function () { load(); }).catch(function (e) { alert(e.message); });
+  }
+
+  // 한 쪽에 10장을 먼저 시도하고, 24px 로도 잘리면 한 쪽 장수를 줄여 쪽을 나눈다(← → 로 넘김)
   function renderQuestions() {
-    var q = byTeam(data.questions), teams = data.teams, per = 5;
-    var pages = Math.max(1, Math.ceil(teams.length / per));
-    if (page >= pages) page = 0;
-    var slice = page < 0 ? teams : teams.slice(page * per, page * per + per);
-    var grid = el('div', { class: 'qgrid' });
-    slice.forEach(function (t) {
-      var col = el('div', { class: 'qcol' }, [el('h2', { text: t + '조' })]);
-      if (q[t]) {
-        col.appendChild(el('p', { class: 'q' }, [el('small', { text: '질문 1' }), q[t].q1]));
-        col.appendChild(el('p', { class: 'q' }, [el('small', { text: '질문 2' }), q[t].q2]));
-      } else col.appendChild(el('p', { class: 'muted', text: '제출 전' }));
-      grid.appendChild(col);
+    // 모든 쪽이 잘리지 않는 가장 큰 장수를 고른다(쪽마다 장수가 달라지지 않게)
+    var per = 10;
+    if (page >= 0 && !editing) {
+      for (; per > 2; per -= 2) {
+        var ok = true, pages = 1;
+        for (var p = 0; p < pages && ok; p++) {
+          V.innerHTML = '';
+          var r = drawQuestions(per, p);
+          pages = r.pages; ok = !r.clipped;
+        }
+        if (ok) break;
+      }
+    }
+    V.innerHTML = '';
+    var last = drawQuestions(per, Math.max(page, 0));
+    if (page >= last.pages) { page = 0; V.innerHTML = ''; drawQuestions(per, 0); }   // 마지막 쪽 다음은 첫 쪽
+  }
+
+  function drawQuestions(per, at) {
+    var cards = questionCards(editing);
+    var pages = Math.max(1, Math.ceil(cards.length / per));
+    var slice = page < 0 ? cards : cards.slice(at * per, at * per + per);
+    var waiting = data.teams.filter(function (t) { return !data.questions.some(function (x) { return x.team_no === t; }); });
+    V.appendChild(el('div', { class: 'qhead' }, [
+      el('span', { text: '질문 ' + data.questions.length + '/' + data.teams.length + '개 조' + (waiting.length ? '  · 대기 ' + waiting.join(', ') + '조' : '') }),
+      el('span', { text: editing ? '정리 모드 (E 로 끝내기)' : '' })
+    ]));
+    var grid = el('div', { class: 'cards' + (editing ? ' editing' : '') });
+    if (!editing) grid.style.gridTemplateRows = 'repeat(' + Math.max(1, Math.ceil(slice.length / 2)) + ', minmax(0, 1fr))';
+    var others = data.questions.map(function (x) { return x.team_no; }).sort(function (a, b) { return a - b; });
+    function controls(x) {
+      var sel = el('select');
+      sel.appendChild(el('option', { value: '', text: '묶지 않음' }));
+      others.forEach(function (t) { if (t !== x.team_no) sel.appendChild(el('option', { value: String(t), text: t + '조에 묶기' })); });
+      sel.value = x.group_lead ? String(x.group_lead) : '';
+      sel.onchange = function () { editQuestion(x.team_no, sel.value ? +sel.value : null, x.hidden); };
+      return el('div', { class: 'ctl' }, [el('b', { text: x.team_no + '조' }), sel,
+        el('button', { text: x.hidden ? '보이기' : '숨기기', onclick: function () { editQuestion(x.team_no, x.group_lead || null, !x.hidden); } })]);
+    }
+    slice.forEach(function (c) {
+      var all = [c.lead].concat(c.members);
+      var body = el('div', { class: 'body' }, [el('p', { class: 'q', text: c.lead.q1 })]);
+      if (c.lead.q2) body.appendChild(el('p', { class: 'also', text: c.lead.q2 }));
+      c.members.forEach(function (m) { body.appendChild(el('p', { class: 'also', text: m.team_no + '조: ' + m.q1 })); });
+      if (editing) all.forEach(function (x) { body.appendChild(controls(x)); });
+      grid.appendChild(el('div', { class: 'card' + (c.lead.hidden ? ' off' : '') }, [
+        el('div', { class: 'no', text: all.map(function (x) { return x.team_no; }).sort(function (a, b) { return a - b; }).join('·') + '조' }), body]));
     });
+    if (!slice.length) grid.appendChild(el('p', { class: 'muted', text: '아직 들어온 질문이 없습니다' }));
     V.appendChild(grid);
-    if (page >= 0 && pages > 1) V.appendChild(el('div', { class: 'pager', text: (page + 1) + ' / ' + pages + '  (← → 로 넘김)' }));
+    if (page >= 0 && pages > 1) V.appendChild(el('div', { class: 'pager', text: (at + 1) + ' / ' + pages + '  (← → 로 넘김)' }));
     // 넘치면 글자를 줄이되 24px 밑으로는 내리지 않는다
-    Array.prototype.forEach.call(grid.children, function (col) {
-      var fs = 26;
-      while (col.scrollHeight > col.clientHeight && fs > 24) { fs--; col.style.fontSize = fs + 'px'; }
+    var clipped = false;
+    Array.prototype.forEach.call(grid.querySelectorAll('.card'), function (card) {
+      var fs = 30;
+      card.style.fontSize = fs + 'px';
+      while (card.scrollHeight > card.clientHeight && fs > 24) { fs--; card.style.fontSize = fs + 'px'; }
+      if (card.scrollHeight > card.clientHeight + 1) clipped = true;
     });
+    return { clipped: clipped, pages: pages };
   }
 
   function aggregate() {
@@ -267,8 +349,9 @@
   function csv(kind) {
     var rows;
     if (kind === 'questions') {
-      rows = [['조', '질문1', '질문2', '참고', '제출시각']].concat(data.questions.map(function (q) {
-        return [q.team_no + '조', q.q1, q.q2, q.note || '', q.updated_at]; }));
+      rows = [['조', '질문', '질문2', '묶은 조', '숨김', '경로', '보낸 시각', '참고', '저장 시각']].concat(data.questions.map(function (q) {
+        return [q.team_no + '조', q.q1, q.q2 || '', q.group_lead ? q.group_lead + '조' : '', q.hidden ? '숨김' : '',
+                q.source === 'kakao' ? '카톡' : '조 화면', q.sent_at || '', q.note || '', q.updated_at]; }));
     } else if (kind === 'priorities') {
       var title = {}; data.policies.forEach(function (p) { title[p.id] = p.title; });
       rows = [['조', '정책과제', '시기', '순위', '1~3순위 이유', '장기 이유', '의견 갈림']];
@@ -299,6 +382,7 @@
     else if (e.key === 'ArrowRight' && view === 2) { page++; render(); }
     else if (e.key === 'ArrowLeft' && view === 2) { page = Math.max(0, page - 1); render(); }
     else if (e.key === 'd' || e.key === 'D') toggleTheme();
+    else if ((e.key === 'e' || e.key === 'E') && view === 2) { editing = !editing; render(); }
   });
   window.addEventListener('resize', render);
   load(true);
