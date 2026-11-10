@@ -15,10 +15,10 @@
   html, body { height: 100%; }
   body { font-size: 26px; line-height: 1.4; display: flex; flex-direction: column; }
   header { display: flex; align-items: center; gap: 28px; padding: 0 48px; height: 88px; background: var(--band); color: var(--band-ink); }
-  header h1 { font-size: 34px; margin: 0; flex: 1; min-width: 0; font-weight: 800; letter-spacing: -.02em; }
-  header h1 small { font-size: 24px; font-weight: 500; color: var(--band-ink-2); margin-left: 16px; letter-spacing: 0; }
+  header h1 { font-size: 36px; margin: 0; flex: 1; min-width: 0; font-weight: 800; letter-spacing: -.02em; }
+  header h1 small { font-size: 26px; font-weight: 500; color: var(--band-ink-2); margin-left: 16px; letter-spacing: 0; }
   nav { display: flex; gap: 6px; }
-  nav button { font-size: 24px; font-weight: 700; padding: 8px 20px; border-radius: 8px; border: 0;
+  nav button { font-size: 26px; font-weight: 700; padding: 8px 20px; border-radius: 8px; border: 0;
                background: transparent; color: var(--band-ink-2); cursor: pointer; }
   nav button[aria-pressed="true"] { background: #ffffff; color: #0f1e36; }
   .stamp { font-size: 24px; color: var(--band-ink-2); white-space: nowrap; min-width: 130px; text-align: right; }
@@ -29,11 +29,11 @@
   .counters { display: flex; gap: 20px; margin-bottom: 20px; }
   .counter { flex: 1; background: var(--paper); border-radius: 8px; padding: 22px 30px; }
   .counter .n { font-size: 112px; font-weight: 800; line-height: 1; letter-spacing: -.03em; }
-  .counter .l { font-size: 28px; color: var(--ink-2); font-weight: 600; margin-top: 10px; }
+  .counter .l { font-size: 32px; color: var(--ink-2); font-weight: 600; margin-top: 10px; }
   .tiles { display: grid; grid-template-columns: repeat(5, 1fr); grid-auto-rows: 1fr; gap: 16px; flex: 1; min-height: 0; }
   .tile { background: var(--paper); border-radius: 8px; padding: 20px 24px; display: flex; flex-direction: column; justify-content: center; }
-  .tile b { font-size: 40px; align-self: flex-start; margin-bottom: 10px; }
-  .tile .st { font-size: 26px; color: var(--ink-2); font-weight: 500; }
+  .tile b { font-size: 44px; align-self: flex-start; margin-bottom: 10px; }
+  .tile .st { font-size: 28px; color: var(--ink-2); font-weight: 500; }
   .tile.full { background: var(--ink); }
   .tile.full .st { color: var(--paper); }
   .tools { margin-top: 20px; display: none; gap: 12px; flex-wrap: wrap; }
@@ -41,13 +41,13 @@
   .tools button { font-size: 24px; font-weight: 700; padding: 10px 20px; border-radius: 8px; border: 3px solid var(--field-line);
                   background: var(--paper); color: var(--ink); cursor: pointer; }
   /* 2 질문 */
-  .pager { font-size: 24px; color: var(--ink-2); text-align: right; margin-top: 12px; font-weight: 700; }
+  .pager { font-size: 32px; color: var(--ink); text-align: right; margin-top: 12px; font-weight: 800; }
   .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 14px; flex: 1; min-height: 0; }
   .card { background: var(--paper); border-radius: 8px; line-height: 1.36; padding: 14px 22px; overflow: hidden; display: flex; gap: 22px; align-items: flex-start; }
-  .card .no { font-size: 30px; flex: 0 0 auto; min-width: 100px; text-align: center; border-radius: 6px; }
+  .card .no { font-size: max(32px, .82em); flex: 0 0 auto; min-width: 100px; text-align: center; border-radius: 6px; }
   .card .body { min-width: 0; flex: 1; }
   .card .q { margin: 0; font-weight: 700; letter-spacing: -.01em; }
-  .card .also { margin: 8px 0 0; font-size: 24px; color: var(--ink-2); font-weight: 500; padding-left: 16px; box-shadow: inset 4px 0 0 var(--field-line); }
+  .card .also { margin: 8px 0 0; font-size: max(26px, .78em); color: var(--ink-2); font-weight: 500; padding-left: 16px; box-shadow: inset 4px 0 0 var(--field-line); }
   .card .ctl { display: none; gap: 10px; align-items: center; font-size: 24px; margin-top: 10px; flex-wrap: wrap; }
   .editing .card .ctl { display: flex; }
   .cards.editing { grid-auto-rows: auto; overflow: auto; }
@@ -55,30 +55,31 @@
   .editing .card.off { opacity: .45; }
   .ctl select, .ctl button { font-size: 24px; padding: 4px 12px; border-radius: 6px; border: 2px solid var(--field-line); background: var(--paper); color: var(--ink); }
   .ctl .sim { color: var(--warn); font-weight: 800; }
-  .qhead { display: flex; justify-content: space-between; align-items: baseline; font-size: 28px; color: var(--ink); margin-bottom: 12px; font-weight: 800; }
-  .qhead .wait { color: var(--ink-2); font-weight: 600; margin-left: 20px; font-size: 26px; }
+  .qhead { display: flex; justify-content: space-between; align-items: baseline; font-size: 32px; color: var(--ink); margin-bottom: 12px; font-weight: 800; }
+  .qhead .wait { color: var(--ink-2); font-weight: 600; margin-left: 24px; font-size: 30px; }
   .qhead > span:last-child { font-size: 24px; color: var(--ink-2); font-weight: 600; }
   /* 3 우선순위 — 호버 없이 과제명을 두 줄까지 보인다 */
-  .legend { display: flex; gap: 28px; font-size: 24px; margin-bottom: 14px; align-items: center; color: var(--ink-2); font-weight: 600; }
+  .legend { display: flex; gap: 28px; font-size: 28px; margin-bottom: 14px; align-items: center; color: var(--ink-2); font-weight: 600; }
   .legend b { color: var(--ink); font-weight: 800; }
   .legend i { display: inline-block; width: 28px; height: 28px; border-radius: 6px; vertical-align: -5px; margin-right: 8px; }
   .prow { display: grid; grid-template-columns: 70px minmax(0, 1.6fr) 130px minmax(0, 1fr); gap: 18px; align-items: center;
-          padding: 6px 14px; border-radius: 6px; }
+          padding: 6px 14px; border-radius: 6px; overflow: hidden; }
   #view .prow:nth-child(even) { background: var(--paper); }
-  .prow .rk { font-size: 32px; font-weight: 800; text-align: center; }
-  .prow .t { font-size: 26px; font-weight: 700; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-  .prow .avg { font-size: 32px; font-weight: 800; text-align: right; }
+  .prow .rk { font-size: 34px; font-weight: 800; text-align: center; }
+  .prow .t { font-size: 28px; font-weight: 700; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .prow .avg { font-size: 34px; font-weight: 800; text-align: right; }
   .stack { display: flex; gap: 3px; height: 40px; border-radius: 6px; overflow: hidden; background: var(--rule); }
   .stack div { display: grid; place-items: center; color: var(--barText); font-size: 24px; font-weight: 800; min-width: 0; }
-  .phead { font-size: 24px; color: var(--ink-2); font-weight: 700; background: none !important; }
+  .phead { font-size: 26px; color: var(--ink-2); font-weight: 700; background: none !important; }
+  #view > .legend, #view > .phead { flex-shrink: 0; }
   /* 4 설문 — 5칸 같은 폭, 칸을 응답 수만큼 진하게 */
   .sgrid { display: grid; grid-template-columns: 360px 1fr; gap: 48px; flex: 1; min-height: 0; }
   .sbig { font-size: 160px; font-weight: 800; line-height: 1; letter-spacing: -.04em; }
   .srow { margin-bottom: 26px; }
-  .srow .t { font-size: 30px; font-weight: 700; }
+  .srow .t { font-size: 34px; font-weight: 700; }
   .srow .v { font-size: 56px; font-weight: 800; margin-left: 16px; }
   .dist { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; height: 52px; margin-top: 8px; }
-  .dist div { border-radius: 6px; font-size: 24px; font-weight: 700; display: grid; place-items: center; min-width: 0; }
+  .dist div { border-radius: 6px; font-size: 26px; font-weight: 700; display: grid; place-items: center; min-width: 0; }
   .gate { max-width: 720px; margin: 120px auto; text-align: center; }
   .gate input { font-size: 28px; padding: 14px; width: 100%; border: 3px solid var(--field-line); border-radius: 8px; background: var(--paper); margin-bottom: 16px; }
   @media print {
@@ -192,27 +193,34 @@
       .then(function () { load(); }).catch(function (e) { alert(e.message); });
   }
 
-  // 한 쪽에 10장을 먼저 시도하고, 24px 로도 잘리면 한 쪽 장수를 줄여 쪽을 나눈다(← → 로 넘김)
+  // 가시성 우선(재홍님 261110): 질문 글자는 32px 밑으로 줄이지 않는다. 한 쪽 10장부터 시도해
+  // 32px 로 잘리면 한 쪽 장수를 줄여 쪽을 나눈다(← → 로 넘김). 2장으로도 안 되면 그때만 24px 까지.
+  var Q_MAX = 44, Q_MIN = 32, Q_FLOOR = 24;
   function renderQuestions() {
     // 모든 쪽이 잘리지 않는 가장 큰 장수를 고른다(쪽마다 장수가 달라지지 않게)
-    var per = 10;
+    var per = 10, min = Q_MIN;
     if (page >= 0 && !editing) {
-      for (; per > 2; per -= 2) {
-        var ok = true, pages = 1;
-        for (var p = 0; p < pages && ok; p++) {
-          V.innerHTML = '';
-          var r = drawQuestions(per, p);
-          pages = r.pages; ok = !r.clipped;
+      search: for (var m = 0; m < 2; m++) {
+        min = m ? Q_FLOOR : Q_MIN;
+        for (per = 10; per >= 2; per -= 2) {
+          var ok = true, pages = 1;
+          for (var p = 0; p < pages && ok; p++) {
+            V.innerHTML = '';
+            var r = drawQuestions(per, p, min);
+            pages = r.pages; ok = !r.clipped;
+          }
+          if (ok) break search;
         }
-        if (ok) break;
       }
+      per = Math.max(per, 2);
     }
     V.innerHTML = '';
-    var last = drawQuestions(per, Math.max(page, 0));
-    if (page >= last.pages) { page = 0; V.innerHTML = ''; drawQuestions(per, 0); }   // 마지막 쪽 다음은 첫 쪽
+    var last = drawQuestions(per, Math.max(page, 0), min);
+    if (page >= last.pages) { page = 0; V.innerHTML = ''; drawQuestions(per, 0, min); }   // 마지막 쪽 다음은 첫 쪽
   }
 
-  function drawQuestions(per, at) {
+  function drawQuestions(per, at, min) {
+    min = min || Q_MIN;
     var cards = questionCards(editing);
     var pages = Math.max(1, Math.ceil(cards.length / per));
     var slice = page < 0 ? cards : cards.slice(at * per, at * per + per);
@@ -246,14 +254,13 @@
     });
     if (!slice.length) grid.appendChild(el('p', { class: 'muted', text: '아직 들어온 질문이 없습니다' }));
     V.appendChild(grid);
-    if (page >= 0 && pages > 1) V.appendChild(el('div', { class: 'pager', text: (at + 1) + ' / ' + pages + '  (← → 로 넘김)' }));
-    // 넘치면 글자를 줄이되 24px 밑으로는 내리지 않는다
-    // 한 쪽 안의 카드는 같은 크기로 맞춘다(긴 질문만 작아 보이지 않게)
-    var clipped = false, cardsOnPage = grid.querySelectorAll('.card'), fit = 30;
+    if (page >= 0 && pages > 1) V.appendChild(el('div', { class: 'pager' }, [el('b', { text: (at + 1) + ' / ' + pages + '쪽' })]));
+    // 넘치면 글자를 줄이되 min 밑으로는 내리지 않는다. 한 쪽 안의 카드는 같은 크기로 맞춘다
+    var clipped = false, cardsOnPage = grid.querySelectorAll('.card'), fit = Q_MAX;
     Array.prototype.forEach.call(cardsOnPage, function (card) {
-      var fs = 30;
+      var fs = Q_MAX;
       card.style.fontSize = fs + 'px';
-      while (card.scrollHeight > card.clientHeight && fs > 24) { fs--; card.style.fontSize = fs + 'px'; }
+      while (card.scrollHeight > card.clientHeight && fs > min) { fs--; card.style.fontSize = fs + 'px'; }
       fit = Math.min(fit, fs);
     });
     Array.prototype.forEach.call(cardsOnPage, function (card) {

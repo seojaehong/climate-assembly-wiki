@@ -47,6 +47,19 @@ const measure = () => page.evaluate(() => {
            labels: [...document.querySelectorAll('.card .no')].map((e) => e.textContent) };
 });
 
+// 쪽을 넘기며 전체 카드를 모은다(가시성 우선: 32px 하한, 넘치면 쪽 나눔). 각 쪽의 최소 글자·잘림도 잰다.
+async function allPages() {
+  const labels = [], mins = []; let clipped = 0, over = 0;
+  for (let k = 0; k < 10; k++) {
+    const m = await measure();
+    if (k && labels.includes(m.labels[0])) break;
+    labels.push(...m.labels); mins.push(m.min ? m.min[0] : 99); clipped += m.clipped; over = Math.max(over, m.over);
+    await page.keyboard.press('ArrowRight'); await sleep(250);
+  }
+  await page.keyboard.press('2'); await sleep(250);   // 첫 쪽으로
+  return { labels, min: Math.min(...mins), clipped, over };
+}
+
 try {
   await page.setViewport({ width: 1920, height: 1080, deviceScaleFactor: 1 });
   await page.goto(BASE + 'hq/?key=' + KEY, { waitUntil: 'networkidle0' });
@@ -59,17 +72,19 @@ try {
   }
   await sleep(5600);
   let m = await measure();
-  ok(m.labels.length === 10, '10개 조 카드 10장', m.labels.join(','));
-  ok(m.min[0] >= 24, '최소 글자 24px 이상', `${m.min[0]}px 「${m.min[1]}」`);
-  ok(m.over <= 0 && m.clipped === 0, '넘침·잘림 없음', `세로 ${m.over}px, 잘린 카드 ${m.clipped}`);
   await shot('q10');
+  let a = await allPages();
+  ok(a.labels.length === 10, '10개 조 카드 10장(쪽을 넘겨 전부)', a.labels.join(','));
+  ok(a.min >= 24, '최소 글자 24px 이상(어느 쪽이든)', `${a.min}px`);
+  ok(m.min[0] >= 32 || m.labels.length <= 2, '질문 글자 32px 이상(가시성 우선)', `${m.min[0]}px 「${m.min[1]}」, 한 쪽 ${m.labels.length}장`);
+  ok(a.over <= 0 && a.clipped === 0, '넘침·잘림 없음', `세로 ${a.over}px, 잘린 카드 ${a.clipped}`);
 
   await rpc('bucheon_question_edit', { p_key: KEY, p_team_no: 7, p_group_lead: 3, p_hidden: false });
   await rpc('bucheon_question_edit', { p_key: KEY, p_team_no: 9, p_group_lead: null, p_hidden: true });
   await sleep(5600);
-  m = await measure();
-  ok(m.labels.includes('3·7조') && !m.labels.includes('7조') && !m.labels.includes('9조') && m.labels.length === 8, '묶기 3·7조, 숨긴 9조 빠짐', m.labels.join(','));
-  ok(m.min[0] >= 24 && m.over <= 0 && m.clipped === 0, '묶은 뒤에도 넘침 없음', `${m.min[0]}px, 세로 ${m.over}, 잘림 ${m.clipped}`);
+  a = await allPages();
+  ok(a.labels.includes('3·7조') && !a.labels.includes('7조') && !a.labels.includes('9조') && a.labels.length === 8, '묶기 3·7조, 숨긴 9조 빠짐', a.labels.join(','));
+  ok(a.min >= 24 && a.over <= 0 && a.clipped === 0, '묶은 뒤에도 넘침 없음', `${a.min}px, 세로 ${a.over}, 잘림 ${a.clipped}`);
   await shot('q_grouped');
 
   // 전문가 보기(공개, 키 없음): 숨긴 9조 빠짐, 3·7조 묶음, 휴대폰 가로 넘침 없음
@@ -105,8 +120,8 @@ try {
   await sleep(1500);
   await shot('q_edit');
   await page.keyboard.press('e'); await sleep(300);
-  m = await measure();
-  ok(m.labels.includes('1·9조') && m.labels.includes('3·7조') && m.labels.length === 8, '화면 조작으로 보이기·묶기 반영', m.labels.join(','));
+  a = await allPages();
+  ok(a.labels.includes('1·9조') && a.labels.includes('3·7조') && a.labels.length === 8, '화면 조작으로 보이기·묶기 반영', a.labels.join(','));
   await shot('q_after_edit');
 
   await page.setViewport({ width: 1280, height: 720, deviceScaleFactor: 1 }); await sleep(600);
@@ -114,7 +129,7 @@ try {
   ok(m.over <= 0 && m.clipped === 0, '1280×720 에서도 넘침·잘림 없음', `${m.min[0]}px, 세로 ${m.over}, 잘림 ${m.clipped}`);
   await shot('q_720');
   const seen = new Set(m.labels);
-  for (let k = 0; k < 4 && seen.size < 8; k++) {
+  for (let k = 0; k < 8 && seen.size < 8; k++) {
     await page.keyboard.press('ArrowRight'); await sleep(300);
     const mm = await measure(); mm.labels.forEach((l) => seen.add(l));
     ok(mm.clipped === 0 && mm.over <= 0, `1280×720 ${k + 2}쪽 잘림 없음`, mm.labels.join(','));
