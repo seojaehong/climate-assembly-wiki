@@ -61,4 +61,9 @@ describe('(11/14 큰 화면 위생) 투표 목록의 「투표결과 보기 (조
     expect(src).toMatch(/ballot\.status !== 'draft' && !plenaryQuietScreen\(ballot\) \? \(\s*<button[\s\S]{0,200}data-testid="ballot-named-board"/);
     expect(src).toMatch(/namesId && access[\s\S]{0,200}!plenaryQuietScreen\(b\)/);
   });
+
+  it('전체회의 의결 투표지에는 「잠정 결과」 단추도 그리지 않는다(16:30 일괄 공개 전 숫자 노출 방지, 11/11 드라이런)', () => {
+    const src = readFileSync(new URL('./BallotPanel.tsx', import.meta.url), 'utf8');
+    expect(src).toMatch(/\(ballot\.status === 'open' \|\| ballot\.status === 'closed'\) && !plenaryQuietScreen\(ballot\) \? \(\s*<button[\s\S]{0,400}잠정 결과/);
+  });
 });

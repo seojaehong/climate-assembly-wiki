@@ -1135,7 +1135,8 @@ export default function BallotPanel({
                         QR 크게 보기
                       </button>
                     ) : null}
-                    {ballot.status === 'open' || ballot.status === 'closed' ? (
+                    {/* 11/14 전체회의 의결은 잠정 결과도 띄우지 않는다 — 공식 수치는 16:30 재집계(result/v2) 한 번뿐. */}
+                    {(ballot.status === 'open' || ballot.status === 'closed') && !plenaryQuietScreen(ballot) ? (
                       <button
                         type="button"
                         onClick={() => setResultsId(ballot.id)}
