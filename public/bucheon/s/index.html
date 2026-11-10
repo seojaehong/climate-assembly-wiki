@@ -25,6 +25,11 @@
   .done { text-align: center; padding: 56px 12px; }
   .done b { display: block; font-size: 24px; margin-bottom: 10px; }
   .done span { color: var(--ink-2); }
+  @media (min-width: 900px) {
+    :root { --wrap: 760px; }
+    main { max-width: var(--wrap); padding: 24px 24px 56px; }
+    .primary { max-width: 360px; margin-left: auto; }
+  }
 </style>
 </head>
 <body>

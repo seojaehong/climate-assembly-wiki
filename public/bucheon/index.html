@@ -23,6 +23,13 @@
   span.btn { opacity: .6; }
   span.btn .t::after { content: " (준비 중)"; font-weight: 500; font-size: 14px; color: var(--ink-3); }
   footer { margin-top: 36px; font-size: 13px; color: var(--ink-3); }
+  @media (min-width: 900px) {
+    :root { --wrap: 1080px; }
+    .band .in { padding: 40px 24px 36px; }
+    .band h1 { font-size: 34px; }
+    main { max-width: var(--wrap); padding: 8px 24px 48px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 16px; }
+    main footer { grid-column: 1 / -1; }
+  }
 </style>
 </head>
 <body>

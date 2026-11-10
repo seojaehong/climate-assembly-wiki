@@ -26,6 +26,17 @@
   .tools { margin-top: 18px; }
   .tools .primary { font-size: 17px; }
   .printhead { display: none; }
+  @media screen and (min-width: 1000px) {
+    :root { --wrap: 1240px; }
+    main { max-width: var(--wrap); padding: 20px 24px 40px; }
+    header.band .in { padding-left: 24px; padding-right: 24px; }
+    header.band h1 { font-size: 24px; }
+    #list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+    #list .card { margin: 0; }
+    #list .empty { grid-column: 1 / -1; }
+    .card .q { font-size: 21px; }
+    .tools { max-width: 360px; margin-left: auto; }
+  }
   @media print {
     @page { size: A4; margin: 14mm 14mm 16mm; }
     header, .tools { display: none; }

@@ -43,7 +43,24 @@
   .row .help { margin: 0; }
   .bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--paper); padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
          box-shadow: 0 -1px 0 var(--rule); }
-  .bar .in { max-width: 640px; margin: 0 auto; }
+  .bar .in { max-width: var(--wrap, 640px); margin: 0 auto; }
+  /* 노트북·태블릿: 폭을 넓히고 칸을 나눈다 */
+  @media (min-width: 900px) {
+    :root { --wrap: 1180px; }
+    main { max-width: var(--wrap); padding: 24px 24px 150px; }
+    .band .in { padding-left: 24px; padding-right: 24px; }
+    .tabs { max-width: 520px; }
+    #gate { max-width: 480px; margin: 48px auto; }
+    .split { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+    .split textarea { min-height: 220px; }
+    .terms { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 12px; }
+    .terms .card { margin: 0; }
+    .rank { columns: 2; column-gap: 12px; }
+    .rank button.item { break-inside: avoid; }
+    .bar { padding-left: 24px; padding-right: 24px; }
+    .bar .in { display: grid; grid-template-columns: 1fr 360px; gap: 16px; align-items: center; }
+    .bar .msg { margin: 0; }
+  }
   .hidden { display: none; }
 </style>
 </head>
@@ -135,20 +152,22 @@
 
   function renderS1() {
     var s = document.getElementById('s1'); s.innerHTML = '';
-    s.appendChild(area('q1', '우리 조 질문', '스티커를 가장 많이 받은 질문 (카톡 단체방이 안 될 때 여기에)', 500, 'q1', true));
-    s.appendChild(area('note', '참고', '질문 배경 등 연구진이 알면 좋을 내용', 1000, 'note', false));
+    var g = el('div', { class: 'split' }); s.appendChild(g);
+    g.appendChild(area('q1', '우리 조 질문', '스티커를 가장 많이 받은 질문 (카톡 단체방이 안 될 때 여기에)', 500, 'q1', true));
+    g.appendChild(area('note', '참고', '질문 배경 등 연구진이 알면 좋을 내용', 1000, 'note', false));
   }
 
   function renderS2() {
     var s = document.getElementById('s2'); s.innerHTML = '';
     s.appendChild(el('h2', { text: '1. 시기 분류 (' + Object.keys(draft.terms).length + ' / ' + policies.length + ')' }));
+    var terms = el('div', { class: 'terms' }); s.appendChild(terms);
     policies.forEach(function (p) {
       var seg = el('div', { class: 'seg' });
       BF.TERMS.forEach(function (t) {
         seg.appendChild(el('button', { type: 'button', 'aria-pressed': String(draft.terms[p.id] === t.k), text: t.label,
           onclick: function () { draft.terms[p.id] = t.k; saveDraft(); renderS2(); } }));
       });
-      s.appendChild(el('div', { class: 'card' }, [el('div', { class: 'pt', text: p.title }), seg]));
+      terms.appendChild(el('div', { class: 'card' }, [el('div', { class: 'pt', text: p.title }), seg]));
     });
 
     s.appendChild(el('h2', { text: '2. 우선순위 (' + draft.ranking.length + ' / ' + policies.length + ')' }));
