@@ -88,7 +88,7 @@ export type Reconciliation = {
   /** 명단에 있는데 이름으로 제출이 없는 사람. 거수한 분도 여기 나온다(「QR 미제출」). */
   missing: { team: string; short: string; names: RosterRow[] }[];
   missingCount: number;
-  /** 조·이름 짝이 명단에 없는 제출(오타 의심). */
+  /** 조·이름 짝이 명단에 없는 제출(직접 입력 — 11/14 결과 내보내기는 유효표로 센다, 11/10 결정. 오타면 고친다). */
   offRoster: OffRoster[];
   /** 같은 이름(대조 키)으로 두 건 이상. */
   duplicates: { key: string; responses: NamedResponse[] }[];
