@@ -64,6 +64,15 @@ describe('명단 접기', () => {
     expect(teamShort('1분과 3조')).toBe('3조');
     expect(teamShort('단독')).toBe('단독');
   });
+  it('(11/14) 전원 명단 — 줄인 이름(「3조」)이 여러 분과에 겹치면 단추에 분과까지 쓴다', () => {
+    const t = rosterTeams([
+      { team: '2분과 3조', no: 1, name: '가상가' },
+      { team: '1분과 3조', no: 1, name: '가상나' },
+      { team: '1분과 1조', no: 1, name: '가상다' },
+    ]);
+    expect(t.map((x) => x.team)).toEqual(['1분과 1조', '1분과 3조', '2분과 3조']);
+    expect(t.map((x) => x.short)).toEqual(['1분과 1조', '1분과 3조', '2분과 3조']);
+  });
   it('인원 보존 — 접어도 사람 수는 그대로', () => {
     expect(rosterTeams(roster).reduce((n, t) => n + t.names.length, 0)).toBe(roster.length);
   });

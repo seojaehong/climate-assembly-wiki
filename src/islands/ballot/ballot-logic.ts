@@ -95,7 +95,21 @@ export const SURVEY_EVIDENCE_BOUNDARY =
 export const DECISION_EVIDENCE_BOUNDARY =
   '운영규정에 따라 참석자 3분의 2 이상 찬성하면 가결됩니다. 부결되면 다시 투표합니다.';
 
-export function voterCopy(decision: boolean): VoterCopy {
+/** 11/14 전체회의 의결 — 분과 이름도, 「부결되면 다시 투표합니다」도 내지 않는다(20_투표_최종안 329행). */
+export const PLENARY_EVIDENCE_BOUNDARY = '출석자 3분의 2 이상이 찬성하면 가결됩니다.';
+
+/** decision: true·'division' = 분과 의결, 'plenary' = 전체회의 의결, false·null = 일반 다의제 의견조사. */
+export function voterCopy(decision: boolean | 'division' | 'plenary' | null): VoterCopy {
+  if (decision === 'plenary') {
+    return {
+      eyebrow: '전체회의 의결 투표',
+      doneTitle: '투표가 제출되었습니다',
+      doneBody: '참여해 주셔서 감사합니다. 결과는 투표 마감 후 현장에서 발표합니다.',
+      closedTitle: '투표가 마감되었습니다',
+      resultsEyebrow: '투표 마감됨 · 결과',
+      evidence: PLENARY_EVIDENCE_BOUNDARY,
+    };
+  }
   if (decision) {
     return {
       eyebrow: '분과 의결 투표',
@@ -113,6 +127,25 @@ export function voterCopy(decision: boolean): VoterCopy {
     closedTitle: '의견조사가 마감되었습니다',
     resultsEyebrow: '의견조사 마감됨 · 결과',
     evidence: SURVEY_EVIDENCE_BOUNDARY,
+  };
+}
+
+/**
+ * 제출 이중 전송 막기. React state(submitting)는 다음 그리기 전까지 바뀌지 않아 빠른 두 번 누름이
+ * 요청 두 개를 보낼 수 있다. 서버는 같은 기기 두 번째를 「already submitted」로 막지만, 늦게 온 그 응답이
+ * 성공 화면을 「이미 제출하셨습니다」로 덮는다. 요청 하나가 끝날 때까지 다음 누름을 받지 않는다.
+ */
+export function createSubmitLatch(): { tryEnter: () => boolean; release: () => void } {
+  let busy = false;
+  return {
+    tryEnter: () => {
+      if (busy) return false;
+      busy = true;
+      return true;
+    },
+    release: () => {
+      busy = false;
+    },
   };
 }
 

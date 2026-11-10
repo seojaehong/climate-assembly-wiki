@@ -66,6 +66,10 @@ export function recountAgenda(raw, { agendaNo, expectedCount, attendance = null,
   const problems = [];
   const items = [...(raw?.items ?? [])].sort((a, b) => a.ordinal - b.ordinal);
   if (items.length !== expectedCount) problems.push(`의제 ${agendaNo}: 건수 ${items.length} ≠ 기대 ${expectedCount}`);
+  // 11/14 투표지는 분과 지정 없음(전원 투표). 분과가 남아 있으면 서버가 명단을 그 분과로 좁혀 돌려주므로
+  // 다른 분과 시민의 표가 전부 「명단 밖」으로 빠진다 — 세지 않고 거부한다.
+  const subgroup = String(raw?.subgroup ?? '').trim();
+  if (subgroup) problems.push(`의제 ${agendaNo}: 투표지에 분과 지정(${subgroup})이 있어 명단이 그 분과로 좁혀짐 — 전원 투표지는 분과 지정 없음이어야 함`);
   const seen = new Set();
   const out = items.map((it) => {
     const no = motionNumber(it.statement);

@@ -55,6 +55,11 @@ describe('넘김식 화면을 쓰는가', () => {
     expect(shouldUsePager(ballot(5, { title: '분과 의견조사', subgroup: '2분과' }), '')).toBe(false);
     expect(shouldUsePager(ballot(5, { subgroup: null }), '')).toBe(false);
   });
+  it('(11/14) 분과 지정 없는 전체회의 의결 투표지도 넘김식 — 전원이 같은 화면', () => {
+    expect(shouldUsePager(ballot(19, { title: '전체회의 의결 의제1 기업 온실가스 감축 촉진', subgroup: null }), '')).toBe(true);
+    expect(shouldUsePager(ballot(28, { title: '전체회의 의결 의제2', subgroup: '' }), '')).toBe(true);
+    expect(shouldUsePager(ballot(28, { title: '전체회의 의결 의제2', subgroup: '2분과' }), '')).toBe(false);
+  });
   it('1건짜리 분과 의결(10/17 흐름)은 지금 화면 그대로', () => {
     expect(shouldUsePager(ballot(1), '')).toBe(false);
   });

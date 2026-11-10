@@ -14,6 +14,7 @@ import { getDeviceToken, isDeviceTokenPersistent } from '../../lib/mod-console';
 import {
   answeredCount,
   ballotChoices,
+  createSubmitLatch,
   decisionChoiceOf,
   getLocalSubmit,
   anonymousSubmitGate,
@@ -40,7 +41,7 @@ import {
   voterReady,
   type RosterTeam,
 } from '../../lib/named-vote-logic';
-import { isDivisionDecisionBallot, parseMotionStatement } from '../../lib/division-ballot-format';
+import { decisionBallotKind, type DecisionBallotKind, parseMotionStatement } from '../../lib/division-ballot-format';
 import { useModalDialog } from '../mod/use-modal-dialog';
 import { createSafeBrowserStorage } from '../../lib/safe-browser-storage';
 import BallotPager from './BallotPager';
@@ -245,7 +246,7 @@ function DoneScreen({
   voter = null,
 }: {
   duplicate: boolean;
-  decision: boolean;
+  decision: boolean | DecisionBallotKind | null;
   onRefresh: () => void;
   refreshing: boolean;
   refreshNotice: string | null;
@@ -284,7 +285,7 @@ export function ClosedScreen({
   refreshing,
   refreshNotice,
 }: {
-  decision: boolean;
+  decision: boolean | DecisionBallotKind | null;
   /** 어느 투표가 마감됐는지(10/14 voter-4) — 옛 QR 로 들어온 사람이 「지금 투표가 끝났다」고 오해하지 않게. */
   ballotTitle?: string | null;
   /** 제출을 눌렀는데 이미 마감돼 표가 들어가지 않았다(10/14 voter-4). */
@@ -626,8 +627,9 @@ function VotingScreen({
   const named = teams.length > 0;
   const voterOk = !named || voterReady(voter.team, voter.name, teams);
   const complete = isComplete(ballot.items, answers) && voterOk;
-  const decision = isDivisionDecisionBallot(ballot);
-  const copy = voterCopy(decision);
+  const decisionKind = decisionBallotKind(ballot);
+  const decision = decisionKind !== null;
+  const copy = voterCopy(decisionKind);
 
   return (
     <Shell align="top">
@@ -717,8 +719,9 @@ function VotingScreen({
 
 function ResultsScreen({ results }: { results: BallotResults | null }) {
   if (!results) return <LoadingScreen />;
-  const decision = isDivisionDecisionBallot(results);
-  const rcopy = voterCopy(decision);
+  const decisionKind = decisionBallotKind(results);
+  const decision = decisionKind !== null;
+  const rcopy = voterCopy(decisionKind);
 
   return (
     <Shell align="top">
@@ -830,6 +833,8 @@ export default function BallotCard() {
   const [pagerRestoredFor, setPagerRestoredFor] = useState<string | null>(null);
   /** 되살리기는 투표지마다 한 번 — 오래 사는 클로저에서 load 가 다시 불려도 고른 값을 덮지 않게 ref 로 지킨다. */
   const pagerRestoredRef = useRef<string | null>(null);
+  // 제출 요청은 한 번에 하나 — 빠른 두 번 누름이 요청 두 개를 보내지 않게(createSubmitLatch 설명).
+  const submitLatchRef = useRef(createSubmitLatch());
   const pagerView =
     !!ballot && typeof window !== 'undefined' && shouldUsePager(ballot, window.location.search);
 
@@ -873,8 +878,8 @@ export default function BallotCard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // 10/17 분과 의결 투표면 「의견조사」 대신 「투표」 문구(일반 다의제 투표는 그대로).
-  const decisionBallot = !!ballot && isDivisionDecisionBallot(ballot);
+  // 의결 투표(10/17 분과 · 11/14 전체회의)면 「의견조사」 대신 「투표」 문구(일반 다의제 투표는 그대로).
+  const decisionBallot = ballot ? decisionBallotKind(ballot) : null;
   const screen = resolveBallotScreen({
     hasToken: !!token,
     ballot,
@@ -918,6 +923,16 @@ export default function BallotCard() {
 
   /** answersOverride = 넘김식이 들고 있는 값(부모 state 동기화를 기다리지 않고 화면에 보이는 값 그대로 낸다). */
   const handleSubmit = async (answersOverride?: Record<string, number>) => {
+    if (!token || !ballot) return;
+    if (!submitLatchRef.current.tryEnter()) return;
+    try {
+      await submitOnce(answersOverride);
+    } finally {
+      submitLatchRef.current.release();
+    }
+  };
+
+  const submitOnce = async (answersOverride?: Record<string, number>) => {
     if (!token || !ballot) return;
     const answers = answersOverride ?? answersState;
     setSubmitting(true);
@@ -1125,7 +1140,7 @@ export default function BallotCard() {
           <ConfirmDialog
             answered={answeredCount(ballot.items, answers)}
             total={ballot.items.length}
-            choice={decisionChoiceOf(ballot.items, answers, decisionBallot)}
+            choice={decisionChoiceOf(ballot.items, answers, decisionBallot !== null)}
             voterLine={teams.length > 0 && voter.team ? `${voter.team} ${displayVoterName(voter.name)} 님` : null}
             onCancel={() => setConfirmOpen(false)}
             onConfirm={() => void handleSubmit()}

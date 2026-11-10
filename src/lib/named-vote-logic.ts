@@ -54,9 +54,13 @@ export function rosterTeams(rows: readonly RosterRow[]): RosterTeam[] {
     list.push(r);
     map.set(r.team, list);
   }
+  const teams = [...map.keys()];
+  // 전원 명단(11/14)에서는 「3조」가 분과마다 있다 — 줄인 이름이 하나라도 겹치면 전부 원래 이름(「1분과 3조」)으로 쓴다.
+  const shorts = teams.map(teamShort);
+  const ambiguous = new Set(shorts).size !== shorts.length;
   return [...map.entries()]
     .sort(([a], [b]) => compareTeam(a, b))
-    .map(([team, names]) => ({ team, short: teamShort(team), names: [...names].sort(compareRow) }));
+    .map(([team, names]) => ({ team, short: ambiguous ? team : teamShort(team), names: [...names].sort(compareRow) }));
 }
 
 /** 제출 전 검사 — 조·이름 둘 다 있어야 한다. 조는 명단의 조여야 한다. */

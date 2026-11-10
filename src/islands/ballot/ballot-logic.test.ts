@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   answeredCount,
+  createSubmitLatch,
   getLocalSubmit,
   isComplete,
   isLocalSubmitStoragePersistent,
@@ -68,6 +69,30 @@ describe('subgroupVoteBadge — /b 헤더 분과 뱃지(S4)', () => {
     expect(s.doneTitle).toBe('의견이 제출되었습니다');
     expect(s.closedTitle).toBe('의견조사가 마감되었습니다');
     expect(s.evidence).toBe(BALLOT_EVIDENCE_BOUNDARY);
+  });
+});
+
+describe('(11/14) 제출 이중 전송 막기', () => {
+  it('제출이 진행 중이면 두 번째 누름은 들어가지 않고, 끝난 뒤에야 다시 받는다', () => {
+    const latch = createSubmitLatch();
+    expect(latch.tryEnter()).toBe(true);
+    expect(latch.tryEnter()).toBe(false);
+    expect(latch.tryEnter()).toBe(false);
+    latch.release();
+    expect(latch.tryEnter()).toBe(true);
+  });
+});
+
+describe('(11/14) 전체회의 의결 문구', () => {
+  it('분과 이름과 「부결되면 다시 투표」를 내지 않는다(20_투표_최종안 329행)', () => {
+    const p = voterCopy('plenary');
+    expect(p.eyebrow).toBe('전체회의 의결 투표');
+    expect(p.eyebrow).not.toContain('분과');
+    expect(p.evidence).toBe('출석자 3분의 2 이상이 찬성하면 가결됩니다.');
+    expect(p.evidence).not.toContain('다시 투표');
+    expect(p.doneTitle).toBe('투표가 제출되었습니다');
+    expect(voterCopy('division')).toEqual(voterCopy(true));
+    expect(voterCopy(null)).toEqual(voterCopy(false));
   });
 });
 

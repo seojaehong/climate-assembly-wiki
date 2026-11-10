@@ -31,7 +31,8 @@ function rawAgenda(agendaNo, count, votes, { status = 'closed', roster = null, i
     answers: v.answers,
     submitted_at: v.at ?? `2026-11-14T05:${String(10 + (i % 40)).padStart(2, '0')}:00Z`,
   }));
-  return { id, title: `${agendaNo}분과 의결`, status, subgroup: `${agendaNo}분과`, items, roster: people, responses };
+  // 11/14 투표지는 분과 지정 없음(전원 투표) — ballot_named_responses_v2 가 세션 명단 전체를 준다.
+  return { id, title: `전체회의 의결 의제${agendaNo}`, status, subgroup: null, items, roster: people, responses };
 }
 
 /** n 명이 모든 건에 같은 값(2=찬성, 1=반대). */
@@ -105,6 +106,43 @@ describe('재집계 — 명단 안 · 이름 있음 · 중복 없음 · 출석�
     expect(r.excluded.map((e) => e.reason).sort()).toEqual(['명단 밖', '이름 없음', '중복', '출석부 없음'].sort());
     expect(r.items[0]).toMatchObject({ no: '1-1', yes: 1, nay: 1, sysYes: 4, sysNay: 2 });
     expect(r.items[1]).toMatchObject({ no: '1-2', yes: 2, nay: 0 });
+  });
+  test('(11/14) 다른 분과 소속 시민의 표도 센다 — 명단은 세션 전원', () => {
+    const roster = [
+      { team: '1분과 1조', no: 1, name: '가상1' },
+      { team: '2분과 3조', no: 2, name: '가상2' },
+      { team: '3분과 5조', no: 3, name: '가상3' },
+    ];
+    const raw = rawAgenda(1, 2, [
+      { answers: { [itemId(1, 1)]: 2, [itemId(1, 2)]: 2 } },
+      { answers: { [itemId(1, 1)]: 2, [itemId(1, 2)]: 1 } },
+      { answers: { [itemId(1, 1)]: 1, [itemId(1, 2)]: 2 } },
+    ], { roster });
+    const r = recountAgenda(raw, { agendaNo: 1, expectedCount: 2 });
+    expect(r.excluded).toEqual([]);
+    expect(r.phoneValid).toBe(3);
+    expect(r.items[0]).toMatchObject({ yes: 2, nay: 1 });
+    expect(r.items[1]).toMatchObject({ yes: 2, nay: 1 });
+  });
+  test('(11/14) 분과 지정이 남은 투표지는 거부 — 명단이 그 분과로 좁혀져 다른 분과 표가 「명단 밖」이 된다', () => {
+    const raw = rawAgenda(1, 2, uniform(1, 2, 3, 2));
+    raw.subgroup = '1분과';
+    expect(() => recountAgenda(raw, { agendaNo: 1, expectedCount: 2 })).toThrow(/분과 지정/);
+    raw.subgroup = '  ';
+    expect(() => recountAgenda(raw, { agendaNo: 1, expectedCount: 2 })).not.toThrow();
+  });
+  test('(현행 규칙 · 결정 대기) 동명이인 — 조가 달라도 같은 이름의 늦은 표는 「중복」으로 빠진다', () => {
+    const roster = [
+      { team: '1분과 1조', no: 1, name: '가상동명' },
+      { team: '2분과 2조', no: 2, name: '가상동명' },
+    ];
+    const raw = rawAgenda(1, 2, [
+      { answers: { [itemId(1, 1)]: 2, [itemId(1, 2)]: 2 } },
+      { answers: { [itemId(1, 1)]: 1, [itemId(1, 2)]: 1 } },
+    ], { roster });
+    const r = recountAgenda(raw, { agendaNo: 1, expectedCount: 2 });
+    expect(r.phoneValid).toBe(1);
+    expect(r.excluded.map((e) => [e.team, e.reason])).toEqual([['2분과 2조', '중복']]);
   });
   test('서면 집계표를 더한다', () => {
     const raw = rawAgenda(1, 2, uniform(1, 2, 3, 2));

@@ -21,6 +21,8 @@ import {
   subgroupBadgeLabel,
   subgroupTargetLabel,
   validateBallotForm,
+  parseBulkBallotItems,
+  plenaryFormWarnings,
   type BallotFormItem,
 } from './ballot-panel-logic';
 import type { BallotStatus } from '../../lib/deliberation';
@@ -412,5 +414,53 @@ describe('ballotTargetOptions·defaultBallotTarget — 새 투표의 대상 분�
     expect(ballotTargetOptions(null, null)).toEqual([]);
     expect(defaultBallotTarget(null)).toBeNull();
     expect(defaultBallotTarget('  ')).toBeNull();
+  });
+});
+
+describe('(11/14) 여러 건 붙여넣기 · 전체회의 의결 투표지 점검', () => {
+  const pasted = '1-1-안1 첫째 권고\r\n\r\n  1-2-안1 둘째 권고  \n1-3-안1 셋째 권고\n';
+
+  it('한 줄 = 한 건, 빈 줄은 버리고 찬반(2점)으로 채운다', () => {
+    const items = parseBulkBallotItems(pasted, { optional: false });
+    expect(items).toEqual([
+      { statement: '1-1-안1 첫째 권고', scale: 2, required: true },
+      { statement: '1-2-안1 둘째 권고', scale: 2, required: true },
+      { statement: '1-3-안1 셋째 권고', scale: 2, required: true },
+    ]);
+  });
+
+  it('「누르지 않은 건 허용」이면 문항이 선택(required=false)으로 서버에 간다', () => {
+    const items = parseBulkBallotItems(pasted, { optional: true });
+    const r = validateBallotForm('전체회의 의결 의제1', items);
+    expect(r.ok && r.items.every((it) => it.required === false && it.scale === 2)).toBe(true);
+    // 옛 폼 항목(required 없음)은 지금처럼 필수.
+    const old = validateBallotForm('제목', [{ statement: '의제', scale: 5 }]);
+    expect(old.ok && old.items[0].required).toBe(true);
+  });
+
+  it('28건도 한 번에 — 상한(30) 안', () => {
+    const text = Array.from({ length: 28 }, (_, i) => `2-${i + 1}-안1 권고 ${i + 1}`).join('\n');
+    const r = validateBallotForm('전체회의 의결 의제2', parseBulkBallotItems(text, { optional: true }));
+    expect(r.ok && r.items.length).toBe(28);
+  });
+
+  it('전체회의 의결 제목이면 대상 · 척도 · 번호 모양 · 의제 번호를 점검한다', () => {
+    const good = parseBulkBallotItems(pasted, { optional: true });
+    expect(plenaryFormWarnings('전체회의 의결 의제1 기업 온실가스 감축 촉진', null, good)).toEqual([]);
+    expect(plenaryFormWarnings('전체회의 의결 의제1', '1분과', good)).toEqual([
+      '대상을 「세션 전체」로 두세요. 분과를 고르면 그 분과 명단만 투표할 수 있습니다.',
+    ]);
+    const bad: BallotFormItem[] = [
+      { statement: '1-1-안1 첫째', scale: 5, required: false },
+      { statement: '첫째 권고', scale: 2, required: false },
+      { statement: '2-3-안1 다른 의제', scale: 2, required: false },
+    ];
+    expect(plenaryFormWarnings('전체회의 의결 의제1', null, bad)).toEqual([
+      '1번 문항이 찬반(2점)이 아닙니다.',
+      '2번 문항이 「1-M-안1 제목」 모양이 아닙니다.',
+      '3번 문항 번호 2-3 이 의제1 번호가 아닙니다.',
+    ]);
+    // 전체회의 의결 제목이 아니면 점검하지 않는다(일반 투표 · 10/17 분과 의결).
+    expect(plenaryFormWarnings('폐회 투표', '1분과', bad)).toEqual([]);
   });
 });

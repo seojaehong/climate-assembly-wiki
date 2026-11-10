@@ -117,7 +117,7 @@ export function PagerItemView({
           <span className="text-[17px] font-extrabold text-[#135C73]" style={KEEP}>
             {title}
           </span>
-          <span data-testid="pager-position" className="text-[26px] font-black text-[#1F4E79] tr-num" role="status" aria-live="polite">
+          <span data-testid="pager-position" className="shrink-0 whitespace-nowrap text-[26px] font-black text-[#1F4E79] tr-num" role="status" aria-live="polite">
             {pos + 1} / {total}
           </span>
         </div>

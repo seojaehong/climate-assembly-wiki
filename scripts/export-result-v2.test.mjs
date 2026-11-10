@@ -26,7 +26,7 @@ function fixture({ confirmedAll = true } = {}) {
     }));
     responses.push({ id: `x-${a}-1`, voter_team: null, voter_name: null, voter_in_roster: null, answers: { [items[0].id]: 2 }, submitted_at: '2026-11-14T05:59:00Z' });
     responses.push({ id: `x-${a}-2`, voter_team: '1분과 1조', voter_name: '명단밖', voter_in_roster: false, answers: { [items[0].id]: 2 }, submitted_at: '2026-11-14T05:59:01Z' });
-    writeFileSync(join(dir, 'raw', `agenda${a}.json`), JSON.stringify({ id: `ballot-${a}`, title: `${a}분과 의결`, status: 'closed', subgroup: `${a}분과`, items, roster, responses }));
+    writeFileSync(join(dir, 'raw', `agenda${a}.json`), JSON.stringify({ id: `ballot-${a}`, title: `전체회의 의결 의제${a}`, status: 'closed', subgroup: null, items, roster, responses }));
   }
   const config = {
     rehearsal: false,

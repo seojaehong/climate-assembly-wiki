@@ -1,4 +1,5 @@
 import type { BallotItemInput, BallotScale, BallotStatus } from '../../lib/deliberation';
+import { plenaryAgendaNo } from '../../lib/division-ballot-format';
 
 /**
  * 다의제 투표(ballot) 패널의 순수 로직 — 상태 전이 가드, 생성 폼 검증, 결과 분포 계산.
@@ -91,7 +92,8 @@ export function scaleLabel(scale: BallotScale): string {
 
 // ── 생성 폼 ──────────────────────────────────────────────────
 
-export type BallotFormItem = { statement: string; scale: BallotScale };
+/** required 가 없으면 필수(옛 폼 그대로). false = 누르지 않아도 제출되고 그 건은 기권으로 남는다. */
+export type BallotFormItem = { statement: string; scale: BallotScale; required?: boolean };
 
 export type BallotFormResult =
   | { ok: true; title: string; items: BallotItemInput[] }
@@ -136,9 +138,39 @@ export function validateBallotForm(title: string, items: BallotFormItem[]): Ball
       ordinal: index + 1,
       statement: item.statement,
       scale: item.scale,
-      required: true,
+      required: item.required ?? true,
     })),
   };
+}
+
+/**
+ * (11/14) 여러 건 붙여넣기 — 한 줄 = 한 건, 빈 줄은 버린다. 의결 투표지라 전부 찬반(2점).
+ * optional = 「누르지 않은 건 허용」(문항 required=false → 넘김식이 「기권으로 두고 제출」 확인을 띄운다).
+ */
+export function parseBulkBallotItems(text: string, { optional }: { optional: boolean }): BallotFormItem[] {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((statement) => ({ statement, scale: 2 as BallotScale, required: !optional }));
+}
+
+/**
+ * (11/14) 「전체회의 의결 의제N…」 제목이면 만들기 전에 점검한다 — 대상(세션 전체) · 찬반(2점) ·
+ * 문항 번호 모양(「N-M-안1 제목」, 결과 내보내기가 이 모양만 읽는다) · 의제 번호. 다른 제목이면 빈 목록.
+ */
+export function plenaryFormWarnings(title: string, target: string | null, items: readonly BallotFormItem[]): string[] {
+  const agendaNo = plenaryAgendaNo(title);
+  if (agendaNo === null) return [];
+  const out: string[] = [];
+  if (target?.trim()) out.push('대상을 「세션 전체」로 두세요. 분과를 고르면 그 분과 명단만 투표할 수 있습니다.');
+  items.forEach((item, i) => {
+    if (item.scale !== 2) out.push(`${i + 1}번 문항이 찬반(2점)이 아닙니다.`);
+    const m = /^(\d+)-(\d+)-안\d+\s+\S/.exec(item.statement.trim());
+    if (!m) out.push(`${i + 1}번 문항이 「${agendaNo}-M-안1 제목」 모양이 아닙니다.`);
+    else if (Number(m[1]) !== agendaNo) out.push(`${i + 1}번 문항 번호 ${m[1]}-${m[2]} 이 의제${agendaNo} 번호가 아닙니다.`);
+  });
+  return out;
 }
 
 export type BallotCreateIntent = { fingerprint: string; requestId: string };

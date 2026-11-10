@@ -38,6 +38,8 @@ import {
   defaultBallotTarget,
   distRows,
   emptyBallotFormItem,
+  parseBulkBallotItems,
+  plenaryFormWarnings,
   primaryAction,
   scaleLabel,
   sessionSubgroups,
@@ -581,6 +583,9 @@ function CreateForm({
   const [title, setTitle] = useState('');
   const [instructions, setInstructions] = useState('');
   const [items, setItems] = useState<BallotFormItem[]>([emptyBallotFormItem()]);
+  // (11/14) 여러 건 붙여넣기 · 「누르지 않은 건 허용」(문항 required=false).
+  const [bulk, setBulk] = useState('');
+  const [optional, setOptional] = useState(false);
   // 대상: null=세션 전체, 분과명=해당 분과 한정. 기본값은 내 분과(분과 없는 조는 세션 전체).
   // 분과 조는 다른 분과를 고를 수 없다. 분과 없는 운영 조(총괄 모더레이터)만 세션의 모든 분과를 고른다.
   const [target, setTarget] = useState<string | null>(() => defaultBallotTarget(subgroup));
@@ -616,7 +621,22 @@ function CreateForm({
   const setScale = (index: number, scale: BallotScale) =>
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, scale } : item)));
   const addItem = () =>
-    setItems((prev) => (prev.length < MAX_BALLOT_ITEMS ? [...prev, emptyBallotFormItem()] : prev));
+    setItems((prev) => (prev.length < MAX_BALLOT_ITEMS ? [...prev, { ...emptyBallotFormItem(), required: !optional }] : prev));
+  const applyBulk = () => {
+    const parsed = parseBulkBallotItems(bulk, { optional });
+    if (parsed.length === 0) return;
+    if (parsed.length > MAX_BALLOT_ITEMS) {
+      setError(`붙여넣은 줄이 ${parsed.length}개입니다. 의제는 최대 ${MAX_BALLOT_ITEMS}개까지 담을 수 있습니다.`);
+      return;
+    }
+    setError(null);
+    setItems(parsed);
+  };
+  const toggleOptional = (next: boolean) => {
+    setOptional(next);
+    setItems((prev) => prev.map((item) => ({ ...item, required: !next })));
+  };
+  const warnings = plenaryFormWarnings(title, target, items);
   const removeItem = (index: number) =>
     setItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
 
@@ -624,6 +644,10 @@ function CreateForm({
     const checked = validateBallotForm(title, items);
     if (!checked.ok) {
       setError(checked.error);
+      return;
+    }
+    if (warnings.length > 0) {
+      setError(`전체회의 의결 투표지 점검: ${warnings[0]}`);
       return;
     }
     setError(null);
@@ -722,6 +746,30 @@ function CreateForm({
         >
           의제 (1~{MAX_BALLOT_ITEMS}개 · 문장 + 척도)
         </label>
+        <div className="mb-3 rounded-xl border border-[#C4D8E4] bg-[#F7FAFC] p-3 space-y-2">
+          <p className="text-[15px] font-bold text-[#1F4E79]">여러 건 한 번에 붙여넣기 (한 줄 = 한 건, 찬반 2점)</p>
+          <textarea
+            data-testid="ballot-bulk"
+            value={bulk}
+            onChange={(e) => setBulk(e.target.value)}
+            rows={4}
+            placeholder="예: 1-1-안1 권고 제목"
+            className="w-full min-w-0 rounded-xl border border-[#C4D8E4] focus:border-[#23B2C3] px-3 py-2 text-[16px] text-[#1F2933] outline-none resize-y"
+          />
+          <label className="flex items-center gap-2 text-[15px] text-[#1F2933]">
+            <input type="checkbox" data-testid="ballot-optional" checked={optional} onChange={(e) => toggleOptional(e.target.checked)} className="h-5 w-5" />
+            누르지 않은 건 허용 (그 건은 기권으로 기록)
+          </label>
+          <button
+            type="button"
+            data-testid="ballot-bulk-apply"
+            onClick={applyBulk}
+            disabled={!bulk.trim()}
+            className="w-full h-12 rounded-xl border border-[#23B2C3] bg-white text-[#135C73] text-[16px] font-bold disabled:opacity-30"
+          >
+            붙여넣은 줄로 아래 의제 바꾸기
+          </button>
+        </div>
         <div className="space-y-3">
           {items.map((item, index) => (
             <div key={index} className="rounded-xl border border-[#C4D8E4] p-3 space-y-2">
@@ -774,6 +822,15 @@ function CreateForm({
           <span className="text-2xl leading-none">＋</span> 의제 추가
         </button>
       </div>
+
+      {warnings.length > 0 ? (
+        <ul data-testid="plenary-warnings" className="rounded-xl border border-[#B5651D]/40 bg-[#FFF7ED] px-4 py-2.5 text-[15px] font-bold text-[#8A4B08] space-y-1">
+          {warnings.slice(0, 6).map((w) => (
+            <li key={w}>{w}</li>
+          ))}
+          {warnings.length > 6 ? <li>외 {warnings.length - 6}건</li> : null}
+        </ul>
+      ) : null}
 
       {error ? (
         <p className="rounded-xl border border-[#DC2626]/30 bg-[#FEF2F2] px-4 py-2.5 text-[16px] font-bold text-[#B91C1C]">

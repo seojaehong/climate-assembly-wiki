@@ -9,7 +9,7 @@
  * 근거 = 20_투표_최종안 ④-1 · W04 · 00_고정조건 C-7.
  */
 import type { Ballot, BallotItem } from '../../lib/ballot';
-import { isDivisionDecisionBallot } from '../../lib/division-ballot-format';
+import { isDecisionBallot } from '../../lib/division-ballot-format';
 
 /** 고른 표시를 보이는 시간. */
 export const ADVANCE_DELAY_MS = 400;
@@ -32,12 +32,13 @@ export type PagerState = {
 };
 
 /**
- * 넘김식 화면을 쓰는가. 분과 의결 투표지(「N분과 의결…」 + subgroup 「N분과」)이고 2건 이상일 때.
+ * 넘김식 화면을 쓰는가. 의결 투표지이고 2건 이상일 때 — 분과 의결(「N분과 의결…」 + subgroup 「N분과」)
+ * 또는 11/14 전체회의 의결(「전체회의 의결 의제N…」 + subgroup 비움, 세션 명단 전원).
  * 1건짜리(10/17 흐름)와 일반 다의제 투표는 지금 목록 화면 그대로. `?view=list` 는 비상용 목록 토글.
  */
 export function shouldUsePager(ballot: Pick<Ballot, 'title' | 'subgroup' | 'items'>, search: string): boolean {
   if (new URLSearchParams(search).get('view') === 'list') return false;
-  return isDivisionDecisionBallot(ballot) && ballot.items.length > 1;
+  return isDecisionBallot(ballot) && ballot.items.length > 1;
 }
 
 /** 화면 번호 — 문항 문장 「2-5-안1 제목」에서 「2-5」. 모양이 다르면 순번. */

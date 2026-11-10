@@ -32,3 +32,39 @@ export function isDivisionDecisionBallot(ballot: { title?: string | null; subgro
   const title = ballot.title?.trim() ?? '';
   return title === `${subgroup} 의결` || title.startsWith(`${subgroup} 의결 `);
 }
+
+/**
+ * 11/14 전체회의 의결 투표지(의제별 3장). 분과 지정(subgroup)을 비워 세션 명단 전원이 투표하고,
+ * 투표지는 제목으로 알아본다: `전체회의 의결 의제${N}` 또는 `전체회의 의결 의제${N} ${의제 이름}` (N = 1~9).
+ * 「N분과 의결」 모양과 겹치지 않게 접두를 따로 둔다(20_투표_최종안 W00/W01). 건수는 제목에 넣지 않는다 —
+ * 넘김식 요약이 「· 권고안 N건」을 덧붙인다.
+ */
+const PLENARY_TITLE = /^전체회의 의결 의제([1-9])(?:\s|$)/;
+
+export function plenaryBallotTitle(agendaNo: number, name?: string): string {
+  const n = name?.trim();
+  return n ? `전체회의 의결 의제${agendaNo} ${n}` : `전체회의 의결 의제${agendaNo}`;
+}
+
+/** 제목에서 의제 번호. 전체회의 의결 제목이 아니면 null. */
+export function plenaryAgendaNo(title: string | null | undefined): number | null {
+  const m = PLENARY_TITLE.exec(title?.trim() ?? '');
+  return m ? Number(m[1]) : null;
+}
+
+export type DecisionBallotKind = 'division' | 'plenary';
+
+/**
+ * 의결 투표의 종류. 분과 의결(10/17, subgroup 「N분과」) · 전체회의 의결(11/14, subgroup 비움) · 아니면 null.
+ * 전체회의 제목인데 분과 지정이 남아 있으면 null — 명단이 그 분과로 좁혀진 잘못 만든 투표지다.
+ */
+export function decisionBallotKind(ballot: { title?: string | null; subgroup?: string | null }): DecisionBallotKind | null {
+  if (isDivisionDecisionBallot(ballot)) return 'division';
+  if (!ballot.subgroup?.trim() && plenaryAgendaNo(ballot.title) !== null) return 'plenary';
+  return null;
+}
+
+/** 의결 투표인가(넘김식 · 찬반색 · 확인창 · 세부권고 접기 · 「투표」 문구). */
+export function isDecisionBallot(ballot: { title?: string | null; subgroup?: string | null }): boolean {
+  return decisionBallotKind(ballot) !== null;
+}
