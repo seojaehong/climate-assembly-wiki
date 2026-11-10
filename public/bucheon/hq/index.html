@@ -16,7 +16,9 @@
   body { font-size: 26px; line-height: 1.4; display: flex; flex-direction: column; }
   header { display: flex; align-items: center; gap: 28px; padding: 0 48px; height: 88px; background: var(--band); color: var(--band-ink); }
   header h1 { font-size: 36px; margin: 0; flex: 1; min-width: 0; font-weight: 800; letter-spacing: -.02em; }
-  header h1 small { font-size: 26px; font-weight: 500; color: var(--band-ink-2); margin-left: 16px; letter-spacing: 0; }
+  header h1 small { font-size: 26px; font-weight: 500; color: var(--band-ink-2); margin-left: 16px; letter-spacing: 0; white-space: nowrap; }
+  @media (max-width: 1400px) { header h1 small { display: none; } }
+  header h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   nav { display: flex; gap: 6px; }
   nav button { font-size: 26px; font-weight: 700; padding: 8px 20px; border-radius: 8px; border: 0;
                background: transparent; color: var(--band-ink-2); cursor: pointer; }
@@ -30,12 +32,10 @@
   .counter { flex: 1; background: var(--paper); border-radius: 8px; padding: 22px 30px; }
   .counter .n { font-size: 112px; font-weight: 800; line-height: 1; letter-spacing: -.03em; }
   .counter .l { font-size: 32px; color: var(--ink-2); font-weight: 600; margin-top: 10px; }
-  .tiles { display: grid; grid-template-columns: repeat(5, 1fr); grid-auto-rows: 1fr; gap: 16px; flex: 1; min-height: 0; }
-  .tile { background: var(--paper); border-radius: 8px; padding: 20px 24px; display: flex; flex-direction: column; justify-content: center; }
-  .tile b { font-size: 44px; align-self: flex-start; margin-bottom: 10px; }
-  .tile .st { font-size: 28px; color: var(--ink-2); font-weight: 500; }
-  .tile.full { background: var(--ink); }
-  .tile.full .st { color: var(--paper); }
+  .counter { box-shadow: 0 6px 0 var(--edge); }
+  #view > .hall { flex: 1; min-height: 0; }
+  .hall.fit, .hall.fit * { transition: none !important; }
+  .hall .sign .st { font-size: max(24px, calc(28px * var(--s))); white-space: pre; }
   .tools { margin-top: 20px; display: none; gap: 12px; flex-wrap: wrap; }
   body.ops .tools { display: flex; }
   .tools button { font-size: 24px; font-weight: 700; padding: 10px 20px; border-radius: 8px; border: 3px solid var(--field-line);
@@ -43,7 +43,7 @@
   /* 2 질문 */
   .pager { font-size: 32px; color: var(--ink); text-align: right; margin-top: 12px; font-weight: 800; }
   .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 14px; flex: 1; min-height: 0; }
-  .card { background: var(--paper); border-radius: 8px; line-height: 1.36; padding: 14px 22px; overflow: hidden; display: flex; gap: 22px; align-items: flex-start; }
+  .card { background: var(--paper); box-shadow: 0 5px 0 var(--edge); margin-bottom: 5px; border-radius: 8px; line-height: 1.36; padding: 14px 22px; overflow: hidden; display: flex; gap: 22px; align-items: flex-start; }
   .card .no { font-size: max(32px, .82em); flex: 0 0 auto; min-width: 100px; text-align: center; border-radius: 6px; }
   .card .body { min-width: 0; flex: 1; }
   .card .q { margin: 0; font-weight: 700; letter-spacing: -.01em; }
@@ -87,7 +87,7 @@
     body { font-size: 14px; display: block; background: #fff; color: #000; }
     #view { overflow: visible; padding: 0; display: block; }
     .cards { display: block; }
-    .card { background: none; padding: 0 0 10px; font-size: 14px !important; break-inside: avoid; }
+    .card { background: none; box-shadow: none; padding: 0 0 10px; font-size: 14px !important; break-inside: avoid; }
     .card .no { font-size: 14px; min-width: 64px; }
     .card .also { font-size: 13px; }
     .qhead { font-size: 14px; }
@@ -149,6 +149,31 @@
 
   function byTeam(list) { var m = {}; (list || []).forEach(function (x) { m[x.team_no] = x; }); return m; }
 
+  var hallBox = null, hallUp = {};
+  // 남은 자리에 맞춰 --s 를 정한다(1 = 1920 폭 기준). 팻말 글자 하한 24px 은 CSS 가 지킨다.
+  function fitHall() {
+    // 원근 때문에 크기가 비례하지 않아 두 번 잰다. 바닥 두께(그림자)는 bbox 에 안 잡히므로 따로 더한다.
+    var h = hallBox, s = 1;
+    h.style.marginTop = '0px';
+    h.classList.add('fit');
+    for (var pass = 0; pass < 3; pass++) {
+      h.style.setProperty('--s', s.toFixed(3));
+      var top = h.getBoundingClientRect().top, availH = V.getBoundingClientRect().bottom - top - 28, availW = V.clientWidth - 8;
+      var r = h.querySelector('.floor').getBoundingClientRect(), t = r.top, b = r.bottom + 26 * s, l = r.left, ri = r.right;
+      h.querySelectorAll('.sign').forEach(function (g) { var x = g.getBoundingClientRect(); t = Math.min(t, x.top); l = Math.min(l, x.left); ri = Math.max(ri, x.right); });
+      s = Math.max(.4, Math.min(1.3, s * Math.min(availW / (ri - l), availH / (b - t))));
+    }
+    h.style.setProperty('--s', s.toFixed(3));
+    // 기울인 바닥은 상자 위쪽에 빈자리를 남긴다. 팻말 꼭대기가 상자 위 끝에 오도록 끌어올린다.
+    var tt = h.querySelector('.floor').getBoundingClientRect().top;
+    h.querySelectorAll('.sign').forEach(function (g) { tt = Math.min(tt, g.getBoundingClientRect().top); });
+    var lift = h.getBoundingClientRect().top - tt;
+    h.style.marginTop = lift + 'px';
+    var spare = V.getBoundingClientRect().bottom - 28 - (h.querySelector('.floor').getBoundingClientRect().bottom + 26 * s);
+    if (spare > 0) h.style.marginTop = (lift + spare / 2) + 'px';
+    h.classList.remove('fit');
+  }
+
   function renderStatus() {
     var q = byTeam(data.questions), p = byTeam(data.priorities), n = data.teams.length;
     V.appendChild(el('div', { class: 'counters' }, [
@@ -156,15 +181,18 @@
       el('div', { class: 'counter' }, [el('div', { class: 'n', text: data.priorities.length + '/' + n }), el('div', { class: 'l', text: '세션2 우선순위 제출' })]),
       el('div', { class: 'counter' }, [el('div', { class: 'n', text: String(data.surveys.length) }), el('div', { class: 'l', text: '만족도 설문 응답' })])
     ]));
-    var tiles = el('div', { class: 'tiles' });
-    data.teams.forEach(function (t) {
-      tiles.appendChild(el('div', { class: 'tile' + (q[t] && p[t] ? ' full' : '') }, [
-        el('b', { class: 'tag', text: t + '조' }),
-        el('div', { class: 'st', text: '세션1 ' + (q[t] ? '✔ ' + BF.hhmm(q[t].updated_at) : '—') }),
-        el('div', { class: 'st', text: '세션2 ' + (p[t] ? '✔ ' + BF.hhmm(p[t].updated_at) : '—') })
-      ]));
+    // 회의장: 질문이나 순위를 낸 조의 원탁이 솟는다. 이전 상태로 붙인 뒤 다음 프레임에 바꿔야 솟는 움직임이 보인다.
+    var items = data.teams.map(function (t) {
+      return { no: t, up: !!(q[t] || p[t]), st: [q[t] ? '질문 ✔' : '', p[t] ? '순위 ✔' : ''].filter(Boolean).join('  ') };
     });
-    V.appendChild(tiles);
+    var prev = items.map(function (it) { return { no: it.no, up: !!hallUp[it.no], st: it.st }; });
+    hallBox = BF.hall(prev, hallBox);
+    V.appendChild(hallBox);
+    fitHall();
+    requestAnimationFrame(function () { requestAnimationFrame(function () {
+      BF.hall(items, hallBox);
+      items.forEach(function (it) { hallUp[it.no] = it.up; });
+    }); });
     V.appendChild(el('div', { class: 'tools' }, [
       el('button', { text: '질문 인쇄', onclick: function () { show(2, -1); setTimeout(function () { window.print(); }, 150); } }),
       el('button', { text: '질문 CSV', onclick: function () { csv('questions'); } }),

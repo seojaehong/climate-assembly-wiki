@@ -7,16 +7,18 @@
 <title>일하는 시민 100인 공론장</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="ui.css">
+<script src="lib.js"></script>
 <style>
   /* 안내 — 휴대폰 */
   main { max-width: 640px; margin: 0 auto; padding: 8px 16px 48px; }
   section { margin-top: 22px; }
   h2 { font-size: 15px; color: var(--ink-3); font-weight: 700; margin: 0 0 8px; }
   a.btn, span.btn { display: flex; align-items: center; gap: 14px; padding: 18px 16px; margin-bottom: 8px; border-radius: var(--r-panel);
-    background: var(--paper); color: var(--ink); text-decoration: none; }
+    background: var(--paper); color: var(--ink); text-decoration: none; box-shadow: 0 4px 0 var(--edge); }
   a.btn::after { content: ""; flex: 0 0 10px; height: 10px; border-right: 3px solid var(--ink-3); border-top: 3px solid var(--ink-3);
     transform: rotate(45deg); margin-right: 4px; }
-  a.btn:active { background: var(--cobalt-soft); }
+  a.btn:active { background: var(--cobalt-soft); transform: translateY(3px); box-shadow: 0 1px 0 var(--edge); }
+  #hero { display: none; }
   .tx { flex: 1; min-width: 0; }
   .t { display: block; font-size: 18px; font-weight: 800; }
   .d { display: block; font-size: 14px; color: var(--ink-3); margin-top: 2px; }
@@ -27,6 +29,9 @@
     :root { --wrap: 1080px; }
     .band .in { padding: 40px 24px 36px; }
     .band h1 { font-size: 34px; }
+    .band .in { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 24px; }
+    #hero { display: block; }
+    #hero .hall { --s: .36; --floor: #24375c; --floor-edge: #050c1a; padding-top: 22px; }
     main { max-width: var(--wrap); padding: 8px 24px 48px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 16px; }
     main footer { grid-column: 1 / -1; }
   }
@@ -34,9 +39,12 @@
 </head>
 <body>
 <header class="band"><div class="in">
-  <p class="what">부천시 노동정책 연구</p>
-  <h1>일하는 시민 100인 공론장</h1>
-  <p class="when">2026년 11월 18일(수) 오후 2시~6시<br>부천상공회의소 4층 강당</p>
+  <div>
+    <p class="what">부천시 노동정책 연구</p>
+    <h1>일하는 시민 100인 공론장</h1>
+    <p class="when">2026년 11월 18일(수) 오후 2시~6시<br>부천상공회의소 4층 강당</p>
+  </div>
+  <div id="hero" aria-hidden="true"></div>
 </div></header>
 <main>
   <section>
@@ -86,6 +94,12 @@
   render('fac', LINKS.fac);
   render('pro', LINKS.pro);
   render('cit', LINKS.cit);
+
+  // 머리띠 회의장: 원탁 10개가 차례로 한 번 솟는다. 넓은 화면에서만 보인다.
+  var seats = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(function (n) { return { no: n, up: false }; });
+  var hall = BF.hall(seats);
+  document.getElementById('hero').appendChild(hall);
+  seats.forEach(function (it, i) { setTimeout(function () { it.up = true; BF.hall(seats, hall); }, 500 + i * 110); });
 </script>
 </body>
 </html>

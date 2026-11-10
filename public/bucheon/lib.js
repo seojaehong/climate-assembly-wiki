@@ -106,5 +106,25 @@
     return n ? inter / n : 0;
   }
 
-  window.BF = { rpc: rpc, store: store, el: el, hhmm: hhmm, TERMS: TERMS, questionCards: questionCards, similarity: similarity };
+  // 회의장 3D: items = [{ no, up(솟은 원탁), st(팻말 아래 한 줄) }]. 같은 상자를 다시 그리면 바뀐 원탁만 솟는다.
+  function hall(items, box) {
+    box = box || el('div', { class: 'hall' });
+    var floor = box.querySelector('.floor');
+    if (!floor) { floor = el('div', { class: 'floor' }); box.appendChild(floor); }
+    items.forEach(function (it, i) {
+      var t = floor.children[i];
+      if (!t) {
+        t = el('div', { class: 'tbl' }, [el('div', { class: 'disc base' }), el('div', { class: 'disc side' }), el('div', { class: 'disc top' }),
+          el('div', { class: 'sign' }, [el('span', { class: 'tag' }), el('span', { class: 'st' })])]);
+        floor.appendChild(t);
+      }
+      t.classList.toggle('up', !!it.up);
+      t.querySelector('.tag').textContent = it.no + '조';
+      t.querySelector('.st').textContent = it.st || '';
+    });
+    while (floor.children.length > items.length) floor.lastChild.remove();
+    return box;
+  }
+
+  window.BF = { rpc: rpc, store: store, el: el, hhmm: hhmm, TERMS: TERMS, questionCards: questionCards, similarity: similarity, hall: hall };
 })();
