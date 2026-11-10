@@ -88,24 +88,26 @@ describe('기준표수 · 성립', () => {
 // ── 재집계 ────────────────────────────────────────────────────────────
 
 describe('재집계 — 명단 안 · 이름 있음 · 중복 없음 · 출석부', () => {
-  test('이름 없음 · 명단 밖 · 중복(늦은 것) · 출석부 없음을 빼고 센다', () => {
+  test('이름 없음 · 중복(늦은 것) · 출석부 없음을 빼고 센다 — 명단 밖(직접 입력)은 빼지 않는다(11/10 결정)', () => {
     const raw = rawAgenda(1, 2, [
       { answers: { [itemId(1, 1)]: 2, [itemId(1, 2)]: 2 } }, // 가상1 유효
       { answers: { [itemId(1, 1)]: 1, [itemId(1, 2)]: 2 } }, // 가상2 유효
       { name: null, answers: { [itemId(1, 1)]: 2 } }, // 이름 없음
-      { name: '명단밖', answers: { [itemId(1, 1)]: 2 } }, // 명단 밖
-      { name: '가상 1', team: '1분과 1조', at: '2026-11-14T05:59:00Z', answers: { [itemId(1, 1)]: 1 } }, // 가상1 중복(늦음)
-      { answers: { [itemId(1, 1)]: 2 } }, // 가상6 — 출석부에 없음
+      { name: '명단밖', answers: { [itemId(1, 1)]: 1, [itemId(1, 2)]: 1 } }, // 직접 입력(1분과 1조) — 센다
+      { name: '가상 1', team: '1분과 1조', at: '2026-11-14T05:59:00Z', answers: { [itemId(1, 1)]: 1, [itemId(1, 2)]: 1 } }, // 가상1 중복(늦음)
+      { answers: { [itemId(1, 1)]: 2, [itemId(1, 2)]: 2 } }, // 가상6 — 출석부에 없음
     ]);
     raw.roster.push({ team: '1분과 1조', no: 99, name: '가상1' });
     const r = recountAgenda(raw, { agendaNo: 1, expectedCount: 2, attendance: [
       { team: '1분과 1조', name: '가상1' },
       { team: '1분과 2조', name: '가상2' },
+      { team: '1분과 1조', name: '명단밖' },
     ] });
-    expect(r.phoneValid).toBe(2);
-    expect(r.excluded.map((e) => e.reason).sort()).toEqual(['명단 밖', '이름 없음', '중복', '출석부 없음'].sort());
-    expect(r.items[0]).toMatchObject({ no: '1-1', yes: 1, nay: 1, sysYes: 4, sysNay: 2 });
-    expect(r.items[1]).toMatchObject({ no: '1-2', yes: 2, nay: 0 });
+    expect(r.phoneValid).toBe(3);
+    expect(r.excluded.map((e) => e.reason).sort()).toEqual(['이름 없음', '중복', '출석부 없음'].sort());
+    expect(r.items[0]).toMatchObject({ no: '1-1', yes: 1, nay: 2, sysYes: 3, sysNay: 3 });
+    expect(r.items[1]).toMatchObject({ no: '1-2', yes: 2, nay: 1, sysYes: 3, sysNay: 2 });
+    expect(r.manual.map((m) => [m.team, m.name, m.counted])).toEqual([['1분과 1조', '명단밖', true]]);
   });
   test('(11/14) 다른 분과 소속 시민의 표도 센다 — 명단은 세션 전원', () => {
     const roster = [
@@ -124,7 +126,7 @@ describe('재집계 — 명단 안 · 이름 있음 · 중복 없음 · 출석�
     expect(r.items[0]).toMatchObject({ yes: 2, nay: 1 });
     expect(r.items[1]).toMatchObject({ yes: 2, nay: 1 });
   });
-  test('(11/14) 분과 지정이 남은 투표지는 거부 — 명단이 그 분과로 좁혀져 다른 분과 표가 「명단 밖」이 된다', () => {
+  test('(11/14) 분과 지정이 남은 투표지는 거부 — 명단이 그 분과로 좁혀져 다른 분과 시민은 투표하지 못했다', () => {
     const raw = rawAgenda(1, 2, uniform(1, 2, 3, 2));
     raw.subgroup = '1분과';
     expect(() => recountAgenda(raw, { agendaNo: 1, expectedCount: 2 })).toThrow(/분과 지정/);
@@ -169,6 +171,174 @@ describe('재집계 — 명단 안 · 이름 있음 · 중복 없음 · 출석�
     const raw = rawAgenda(1, 2, []);
     expect(() => recountAgenda(raw, { agendaNo: 1, expectedCount: 2, paper: { ballots: 1, items: { '1-9': { yes: 1 } } } })).toThrow(/서면/);
     expect(() => recountAgenda(raw, { agendaNo: 1, expectedCount: 2, paper: { ballots: 1, items: { '1-1': { yes: 1, nay: 1 } } } })).toThrow(/서면/);
+  });
+});
+
+// ── 11/10 주최 결정: 직접 입력 = 유효표 · 기권 불인정(미응답 건 있는 응답은 통째로 무효) ──────────
+
+describe('(11/10 결정) 직접 입력 이름도 유효표 — 중복은 명단 쪽 규칙 그대로', () => {
+  const roster = [
+    { team: '1분과 1조', no: 1, name: '가상일' },
+    { team: '1분과 3조', no: 2, name: '가상삼' },
+    { team: '2분과 2조', no: 3, name: '가상이' },
+  ];
+  const all = (v) => ({ [itemId(1, 1)]: v, [itemId(1, 2)]: v });
+  const at = (m) => `2026-11-14T05:${String(m).padStart(2, '0')}:00Z`;
+
+  test('명단에 없는 조·이름도 모든 건을 누르면 센다 — 직접 입력 목록(조 · 이름 · 제출 시각)에 남는다', () => {
+    const raw = rawAgenda(1, 2, [
+      { team: '1분과 1조', name: '가상일', at: at(10), answers: all(2) },
+      { team: '3분과 4조', name: '직접가', at: at(11), answers: all(1) },
+    ], { roster });
+    const r = recountAgenda(raw, { agendaNo: 1, expectedCount: 2 });
+    expect(r.excluded).toEqual([]);
+    expect(r.phoneValid).toBe(2);
+    expect(r.items[0]).toMatchObject({ yes: 1, nay: 1 });
+    expect(r.manual).toEqual([
+      { team: '3분과 4조', name: '직접가', submitted_at: at(11), counted: true, reason: null, rosterTeam: null },
+    ]);
+  });
+
+  test('직접 입력이 먼저면 그 표를 세고, 같은 이름(공백 · 대소문자 무시)의 명단 표는 「중복」', () => {
+    const raw = rawAgenda(1, 2, [
+      { team: '2분과 1조', name: '가상 삼', at: at(10), answers: all(1) }, // 조를 잘못 고르고 이름을 직접 입력
+      { team: '1분과 3조', name: '가상삼', at: at(12), answers: all(2) }, // 명단 쪽(늦음)
+    ], { roster });
+    const r = recountAgenda(raw, { agendaNo: 1, expectedCount: 2 });
+    expect(r.phoneValid).toBe(1);
+    expect(r.items[0]).toMatchObject({ yes: 0, nay: 1 });
+    expect(r.excluded.map((e) => [e.team, e.reason])).toEqual([['1분과 3조', '중복']]);
+    expect(r.manual).toEqual([
+      { team: '2분과 1조', name: '가상 삼', submitted_at: at(10), counted: true, reason: null, rosterTeam: '1분과 3조' },
+    ]);
+  });
+
+  test('명단 표가 먼저면 같은 이름의 직접 입력은 「중복」 — 이중 집계 없음', () => {
+    const raw = rawAgenda(1, 2, [
+      { team: '1분과 3조', name: '가상삼', at: at(10), answers: all(2) },
+      { team: '2분과 1조', name: '가상삼', at: at(12), answers: all(1) },
+    ], { roster });
+    const r = recountAgenda(raw, { agendaNo: 1, expectedCount: 2 });
+    expect(r.phoneValid).toBe(1);
+    expect(r.items[0]).toMatchObject({ yes: 1, nay: 0 });
+    expect(r.excluded.map((e) => [e.team, e.reason])).toEqual([['2분과 1조', '중복']]);
+    expect(r.manual).toEqual([
+      { team: '2분과 1조', name: '가상삼', submitted_at: at(12), counted: false, reason: '중복', rosterTeam: '1분과 3조' },
+    ]);
+  });
+
+  test('직접 입력끼리 같은 이름(정규화 후)이면 먼저 낸 것만 센다', () => {
+    const raw = rawAgenda(1, 2, [
+      { team: '3분과 1조', name: 'Kim Ga', at: at(10), answers: all(2) },
+      { team: '3분과 2조', name: 'kimga', at: at(11), answers: all(1) },
+    ], { roster });
+    const r = recountAgenda(raw, { agendaNo: 1, expectedCount: 2 });
+    expect(r.phoneValid).toBe(1);
+    expect(r.items[0]).toMatchObject({ yes: 1, nay: 0 });
+    expect(r.manual.map((m) => [m.name, m.counted, m.reason])).toEqual([
+      ['Kim Ga', true, null],
+      ['kimga', false, '중복'],
+    ]);
+  });
+
+  test('result/v2 에 직접 입력 표가 들어간다', () => {
+    const raw = rawAgenda(1, 1, [
+      ...uniform(1, 1, 5, 2),
+      { team: '3분과 4조', name: '직접가', answers: { [itemId(1, 1)]: 2 } },
+    ]);
+    const { doc } = buildResultV2(cfg([agendaCfg(1, 1)]), { 1: raw }, { generatedAt: NOW });
+    expect(doc.items[0]).toMatchObject({ yes: 6, nay: 0, abstain: 3, verdict: '가결' });
+  });
+});
+
+describe('(11/10 결정) 기권 불인정 — 누르지 않은 건이 있는 응답은 통째로 뺀다', () => {
+  const roster = [
+    { team: '1분과 1조', no: 1, name: '가상일' },
+    { team: '1분과 2조', no: 2, name: '가상이' },
+    { team: '1분과 3조', no: 3, name: '가상삼' },
+  ];
+  const at = (m) => `2026-11-14T05:${String(m).padStart(2, '0')}:00Z`;
+
+  test('한 건이라도 빠진 응답은 누른 건도 세지 않는다 — 「미응답 건 있음」 · 빠진 번호', () => {
+    const raw = rawAgenda(1, 3, [
+      { team: '1분과 1조', name: '가상일', at: at(10), answers: { [itemId(1, 1)]: 2, [itemId(1, 2)]: 2, [itemId(1, 3)]: 2 } },
+      { team: '1분과 2조', name: '가상이', at: at(11), answers: { [itemId(1, 1)]: 2, [itemId(1, 3)]: 1 } },
+    ], { roster });
+    const r = recountAgenda(raw, { agendaNo: 1, expectedCount: 3 });
+    expect(r.phoneValid).toBe(1);
+    expect(r.phoneVoters).toBe(2);
+    expect(r.items.map((i) => [i.yes, i.nay])).toEqual([[1, 0], [1, 0], [1, 0]]);
+    expect(r.items[0]).toMatchObject({ sysYes: 2, sysNay: 0 });
+    expect(r.excluded).toEqual([
+      { reason: '미응답 건 있음', team: '1분과 2조', name: '가상이', submitted_at: at(11), missing: ['1-2'] },
+    ]);
+  });
+
+  test('찬반(1 · 2)이 아닌 값도 누르지 않은 건으로 본다', () => {
+    const raw = rawAgenda(1, 2, [
+      { team: '1분과 1조', name: '가상일', answers: { [itemId(1, 1)]: 2, [itemId(1, 2)]: 3 } },
+    ], { roster });
+    const r = recountAgenda(raw, { agendaNo: 1, expectedCount: 2 });
+    expect(r.phoneValid).toBe(0);
+    expect(r.excluded.map((e) => [e.reason, e.missing])).toEqual([['미응답 건 있음', ['1-2']]]);
+  });
+
+  test('무효가 된 응답도 그 이름의 한 번이다 — 뒤에 같은 이름으로 낸 완전한 응답은 「중복」(재투표 불가)', () => {
+    const raw = rawAgenda(1, 2, [
+      { team: '1분과 1조', name: '가상일', at: at(10), answers: { [itemId(1, 1)]: 2 } },
+      { team: '1분과 1조', name: '가상일', at: at(12), answers: { [itemId(1, 1)]: 1, [itemId(1, 2)]: 1 } },
+    ], { roster });
+    const r = recountAgenda(raw, { agendaNo: 1, expectedCount: 2 });
+    expect(r.phoneValid).toBe(0);
+    expect(r.excluded.map((e) => [e.submitted_at, e.reason])).toEqual([[at(10), '미응답 건 있음'], [at(12), '중복']]);
+  });
+
+  test('완전한 응답이 먼저면 그것을 세고 뒤의 미응답 응답은 「중복」', () => {
+    const raw = rawAgenda(1, 2, [
+      { team: '1분과 1조', name: '가상일', at: at(10), answers: { [itemId(1, 1)]: 1, [itemId(1, 2)]: 1 } },
+      { team: '1분과 1조', name: '가상일', at: at(12), answers: { [itemId(1, 1)]: 2 } },
+    ], { roster });
+    const r = recountAgenda(raw, { agendaNo: 1, expectedCount: 2 });
+    expect(r.phoneValid).toBe(1);
+    expect(r.items[0]).toMatchObject({ yes: 0, nay: 1 });
+    expect(r.excluded.map((e) => [e.submitted_at, e.reason])).toEqual([[at(12), '중복']]);
+  });
+
+  test('파일은 만든다(거부하지 않는다) — 무효 응답은 기권(출석 − 찬성 − 반대)에 든다', () => {
+    const votes = [...uniform(1, 2, 6, 2), { answers: { [itemId(1, 1)]: 2 } }];
+    const { doc } = buildResultV2(cfg([agendaCfg(1, 2)]), { 1: rawAgenda(1, 2, votes) }, { generatedAt: NOW });
+    expect(doc.items[0]).toMatchObject({ yes: 6, nay: 0, abstain: 3, verdict: '가결' });
+    expect(validateResultV2(doc)).toEqual([]);
+  });
+
+  test('출석 대조는 사람 수로 — 무효가 된 휴대폰 제출자도 센다(휴대폰 제출자 + 서면 > 출석이면 거부)', () => {
+    const votes = [...uniform(1, 2, 2, 2), { answers: { [itemId(1, 1)]: 2 } }];
+    expect(() => buildResultV2(cfg([agendaCfg(1, 2, { present: 2 })]), { 1: rawAgenda(1, 2, votes) }, { generatedAt: NOW })).toThrow(/출석/);
+    expect(() => buildResultV2(cfg([agendaCfg(1, 2, { present: 3 })]), { 1: rawAgenda(1, 2, votes) }, { generatedAt: NOW })).not.toThrow();
+  });
+});
+
+describe('(11/10 결정) 검증자 요약 — 직접 입력 목록 · 미응답 무효 목록', () => {
+  test('직접 입력 표를 조 · 이름 · 제출 시각으로 따로 적고, 뺀 표에는 빠진 번호를 적는다', () => {
+    const roster = [{ team: '1분과 3조', no: 1, name: '가상삼' }];
+    const raw = rawAgenda(1, 2, [
+      { team: '1분과 3조', name: '가상삼', at: '2026-11-14T05:10:00Z', answers: { [itemId(1, 1)]: 2, [itemId(1, 2)]: 2 } },
+      { team: '2분과 4조', name: '직접가', at: '2026-11-14T05:11:00Z', answers: { [itemId(1, 1)]: 2, [itemId(1, 2)]: 1 } },
+      { team: '2분과 5조', name: '가상 삼', at: '2026-11-14T05:12:00Z', answers: { [itemId(1, 1)]: 1, [itemId(1, 2)]: 1 } },
+      { team: '3분과 1조', name: '빠짐가', at: '2026-11-14T05:13:00Z', answers: { [itemId(1, 1)]: 2 } },
+    ], { roster });
+    const built = buildResultV2(cfg([agendaCfg(1, 2)]), { 1: raw }, { generatedAt: NOW });
+    const txt = summaryText(built.doc, built.recounts, 'f'.repeat(64));
+    expect(txt).toMatch(/직접 입력\(명단에 없는 조·이름\) 3건 — 유효 1 · 뺀 표 2/);
+    expect(txt).toContain('2분과 4조 직접가 · 2026-11-14T05:11:00Z · 유효');
+    expect(txt).toContain('2분과 5조 가상 삼 · 2026-11-14T05:12:00Z · 뺀 표(중복) · 명단에는 1분과 3조');
+    expect(txt).toContain('3분과 1조 빠짐가 · 2026-11-14T05:13:00Z · 뺀 표(미응답 건 있음)');
+    expect(txt).toContain('뺀 표: 미응답 건 있음 · 3분과 1조 빠짐가 · 2026-11-14T05:13:00Z · 누르지 않은 건 1건(1-2)');
+  });
+
+  test('직접 입력이 없어도 「0건」 줄을 적는다', () => {
+    const built = buildResultV2(cfg([agendaCfg(1, 1)]), { 1: rawAgenda(1, 1, uniform(1, 1, 7, 2)) }, { generatedAt: NOW });
+    expect(summaryText(built.doc, built.recounts, 'f'.repeat(64))).toMatch(/직접 입력\(명단에 없는 조·이름\) 0건/);
   });
 });
 

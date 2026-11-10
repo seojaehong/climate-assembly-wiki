@@ -3,8 +3,10 @@
  *
  * 계약 정본 = docs/result-v2-contract.md. 세리머니 로더는 그 문서를 따른다.
  * 공식 수치는 시스템 집계(dist)가 아니라 실명 응답 원자료를 다시 센 값이다:
- *   이름 있음 · 명단 안(조+이름) · 이름 중복 없음(먼저 낸 것) · (출석부를 주면) 출석부에 있음 → 휴대폰 유효표
- *   + 서면 집계표(입력) = 찬성 · 반대. 기권 = 출석 − 찬성 − 반대(미제출 · 누르지 않은 건 · 뺀 표 포함).
+ *   이름 있음 · 이름 중복 없음(먼저 낸 것) · (출석부를 주면) 출석부에 있음 · 모든 건에 찬반 → 휴대폰 유효표
+ *   + 서면 집계표(입력) = 찬성 · 반대. 기권 = 출석 − 찬성 − 반대(미제출 · 뺀 표 포함).
+ *   11/10 주최 결정: 명단에 없는 조·이름(직접 입력)도 유효표로 세고 요약에 따로 적는다.
+ *   기권 불인정 — 누르지 않은 건이 있는 응답은 통째로 뺀다(그 이름의 한 번으로 본다, 재투표 불가).
  * 저장값: 1 = 반대, 2 = 찬성(BallotCard 와 같다).
  */
 
@@ -66,8 +68,8 @@ export function recountAgenda(raw, { agendaNo, expectedCount, attendance = null,
   const problems = [];
   const items = [...(raw?.items ?? [])].sort((a, b) => a.ordinal - b.ordinal);
   if (items.length !== expectedCount) problems.push(`의제 ${agendaNo}: 건수 ${items.length} ≠ 기대 ${expectedCount}`);
-  // 11/14 투표지는 분과 지정 없음(전원 투표). 분과가 남아 있으면 서버가 명단을 그 분과로 좁혀 돌려주므로
-  // 다른 분과 시민의 표가 전부 「명단 밖」으로 빠진다 — 세지 않고 거부한다.
+  // 11/14 투표지는 분과 지정 없음(전원 투표). 분과가 남아 있으면 서버가 명단을 그 분과로 좁혀
+  // 다른 분과 시민은 조를 고를 수 없어 투표하지 못했다(제출도 거부) — 세지 않고 거부한다.
   const subgroup = String(raw?.subgroup ?? '').trim();
   if (subgroup) problems.push(`의제 ${agendaNo}: 투표지에 분과 지정(${subgroup})이 있어 명단이 그 분과로 좁혀짐 — 전원 투표지는 분과 지정 없음이어야 함`);
   const seen = new Set();
@@ -103,16 +105,22 @@ export function recountAgenda(raw, { agendaNo, expectedCount, attendance = null,
   }
   if (problems.length) throw new ResultV2Error(problems);
 
-  // 휴대폰 응답 — 먼저 낸 것부터.
+  // 휴대폰 응답 — 먼저 낸 것부터. 거르는 순서(계약 4-3):
+  //   이름 없음 → 중복(이름만 대조, 명단 · 직접 입력 공통) → 출석부 없음 → 미응답 건 있음 → 유효.
+  //   (조, 이름) 짝이 명단에 없으면 「직접 입력」으로 표시만 하고 빼지 않는다(11/10 결정). 저장된 voter_in_roster 가 아니라
+  //   지금 명단과 대조한다(명단 · 조·이름 고치기 뒤에도 맞게).
   const rosterPairs = new Set((raw.roster ?? []).map((r) => `${String(r.team ?? '').trim()}\u0000${normName(r.name)}`));
+  const rosterTeamOf = new Map();
+  for (const r of raw.roster ?? []) if (!rosterTeamOf.has(normName(r.name))) rosterTeamOf.set(normName(r.name), String(r.team ?? '').trim());
   const attendPairs = attendance ? new Set(attendance.map((r) => `${String(r.team ?? '').trim()}\u0000${normName(r.name)}`)) : null;
   const responses = [...(raw.responses ?? [])].sort(
     (a, b) => String(a.submitted_at).localeCompare(String(b.submitted_at)) || String(a.id).localeCompare(String(b.id)),
   );
   const usedNames = new Set();
   const excluded = [];
-  const badValues = [];
+  const manual = [];
   let phoneValid = 0;
+  let phoneVoters = 0;
   const byId = new Map(out.map((x) => [x.id, x]));
   for (const r of responses) {
     const answers = r.answers && typeof r.answers === 'object' ? r.answers : {};
@@ -125,25 +133,35 @@ export function recountAgenda(raw, { agendaNo, expectedCount, attendance = null,
     const key = normName(r.voter_name);
     const team = String(r.voter_team ?? '').trim();
     const tag = { reason: '', team: team || null, name: r.voter_name ?? null, submitted_at: r.submitted_at ?? null };
-    if (!key) excluded.push({ ...tag, reason: '이름 없음' });
-    else if (!rosterPairs.has(`${team}\u0000${key}`)) excluded.push({ ...tag, reason: '명단 밖' });
-    else if (usedNames.has(key)) excluded.push({ ...tag, reason: '중복' });
-    else if (attendPairs && !attendPairs.has(`${team}\u0000${key}`)) {
+    const isManual = !!key && !rosterPairs.has(`${team}\u0000${key}`);
+    let reason = null;
+    let missing = null;
+    if (!key) reason = '이름 없음';
+    else if (usedNames.has(key)) reason = '중복';
+    else {
       usedNames.add(key);
-      excluded.push({ ...tag, reason: '출석부 없음' });
-    } else {
-      usedNames.add(key);
-      phoneValid += 1;
-      for (const [id, v] of Object.entries(answers)) {
-        const row = byId.get(id);
-        if (!row) continue;
-        if (v === YES) row.yes += 1;
-        else if (v === NAY) row.nay += 1;
-        else badValues.push({ no: row.no, value: v });
+      if (attendPairs && !attendPairs.has(`${team}\u0000${key}`)) reason = '출석부 없음';
+      else {
+        // 그 이름의 한 번(무효여도) — 출석 대조(휴대폰 제출자 + 서면 ≤ 출석)는 사람 수로 본다.
+        phoneVoters += 1;
+        missing = out.filter((row) => answers[row.id] !== YES && answers[row.id] !== NAY).map((row) => row.no);
+        if (missing.length) reason = '미응답 건 있음';
       }
     }
+    if (reason) excluded.push(reason === '미응답 건 있음' ? { ...tag, reason, missing } : { ...tag, reason });
+    else {
+      phoneValid += 1;
+      for (const row of out) {
+        if (answers[row.id] === YES) row.yes += 1;
+        else if (answers[row.id] === NAY) row.nay += 1;
+      }
+    }
+    if (isManual) {
+      const rosterTeam = rosterTeamOf.get(key) ?? null;
+      manual.push({ team: tag.team, name: tag.name, submitted_at: tag.submitted_at, counted: !reason, reason, rosterTeam });
+    }
   }
-  return { agendaNo, ballotId: raw.id, ballotStatus: raw.status, items: out, phoneValid, paperBallots, excluded, badValues, systemResponses: responses.length };
+  return { agendaNo, ballotId: raw.id, ballotStatus: raw.status, items: out, phoneValid, phoneVoters, paperBallots, excluded, manual, systemResponses: responses.length };
 }
 
 function verdictOf({ confirmed, established, yes, threshold }) {
@@ -213,8 +231,11 @@ export function buildResultV2(config, raws, { generatedAt }) {
     const present = a.present;
     const threshold = thresholdFor(present);
     const established = isEstablished(present, enrolled);
-    if (rc.phoneValid + rc.paperBallots > present) {
-      problems.push(`${label}: 유효 제출 ${rc.phoneValid} + 서면 ${rc.paperBallots} > 출석 ${present} — 판정 못 함(출석 수 · 명단 확인)`);
+    // 사람 수로 대조한다 — 미응답으로 무효가 된 휴대폰 제출자도 출석한 사람이다. 직접 입력자도 여기 든다(출석 수에 넣어야 한다).
+    if (rc.phoneVoters + rc.paperBallots > present) {
+      problems.push(
+        `${label}: 휴대폰 제출자 ${rc.phoneVoters}(유효 ${rc.phoneValid} · 미응답 무효 ${rc.phoneVoters - rc.phoneValid}) + 서면 ${rc.paperBallots} > 출석 ${present} — 판정 못 함(출석 수에 직접 입력자가 들었는지 · 명단 확인)`,
+      );
     }
     for (const it of rc.items) {
       if (it.yes + it.nay > present) problems.push(`${label}: ${it.no} 찬성 ${it.yes} + 반대 ${it.nay} > 출석 ${present}`);
@@ -401,7 +422,13 @@ export function validateResultV2(doc) {
   return e;
 }
 
-/** 검증자용 요약 글(소리 내어 대조하는 순서). 이름은 뺀 표 목록에만 나온다. */
+/** 「누르지 않은 건 3건(1-2, 1-5, 1-9)」 — 다섯 개까지 적고 나머지는 「…」. */
+function missingText(missing) {
+  const head = missing.slice(0, 5).join(', ');
+  return `누르지 않은 건 ${missing.length}건(${head}${missing.length > 5 ? ', …' : ''})`;
+}
+
+/** 검증자용 요약 글(소리 내어 대조하는 순서). 이름은 뺀 표 목록과 직접 입력 목록에만 나온다(result_v2.json 에는 없다). */
 export function summaryText(doc, recounts, sha256) {
   const L = [];
   const bar = '='.repeat(48);
@@ -423,8 +450,16 @@ export function summaryText(doc, recounts, sha256) {
       for (const x of rc.excluded) reasons[x.reason] = (reasons[x.reason] ?? 0) + 1;
       const rs = Object.entries(reasons).map(([k, v]) => `${k} ${v}`).join(' · ') || '없음';
       L.push(`  휴대폰 제출 ${rc.systemResponses} → 유효 ${rc.phoneValid} · 뺀 표 ${rc.excluded.length} (${rs}) · 서면 투표지 ${rc.paperBallots}`);
-      for (const x of rc.excluded) L.push(`    - 뺀 표: ${x.reason} · ${x.team ?? '(조 없음)'} ${x.name ?? '(이름 없음)'} · ${x.submitted_at ?? ''}`);
-      if (rc.badValues.length) L.push(`  ! 찬반 아닌 값 ${rc.badValues.length}건(기권으로 셈): ${rc.badValues.map((b) => `${b.no}=${b.value}`).join(', ')}`);
+      for (const x of rc.excluded) {
+        L.push(`    - 뺀 표: ${x.reason} · ${x.team ?? '(조 없음)'} ${x.name ?? '(이름 없음)'} · ${x.submitted_at ?? ''}${x.missing ? ` · ${missingText(x.missing)}` : ''}`);
+      }
+      // 11/10 결정: 직접 입력(명단에 없는 조·이름)도 유효표로 센다 — 검증자가 한 줄씩 확인하도록 늘 적는다(0건이어도).
+      const mc = rc.manual.filter((m) => m.counted).length;
+      L.push(`  직접 입력(명단에 없는 조·이름) ${rc.manual.length}건 — 유효 ${mc} · 뺀 표 ${rc.manual.length - mc} (유효는 위 「유효」에 들어 있다)`);
+      for (const m of rc.manual) {
+        const state = m.counted ? '유효' : `뺀 표(${m.reason})`;
+        L.push(`    - ${m.team ?? '(조 없음)'} ${m.name} · ${m.submitted_at ?? ''} · ${state}${m.rosterTeam ? ` · 명단에는 ${m.rosterTeam}` : ''}`);
+      }
     }
     if (a.confirmed) {
       L.push(`  가결 ${by('가결').length}건: ${by('가결').join(', ') || '-'}`);

@@ -15,7 +15,8 @@ function fixture({ confirmedAll = true } = {}) {
   const roster = Array.from({ length: 204 }, (_, i) => ({ team: `${(i % 3) + 1}분과 ${(i % 15) + 1}조`, no: i + 1, name: `가상${i + 1}` }));
   for (const [a, count] of Object.entries(COUNTS)) {
     const items = Array.from({ length: count }, (_, k) => ({ id: `i-${a}-${k + 1}`, ordinal: k + 1, statement: `${a}-${k + 1}-안1 가상 권고 ${k + 1}`, scale: 2 }));
-    // 150명 제출. 마지막 건은 찬성 100(부결), 나머지는 찬성 140. 뺄 표 2장(이름 없음 · 명단 밖).
+    // 150명 제출. 마지막 건은 찬성 100(부결), 나머지는 찬성 140.
+    // 덧붙인 3장: 이름 없음(뺀다) · 직접 입력 전 건 반대(센다, 11/10 결정) · 직접 입력 한 건만 누름(미응답 — 통째로 뺀다).
     const responses = Array.from({ length: 150 }, (_, v) => ({
       id: `r-${a}-${v}`,
       voter_team: roster[v].team,
@@ -25,7 +26,8 @@ function fixture({ confirmedAll = true } = {}) {
       submitted_at: `2026-11-14T05:${String(10 + (v % 40)).padStart(2, '0')}:${String(v % 60).padStart(2, '0')}Z`,
     }));
     responses.push({ id: `x-${a}-1`, voter_team: null, voter_name: null, voter_in_roster: null, answers: { [items[0].id]: 2 }, submitted_at: '2026-11-14T05:59:00Z' });
-    responses.push({ id: `x-${a}-2`, voter_team: '1분과 1조', voter_name: '명단밖', voter_in_roster: false, answers: { [items[0].id]: 2 }, submitted_at: '2026-11-14T05:59:01Z' });
+    responses.push({ id: `x-${a}-2`, voter_team: '2분과 3조', voter_name: '직접입력', voter_in_roster: false, answers: Object.fromEntries(items.map((it) => [it.id, 1])), submitted_at: '2026-11-14T05:59:01Z' });
+    responses.push({ id: `x-${a}-3`, voter_team: '1분과 1조', voter_name: '한건만', voter_in_roster: false, answers: { [items[0].id]: 2 }, submitted_at: '2026-11-14T05:59:02Z' });
     writeFileSync(join(dir, 'raw', `agenda${a}.json`), JSON.stringify({ id: `ballot-${a}`, title: `전체회의 의결 의제${a}`, status: 'closed', subgroup: null, items, roster, responses }));
   }
   const config = {
@@ -67,15 +69,18 @@ describe('export-result-v2 명령', () => {
     const buf = readFileSync(join(out, 'result_v2.json'));
     const doc = JSON.parse(buf.toString('utf8'));
     expect(doc.summary).toEqual({ total: 70, passed: 67, failed: 3, not_established: 0, pending: 0 });
-    // 1-1: 휴대폰 140 + 서면 3 = 143 찬성, 반대 10, 기권 7. 뺀 표 2장은 들어가지 않는다.
-    expect(doc.items.find((i) => i.no === '1-1')).toMatchObject({ yes: 143, nay: 10, abstain: 7, verdict: '가결' });
-    expect(doc.items.find((i) => i.no === '2-28')).toMatchObject({ yes: 100, nay: 50, abstain: 10, verdict: '부결' });
+    // 1-1: 휴대폰 140 + 서면 3 = 143 찬성, 반대 10 + 직접 입력 1 = 11, 기권 6. 이름 없음 · 미응답 2장은 들어가지 않는다.
+    expect(doc.items.find((i) => i.no === '1-1')).toMatchObject({ yes: 143, nay: 11, abstain: 6, verdict: '가결' });
+    expect(doc.items.find((i) => i.no === '2-28')).toMatchObject({ yes: 100, nay: 51, abstain: 9, verdict: '부결' });
     expect(doc.agendas[0]).toMatchObject({ threshold: 107, established: true });
     const side = readFileSync(join(out, 'result_v2.json.sha256'), 'utf8');
     expect(side.split(/\s+/)[0]).toBe(createHash('sha256').update(buf).digest('hex'));
     const txt = readFileSync(join(out, 'result_v2_요약.txt'), 'utf8');
     expect(txt).toMatch(/부결 1건: 1-19/);
-    expect(txt).toMatch(/이름 없음 1 · 명단 밖 1/);
+    expect(txt).toMatch(/휴대폰 제출 153 → 유효 151 · 뺀 표 2 \(이름 없음 1 · 미응답 건 있음 1\)/);
+    expect(txt).toMatch(/직접 입력\(명단에 없는 조·이름\) 2건 — 유효 1 · 뺀 표 1/);
+    expect(txt).toContain('2분과 3조 직접입력 · 2026-11-14T05:59:01Z · 유효');
+    expect(txt).not.toMatch(/명단 밖/);
     expect(txt).toMatch(/합계 70건 — 가결 67 · 부결 3/);
     expect(run(['--verify', join(out, 'result_v2.json')]).status).toBe(0);
   });
