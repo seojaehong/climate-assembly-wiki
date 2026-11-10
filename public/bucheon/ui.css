@@ -1,0 +1,59 @@
+/* 일하는 시민 100인 공론장 — 공용 토큰
+   개념: 작업복 남색 바탕 글자 + 안전조끼 형광 노랑 번호표(조 태그) 한 가지만 강조.
+   그림자·그라데이션 없음. 가는 선 대신 면 대비로 구획(투영 시 1.5px 이하 선은 사라진다). */
+:root {
+  --paper: #ffffff;      /* 카드·입력 바탕 */
+  --ground: #eef1f5;     /* 화면 바탕 */
+  --ink: #0f1e36;        /* 작업복 남색 — 제목·본문 */
+  --ink-2: #3a4861;      /* 보조 글 */
+  --ink-3: #5d6a80;      /* 흐린 글(흰 바탕 5:1) */
+  --rule: #d3d9e2;
+  --vest: #ffc928;       /* 안전조끼 노랑 — 조 번호표·주 버튼 */
+  --vest-deep: #f0b400;
+  --cobalt: #2346b5;     /* 선택·포커스·링크 */
+  --cobalt-soft: #e4eafb;
+  --ok: #17734a; --err: #b42318; --warn: #8a5a00;
+  --band: #0f1e36; --band-ink: #ffffff; --band-ink-2: #b9c4d6;
+  --r-panel: 14px; --r-ctl: 10px; --r-tag: 8px;
+  --font: "Pretendard Variable", Pretendard, -apple-system, "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper: #16223a; --ground: #0c1526; --ink: #eef2f8; --ink-2: #c3ccda; --ink-3: #9aa6bb; --rule: #2b3a55;
+    --cobalt: #9db3ff; --cobalt-soft: #1d2c52; --ok: #5fd39a; --err: #ff9b8f; --warn: #f2c35b;
+    --band: #1b2c4d; --band-ink-2: #b3bfd3;
+  }
+}
+:root[data-theme="dark"] {
+  --paper: #16223a; --ground: #0c1526; --ink: #eef2f8; --ink-2: #c3ccda; --ink-3: #9aa6bb; --rule: #2b3a55;
+  --cobalt: #9db3ff; --cobalt-soft: #1d2c52; --ok: #5fd39a; --err: #ff9b8f; --warn: #f2c35b;
+  --band: #1b2c4d; --band-ink-2: #b3bfd3;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--ground); color: var(--ink); }
+body { font-family: var(--font); line-height: 1.55; word-break: keep-all; overflow-wrap: anywhere;
+       font-feature-settings: "tnum"; -webkit-font-smoothing: antialiased; }
+button, input, textarea, select { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--cobalt); outline-offset: 2px; }
+
+/* 조 번호표 — 이 사이트의 단 하나의 강조 */
+.tag { display: inline-block; background: var(--vest); color: #0f1e36; font-weight: 800;
+       border-radius: var(--r-tag); padding: .08em .42em; line-height: 1.25; white-space: nowrap; letter-spacing: -.01em; }
+
+/* 휴대폰 화면 머리띠 */
+.band { background: var(--band); color: var(--band-ink); }
+.band .in { max-width: 640px; margin: 0 auto; padding: 22px 16px 20px; }
+.band .what { margin: 0; font-size: 14px; color: var(--band-ink-2); font-weight: 500; }
+.band h1 { margin: 4px 0 0; font-size: 25px; line-height: 1.3; font-weight: 800; letter-spacing: -.02em; }
+.band .when { margin: 8px 0 0; font-size: 14px; color: var(--band-ink-2); }
+
+/* 주 버튼 = 노랑, 보조 = 테두리 */
+.primary { display: block; width: 100%; min-height: 56px; padding: 14px; font-size: 18px; font-weight: 800;
+           border: 0; border-radius: var(--r-ctl); background: var(--vest); color: #0f1e36; cursor: pointer; }
+.primary:active { background: var(--vest-deep); }
+.primary:disabled { opacity: .55; }
+.ghost { padding: 9px 14px; border-radius: var(--r-ctl); border: 2px solid var(--rule); background: var(--paper);
+         color: var(--ink); font-size: 15px; font-weight: 700; cursor: pointer; }
+.msg { font-size: 15px; margin: 0 0 10px; min-height: 1.3em; }
+.msg.ok { color: var(--ok); font-weight: 700; } .msg.err { color: var(--err); font-weight: 700; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }

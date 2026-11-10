@@ -5,55 +5,41 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>일하는 시민 100인 공론장</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="ui.css">
 <style>
-  :root {
-    --bg: #f6f7f9; --card: #ffffff; --ink: #1b2430; --muted: #5b6675;
-    --line: #dde2e8; --accent: #1f5fae; --accent-ink: #ffffff; --off: #c4cbd4;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #12161c; --card: #1b2129; --ink: #e8ecf1; --muted: #9aa5b3;
-      --line: #2c3540; --accent: #5b9bea; --accent-ink: #0d1117; --off: #3a4450;
-    }
-  }
-  * { box-sizing: border-box; }
-  body {
-    margin: 0; background: var(--bg); color: var(--ink);
-    font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
-    line-height: 1.5; word-break: keep-all;
-  }
-  main { max-width: 560px; margin: 0 auto; padding: 28px 16px 48px; }
-  header { margin-bottom: 24px; }
-  .kicker { font-size: 14px; color: var(--muted); margin: 0 0 4px; }
-  h1 { font-size: 26px; margin: 0 0 8px; }
-  .meta { font-size: 15px; color: var(--muted); margin: 0; }
-  section { margin-top: 20px; }
-  h2 { font-size: 15px; color: var(--muted); font-weight: 600; margin: 0 0 8px; }
-  a.btn, span.btn {
-    display: block; padding: 18px 18px; margin-bottom: 10px; border-radius: 12px;
-    background: var(--card); border: 1px solid var(--line); color: var(--ink);
-    text-decoration: none;
-  }
-  a.btn { border-left: 6px solid var(--accent); }
-  a.btn:active { transform: translateY(1px); }
-  .t { display: block; font-size: 19px; font-weight: 700; }
-  .d { display: block; font-size: 14px; color: var(--muted); margin-top: 2px; }
-  span.btn { border-left: 6px solid var(--off); opacity: .7; }
-  span.btn .t::after { content: " · 준비 중"; font-weight: 400; font-size: 14px; color: var(--muted); }
-  footer { margin-top: 32px; font-size: 13px; color: var(--muted); }
+  /* 안내 — 휴대폰 */
+  main { max-width: 640px; margin: 0 auto; padding: 8px 16px 48px; }
+  section { margin-top: 22px; }
+  h2 { font-size: 15px; color: var(--ink-3); font-weight: 700; margin: 0 0 8px; }
+  a.btn, span.btn { display: flex; align-items: center; gap: 14px; padding: 18px 16px; margin-bottom: 8px; border-radius: var(--r-panel);
+    background: var(--paper); color: var(--ink); text-decoration: none; }
+  a.btn::after { content: ""; flex: 0 0 10px; height: 10px; border-right: 3px solid var(--ink-3); border-top: 3px solid var(--ink-3);
+    transform: rotate(45deg); margin-right: 4px; }
+  a.btn:active { background: var(--cobalt-soft); }
+  .tx { flex: 1; min-width: 0; }
+  .t { display: block; font-size: 18px; font-weight: 800; }
+  .d { display: block; font-size: 14px; color: var(--ink-3); margin-top: 2px; }
+  span.btn { opacity: .6; }
+  span.btn .t::after { content: " (준비 중)"; font-weight: 500; font-size: 14px; color: var(--ink-3); }
+  footer { margin-top: 36px; font-size: 13px; color: var(--ink-3); }
 </style>
 </head>
 <body>
+<header class="band"><div class="in">
+  <p class="what">부천시 노동정책 연구</p>
+  <h1>일하는 시민 100인 공론장</h1>
+  <p class="when">2026년 11월 18일(수) 오후 2시~6시, 부천상공회의소 4층 강당</p>
+</div></header>
 <main>
-  <header>
-    <p class="kicker">부천시 노동정책 연구</p>
-    <h1>일하는 시민 100인 공론장</h1>
-    <p class="meta">2026. 11. 18.(수) 14:00~18:00 · 부천상공회의소 4층 강당</p>
-  </header>
+  <section>
+    <h2>퍼실리테이터</h2>
+    <div id="fac"></div>
+  </section>
 
   <section>
-    <h2>퍼실리테이터 입력</h2>
-    <div id="fac"></div>
+    <h2>연구진·전문가</h2>
+    <div id="pro"></div>
   </section>
 
   <section>
@@ -67,7 +53,10 @@
   // 링크는 여기만 고친다. url 이 비어 있으면 「준비 중」으로 보인다.
   var LINKS = {
     fac: [
-      { title: '조별 입력 (세션1 질문 · 세션2 우선순위)', desc: '조 코드 6자리로 들어갑니다. 조별 QR이 있으면 그것을 쓰세요', url: 't/' },
+      { title: '조별 입력', desc: '세션1 질문, 세션2 우선순위. 조별 QR이 없으면 조 코드 6자리로 들어갑니다', url: 't/' },
+    ],
+    pro: [
+      { title: '분임 질문 보기', desc: '조별 질문이 실시간으로 모입니다. A4로 인쇄할 수 있습니다', url: 'q/' }
     ],
     cit: [
       { title: '만족도 설문', desc: '행사를 마치며 3분 · 이름은 받지 않습니다', url: 's/' }
@@ -82,11 +71,13 @@
       if (it.url) { el.href = it.url; }
       var t = document.createElement('span'); t.className = 't'; t.textContent = it.title;
       var d = document.createElement('span'); d.className = 'd'; d.textContent = it.desc;
-      el.appendChild(t); el.appendChild(d);
+      var tx = document.createElement('span'); tx.className = 'tx';
+      tx.appendChild(t); tx.appendChild(d); el.appendChild(tx);
       box.appendChild(el);
     });
   }
   render('fac', LINKS.fac);
+  render('pro', LINKS.pro);
   render('cit', LINKS.cit);
 </script>
 </body>

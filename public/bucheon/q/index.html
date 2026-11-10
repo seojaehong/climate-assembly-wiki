@@ -5,29 +5,26 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>분임 질문 · 100인 공론장</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="../ui.css">
 <style>
-  :root { --bg: #ffffff; --panel: #f3f5f8; --ink: #111821; --muted: #4a5563; --line: #c9d1db; --accent: #1f5fae; --err: #b3261e; }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { --bg: #0f1318; --panel: #1a2029; --ink: #f2f5f8; --muted: #b5bfcc; --line: #3a4552; --accent: #6aa8f0; --err: #d9534f; }
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--bg); color: var(--ink); }
-  body { font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
-         font-size: 19px; line-height: 1.55; word-break: keep-all; overflow-wrap: anywhere; }
-  header { position: sticky; top: 0; background: var(--bg); border-bottom: 2px solid var(--line); padding: 12px 16px; z-index: 1; }
-  header h1 { font-size: 21px; margin: 0; }
-  .meta { display: flex; justify-content: space-between; gap: 8px; font-size: 15px; color: var(--muted); margin-top: 4px; }
-  .meta .err { color: var(--err); font-weight: 700; }
-  main { padding: 12px 16px 40px; max-width: 860px; margin: 0 auto; }
-  .card { background: var(--panel); border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
-  .card .no { font-size: 15px; font-weight: 800; color: var(--accent); }
-  .card .no b { display: inline-block; min-width: 1.6em; }
-  .card .q { margin: 4px 0 0; font-weight: 700; font-size: 20px; }
-  .card .also { margin: 8px 0 0; font-size: 16px; color: var(--muted); }
-  .empty { color: var(--muted); text-align: center; margin-top: 40px; }
-  .tools { text-align: right; margin-top: 8px; }
-  .tools button { font: inherit; font-size: 15px; padding: 6px 12px; border-radius: 8px; border: 2px solid var(--line); background: var(--bg); color: var(--ink); }
-  /* 연구진 전달용 A4 */
+  /* 연구진·전문가용 — 휴대폰 세로, 인쇄 A4 */
+  body { font-size: 19px; }
+  header.band { position: sticky; top: 0; z-index: 1; }
+  header.band .in { padding: 14px 16px 12px; }
+  header.band h1 { font-size: 20px; margin: 0; }
+  .meta { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; color: var(--band-ink-2); margin-top: 4px; }
+  .meta .err { color: #ffb4a8; font-weight: 700; }
+  main { padding: 14px 16px 40px; max-width: 760px; margin: 0 auto; }
+  .card { background: var(--paper); border-radius: var(--r-panel); padding: 16px 16px 18px; margin-bottom: 10px; }
+  .card .no { font-size: 15px; font-weight: 800; color: var(--ink-3); display: flex; align-items: center; gap: 8px; }
+  .card .no b { min-width: 1.4em; }
+  .card .no .tag { font-size: 16px; }
+  .card .q { margin: 8px 0 0; font-weight: 700; font-size: 20px; line-height: 1.5; letter-spacing: -.01em; }
+  .card .also { margin: 10px 0 0; font-size: 16px; color: var(--ink-2); padding-left: 12px; box-shadow: inset 3px 0 0 var(--rule); }
+  .empty { color: var(--ink-3); text-align: center; margin-top: 48px; }
+  .tools { margin-top: 18px; }
+  .tools .primary { font-size: 17px; }
   .printhead { display: none; }
   @media print {
     @page { size: A4; margin: 14mm 14mm 16mm; }
@@ -37,20 +34,21 @@
     .printhead { display: block; font-size: 12pt; border-bottom: 1.5pt solid #000; padding-bottom: 4pt; margin-bottom: 10pt; }
     .card { background: none; border-bottom: 0.8pt solid #999; border-radius: 0; padding: 8pt 0; margin: 0; break-inside: avoid; }
     .card .no { color: #000; font-size: 13pt; }
+    .card .no .tag { font-size: 13pt; background: none; border: 1.2pt solid #000; padding: 0 4pt; }
     .card .q { font-size: 16pt; }
-    .card .also { font-size: 12.5pt; color: #333; }
+    .card .also { font-size: 12.5pt; color: #333; box-shadow: none; padding-left: 0; }
   }
 </style>
 </head>
 <body>
-<header>
-  <h1>분임 질문 — 일하는 시민 100인 공론장</h1>
+<header class="band"><div class="in">
+  <h1>분임 질문</h1>
   <div class="meta"><span id="count"></span><span id="stamp"></span></div>
-</header>
+</div></header>
 <main>
   <div class="printhead" id="printhead"></div>
   <div id="list"></div>
-  <div class="tools"><button id="print" type="button">인쇄 (연구진 전달용)</button></div>
+  <div class="tools"><button id="print" class="primary" type="button">A4로 인쇄</button></div>
 </main>
 <script src="../lib.js"></script>
 <script>
@@ -68,7 +66,7 @@
     if (!cards.length) { list.appendChild(el('p', { class: 'empty', text: '아직 들어온 질문이 없습니다. 잠시 뒤 자동으로 나타납니다.' })); return; }
     cards.forEach(function (c, i) {
       var box = el('div', { class: 'card' }, [
-        el('div', { class: 'no' }, [el('b', { text: (i + 1) + '.' }), ' ' + c.label]),
+        el('div', { class: 'no' }, [el('b', { text: (i + 1) + '.' }), ' ', el('span', { class: 'tag', text: c.label })]),
         el('p', { class: 'q', text: c.lead.q1 })
       ]);
       if (c.lead.q2) box.appendChild(el('p', { class: 'also', text: c.lead.q2 }));

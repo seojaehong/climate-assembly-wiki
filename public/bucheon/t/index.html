@@ -5,62 +5,54 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>조별 입력 · 100인 공론장</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="../ui.css">
 <style>
-  :root {
-    --bg: #f6f7f9; --card: #ffffff; --ink: #1b2430; --muted: #5b6675; --line: #d5dbe2;
-    --accent: #1f5fae; --accent-ink: #ffffff; --soft: #e8f0fa; --ok: #1d7a46; --err: #b3261e;
-  }
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg: #12161c; --card: #1b2129; --ink: #e8ecf1; --muted: #9aa5b3; --line: #313b47;
-      --accent: #5b9bea; --accent-ink: #0d1117; --soft: #1f2d40; --ok: #4cc38a; --err: #ff8a80;
-    }
-  }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; background: var(--bg); color: var(--ink); }
-  body { font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
-         line-height: 1.5; word-break: keep-all; overflow-wrap: anywhere; }
-  main { width: 100%; max-width: 640px; margin: 0 auto; padding: 16px 16px 120px; }
-  h1 { font-size: 24px; margin: 4px 0 2px; }
-  .sub { color: var(--muted); font-size: 14px; margin: 0 0 14px; }
-  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
-  .tabs button { flex: 1; min-width: 0; padding: 12px 8px; font-size: 16px; font-weight: 700; border-radius: 10px;
-                 border: 2px solid var(--line); background: var(--card); color: var(--ink); }
-  .tabs button[aria-selected="true"] { border-color: var(--accent); background: var(--soft); color: var(--accent); }
-  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px; margin-bottom: 12px; }
-  label.f { display: block; font-weight: 700; margin: 0 0 6px; }
-  .help { color: var(--muted); font-size: 14px; margin: -2px 0 8px; }
-  textarea, input[type=text] { width: 100%; font: inherit; font-size: 16px; padding: 10px 12px; border-radius: 10px;
-             border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
-  textarea { min-height: 96px; resize: vertical; }
-  .count { text-align: right; font-size: 13px; color: var(--muted); }
-  h2 { font-size: 18px; margin: 20px 0 8px; }
-  .pt { font-weight: 700; margin-bottom: 8px; }
+  /* 퍼실리테이터 입력 — 휴대폰 */
+  main { width: 100%; max-width: 640px; margin: 0 auto; padding: 16px 16px 150px; }
+  .band .team { font-size: 32px; padding: 2px 12px; }
+  .band .row1 { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
+  .band .row1 h1 { margin: 0; }
+  .band .team:empty { display: none; }
+  .tabs { display: flex; gap: 4px; margin: 0 0 16px; background: var(--paper); padding: 4px; border-radius: 12px; }
+  .tabs button { flex: 1; min-width: 0; padding: 12px 8px; font-size: 16px; font-weight: 700; border-radius: 9px;
+                 border: 0; background: transparent; color: var(--ink-3); cursor: pointer; }
+  .tabs button[aria-selected="true"] { background: var(--band); color: var(--band-ink); }
+  .card { background: var(--paper); border-radius: var(--r-panel); padding: 16px; margin-bottom: 12px; }
+  label.f { display: block; font-weight: 800; font-size: 17px; margin: 0 0 4px; }
+  .help { color: var(--ink-3); font-size: 14px; margin: 0 0 10px; }
+  textarea, input[type=text] { width: 100%; font-size: 17px; padding: 12px 14px; border-radius: var(--r-ctl);
+             border: 2px solid var(--rule); background: var(--ground); color: var(--ink); }
+  textarea:focus, input[type=text]:focus { border-color: var(--cobalt); background: var(--paper); outline: none; }
+  textarea { min-height: 110px; resize: vertical; }
+  #code { font-size: 26px; font-weight: 800; letter-spacing: .2em; text-align: center; }
+  .count { text-align: right; font-size: 13px; color: var(--ink-3); margin-top: 4px; }
+  h2 { font-size: 18px; margin: 24px 0 10px; font-weight: 800; }
+  .pt { font-weight: 700; margin-bottom: 10px; }
   .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-  .seg button { min-width: 0; padding: 10px 6px; font-size: 15px; border-radius: 8px; border: 1px solid var(--line);
-                background: var(--bg); color: var(--ink); }
-  .seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 700; }
-  .rank button.item { display: flex; align-items: center; gap: 10px; width: 100%; text-align: left; padding: 12px;
-                margin-bottom: 6px; border-radius: 10px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font-size: 16px; }
-  .rank .badge { flex: 0 0 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 800;
-                 background: var(--bg); color: var(--muted); border: 1px dashed var(--line); }
-  .rank button.on .badge { background: var(--accent); color: var(--accent-ink); border: 0; }
-  .rank button.on { border-color: var(--accent); }
-  .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; margin: 6px 0 10px; }
-  .ghost { padding: 8px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--card); color: var(--ink); font-size: 14px; }
-  .bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-top: 1px solid var(--line); padding: 12px 16px; }
+  .seg button { min-width: 0; min-height: 46px; padding: 8px 6px; font-size: 15px; border-radius: 9px; border: 2px solid var(--rule);
+                background: var(--paper); color: var(--ink); cursor: pointer; }
+  .seg button[aria-pressed="true"] { background: var(--cobalt); color: #fff; border-color: var(--cobalt); font-weight: 800; }
+  .rank button.item { display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 12px;
+                margin-bottom: 6px; border-radius: 12px; border: 2px solid transparent; background: var(--paper); color: var(--ink); font-size: 16px; cursor: pointer; }
+  .rank .badge { flex: 0 0 34px; height: 34px; border-radius: 8px; display: grid; place-items: center; font-weight: 800;
+                 background: var(--ground); color: var(--ink-3); }
+  .rank button.on .badge { background: var(--vest); color: #0f1e36; }
+  .rank button.on { border-color: var(--ink); }
+  .row { display: flex; gap: 8px; align-items: center; justify-content: space-between; margin: 0 0 10px; }
+  .row .help { margin: 0; }
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; background: var(--paper); padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+         box-shadow: 0 -1px 0 var(--rule); }
   .bar .in { max-width: 640px; margin: 0 auto; }
-  .primary { width: 100%; padding: 15px; font-size: 18px; font-weight: 800; border: 0; border-radius: 12px;
-             background: var(--accent); color: var(--accent-ink); }
-  .primary:disabled { opacity: .55; }
-  .msg { font-size: 15px; margin: 0 0 8px; min-height: 1.2em; }
-  .msg.ok { color: var(--ok); } .msg.err { color: var(--err); }
   .hidden { display: none; }
 </style>
 </head>
 <body>
+<header class="band"><div class="in">
+  <p class="what">일하는 시민 100인 공론장</p>
+  <div class="row1"><span class="tag team" id="teamTitle"></span><h1>퍼실리테이터 입력</h1></div>
+</div></header>
 <main id="app">
-  <p class="sub">일하는 시민 100인 공론장 · 퍼실리테이터 입력</p>
   <div id="gate" class="card hidden">
     <label class="f" for="code">조 코드</label>
     <p class="help">받은 링크로 들어오면 자동으로 채워집니다.</p>
@@ -69,7 +61,6 @@
     <button class="primary" id="enter">들어가기</button>
   </div>
   <div id="main" class="hidden">
-    <h1 id="teamTitle"></h1>
     <div class="tabs" role="tablist">
       <button role="tab" id="tab1" aria-selected="true">세션1 · 질문</button>
       <button role="tab" id="tab2" aria-selected="false">세션2 · 우선순위</button>

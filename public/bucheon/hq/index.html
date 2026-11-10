@@ -1,104 +1,99 @@
 <!doctype html>
-<html lang="ko">
+<html lang="ko" data-theme="light">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>본부 화면 · 100인 공론장</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="../ui.css">
 <style>
-  :root { --bg: #ffffff; --panel: #f3f5f8; --ink: #111821; --muted: #4a5563; --line: #c9d1db;
-          --accent: #1f5fae; --S: #1f5fae; --M: #2e8b57; --LI: #9a6b00; --LR: #b3261e; --barText: #ffffff; }
-  :root[data-theme="dark"] { --bg: #0f1318; --panel: #1a2029; --ink: #f2f5f8; --muted: #b5bfcc; --line: #3a4552;
-          --accent: #6aa8f0; --S: #3d7fd1; --M: #3fa772; --LI: #c08d1a; --LR: #d9534f; }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); }
-  body { font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
-         font-size: 26px; line-height: 1.4; word-break: keep-all; overflow-wrap: anywhere; display: flex; flex-direction: column; }
-  header { display: flex; align-items: center; gap: 16px; padding: 18px 32px; border-bottom: 3px solid var(--line); }
-  header h1 { font-size: 34px; margin: 0; flex: 1; min-width: 0; }
-  nav { display: flex; gap: 10px; }
-  nav button { font: inherit; font-size: 24px; font-weight: 700; padding: 10px 20px; border-radius: 12px;
-               border: 3px solid var(--line); background: var(--panel); color: var(--ink); }
-  nav button[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
-  .stamp { font-size: 24px; color: var(--muted); white-space: nowrap; }
-  .stamp.err { color: var(--LR); font-weight: 700; }
-  #view { flex: 1; min-height: 0; padding: 24px 32px; overflow: hidden; display: flex; flex-direction: column; }
-  .muted { color: var(--muted); }
-  /* 현황 */
-  .counters { display: flex; gap: 24px; margin-bottom: 24px; }
-  .counter { flex: 1; background: var(--panel); border-radius: 16px; padding: 18px 24px; }
-  .counter .n { font-size: 96px; font-weight: 800; line-height: 1; }
-  .counter .l { font-size: 30px; color: var(--muted); }
+  /* 본부 화면 — 1920×1080 투영. 본문 24px 하한, 가는 선 금지, 밝은 바탕 기본(D 로 어둡게) */
+  :root { --S: #2346b5; --M: #0f7b6c; --LI: #a86b00; --LR: #b3402a; --barText: #ffffff; }
+  :root[data-theme="dark"] { --S: #5a7ff0; --M: #2fae98; --LI: #d79a1c; --LR: #e0664d; }
+  html, body { height: 100%; }
+  body { font-size: 26px; line-height: 1.4; display: flex; flex-direction: column; }
+  header { display: flex; align-items: center; gap: 24px; padding: 0 36px; height: 92px; background: var(--band); color: var(--band-ink); }
+  header .mark { font-size: 30px; padding: 2px 14px; }
+  header h1 { font-size: 32px; margin: 0; flex: 1; min-width: 0; font-weight: 800; letter-spacing: -.02em; }
+  header h1 small { font-size: 24px; font-weight: 500; color: var(--band-ink-2); margin-left: 14px; }
+  nav { display: flex; gap: 4px; background: rgba(255,255,255,.08); padding: 5px; border-radius: 14px; }
+  nav button { font-size: 24px; font-weight: 700; padding: 8px 22px; border-radius: 10px; border: 0;
+               background: transparent; color: var(--band-ink-2); cursor: pointer; }
+  nav button[aria-pressed="true"] { background: var(--vest); color: #0f1e36; }
+  .stamp { font-size: 24px; color: var(--band-ink-2); white-space: nowrap; min-width: 130px; text-align: right; }
+  .stamp.err { color: #ffb4a8; font-weight: 700; }
+  #view { flex: 1; min-height: 0; padding: 28px 36px; overflow: hidden; display: flex; flex-direction: column; }
+  .muted { color: var(--ink-3); }
+  /* 1 현황 */
+  .counters { display: flex; gap: 20px; margin-bottom: 24px; }
+  .counter { flex: 1; background: var(--paper); border-radius: var(--r-panel); padding: 22px 28px; }
+  .counter .n { font-size: 112px; font-weight: 800; line-height: 1; letter-spacing: -.03em; }
+  .counter .l { font-size: 28px; color: var(--ink-2); font-weight: 700; margin-top: 8px; }
   .tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 16px; }
-  .tile { background: var(--panel); border-radius: 16px; padding: 16px 20px; border: 4px solid transparent; }
-  .tile b { font-size: 44px; display: block; }
-  .tile .st { font-size: 28px; }
-  .tile.full { border-color: var(--M); }
-  .tools { margin-top: 20px; display: flex; gap: 12px; flex-wrap: wrap; }
-  .tools button { font: inherit; font-size: 24px; padding: 10px 18px; border-radius: 10px; border: 2px solid var(--line);
-                  background: var(--bg); color: var(--ink); }
-  /* 질문 */
-  .qgrid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 18px; flex: 1; min-height: 0; }
-  .qcol { background: var(--panel); border-radius: 16px; padding: 16px 18px; overflow: hidden; display: flex; flex-direction: column; }
-  .qcol h2 { font-size: 40px; margin: 0 0 10px; }
-  .qcol .q { margin: 0 0 14px; padding-left: 14px; border-left: 6px solid var(--accent); }
-  .qcol .q small { display: block; font-size: 24px; color: var(--muted); font-weight: 700; }
-  .pager { font-size: 24px; color: var(--muted); text-align: right; margin-top: 8px; }
-  .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 16px; flex: 1; min-height: 0; }
-  .card { background: var(--panel); border-radius: 16px; padding: 14px 20px; overflow: hidden; display: flex; gap: 18px; align-items: flex-start; }
-  .card .no { font-size: 30px; font-weight: 800; color: var(--accent); white-space: nowrap; min-width: 92px; }
+  .tile { background: var(--paper); border-radius: var(--r-panel); padding: 18px 22px; }
+  .tile b { font-size: 36px; display: inline-block; margin-bottom: 8px; }
+  .tile .st { font-size: 26px; color: var(--ink-2); }
+  .tile.full { box-shadow: inset 0 0 0 4px var(--ok); }
+  .tools { margin-top: 24px; display: flex; gap: 12px; flex-wrap: wrap; }
+  .tools button { font-size: 24px; font-weight: 700; padding: 10px 20px; border-radius: var(--r-ctl); border: 3px solid var(--rule);
+                  background: var(--paper); color: var(--ink); cursor: pointer; }
+  /* 2 질문 */
+  .pager { font-size: 24px; color: var(--ink-3); text-align: right; margin-top: 10px; font-weight: 700; }
+  .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 18px; flex: 1; min-height: 0; }
+  .card { background: var(--paper); border-radius: var(--r-panel); padding: 18px 24px; overflow: hidden; display: flex; gap: 20px; align-items: flex-start; }
+  .card .no { font-size: 30px; min-width: 88px; text-align: center; }
   .card .body { min-width: 0; flex: 1; }
-  .card .q { margin: 0; font-weight: 700; }
-  .card .also { margin: 6px 0 0; font-size: 24px; color: var(--muted); }
-  .card .ctl { display: none; gap: 8px; align-items: center; font-size: 24px; margin-top: 8px; }
+  .card .q { margin: 0; font-weight: 700; letter-spacing: -.01em; }
+  .card .also { margin: 8px 0 0; font-size: 24px; color: var(--ink-2); padding-left: 16px; box-shadow: inset 4px 0 0 var(--rule); }
+  .card .ctl { display: none; gap: 10px; align-items: center; font-size: 24px; margin-top: 10px; flex-wrap: wrap; }
   .editing .card .ctl { display: flex; }
   .cards.editing { grid-auto-rows: auto; overflow: auto; }
   .editing .card { overflow: visible; }
   .editing .card.off { opacity: .45; }
-  .ctl select, .ctl button { font: inherit; font-size: 24px; padding: 4px 10px; border-radius: 8px; border: 2px solid var(--line); background: var(--bg); color: var(--ink); }
-  .ctl .sim { color: var(--LI); font-weight: 700; }
-  .qhead { display: flex; justify-content: space-between; font-size: 24px; color: var(--muted); margin-bottom: 10px; }
-  /* 우선순위 */
-  .legend { display: flex; gap: 28px; font-size: 24px; margin-bottom: 12px; align-items: center; }
+  .ctl select, .ctl button { font-size: 24px; padding: 4px 12px; border-radius: 8px; border: 2px solid var(--rule); background: var(--ground); color: var(--ink); }
+  .ctl .sim { color: var(--warn); font-weight: 800; }
+  .qhead { display: flex; justify-content: space-between; align-items: baseline; font-size: 26px; color: var(--ink-2); margin-bottom: 14px; font-weight: 700; }
+  .qhead .wait { color: var(--ink-3); font-weight: 500; margin-left: 18px; }
+  /* 3 우선순위 */
+  .legend { display: flex; gap: 28px; font-size: 24px; margin-bottom: 14px; align-items: center; color: var(--ink-2); }
+  .legend b { color: var(--ink); }
   .legend i { display: inline-block; width: 28px; height: 28px; border-radius: 6px; vertical-align: -5px; margin-right: 8px; }
-  .prow { display: grid; grid-template-columns: 70px minmax(0, 1fr) 150px minmax(0, 1.25fr); gap: 16px; align-items: center;
-          padding: 4px 0; border-bottom: 2px solid var(--line); }
+  .prow { display: grid; grid-template-columns: 70px minmax(0, 1fr) 150px minmax(0, 1.25fr); gap: 18px; align-items: center;
+          padding: 6px 12px; border-radius: 10px; }
+  #view .prow:nth-child(even) { background: var(--paper); }
   .prow .rk { font-size: 32px; font-weight: 800; text-align: center; }
   .prow .t { font-size: 27px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .prow .avg { font-size: 32px; font-weight: 800; text-align: right; }
-  .prow .avg span { font-size: 24px; color: var(--muted); font-weight: 400; }
-  .stack { display: flex; height: 40px; border-radius: 8px; overflow: hidden; background: var(--panel); }
+  .stack { display: flex; height: 40px; border-radius: 8px; overflow: hidden; background: var(--ground); }
   .stack div { display: grid; place-items: center; color: var(--barText); font-size: 24px; font-weight: 800; min-width: 0; }
-  .phead { font-size: 24px; color: var(--muted); border-bottom: 3px solid var(--line); }
-  /* 설문 */
-  .sgrid { display: grid; grid-template-columns: 320px 1fr; gap: 32px; }
-  .sbig { font-size: 140px; font-weight: 800; line-height: 1; }
-  .srow { margin-bottom: 18px; }
+  .phead { font-size: 24px; color: var(--ink-3); font-weight: 700; background: none !important; }
+  /* 4 설문 */
+  .sgrid { display: grid; grid-template-columns: 340px 1fr; gap: 40px; }
+  .sbig { font-size: 160px; font-weight: 800; line-height: 1; letter-spacing: -.04em; }
+  .srow { margin-bottom: 20px; }
   .srow .t { font-size: 26px; font-weight: 700; }
   .srow .v { font-size: 40px; font-weight: 800; }
-  .dist { display: flex; gap: 6px; height: 34px; margin-top: 6px; }
-  .dist div { background: var(--accent); border-radius: 4px; color: #fff; font-size: 24px; display: grid; place-items: center; min-width: 0; }
+  .dist { display: flex; gap: 6px; height: 36px; margin-top: 6px; }
+  .dist div { background: var(--cobalt); border-radius: 6px; color: #fff; font-size: 24px; display: grid; place-items: center; min-width: 0; }
   .gate { max-width: 720px; margin: 120px auto; text-align: center; }
-  .gate input { font: inherit; font-size: 28px; padding: 12px; width: 100%; border: 3px solid var(--line); border-radius: 12px; }
+  .gate input { font-size: 28px; padding: 14px; width: 100%; border: 3px solid var(--rule); border-radius: 12px; background: var(--paper); }
   @media print {
     header, .tools, .pager { display: none; }
-    body { font-size: 14px; display: block; }
+    body { font-size: 14px; display: block; background: #fff; color: #000; }
     #view { overflow: visible; padding: 0; display: block; }
-    .qgrid { display: block; height: auto; }
-    .qcol { background: none; padding: 0 0 12px; break-inside: avoid; }
-    .qcol h2 { font-size: 18px; margin: 8px 0 4px; }
-    .qcol .q small { font-size: 12px; }
-    .qhead { font-size: 14px; }
     .cards { display: block; }
     .card { background: none; padding: 0 0 10px; font-size: 14px !important; break-inside: avoid; }
-    .card .no { font-size: 16px; min-width: 70px; }
+    .card .no { font-size: 14px; min-width: 64px; }
     .card .also { font-size: 13px; }
+    .qhead { font-size: 14px; }
   }
 </style>
 </head>
 <body>
 <header>
-  <h1>일하는 시민 100인 공론장</h1>
+  <span class="tag mark">100</span>
+  <h1>일하는 시민 공론장<small>부천 · 11월 18일</small></h1>
   <nav>
     <button data-v="1">1 현황</button>
     <button data-v="2">2 질문</button>
@@ -159,7 +154,7 @@
     var tiles = el('div', { class: 'tiles' });
     data.teams.forEach(function (t) {
       tiles.appendChild(el('div', { class: 'tile' + (q[t] && p[t] ? ' full' : '') }, [
-        el('b', { text: t + '조' }),
+        el('b', { class: 'tag', text: t + '조' }),
         el('div', { class: 'st', text: '세션1 ' + (q[t] ? '✔ ' + BF.hhmm(q[t].updated_at) : '—') }),
         el('div', { class: 'st', text: '세션2 ' + (p[t] ? '✔ ' + BF.hhmm(p[t].updated_at) : '—') })
       ]));
@@ -219,7 +214,8 @@
     var slice = page < 0 ? cards : cards.slice(at * per, at * per + per);
     var waiting = data.teams.filter(function (t) { return !data.questions.some(function (x) { return x.team_no === t; }); });
     V.appendChild(el('div', { class: 'qhead' }, [
-      el('span', { text: '질문 ' + data.questions.length + '/' + data.teams.length + '개 조' + (waiting.length ? '  · 대기 ' + waiting.join(', ') + '조' : '') }),
+      el('span', null, ['질문 ' + data.questions.length + '/' + data.teams.length + '개 조',
+        waiting.length ? el('span', { class: 'wait', text: '아직 안 온 조 ' + waiting.join(', ') }) : null]),
       el('span', { text: editing ? '정리 모드 (E 로 끝내기)' : '' })
     ]));
     var grid = el('div', { class: 'cards' + (editing ? ' editing' : '') });
@@ -242,17 +238,22 @@
       c.members.forEach(function (m) { body.appendChild(el('p', { class: 'also', text: m.team_no + '조: ' + m.q1 })); });
       if (editing) all.forEach(function (x) { body.appendChild(controls(x)); });
       grid.appendChild(el('div', { class: 'card' + (c.lead.hidden ? ' off' : '') }, [
-        el('div', { class: 'no', text: c.label }), body]));
+        el('div', { class: 'no tag', text: c.label }), body]));
     });
     if (!slice.length) grid.appendChild(el('p', { class: 'muted', text: '아직 들어온 질문이 없습니다' }));
     V.appendChild(grid);
     if (page >= 0 && pages > 1) V.appendChild(el('div', { class: 'pager', text: (at + 1) + ' / ' + pages + '  (← → 로 넘김)' }));
     // 넘치면 글자를 줄이되 24px 밑으로는 내리지 않는다
-    var clipped = false;
-    Array.prototype.forEach.call(grid.querySelectorAll('.card'), function (card) {
+    // 한 쪽 안의 카드는 같은 크기로 맞춘다(긴 질문만 작아 보이지 않게)
+    var clipped = false, cardsOnPage = grid.querySelectorAll('.card'), fit = 30;
+    Array.prototype.forEach.call(cardsOnPage, function (card) {
       var fs = 30;
       card.style.fontSize = fs + 'px';
       while (card.scrollHeight > card.clientHeight && fs > 24) { fs--; card.style.fontSize = fs + 'px'; }
+      fit = Math.min(fit, fs);
+    });
+    Array.prototype.forEach.call(cardsOnPage, function (card) {
+      card.style.fontSize = fit + 'px';
       if (card.scrollHeight > card.clientHeight + 1) clipped = true;
     });
     return { clipped: clipped, pages: pages };
@@ -342,7 +343,7 @@
 
   function toggleTheme() {
     var r = document.documentElement;
-    if (r.dataset.theme === 'dark') delete r.dataset.theme; else r.dataset.theme = 'dark';
+    r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark';   // 투영은 밝은 쪽이 기본
   }
 
   function csv(kind) {
