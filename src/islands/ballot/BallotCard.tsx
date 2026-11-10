@@ -17,7 +17,6 @@ import {
   createSubmitLatch,
   decisionChoiceOf,
   getLocalSubmit,
-  anonymousSubmitGate,
   getLocalVoter,
   isComplete,
   isLocalSubmitStoragePersistent,
@@ -29,6 +28,9 @@ import {
   namedDoneText,
   refreshNoticeMessage,
   resolveBallotScreen,
+  rosterRequired,
+  ROSTER_MISSING_MESSAGE,
+  sendBallotOnce,
   scaleLabels,
   subgroupVoteBadge,
   SURVEY_EVIDENCE_BOUNDARY,
@@ -208,6 +210,31 @@ export function LoadErrorScreen({
         className="mt-6 min-h-[56px] w-full rounded-2xl border-2 border-[#B5651D] bg-white px-4 text-[17px] font-extrabold text-[#7C2D12] disabled:opacity-50"
       >
         {retrying ? '다시 불러오는 중…' : '다시 불러오기'}
+      </button>
+    </CenterMessage>
+  );
+}
+
+/**
+ * (W05) 전체회의 의결 투표지인데 명단이 0행 — 무기명으로 받지 않고 투표지를 열자마자 막는다.
+ * 진행요원이 명단을 올린 뒤 「다시 확인」을 누르면 조·이름 고르기부터 시작한다.
+ */
+export function RosterMissingScreen({ onRetry, retrying }: { onRetry: () => void; retrying: boolean }) {
+  return (
+    <CenterMessage
+      icon="↻"
+      eyebrow="투표 준비 중"
+      title="명단이 아직 준비되지 않았습니다"
+      body="이 투표는 조와 이름 없이 낼 수 없습니다. 손을 들어 진행요원에게 알려 주세요. 명단이 올라오면 아래 「다시 확인」을 누릅니다."
+      color="#7C2D12"
+    >
+      <button
+        type="button"
+        onClick={onRetry}
+        disabled={retrying}
+        className="mt-6 min-h-[56px] w-full rounded-2xl border-2 border-[#B5651D] bg-white px-4 text-[17px] font-extrabold text-[#7C2D12] disabled:opacity-50"
+      >
+        {retrying ? '확인하는 중…' : '다시 확인'}
       </button>
     </CenterMessage>
   );
@@ -947,39 +974,31 @@ export default function BallotCard() {
       setError('조와 이름을 먼저 골라 주세요.');
       return;
     }
-    if (!named) {
+    try {
       // 무기명으로 내기 직전에 명단을 한 번 더 본다 — 화면을 연 뒤 실명으로 바뀌었으면 조·이름부터 받는다.
-      // 명단 조회가 실패하면 무기명으로 내지 않는다(이름을 조용히 빼먹지 않게).
-      let fresh: RosterRow[] | 'error';
-      try {
-        fresh = await fetchBallotRoster(token);
-      } catch (rosterError: unknown) {
-        console.error('명단을 다시 확인하지 못했습니다.', rosterError);
-        fresh = 'error';
-      }
-      const gate = anonymousSubmitGate(fresh);
-      if (gate !== 'anonymous') {
+      // 명단 조회가 실패하거나, 전체회의 의결(실명 필수)인데 명단이 0행이면 내지 않는다(W05).
+      const outcome = await sendBallotOnce({
+        named,
+        rosterRequired: rosterRequired(ballot),
+        fetchRoster: () => fetchBallotRoster(token),
+        submitAnonymous: () => submitBallot(token, getDeviceToken(), answers),
+        submitNamed: () => submitBallotNamed(token, getDeviceToken(), answers, voter.team as string, voterName),
+      });
+      if (outcome.kind !== 'sent') {
         setConfirmOpen(false);
-        setSubmitting(false);
-        if (gate === 'need-voter' && fresh !== 'error') {
-          setRoster(fresh);
+        if (outcome.kind === 'need-voter') {
+          setRoster(outcome.roster);
           setError('실명 투표입니다. 위에서 조와 이름을 골라 주세요.');
+        } else if (outcome.reason === 'no-roster') {
+          // 실명 수집이 꺼졌거나 명단이 없다 — 막는 화면으로 바꾼다(명단이 올라오면 「다시 확인」).
+          setRoster([]);
+          setError(ROSTER_MISSING_MESSAGE);
         } else {
           setError('연결을 확인하지 못했습니다. 잠시 뒤 다시 제출해 주세요.');
         }
         return;
       }
-    }
-    try {
-      let result = named
-        ? await submitBallotNamed(token, getDeviceToken(), answers, voter.team as string, voterName)
-        : await submitBallot(token, getDeviceToken(), answers);
-      // 화면을 연 뒤 운영팀이 실명 수집을 껐다 — 지금처럼 무기명으로 낸다.
-      let namedSaved = named;
-      if (result === 'named_off') {
-        namedSaved = false;
-        result = await submitBallot(token, getDeviceToken(), answers);
-      }
+      const { result, namedSaved } = outcome;
       setConfirmOpen(false);
       const mine: LocalVoter | null = namedSaved
         ? {
@@ -1047,6 +1066,16 @@ export default function BallotCard() {
     }
   };
 
+  const handleRosterRecheck = async () => {
+    setRefreshing(true);
+    try {
+      await load({ preserveCurrent: true });
+      setError(null);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
   if (token && ballotLoadError && ballot === undefined) {
     return (
       <LoadErrorScreen
@@ -1096,6 +1125,10 @@ export default function BallotCard() {
         voter={localVoter}
       />
     );
+  }
+  if (screen === 'active' && ballot && rosterRequired(ballot) && teams.length === 0) {
+    // (W05) 전체회의 의결인데 명단 0행 — 넘김식 · 목록 화면 어느 쪽도 그리지 않는다(무기명으로 받지 않는다).
+    return <RosterMissingScreen onRetry={() => void handleRosterRecheck()} retrying={refreshing} />;
   }
   if (screen === 'active' && ballot && pagerView && pagerRestoredFor === ballot.id) {
     // 11/14 의제별 의결 투표지 — 한 화면에 권고안 1건(넘김식). 요약 화면이 확인창을 대신한다.

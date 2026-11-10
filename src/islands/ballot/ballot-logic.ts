@@ -1,4 +1,4 @@
-import type { Ballot, BallotItem } from '../../lib/ballot';
+import type { Ballot, BallotItem, BallotSubmitResult, NamedSubmitResult, RosterRow } from '../../lib/ballot';
 import { decisionBallotKind } from '../../lib/division-ballot-format';
 import { createSafeBrowserStorage } from '../../lib/safe-browser-storage';
 
@@ -283,7 +283,60 @@ export function refreshNoticeMessage(ballot: Ballot): string | null {
  * - 'need-voter': 그 사이 실명으로 바뀌었다 → 조·이름부터 받는다
  * - 'retry': 명단을 확인하지 못했다(네트워크·서버 오류) → 무기명으로 내지 않고 다시 시도하게
  */
-export function anonymousSubmitGate(fresh: readonly unknown[] | 'error'): 'anonymous' | 'need-voter' | 'retry' {
+export function anonymousSubmitGate(
+  fresh: readonly unknown[] | 'error',
+  rosterRequired = false,
+): 'anonymous' | 'need-voter' | 'retry' | 'no-roster' {
   if (fresh === 'error') return 'retry';
-  return fresh.length > 0 ? 'need-voter' : 'anonymous';
+  if (fresh.length > 0) return 'need-voter';
+  // - 'no-roster': 실명 수집 투표지(전체회의 의결)인데 명단이 비었다 → 무기명으로 내지 않고 막는다(W05)
+  return rosterRequired ? 'no-roster' : 'anonymous';
+}
+
+/**
+ * 실명 수집 투표지 — 11/14 전체회의 의결(제목이 「전체회의 의결」로 시작). 명단이 0행이면 무기명으로 받지 않는다.
+ * 분과 지정이 잘못 남은 투표지(decisionBallotKind 가 null)도 막는 쪽에 둔다.
+ */
+export function rosterRequired(ballot: { title?: string | null; subgroup?: string | null }): boolean {
+  return (ballot.title ?? '').trim().startsWith('전체회의 의결');
+}
+
+export const ROSTER_MISSING_MESSAGE =
+  '명단이 아직 준비되지 않았습니다. 이 투표는 조와 이름 없이 낼 수 없습니다. 손을 들어 진행요원에게 알려 주세요.';
+
+export type SendOutcome =
+  | { kind: 'sent'; result: BallotSubmitResult | 'name_taken'; namedSaved: boolean }
+  | { kind: 'need-voter'; roster: RosterRow[] }
+  | { kind: 'held'; reason: 'retry' | 'no-roster' };
+
+/**
+ * 제출 한 번(BallotCard 가 부르는 유일한 길). 요청 함수는 주입받는다 — 시험이 「요청 0건」을 셀 수 있게.
+ * - 무기명: 내기 직전 명단을 다시 읽고 gate 를 거친다. 실명 필수인데 0행이면 내지 않는다.
+ * - 실명: 화면을 연 뒤 실명 수집이 꺼졌으면(named_off) 일반 투표만 무기명으로 다시 낸다. 실명 필수면 내지 않는다.
+ * 제출 요청의 오류는 그대로 던진다(부르는 쪽이 「제출에 실패했습니다」를 띄운다).
+ */
+export async function sendBallotOnce(deps: {
+  named: boolean;
+  rosterRequired: boolean;
+  fetchRoster: () => Promise<RosterRow[]>;
+  submitAnonymous: () => Promise<BallotSubmitResult>;
+  submitNamed: () => Promise<NamedSubmitResult>;
+}): Promise<SendOutcome> {
+  if (!deps.named) {
+    let fresh: RosterRow[] | 'error';
+    try {
+      fresh = await deps.fetchRoster();
+    } catch (rosterError: unknown) {
+      console.error('명단을 다시 확인하지 못했습니다.', rosterError);
+      fresh = 'error';
+    }
+    const gate = anonymousSubmitGate(fresh, deps.rosterRequired);
+    if (gate === 'need-voter' && fresh !== 'error') return { kind: 'need-voter', roster: fresh };
+    if (gate === 'retry' || gate === 'no-roster') return { kind: 'held', reason: gate };
+    return { kind: 'sent', result: await deps.submitAnonymous(), namedSaved: false };
+  }
+  const result = await deps.submitNamed();
+  if (result !== 'named_off') return { kind: 'sent', result, namedSaved: true };
+  if (deps.rosterRequired) return { kind: 'held', reason: 'no-roster' };
+  return { kind: 'sent', result: await deps.submitAnonymous(), namedSaved: false };
 }
