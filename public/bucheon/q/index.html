@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>분임 질문 · 100인 공론장</title>
+<style>
+  :root { --bg: #ffffff; --panel: #f3f5f8; --ink: #111821; --muted: #4a5563; --line: #c9d1db; --accent: #1f5fae; --err: #b3261e; }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) { --bg: #0f1318; --panel: #1a2029; --ink: #f2f5f8; --muted: #b5bfcc; --line: #3a4552; --accent: #6aa8f0; --err: #d9534f; }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body { font-family: "Pretendard", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+         font-size: 19px; line-height: 1.55; word-break: keep-all; overflow-wrap: anywhere; }
+  header { position: sticky; top: 0; background: var(--bg); border-bottom: 2px solid var(--line); padding: 12px 16px; z-index: 1; }
+  header h1 { font-size: 21px; margin: 0; }
+  .meta { display: flex; justify-content: space-between; gap: 8px; font-size: 15px; color: var(--muted); margin-top: 4px; }
+  .meta .err { color: var(--err); font-weight: 700; }
+  main { padding: 12px 16px 40px; max-width: 860px; margin: 0 auto; }
+  .card { background: var(--panel); border-radius: 14px; padding: 14px 16px; margin-bottom: 12px; }
+  .card .no { font-size: 15px; font-weight: 800; color: var(--accent); }
+  .card .no b { display: inline-block; min-width: 1.6em; }
+  .card .q { margin: 4px 0 0; font-weight: 700; font-size: 20px; }
+  .card .also { margin: 8px 0 0; font-size: 16px; color: var(--muted); }
+  .empty { color: var(--muted); text-align: center; margin-top: 40px; }
+  .tools { text-align: right; margin-top: 8px; }
+  .tools button { font: inherit; font-size: 15px; padding: 6px 12px; border-radius: 8px; border: 2px solid var(--line); background: var(--bg); color: var(--ink); }
+  /* 연구진 전달용 A4 */
+  .printhead { display: none; }
+  @media print {
+    @page { size: A4; margin: 14mm 14mm 16mm; }
+    header, .tools { display: none; }
+    body { font-size: 15pt; color: #000; background: #fff; }
+    main { max-width: none; padding: 0; }
+    .printhead { display: block; font-size: 12pt; border-bottom: 1.5pt solid #000; padding-bottom: 4pt; margin-bottom: 10pt; }
+    .card { background: none; border-bottom: 0.8pt solid #999; border-radius: 0; padding: 8pt 0; margin: 0; break-inside: avoid; }
+    .card .no { color: #000; font-size: 13pt; }
+    .card .q { font-size: 16pt; }
+    .card .also { font-size: 12.5pt; color: #333; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>분임 질문 — 일하는 시민 100인 공론장</h1>
+  <div class="meta"><span id="count"></span><span id="stamp"></span></div>
+</header>
+<main>
+  <div class="printhead" id="printhead"></div>
+  <div id="list"></div>
+  <div class="tools"><button id="print" type="button">인쇄 (연구진 전달용)</button></div>
+</main>
+<script src="../lib.js"></script>
+<script>
+(function () {
+  var el = BF.el, list = document.getElementById('list'), failures = 0, last = '';
+
+  function render(d) {
+    var cards = BF.questionCards(d.questions, false);
+    document.getElementById('count').textContent = '질문 ' + d.questions.length + '/' + d.teams + '개 조';
+    document.getElementById('printhead').textContent = '일하는 시민 100인 공론장 · 분임 질문 (' + BF.hhmm(d.now) + ' 기준, ' + cards.length + '건)';
+    var sig = JSON.stringify(cards.map(function (c) { return [c.label, c.lead.q1, c.lead.q2, c.members.map(function (m) { return m.q1; })]; }));
+    if (sig === last) return;   // 바뀐 것이 없으면 다시 그리지 않는다(읽는 위치 유지)
+    last = sig;
+    list.innerHTML = '';
+    if (!cards.length) { list.appendChild(el('p', { class: 'empty', text: '아직 들어온 질문이 없습니다. 잠시 뒤 자동으로 나타납니다.' })); return; }
+    cards.forEach(function (c, i) {
+      var box = el('div', { class: 'card' }, [
+        el('div', { class: 'no' }, [el('b', { text: (i + 1) + '.' }), ' ' + c.label]),
+        el('p', { class: 'q', text: c.lead.q1 })
+      ]);
+      if (c.lead.q2) box.appendChild(el('p', { class: 'also', text: c.lead.q2 }));
+      c.members.forEach(function (m) { box.appendChild(el('p', { class: 'also', text: m.team_no + '조: ' + m.q1 })); });
+      list.appendChild(box);
+    });
+  }
+
+  function load() {
+    BF.rpc('bucheon_questions_public', {}).then(function (d) {
+      failures = 0;
+      var s = document.getElementById('stamp'); s.textContent = '갱신 ' + BF.hhmm(d.now); s.className = '';
+      render(d);
+    }).catch(function () {
+      failures++;
+      var s = document.getElementById('stamp'); s.textContent = '연결 끊김 — 마지막 목록 표시 중'; s.className = 'err';
+    });
+  }
+
+  document.getElementById('print').onclick = function () { window.print(); };
+  load();
+  setInterval(load, 5000);
+})();
+</script>
+</body>
+</html>
