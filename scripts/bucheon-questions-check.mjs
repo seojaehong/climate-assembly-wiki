@@ -72,9 +72,32 @@ try {
   ok(m.min[0] >= 24 && m.over <= 0 && m.clipped === 0, '묶은 뒤에도 넘침 없음', `${m.min[0]}px, 세로 ${m.over}, 잘림 ${m.clipped}`);
   await shot('q_grouped');
 
+  // 전문가 보기(공개, 키 없음): 숨긴 9조 빠짐, 3·7조 묶음, 휴대폰 가로 넘침 없음
+  const viewer = await browser.newPage();
+  viewer.on('pageerror', (e) => errors.push('viewer ' + e.message));
+  await viewer.setViewport({ width: 390, height: 844, deviceScaleFactor: 1 });
+  await viewer.goto(BASE + 'q/', { waitUntil: 'networkidle0' }); await sleep(800);
+  const vl = await viewer.$$eval('.card .no', (n) => n.map((e) => e.textContent.trim()));
+  ok(vl.length === 8 && vl.some((t) => t.endsWith('3·7조')) && !vl.some((t) => / 9조$/.test(t)), '전문가 보기: 숨김 빠지고 묶음 반영, 번호 매김', vl.join(' | '));
+  ok(await viewer.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth), '전문가 보기 390px 가로 넘침 없음');
+  const vmin = await viewer.evaluate(() => Math.min(...[...document.querySelectorAll('.card *')].map((e) => parseFloat(getComputedStyle(e).fontSize))));
+  ok(vmin >= 15, '전문가 보기 글자 15px 이상', vmin + 'px');
+  await viewer.screenshot({ path: path.join(OUT, 'viewer_390.png'), fullPage: true });
+  await viewer.emulateMediaType('print');
+  await viewer.pdf({ path: path.join(OUT, 'viewer_a4.pdf'), format: 'A4' });
+  await viewer.screenshot({ path: path.join(OUT, 'viewer_print.png'), fullPage: true });
+  const ph = await viewer.$eval('#printhead', (e) => getComputedStyle(e).display !== 'none' && e.textContent);
+  ok(ph && ph.includes('8건'), '인쇄: 머리말에 기준 시각·건수', String(ph));
+  await viewer.close(); await page.bringToFront();   // 뒤로 간 탭은 크기 변경 이벤트가 늦게 돈다
+
+  // 중복 후보: 1조와 거의 같은 글을 5조로 → 정리 모드에 「1조와 비슷」
+  await rpc('bucheon_feed_question', { p_key: KEY, p_team_no: 5, p_q: '[시험] 1조 질문 — 노동안전지킴이를 소규모 사업장까지 늘리려면 인력과 예산은 어떻게 마련하나요?', p_event: 'ev5b', p_sent_at: '2026-11-18T15:20:00+09:00' });
+  await sleep(5600);
   await page.keyboard.press('e'); await sleep(300);
   const ctl = await page.$$eval('.card .ctl', (c) => c.filter((x) => getComputedStyle(x).display !== 'none').length);
   ok(ctl === 10, '정리 모드(E): 조마다 조작칸, 숨긴 조도 보임', `${ctl}개`);
+  const hints = await page.$$eval('.ctl', (c) => c.map((x) => x.querySelector('b').textContent + ':' + (x.querySelector('.sim') ? x.querySelector('.sim').textContent : '')));
+  ok(hints.some((h) => h.startsWith('5조:1조와 비슷')), '중복 후보: 5조에 「1조와 비슷」 표시', hints.filter((h) => h.includes('비슷')).join(' | '));
   // 화면 조작으로 9조 보이기 → 1조에 묶기
   await page.evaluate(() => { const b = [...document.querySelectorAll('.ctl')].find((c) => c.querySelector('b').textContent === '9조').querySelector('button'); b.click(); });
   await sleep(1500);

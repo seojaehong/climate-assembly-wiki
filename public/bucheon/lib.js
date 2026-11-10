@@ -73,5 +73,38 @@
     { k: 'LR', label: '장기 · 현실 제약 때문에' }
   ];
 
-  window.BF = { rpc: rpc, store: store, el: el, hhmm: hhmm, TERMS: TERMS };
+  // 세션1 질문 카드: 조당 질문 1개, group_lead 로 묶인 질문은 대표 조 카드 하나로 합친다
+  function questionCards(questions, includeHidden) {
+    var q = {}, cards = [], byLead = {};
+    questions.forEach(function (x) { q[x.team_no] = x; });
+    function leadOf(x) { return x.group_lead && q[x.group_lead] && !q[x.group_lead].group_lead ? x.group_lead : null; }
+    questions.forEach(function (x) {
+      var lead = leadOf(x);
+      if (lead && (includeHidden || !q[lead].hidden)) (byLead[lead] = byLead[lead] || []).push(x);
+    });
+    questions.slice().sort(function (a, b) { return a.team_no - b.team_no; }).forEach(function (x) {
+      if (x.hidden && !includeHidden) return;
+      var lead = leadOf(x);
+      if (lead && (includeHidden || !q[lead].hidden)) return;
+      var members = (byLead[x.team_no] || []).filter(function (m) { return includeHidden || !m.hidden; });
+      var teams = [x].concat(members).map(function (m) { return m.team_no; }).sort(function (a, b) { return a - b; });
+      cards.push({ lead: x, members: members, label: teams.join('·') + '조' });
+    });
+    return cards;
+  }
+
+  // 중복 후보: 공백·문장부호를 뺀 글자 2개씩 묶음의 겹침 비율(자카드). 0~1.
+  function bigrams(s) {
+    var t = String(s || '').replace(/\[시험\]/g, '').replace(/[\s.,?!·\-—_()"'“”‘’…:;]/g, ''), m = {};
+    for (var i = 0; i < t.length - 1; i++) m[t.substr(i, 2)] = 1;
+    return m;
+  }
+  function similarity(a, b) {
+    var x = bigrams(a), y = bigrams(b), inter = 0, n = 0, k;
+    for (k in x) { n++; if (y[k]) inter++; }
+    for (k in y) if (!x[k]) n++;
+    return n ? inter / n : 0;
+  }
+
+  window.BF = { rpc: rpc, store: store, el: el, hhmm: hhmm, TERMS: TERMS, questionCards: questionCards, similarity: similarity };
 })();

@@ -56,6 +56,7 @@
   .editing .card { overflow: visible; }
   .editing .card.off { opacity: .45; }
   .ctl select, .ctl button { font: inherit; font-size: 24px; padding: 4px 10px; border-radius: 8px; border: 2px solid var(--line); background: var(--bg); color: var(--ink); }
+  .ctl .sim { color: var(--LI); font-weight: 700; }
   .qhead { display: flex; justify-content: space-between; font-size: 24px; color: var(--muted); margin-bottom: 10px; }
   /* 우선순위 */
   .legend { display: flex; gap: 28px; font-size: 24px; margin-bottom: 12px; align-items: center; }
@@ -173,21 +174,18 @@
     ]));
   }
 
-  // 조당 질문 1개. 본부가 같은 취지의 질문을 묶으면(group_lead) 「3조·7조」 카드 하나로 보인다.
-  function questionCards(includeHidden) {
-    var q = byTeam(data.questions), cards = [], byLead = {};
-    data.questions.forEach(function (x) {
-      var lead = x.group_lead && q[x.group_lead] && !q[x.group_lead].group_lead ? x.group_lead : null;
-      if (lead && (includeHidden || !q[lead].hidden)) (byLead[lead] = byLead[lead] || []).push(x);
+  // 조당 질문 1개. 본부가 같은 취지의 질문을 묶으면(group_lead) 「3·7조」 카드 하나로 보인다(lib.js).
+  function questionCards(includeHidden) { return BF.questionCards(data.questions, includeHidden); }
+
+  // 정리 모드: 아직 안 묶인 질문끼리 글자가 많이 겹치면 「○조와 비슷」을 띄운다(묶기는 사람이 정한다)
+  function similarHint(x) {
+    var best = null;
+    data.questions.forEach(function (y) {
+      if (y.team_no === x.team_no || y.hidden || x.group_lead === y.team_no || y.group_lead === x.team_no) return;
+      var s = BF.similarity(x.q1, y.q1);
+      if (s >= 0.3 && (!best || s > best.s)) best = { t: y.team_no, s: s };
     });
-    data.questions.slice().sort(function (a, b) { return a.team_no - b.team_no; }).forEach(function (x) {
-      if (x.hidden && !includeHidden) return;
-      var lead = x.group_lead && q[x.group_lead] && !q[x.group_lead].group_lead ? x.group_lead : null;
-      if (lead && (includeHidden || !q[lead].hidden)) return;
-      var members = (byLead[x.team_no] || []).filter(function (m) { return includeHidden || !m.hidden; });
-      cards.push({ lead: x, members: members });
-    });
-    return cards;
+    return best ? el('span', { class: 'sim', text: best.t + '조와 비슷 (' + Math.round(best.s * 100) + '%)' }) : null;
   }
 
   function editQuestion(team, lead, hidden) {
@@ -234,7 +232,8 @@
       sel.value = x.group_lead ? String(x.group_lead) : '';
       sel.onchange = function () { editQuestion(x.team_no, sel.value ? +sel.value : null, x.hidden); };
       return el('div', { class: 'ctl' }, [el('b', { text: x.team_no + '조' }), sel,
-        el('button', { text: x.hidden ? '보이기' : '숨기기', onclick: function () { editQuestion(x.team_no, x.group_lead || null, !x.hidden); } })]);
+        el('button', { text: x.hidden ? '보이기' : '숨기기', onclick: function () { editQuestion(x.team_no, x.group_lead || null, !x.hidden); } }),
+        similarHint(x)]);
     }
     slice.forEach(function (c) {
       var all = [c.lead].concat(c.members);
@@ -243,7 +242,7 @@
       c.members.forEach(function (m) { body.appendChild(el('p', { class: 'also', text: m.team_no + '조: ' + m.q1 })); });
       if (editing) all.forEach(function (x) { body.appendChild(controls(x)); });
       grid.appendChild(el('div', { class: 'card' + (c.lead.hidden ? ' off' : '') }, [
-        el('div', { class: 'no', text: all.map(function (x) { return x.team_no; }).sort(function (a, b) { return a - b; }).join('·') + '조' }), body]));
+        el('div', { class: 'no', text: c.label }), body]));
     });
     if (!slice.length) grid.appendChild(el('p', { class: 'muted', text: '아직 들어온 질문이 없습니다' }));
     V.appendChild(grid);
