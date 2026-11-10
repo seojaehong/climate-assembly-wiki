@@ -41,6 +41,7 @@ import {
   parseBulkBallotItems,
   plenaryFormWarnings,
   plenaryLocksRequired,
+  plenaryQuietScreen,
   primaryAction,
   scaleLabel,
   sessionSubgroups,
@@ -132,7 +133,9 @@ export function BallotQrFullscreen({
   const [qr, setQr] = useState<string | null>(null);
   const [showNames, setShowNames] = useState(false);
   const url = ballotUrl(typeof window !== 'undefined' ? window.location.origin : '', ballot.token);
-  const live = useLiveCounts(access, ballot.token);
+  // 11/14 전체회의 의결 — 결과는 16:30 한 번에만 공개(큰 화면 위생). 실시간 수를 읽지도(폴링 끔) 그리지도 않고, 이름표도 열지 않는다.
+  const quiet = plenaryQuietScreen(ballot);
+  const live = useLiveCounts(access, ballot.token, !quiet);
   const submitted = live?.responses ?? ballot.response_count;
 
   useEffect(() => {
@@ -159,7 +162,7 @@ export function BallotQrFullscreen({
   const title = headline?.main ?? ballot.title;
   const sub = headline?.sub ?? '';
 
-  if (showNames && access) {
+  if (showNames && access && !quiet) {
     return (
       <NamedResultBoard
         key={ballot.id}
@@ -199,7 +202,7 @@ export function BallotQrFullscreen({
           {extra ? <div className="min-h-0 overflow-hidden">{extra}</div> : null}
         </div>
         <div className="shrink-0 pt-4" data-testid="qr-live">
-          {live && live.yes !== null && live.no !== null ? (
+          {quiet ? null : live && live.yes !== null && live.no !== null ? (
             <div className="flex items-end gap-10 tr-num">
               <div>
                 <p className="text-[clamp(22px,2vw,36px)] font-extrabold text-[#2F6F25]">찬성</p>
@@ -220,7 +223,7 @@ export function BallotQrFullscreen({
             </p>
           )}
           <div className="mt-4 flex flex-wrap gap-3">
-            {access && !hideNames ? (
+            {access && !hideNames && !quiet ? (
               <button
                 type="button"
                 onClick={() => setShowNames(true)}
@@ -1166,7 +1169,8 @@ export default function BallotPanel({
                         {busy ? '처리 중…' : action.label}
                       </button>
                     ) : null}
-                    {ballot.status !== 'draft' ? (
+                    {/* 11/14 전체회의 의결은 이름 찬반표를 띄우지 않는다 — 운영 노트북 화면이 그대로 프로젝터로 나간다(큰 화면 위생). */}
+                    {ballot.status !== 'draft' && !plenaryQuietScreen(ballot) ? (
                       <button
                         type="button"
                         onClick={() => setNamesId(ballot.id)}
@@ -1269,7 +1273,7 @@ export default function BallotPanel({
 
       {namesId && access ? (() => {
         const b = ballots?.find((x) => x.id === namesId);
-        return b ? (
+        return b && !plenaryQuietScreen(b) ? (
           <NamedResultBoard key={b.id} access={access} ballotId={b.id} title={b.title} onBack={() => setNamesId(null)} backLabel="닫기" live={b.status === 'open'} />
         ) : null;
       })() : null}

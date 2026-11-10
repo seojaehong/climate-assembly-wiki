@@ -42,3 +42,34 @@ describe('QR 화면(10/17 정리) — 제목 + 큰 QR + 실시간 수', () => {
     expect(html).toContain('나가기');
   });
 });
+
+describe('(11/14 큰 화면 위생) 전체회의 의결 투표지 QR 화면 — QR · 제목만', () => {
+  const plenary = { ...row, id: 'p1', title: '전체회의 의결 의제2 자원순환 사회 전환', subgroup: null, item_count: 28, response_count: 42 };
+  const access = { accessToken: 'a'.repeat(64) };
+  it('투표 중 — 실시간 찬성 · 반대 · 제출 수와 「투표결과 보기」가 없다', () => {
+    const html = renderToStaticMarkup(createElement(BallotQrFullscreen, { ballot: plenary, onExit: () => undefined, access }));
+    expect(html).toContain('전체회의 의결 의제2 자원순환 사회 전환');
+    for (const id of ['qr-live-yes', 'qr-live-no', 'qr-live-total', 'qr-show-names']) expect(html).not.toContain(`data-testid="${id}"`);
+    expect(html).not.toContain('제출 42명');
+    expect(html).not.toContain('투표결과 보기');
+  });
+  it('마감 뒤 · 분과 지정이 잘못 남은 투표지 · 큰 제목(headline)을 준 경로도 같다', () => {
+    for (const ballot of [
+      { ...plenary, status: 'closed' as const },
+      { ...plenary, subgroup: '1분과' },
+      { ...plenary, subgroup: '' },
+    ]) {
+      const html = renderToStaticMarkup(
+        createElement(BallotQrFullscreen, { ballot, onExit: () => undefined, access, headline: { main: '권고안 28건', sub: '의제2' } }),
+      );
+      expect(html).not.toContain('data-testid="qr-live-total"');
+      expect(html).not.toContain('data-testid="qr-show-names"');
+    }
+  });
+  it('10/17 분과 의결 투표지는 그대로 — 제출 수와 「투표결과 보기」', () => {
+    const html = renderToStaticMarkup(createElement(BallotQrFullscreen, { ballot: row, onExit: () => undefined, access }));
+    expect(html).toContain('data-testid="qr-live-total"');
+    expect(html).toContain('제출 7명');
+    expect(html).toContain('data-testid="qr-show-names"');
+  });
+});

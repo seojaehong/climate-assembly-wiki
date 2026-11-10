@@ -24,6 +24,7 @@ import {
   parseBulkBallotItems,
   plenaryFormWarnings,
   plenaryLocksRequired,
+  plenaryQuietScreen,
   type BallotFormItem,
 } from './ballot-panel-logic';
 import type { BallotStatus } from '../../lib/deliberation';
@@ -449,6 +450,13 @@ describe('(11/14) 여러 건 붙여넣기 · 전체회의 의결 투표지 점�
     expect(plenaryLocksRequired(' 전체회의 의결 의제①')).toBe(true);
     expect(plenaryLocksRequired('폐회 일괄 투표')).toBe(false);
     expect(plenaryLocksRequired('1분과 의결 1-1-안1')).toBe(false);
+  });
+
+  it('(11/14 큰 화면 위생) 전체회의 의결 투표지는 QR 화면에 실시간 수 · 이름표를 그리지 않는다 — 분과 지정이 잘못 남아도', () => {
+    expect(plenaryQuietScreen({ title: '전체회의 의결 의제1 기업 온실가스 감축 촉진', subgroup: null })).toBe(true);
+    expect(plenaryQuietScreen({ title: '전체회의 의결 의제2', subgroup: '2분과' })).toBe(true);
+    expect(plenaryQuietScreen({ title: '1분과 의결 1-1-안1', subgroup: '1분과' })).toBe(false);
+    expect(plenaryQuietScreen({ title: '연습 투표', subgroup: null })).toBe(false);
   });
 
   it('28건도 한 번에 — 상한(30) 안', () => {

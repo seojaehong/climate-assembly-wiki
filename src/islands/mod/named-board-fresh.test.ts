@@ -54,3 +54,11 @@ describe('(11/10 결정 + 방어선) 제출자 대조 — 직접 입력은 출�
     expect(src).not.toContain('오타 의심');
   });
 });
+
+describe('(11/14 큰 화면 위생) 투표 목록의 「투표결과 보기 (조·이름)」', () => {
+  it('전체회의 의결 투표지에는 단추를 그리지 않고, 이름 화면도 열지 않는다(같은 노트북을 프로젝터로 내보낸다)', () => {
+    const src = readFileSync(new URL('./BallotPanel.tsx', import.meta.url), 'utf8');
+    expect(src).toMatch(/ballot\.status !== 'draft' && !plenaryQuietScreen\(ballot\) \? \(\s*<button[\s\S]{0,200}data-testid="ballot-named-board"/);
+    expect(src).toMatch(/namesId && access[\s\S]{0,200}!plenaryQuietScreen\(b\)/);
+  });
+});

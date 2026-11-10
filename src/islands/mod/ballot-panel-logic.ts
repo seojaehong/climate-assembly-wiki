@@ -158,6 +158,15 @@ export function plenaryLocksRequired(title: string): boolean {
 }
 
 /**
+ * (11/14) 큰 화면 위생 — 전체회의 의결 결과는 16:30 에 한 번만 공개하고, 운영 노트북 화면을 그대로 프로젝터로 내보낸다.
+ * 그래서 QR 화면에 실시간 찬성 · 반대 · 제출 수와 「투표결과 보기」(조·이름 찬반표)를 그리지 않는다(QR · 제목만).
+ * 제목으로만 가른다 — 분과 지정이 잘못 남은 전체회의 투표지도 화면에서는 가린다(결과 내보내기가 따로 거부한다).
+ */
+export function plenaryQuietScreen(ballot: { title?: string | null; subgroup?: string | null }): boolean {
+  return plenaryLocksRequired(ballot.title ?? '');
+}
+
+/**
  * (11/14) 여러 건 붙여넣기 — 한 줄 = 한 건, 빈 줄은 버린다. 의결 투표지라 전부 찬반(2점).
  * optional = 「누르지 않은 건 허용」(문항 required=false → 넘김식이 「기권으로 두고 제출」 확인을 띄운다).
  * 전체회의 의결 제목에서는 쓸 수 없다(폼 체크 잠김 · validateBallotForm 이 필수로 바꿈, 11/10 결정).
