@@ -460,6 +460,11 @@ describe('(11/14) 여러 건 붙여넣기 · 전체회의 의결 투표지 점�
       '2번 문항이 「1-M-안1 제목」 모양이 아닙니다.',
       '3번 문항 번호 2-3 이 의제1 번호가 아닙니다.',
     ]);
+    // 한 글자만 어긋나도 휴대폰이 의결 화면을 켜지 못한다 — 「전체회의 의결」로 시작하면 모양부터 본다.
+    const shapeWarning = '제목을 「전체회의 의결 의제1 의제 이름」 모양으로 쓰세요(「의제」 뒤에 띄어쓰기 · 원문자 없이 숫자). 이 모양이 아니면 휴대폰이 의결 화면을 켜지 않습니다.';
+    expect(plenaryFormWarnings('전체회의 의결 의제 1 기업', null, good)).toEqual([shapeWarning]);
+    expect(plenaryFormWarnings('전체회의 의결 의제① 기업', null, good)).toEqual([shapeWarning]);
+    expect(plenaryFormWarnings('  전체회의 의결', null, good)).toEqual([shapeWarning]);
     // 전체회의 의결 제목이 아니면 점검하지 않는다(일반 투표 · 10/17 분과 의결).
     expect(plenaryFormWarnings('폐회 투표', '1분과', bad)).toEqual([]);
   });

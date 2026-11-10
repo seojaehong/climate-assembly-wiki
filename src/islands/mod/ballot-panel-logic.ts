@@ -161,7 +161,12 @@ export function parseBulkBallotItems(text: string, { optional }: { optional: boo
  */
 export function plenaryFormWarnings(title: string, target: string | null, items: readonly BallotFormItem[]): string[] {
   const agendaNo = plenaryAgendaNo(title);
-  if (agendaNo === null) return [];
+  if (agendaNo === null) {
+    // 한 글자만 어긋나도(「의제 1」 · 「의제①」) 휴대폰이 의결 화면을 켜지 않는다 — 「전체회의 의결」로 시작하면 모양부터 막는다.
+    return title.trim().startsWith('전체회의 의결')
+      ? ['제목을 「전체회의 의결 의제1 의제 이름」 모양으로 쓰세요(「의제」 뒤에 띄어쓰기 · 원문자 없이 숫자). 이 모양이 아니면 휴대폰이 의결 화면을 켜지 않습니다.']
+      : [];
+  }
   const out: string[] = [];
   if (target?.trim()) out.push('대상을 「세션 전체」로 두세요. 분과를 고르면 그 분과 명단만 투표할 수 있습니다.');
   items.forEach((item, i) => {

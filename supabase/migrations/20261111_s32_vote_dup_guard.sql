@@ -17,6 +17,8 @@
 --   넣지 않은 것(사용자 결정 필요): 「명단 밖 이름 거부」. 화면에 「명단에 없어요 — 이름 직접 입력」이 있어 지금은
 --      명단 밖 이름도 DB 에 들어가고(voter_in_roster=false) 내보내기가 「명단 밖」으로 뺀다.
 -- ★ 적용 전: 운영 pg_get_functiondef 가 rollbacks/20261111_s32_vote_dup_guard_BEFORE.sql 과 같은지 대조.
+--   운영 본문은 줄 끝이 CRLF 다(Windows 에서 적용됨). 이 저장소는 LF 로 저장하므로 대조는 줄 끝을 맞춘 뒤 한다.
+--   11/10 운영 md5(pg_get_functiondef): ballot_submit_named 9a0d3dddd1e3e1656641bb8f6fe548c0.
 --   ballot_submit 의 최신 정의는 platform 트랙 파일에 있어 사전순으로 날짜 파일 뒤에 적용된다 — 폴더를 통째로 다시
 --   재생하면 ① 가드가 지워진다. 재생 뒤에는 이 파일을 한 번 더 적용한다.
 -- 시험(리허설 세션에서 직접 호출): 무기명 제출 → 거부 / 명단 안 이름 → 성공 / 같은 이름 두 번 → 거부 /

@@ -561,7 +561,7 @@ function BallotResultsFullscreen({
 // 생성 폼 — 제목·안내문·의제 행(문장 + 척도 2/4/5/7)
 // ============================================================
 
-function CreateForm({
+export function CreateForm({
   submitting,
   subgroup,
   access,
