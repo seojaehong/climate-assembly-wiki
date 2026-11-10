@@ -9,7 +9,8 @@ alter table public.bucheon_question add column if not exists source text not nul
 alter table public.bucheon_question add column if not exists src_event text;
 alter table public.bucheon_question add column if not exists sent_at timestamptz;
 
--- 조 화면(비상 입력): 질문 2는 이제 선택
+-- 조 화면(비상 입력): 질문 2는 이제 선택. sent_at = now() 로 두어 브리지를 다시 켜도
+-- 그보다 이른 카톡 글이 손으로 넣은 질문을 덮지 않게 한다.
 create or replace function public.bucheon_submit_questions(p_code text, p_q1 text, p_q2 text, p_note text default null)
 returns jsonb language plpgsql volatile security definer set search_path = public, pg_temp as $$
 declare
@@ -19,10 +20,10 @@ declare
   v_note text := bucheon__clean(p_note, 1000, false, 'note');
   v_at timestamptz;
 begin
-  insert into bucheon_question (team_no, q1, q2, note, source, updated_at)
-  values (v_team, v_q1, v_q2, v_note, 'form', now())
+  insert into bucheon_question (team_no, q1, q2, note, source, sent_at, updated_at)
+  values (v_team, v_q1, v_q2, v_note, 'form', now(), now())
   on conflict (team_no) do update set q1 = excluded.q1, q2 = excluded.q2, note = excluded.note,
-    source = 'form', src_event = null, sent_at = null, updated_at = now()
+    source = 'form', src_event = null, sent_at = now(), updated_at = now()
   returning updated_at into v_at;
   return jsonb_build_object('ok', true, 'team_no', v_team, 'updated_at', v_at);
 end $$;
