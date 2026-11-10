@@ -45,11 +45,12 @@ describe('제출자 대조 — 낸 사람 누구든 조·이름을 고칠 수 �
   });
 });
 
-describe('(11/10 결정) 제출자 대조 — 직접 입력은 유효표', () => {
-  it('명단에 없는 조·이름을 「오타 의심」이 아니라 직접 입력 · 유효표로 적는다', () => {
+describe('(11/10 결정 + 방어선) 제출자 대조 — 직접 입력은 출석부와 맞으면 유효표', () => {
+  it('명단에 없는 조·이름을 「오타 의심」이 아니라 직접 입력으로 적고, 출석부 조건을 함께 적는다', () => {
     const src = readFileSync(new URL('./VoterReconcileBox.tsx', import.meta.url), 'utf8');
     expect(src).toContain('직접 입력');
-    expect(src).toContain('유효표');
+    expect(src).toContain('출석부와 조·이름이 맞으면 유효표');
+    expect(src).not.toContain('유효표로 셉니다(11/10 결정)');
     expect(src).not.toContain('오타 의심');
   });
 });

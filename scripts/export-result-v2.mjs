@@ -11,7 +11,9 @@
  *   # 만든 파일 검사(세리머니 쪽 · 검증자)
  *   node scripts/export-result-v2.mjs --verify <폴더>/result_v2.json
  *
- * 읽는 RPC(쓰기 0): ballot_named_responses_v2(p_token, p_ballot_id) · ballot_list_v2(p_token). 둘 다 anon 키 + 운영자 접속 토큰.
+ * 읽는 RPC(쓰기 0): ballot_named_responses_v2(p_token, p_ballot_id) · ballot_list_v2(p_token)(운영자 접속 토큰) ·
+ *   ballot_get(p_token = 투표지 토큰, 문항의 필수 표시 — 기권 불인정 검사, 11/10 결정). 모두 anon 키로 부른다.
+ *   ballot_get 은 열림 · 마감 · 공개 투표지만 답한다(초안이면 필수 표시를 못 읽어 거부).
  * 이 스크립트는 로그인(토큰 발급)을 하지 않는다 — 발급은 접속 세션 행을 쓰기 때문이다. 토큰은 /mod 에 로그인한 노트북에서 가져온다.
  * 출력: <out>/result_v2.json · result_v2.json.sha256 · result_v2_요약.txt · raw/agenda<N>.json(실명 포함 — 저장소 밖에 둔다)
  * 검사 하나라도 실패하면 result_v2.json 을 만들지도 바꾸지도 않고 종료 코드 2.
@@ -20,7 +22,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { ResultV2Error, buildResultV2, summaryText, validateResultV2 } from './lib/result-v2.mjs';
+import { ResultV2Error, attachRequired, buildResultV2, summaryText, validateResultV2 } from './lib/result-v2.mjs';
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const t0 = Date.now();
@@ -130,6 +132,7 @@ function loadConfig(path) {
     if (typeof a.attendance_file === 'string') a.attendance = loadJson(rel(a.attendance_file), `의제 ${a.no} 출석부`);
   }
   if (cfg.report && typeof cfg.report.paper_file === 'string') cfg.report.paper = loadJson(rel(cfg.report.paper_file), '보고서 서면 집계표');
+  if (cfg.report && typeof cfg.report.attendance_file === 'string') cfg.report.attendance = loadJson(rel(cfg.report.attendance_file), '보고서 출석부');
   return cfg;
 }
 
@@ -180,12 +183,20 @@ async function exportMode() {
   const tRead = Date.now();
   if (source === 'rpc') {
     const token = accessToken();
+    // 필수 표시(required)는 실명 응답 함수가 주지 않는다 — 목록에서 투표지 토큰을 찾아 ballot_get 으로 읽어 붙인다.
+    const list = await rpc('ballot_list_v2', { p_token: token });
+    const ballotTokenOf = new Map((list ?? []).map((b) => [b.id, b.token]));
     const got = await Promise.all(
       targets.map(async (t) => {
         if (!t.id) die(`의제 ${t.key}: ballot_id 가 없습니다(--list 로 찾기)`);
-        const data = await rpc('ballot_named_responses_v2', { p_token: token, p_ballot_id: t.id });
+        const ballotToken = ballotTokenOf.get(t.id);
+        if (!ballotToken) die(`의제 ${t.key}: 투표지 ${t.id} 가 이 세션 투표지 목록에 없습니다(--list 로 확인)`);
+        const [data, meta] = await Promise.all([
+          rpc('ballot_named_responses_v2', { p_token: token, p_ballot_id: t.id }),
+          rpc('ballot_get', { p_token: ballotToken }),
+        ]);
         if (!data) die(`의제 ${t.key}: 투표지 ${t.id} 를 읽지 못했습니다(실명 응답 함수 없음 또는 범위 밖)`);
-        return [t.key, data];
+        return [t.key, attachRequired(data, meta)];
       }),
     );
     mkdirSync(join(outDir, 'raw'), { recursive: true });

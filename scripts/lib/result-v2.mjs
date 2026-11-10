@@ -3,10 +3,12 @@
  *
  * 계약 정본 = docs/result-v2-contract.md. 세리머니 로더는 그 문서를 따른다.
  * 공식 수치는 시스템 집계(dist)가 아니라 실명 응답 원자료를 다시 센 값이다:
- *   이름 있음 · 이름 중복 없음(먼저 낸 것) · (출석부를 주면) 출석부에 있음 · 모든 건에 찬반 → 휴대폰 유효표
+ *   이름 있음 · 이름 중복 없음(먼저 낸 것) · (출석부를 주면) 출석부에 있음 → 휴대폰 유효표
  *   + 서면 집계표(입력) = 찬성 · 반대. 기권 = 출석 − 찬성 − 반대(미제출 · 뺀 표 포함).
- *   11/10 주최 결정: 명단에 없는 조·이름(직접 입력)도 유효표로 세고 요약에 따로 적는다.
- *   기권 불인정 — 누르지 않은 건이 있는 응답은 통째로 뺀다(그 이름의 한 번으로 본다, 재투표 불가).
+ *   11/10 주최 결정 + 방어선: 명단에 없는 조·이름(직접 입력)은 출석부의 같은 (조, 이름)과 맞을 때만 센다.
+ *   안 맞거나 출석부가 없으면 「검증자 확인 목록」(집계 제외)으로 요약에 적는다.
+ *   기권 불인정 — 필수가 아닌 문항(「누르지 않은 건 허용」)이 있는 투표지와 누르지 않은 건이 있는 응답은
+ *   조용히 빼지 않고 거부한다(서버가 필수 문항의 빈 답을 받지 않으므로 생기면 원자료 이상이다).
  * 저장값: 1 = 반대, 2 = 찬성(BallotCard 와 같다).
  */
 
@@ -60,6 +62,18 @@ const isInt = (v) => Number.isInteger(v);
 const nonNegInt = (v) => Number.isInteger(v) && v >= 0;
 
 /**
+ * ballot_named_responses_v2 의 문항에는 필수 표시가 없다 — ballot_get(투표지 토큰) 의 items[].required 를
+ * 문항 id 로 맞춰 붙인다. 짝이 없거나 참/거짓이 아니면 비워 두고(재집계가 「읽지 못함」으로 거부), 원자료는 바꾸지 않는다.
+ * @param raw ballot_named_responses_v2 결과
+ * @param ballotGet ballot_get 결과(초안 · 보관이면 null)
+ */
+export function attachRequired(raw, ballotGet) {
+  const req = new Map();
+  for (const it of ballotGet?.items ?? []) if (typeof it?.required === 'boolean') req.set(it.id, it.required);
+  return { ...raw, items: (raw?.items ?? []).map((it) => ({ ...it, required: req.get(it.id) })) };
+}
+
+/**
  * 투표지 한 장(ballot_named_responses_v2 모양)을 다시 센다.
  * @param raw { id, status, items[{id,ordinal,statement,scale}], roster[{team,name}], responses[...] }
  * @param opts { agendaNo, expectedCount, attendance?: [{team,name}], paper?: { ballots, items: { '1-1': {yes,nay} } }, numberPrefix?: boolean }
@@ -82,8 +96,20 @@ export function recountAgenda(raw, { agendaNo, expectedCount, attendance = null,
       if (seen.has(no)) problems.push(`의제 ${agendaNo}: 번호 ${no} 중복`);
       seen.add(no);
     }
-    return { no: no ?? `?${it.ordinal}`, id: it.id, ordinal: it.ordinal, title: motionTitle(it.statement), yes: 0, nay: 0, sysYes: 0, sysNay: 0 };
+    return { no: no ?? `?${it.ordinal}`, id: it.id, ordinal: it.ordinal, title: motionTitle(it.statement), required: it.required, yes: 0, nay: 0, sysYes: 0, sysNay: 0 };
   });
+  // 기권 불인정(11/10 결정) — 「누르지 않은 건 허용」으로 만든 투표지는 세지 않는다(분과 지정과 같은 방식으로 거부).
+  // 필수 표시는 내보내기가 ballot_get 으로 채운다. 못 읽은 것(초안 · 옛 원자료 파일)은 「필수 아님」과 따로 적는다.
+  const nosOf = (rows) => rows.map((x) => x.no);
+  const listOf = (nos) => `${nos.length}건(${nos.slice(0, 5).join(', ')}${nos.length > 5 ? ', …' : ''})`;
+  const optional = nosOf(out.filter((x) => x.required === false));
+  const unknown = nosOf(out.filter((x) => x.required !== true && x.required !== false));
+  if (optional.length) {
+    problems.push(`의제 ${agendaNo}: 필수가 아닌 문항 ${listOf(optional)} — 「누르지 않은 건 허용」으로 만든 투표지다. 기권 불인정(11/10 결정)이라 세지 않는다 — 모든 건을 필수로 다시 만들어야 함`);
+  }
+  if (unknown.length) {
+    problems.push(`의제 ${agendaNo}: 필수 표시(required)를 읽지 못한 문항 ${listOf(unknown)} — 원자료에 없음(초안 투표지 · 옛 원자료 파일). rpc 로 다시 받기`);
+  }
 
   // 서면 집계표
   let paperBallots = 0;
@@ -106,9 +132,10 @@ export function recountAgenda(raw, { agendaNo, expectedCount, attendance = null,
   if (problems.length) throw new ResultV2Error(problems);
 
   // 휴대폰 응답 — 먼저 낸 것부터. 거르는 순서(계약 4-3):
-  //   이름 없음 → 중복(이름만 대조, 명단 · 직접 입력 공통) → 출석부 없음 → 미응답 건 있음 → 유효.
-  //   (조, 이름) 짝이 명단에 없으면 「직접 입력」으로 표시만 하고 빼지 않는다(11/10 결정). 저장된 voter_in_roster 가 아니라
-  //   지금 명단과 대조한다(명단 · 조·이름 고치기 뒤에도 맞게).
+  //   이름 없음 → 중복(이름만 대조, 명단 · 직접 입력 공통) → 출석부 없음(직접 입력은 출석부 파일이 없어도 뺀다) → 유효.
+  //   (조, 이름) 짝이 명단에 없으면 「직접 입력」 — 출석부의 같은 (조, 이름)과 맞을 때만 센다(11/10 결정 + 방어선 B①).
+  //   저장된 voter_in_roster 가 아니라 지금 명단과 대조한다(명단 · 조·이름 고치기 뒤에도 맞게).
+  //   누르지 않은 건(찬반 1 · 2 가 아닌 값 포함)이 있는 응답은 사유와 관계없이 모아서 거부한다 — 조용히 빼지 않는다.
   const rosterPairs = new Set((raw.roster ?? []).map((r) => `${String(r.team ?? '').trim()}\u0000${normName(r.name)}`));
   const rosterTeamOf = new Map();
   for (const r of raw.roster ?? []) if (!rosterTeamOf.has(normName(r.name))) rosterTeamOf.set(normName(r.name), String(r.team ?? '').trim());
@@ -119,8 +146,8 @@ export function recountAgenda(raw, { agendaNo, expectedCount, attendance = null,
   const usedNames = new Set();
   const excluded = [];
   const manual = [];
+  const incomplete = [];
   let phoneValid = 0;
-  let phoneVoters = 0;
   const byId = new Map(out.map((x) => [x.id, x]));
   for (const r of responses) {
     const answers = r.answers && typeof r.answers === 'object' ? r.answers : {};
@@ -133,22 +160,18 @@ export function recountAgenda(raw, { agendaNo, expectedCount, attendance = null,
     const key = normName(r.voter_name);
     const team = String(r.voter_team ?? '').trim();
     const tag = { reason: '', team: team || null, name: r.voter_name ?? null, submitted_at: r.submitted_at ?? null };
+    const missing = out.filter((row) => answers[row.id] !== YES && answers[row.id] !== NAY).map((row) => row.no);
+    if (missing.length) incomplete.push({ ...tag, missing });
     const isManual = !!key && !rosterPairs.has(`${team}\u0000${key}`);
     let reason = null;
-    let missing = null;
     if (!key) reason = '이름 없음';
     else if (usedNames.has(key)) reason = '중복';
     else {
       usedNames.add(key);
       if (attendPairs && !attendPairs.has(`${team}\u0000${key}`)) reason = '출석부 없음';
-      else {
-        // 그 이름의 한 번(무효여도) — 출석 대조(휴대폰 제출자 + 서면 ≤ 출석)는 사람 수로 본다.
-        phoneVoters += 1;
-        missing = out.filter((row) => answers[row.id] !== YES && answers[row.id] !== NAY).map((row) => row.no);
-        if (missing.length) reason = '미응답 건 있음';
-      }
+      else if (isManual && !attendPairs) reason = '직접 입력 · 출석부 파일 없음';
     }
-    if (reason) excluded.push(reason === '미응답 건 있음' ? { ...tag, reason, missing } : { ...tag, reason });
+    if (reason) excluded.push({ ...tag, reason });
     else {
       phoneValid += 1;
       for (const row of out) {
@@ -161,13 +184,32 @@ export function recountAgenda(raw, { agendaNo, expectedCount, attendance = null,
       manual.push({ team: tag.team, name: tag.name, submitted_at: tag.submitted_at, counted: !reason, reason, rosterTeam });
     }
   }
-  return { agendaNo, ballotId: raw.id, ballotStatus: raw.status, items: out, phoneValid, phoneVoters, paperBallots, excluded, manual, systemResponses: responses.length };
+  if (incomplete.length) {
+    // 모든 건이 필수인 투표지에서는 서버(ballot_submit · ballot_submit_named)가 빈 답 · 범위 밖 값을 받지 않는다.
+    // 생겼다면 원자료 이상 — 세지도 빼지도 않고 사람이 본다.
+    throw new ResultV2Error([
+      `의제 ${agendaNo}: 누르지 않은 건이 있는 응답 ${incomplete.length}건 — 모든 건이 필수인 투표지에서는 생길 수 없다. 원자료를 확인한 뒤 다시(조용히 빼지 않는다)`,
+      ...incomplete.slice(0, 20).map((x) => `  ${x.team ?? '(조 없음)'} ${x.name ?? '(이름 없음)'} · ${x.submitted_at ?? ''} · ${missingText(x.missing)}`),
+      ...(incomplete.length > 20 ? [`  … 외 ${incomplete.length - 20}건`] : []),
+    ]);
+  }
+  return { agendaNo, ballotId: raw.id, ballotStatus: raw.status, items: out, phoneValid, paperBallots, excluded, manual, systemResponses: responses.length };
 }
 
 function verdictOf({ confirmed, established, yes, threshold }) {
   if (!confirmed) return '미확정';
   if (!established) return '불성립';
   return yes >= threshold ? '가결' : '부결';
+}
+
+/**
+ * 출석부는 출석한 사람 전원(명단 + 진행요원이 확인한 직접 입력자)이어야 한다. 사람 수(같은 (조, 이름)은 한 사람)가
+ * 출석보다 적으면 직접 입력자만 적은 출석부 같은 것이다 — 그대로 쓰면 명단 표가 「출석부 없음」으로 소리 없이 다 빠진다.
+ */
+function checkAttendance(label, src, problems) {
+  if (!Array.isArray(src.attendance) || !nonNegInt(src.present)) return;
+  const people = new Set(src.attendance.map((r) => `${String(r?.team ?? '').trim()}\u0000${normName(r?.name)}`)).size;
+  if (people < src.present) problems.push(`${label}: 출석부 ${people}명 < 출석 ${src.present} — 출석한 사람 전원(명단 + 확인한 직접 입력자)을 적은 출석부가 아님`);
 }
 
 function checkConfirmation(label, src, problems) {
@@ -216,6 +258,7 @@ export function buildResultV2(config, raws, { generatedAt }) {
       if (a.ballot_id && raw.id !== a.ballot_id) p.push(`${label}: 원자료 투표지 id ${raw.id} ≠ 설정 ballot_id ${a.ballot_id}`);
       if (a.confirmed === true && raw.status === 'open') p.push(`${label}: 확정인데 투표지가 아직 열려 있음(open) — 마감 후 다시`);
     }
+    checkAttendance(label, a, p);
     if (p.length) {
       problems.push(...p);
       continue;
@@ -231,10 +274,10 @@ export function buildResultV2(config, raws, { generatedAt }) {
     const present = a.present;
     const threshold = thresholdFor(present);
     const established = isEstablished(present, enrolled);
-    // 사람 수로 대조한다 — 미응답으로 무효가 된 휴대폰 제출자도 출석한 사람이다. 직접 입력자도 여기 든다(출석 수에 넣어야 한다).
-    if (rc.phoneVoters + rc.paperBallots > present) {
+    // 방어선 B② — 투표지별 유효표가 출석을 넘으면 판정하지 않는다(파일을 만들지 않는다). 센 직접 입력자도 출석 수에 들어 있어야 한다.
+    if (rc.phoneValid + rc.paperBallots > present) {
       problems.push(
-        `${label}: 휴대폰 제출자 ${rc.phoneVoters}(유효 ${rc.phoneValid} · 미응답 무효 ${rc.phoneVoters - rc.phoneValid}) + 서면 ${rc.paperBallots} > 출석 ${present} — 판정 못 함(출석 수에 직접 입력자가 들었는지 · 명단 확인)`,
+        `${label}: 휴대폰 유효표 ${rc.phoneValid} + 서면 ${rc.paperBallots} > 출석 ${present} — 판정 못 함(출석 수 · 출석부 · 명단 확인)`,
       );
     }
     for (const it of rc.items) {
@@ -275,11 +318,12 @@ export function buildResultV2(config, raws, { generatedAt }) {
     const enrolled = rep.enrolled ?? config.enrolled;
     checkCounts('보고서', { present: rep.present, enrolled }, p);
     checkConfirmation('보고서', rep, p);
+    checkAttendance('보고서', rep, p);
     let yes = rep.yes;
     let nay = rep.nay;
     if (raws?.report) {
       try {
-        const rc = recountAgenda(raws.report, { agendaNo: 'report', expectedCount: 1, numberPrefix: false, paper: rep.paper ?? null });
+        const rc = recountAgenda(raws.report, { agendaNo: 'report', expectedCount: 1, numberPrefix: false, paper: rep.paper ?? null, attendance: rep.attendance ?? null });
         yes = rc.items[0].yes;
         nay = rc.items[0].nay;
       } catch (e) {
@@ -451,14 +495,19 @@ export function summaryText(doc, recounts, sha256) {
       const rs = Object.entries(reasons).map(([k, v]) => `${k} ${v}`).join(' · ') || '없음';
       L.push(`  휴대폰 제출 ${rc.systemResponses} → 유효 ${rc.phoneValid} · 뺀 표 ${rc.excluded.length} (${rs}) · 서면 투표지 ${rc.paperBallots}`);
       for (const x of rc.excluded) {
-        L.push(`    - 뺀 표: ${x.reason} · ${x.team ?? '(조 없음)'} ${x.name ?? '(이름 없음)'} · ${x.submitted_at ?? ''}${x.missing ? ` · ${missingText(x.missing)}` : ''}`);
+        L.push(`    - 뺀 표: ${x.reason} · ${x.team ?? '(조 없음)'} ${x.name ?? '(이름 없음)'} · ${x.submitted_at ?? ''}`);
       }
-      // 11/10 결정: 직접 입력(명단에 없는 조·이름)도 유효표로 센다 — 검증자가 한 줄씩 확인하도록 늘 적는다(0건이어도).
+      // 11/10 결정 + 방어선 B①: 직접 입력(명단에 없는 조·이름)은 출석부와 맞을 때만 센다. 검증자가 한 줄씩 확인하도록 늘 적는다(0건이어도).
+      // 「확인 목록」 = 세지 않은 직접 입력(출석부와 안 맞음 · 출석부 파일 없음 · 중복) — 사람이 보고 출석부를 고쳐 다시 돌릴지 정한다.
       const mc = rc.manual.filter((m) => m.counted).length;
-      L.push(`  직접 입력(명단에 없는 조·이름) ${rc.manual.length}건 — 유효 ${mc} · 뺀 표 ${rc.manual.length - mc} (유효는 위 「유효」에 들어 있다)`);
+      L.push(`  직접 입력(명단에 없는 조·이름) ${rc.manual.length}건 — 유효 ${mc} · 검증자 확인 목록 ${rc.manual.length - mc}(집계 제외)`);
       for (const m of rc.manual) {
-        const state = m.counted ? '유효' : `뺀 표(${m.reason})`;
-        L.push(`    - ${m.team ?? '(조 없음)'} ${m.name} · ${m.submitted_at ?? ''} · ${state}${m.rosterTeam ? ` · 명단에는 ${m.rosterTeam}` : ''}`);
+        const hint = m.rosterTeam ? ` · 명단에는 ${m.rosterTeam}` : '';
+        L.push(
+          m.counted
+            ? `    - 유효: ${m.team ?? '(조 없음)'} ${m.name} · ${m.submitted_at ?? ''}${hint}`
+            : `    - 확인 목록: ${m.team ?? '(조 없음)'} ${m.name} · ${m.submitted_at ?? ''} · ${m.reason}${hint}`,
+        );
       }
     }
     if (a.confirmed) {
