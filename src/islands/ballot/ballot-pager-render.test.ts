@@ -285,3 +285,47 @@ describe('(11/11) 간지 = 의제 확인 화면 — 한 의제를 마친 뒤 다
     expect(html).toMatch(/의제1 기업 온실가스 감축 촉진 · 2건/);
   });
 });
+
+describe('11/14 의제별 투표지 — 찬성 · 반대만(11/11 수정 의견)', () => {
+  const a1: BallotItem[] = Array.from({ length: 19 }, (_, i) => ({
+    id: `a-${i + 1}`,
+    ordinal: i + 1,
+    statement: `1-${i + 1}-안1 가상 권고 ${i + 1}`,
+    description: null,
+    scale: 2 as const,
+    required: true,
+  }));
+  const title = '전체회의 의결 의제1 기업 온실가스 감축 촉진';
+  it('한 건 화면에 이전 · 다음 건 단추가 없다', () => {
+    const h = renderToStaticMarkup(
+      createElement(PagerItemView, {
+        title, subgroup: null, items: a1, pos: 3, answers: {},
+        flashValue: null, disabled: false, onChoose: noop, onGo: noop, voterLine: null,
+      }),
+    );
+    expect(h).toContain('data-testid="pager-yes"');
+    expect(h).toContain('data-testid="pager-no"');
+    expect(h).not.toContain('data-testid="pager-prev"');
+    expect(h).not.toContain('data-testid="pager-next"');
+  });
+  it('제출 전 확인에 「반대로 고른 권고안」 다시 고르기 줄이 없다', () => {
+    const answers = Object.fromEntries(a1.map((it, i) => [it.id, i === 2 ? 1 : 2]));
+    const h = renderToStaticMarkup(
+      createElement(PagerSummaryView, {
+        title, items: a1, answers, submitting: false, error: null,
+        onGo: noop, onSubmit: noop, voterLine: null, allRequired: true,
+      }),
+    );
+    expect(h).not.toContain('반대로 고른 권고안');
+    expect(h).not.toContain('data-testid="pager-nos"');
+  });
+  it('70건 투표지는 그대로 이전 · 다음이 있다', () => {
+    const h = renderToStaticMarkup(
+      createElement(PagerItemView, {
+        title: '전체회의 의결 정책권고안', subgroup: null, items: a1, pos: 3, answers: {},
+        flashValue: null, disabled: false, onChoose: noop, onGo: noop, voterLine: null,
+      }),
+    );
+    expect(h).toContain('data-testid="pager-prev"');
+  });
+});

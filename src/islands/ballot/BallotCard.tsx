@@ -48,7 +48,7 @@ import {
 import { decisionBallotKind, type DecisionBallotKind, parseMotionStatement } from '../../lib/division-ballot-format';
 import { useModalDialog } from '../mod/use-modal-dialog';
 import { createSafeBrowserStorage } from '../../lib/safe-browser-storage';
-import BallotPager from './BallotPager';
+import BallotPager, { agendaTheme } from './BallotPager';
 import {
   clearPagerDraft,
   loadPagerDraft,
@@ -273,9 +273,12 @@ function DoneScreen({
   refreshing,
   refreshNotice,
   voter = null,
+  agendaNo = null,
 }: {
   duplicate: boolean;
   decision: boolean | DecisionBallotKind | null;
+  /** 11/14 의제별 투표지 — 「의제N 투표가 제출되었습니다」(11/11 수정 의견). QR 세 장이라 어느 의제를 냈는지 보이게. */
+  agendaNo?: number | null;
   onRefresh: () => void;
   refreshing: boolean;
   refreshNotice: string | null;
@@ -287,7 +290,15 @@ function DoneScreen({
     <CenterMessage
       icon={duplicate ? '!' : '✓'}
       eyebrow="제출 완료"
-      title={duplicate ? '이미 제출하셨습니다' : copy.doneTitle}
+      title={
+        duplicate
+          ? agendaNo
+            ? `의제${agendaNo} 투표는 이미 제출하셨습니다`
+            : '이미 제출하셨습니다'
+          : agendaNo
+            ? `의제${agendaNo} 투표가 제출되었습니다`
+            : copy.doneTitle
+      }
       body={
         duplicate
           ? '이 기기의 답변은 정상적으로 제출되어 있습니다.'
@@ -1123,6 +1134,7 @@ export default function BallotCard() {
         refreshing={refreshing}
         refreshNotice={refreshNotice}
         voter={localVoter}
+        agendaNo={agendaTheme(ballot?.title)?.no ?? null}
       />
     );
   }
