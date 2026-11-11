@@ -43,7 +43,9 @@ const measure = () => page.evaluate(() => {
   }
   sizes.sort((a, b) => a[0] - b[0]);
   const clipped = [...document.querySelectorAll('.card')].filter((c) => c.scrollHeight > c.clientHeight + 1).length;
-  return { min: sizes[0], over: V.scrollHeight - V.clientHeight, clipped,
+  // 32px 하한은 질문 본문(.card .q)에만 건다. 머리줄·보조 줄은 24px 하한(아래 a.min)으로 본다
+  const qs = [...document.querySelectorAll('.card .q')].map((e) => [parseFloat(getComputedStyle(e).fontSize), e.textContent.trim().slice(0, 20)]).sort((a, b) => a[0] - b[0]);
+  return { min: qs[0] || sizes[0], all: sizes[0], over: V.scrollHeight - V.clientHeight, clipped,
            labels: [...document.querySelectorAll('.card .no')].map((e) => e.textContent) };
 });
 
@@ -53,7 +55,7 @@ async function allPages() {
   for (let k = 0; k < 10; k++) {
     const m = await measure();
     if (k && labels.includes(m.labels[0])) break;
-    labels.push(...m.labels); mins.push(m.min ? m.min[0] : 99); clipped += m.clipped; over = Math.max(over, m.over);
+    labels.push(...m.labels); mins.push(m.all ? m.all[0] : 99); clipped += m.clipped; over = Math.max(over, m.over);
     await page.keyboard.press('ArrowRight'); await sleep(250);
   }
   await page.keyboard.press('2'); await sleep(250);   // 첫 쪽으로
