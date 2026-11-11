@@ -233,47 +233,55 @@ describe('(11/11) 한 장 70건 투표지 「전체회의 의결 정책권고안
   });
 });
 
-describe('(11/11) 간지 — 의제가 바뀌는 첫 건 앞', () => {
+describe('(11/11) 간지 = 의제 확인 화면 — 한 의제를 마친 뒤 다음 의제 첫 건 앞', () => {
   const mk = (no: string, i: number): BallotItem =>
     ({ id: `d${i}`, ordinal: i + 1, statement: `${no}-안1 가상 ${no}`, description: null, scale: 2, required: true }) as BallotItem;
   const items = [mk('1-1', 0), mk('1-2', 1), mk('2-1', 2), mk('2-2', 3), mk('3-1', 4)];
 
-  it('의제 첫 건에서만, 본 간지는 다시 안 나온다', async () => {
-    const { agendaDividerAt } = await import('./BallotPager');
-    expect(agendaDividerAt(items, 0, new Set())).toMatchObject({ no: 1, count: 2, from: 1, to: 2, done: 0 });
-    expect(agendaDividerAt(items, 1, new Set())).toBeNull();
-    expect(agendaDividerAt(items, 2, new Set())).toMatchObject({ no: 2, name: '일회용품 줄이기 등 자원순환', count: 2, from: 3, to: 4, done: 2 });
-    expect(agendaDividerAt(items, 2, new Set([2]))).toBeNull();
-    expect(agendaDividerAt(items, 4, new Set())).toMatchObject({ no: 3, count: 1 });
+  it('다음 의제 첫 건에서만(첫 의제 앞은 없음), 넘긴 확인 화면은 다시 안 나온다', async () => {
+    const { agendaCheckAt } = await import('./BallotPager');
+    expect(agendaCheckAt(items, 0, new Set())).toBeNull();
+    expect(agendaCheckAt(items, 1, new Set())).toBeNull();
+    expect(agendaCheckAt(items, 2, new Set())).toEqual({ done: 1, next: 2, positions: [0, 1] });
+    expect(agendaCheckAt(items, 2, new Set([2]))).toBeNull();
+    expect(agendaCheckAt(items, 4, new Set())).toEqual({ done: 2, next: 3, positions: [2, 3] });
   });
 
-  it('간지 화면', async () => {
-    const { AgendaDividerView } = await import('./BallotPager');
+  it('확인 화면 — 그 의제의 찬성·반대·미응답과 번호(위치는 투표지 전체 기준)', async () => {
+    const { AgendaCheckView } = await import('./BallotPager');
     const html = renderToStaticMarkup(
-      createElement(AgendaDividerView, { divider: { no: 2, name: '일회용품 줄이기 등 자원순환', count: 28, from: 20, to: 47, done: 19 }, total: 70, voterLine: null, onStart: () => {}, onBack: () => {} }),
-    );
-    expect(html).toContain('data-testid="pager-divider"');
-    expect(html).toContain('19건 마쳤습니다');
-    expect(html).toContain('의제 2 투표 시작');
-    expect(html).toContain('20번째 ~ 47번째');
-  });
-
-  it('한 장 투표지 묶음은 첫 화면(이름 확인 뒤) 간지부터', () => {
-    const html = renderToStaticMarkup(
-      createElement(BallotPager, {
-        ballot: { id: 'b', title: '전체회의 의결 정책권고안', instructions: null, status: 'open', subgroup: null, items } as never,
-        initialAnswers: {},
-        initialPos: 0,
-        onChange: () => {},
-        onSubmit: () => {},
-        submitting: false,
-        error: null,
-        teams: [],
-        voter: { team: null, name: '' },
-        onVoter: () => {},
+      createElement(AgendaCheckView, {
+        check: { done: 2, next: 3, positions: [2, 3] },
+        items,
+        answers: { d0: 2, d2: 1 },
+        voterLine: null,
+        onGo: () => {},
+        onNext: () => {},
       }),
     );
-    expect(html).toContain('data-testid="pager-divider"');
-    expect(html).toContain('의제 1 투표 시작');
+    expect(html).toContain('data-testid="pager-agenda-check"');
+    expect(html).toContain('의제2 확인');
+    expect(html).toMatch(/찬성 0.*반대 1.*미응답 1/);
+    expect(html).toContain('data-goto="3"');
+    expect(html).toContain('data-goto="2"');
+    expect(html).toContain('다음 · 의제3 기후시민 의식제고 교육');
+  });
+
+  it('제출 전 확인에 의제별 줄', () => {
+    const html = renderToStaticMarkup(
+      createElement(PagerSummaryView, {
+        title: '전체회의 의결 정책권고안',
+        items,
+        answers: { d0: 2, d1: 2 },
+        submitting: false,
+        error: null,
+        onGo: () => {},
+        onSubmit: () => {},
+        voterLine: null,
+        allRequired: true,
+      }),
+    );
+    expect(html).toContain('data-testid="pager-agenda-tallies"');
+    expect(html).toMatch(/의제1 기업 온실가스 감축 촉진 · 2건/);
   });
 });

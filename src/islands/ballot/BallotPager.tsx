@@ -409,6 +409,7 @@ export function PagerSummaryView({
           <span className="text-[#8A4B08]">미응답 {s.unanswered}</span>
         </p>
 
+        {all ? <AgendaTallyTable items={items} answers={answers} /> : null}
         {s.unansweredItems.length > 0 ? (
           <section className="mt-6" data-testid="pager-missing">
             <h2 className="text-[20px] font-extrabold text-[#8A4B08]" style={KEEP}>
@@ -594,80 +595,150 @@ function VoterStep({
   );
 }
 
-// ── 간지(한 장 70건 투표지의 의제 구분) ─────────────────────────────────
+// ── 간지 = 의제 확인 화면(한 장 70건 투표지) ─────────────────────────────
+// 한 의제의 마지막 카드 다음, 다음 의제 첫 카드 앞에 그 의제를 제대로 눌렀는지 보여 준다(찬성 · 반대 · 미응답 + 번호).
+// 마지막 의제(3)는 이 화면 대신 「제출 전 확인」(의제별로 나눠 보여 줌)이 맡는다.
 
-export type AgendaDivider = { no: 1 | 2 | 3; name: string; count: number; from: number; to: number; done: number };
+export type AgendaCheck = { done: 1 | 2 | 3; next: 1 | 2 | 3; positions: number[] };
 
-/** pos 가 어떤 의제의 첫 건이고 그 간지를 아직 안 봤으면 간지 정보. 아니면 null. */
-export function agendaDividerAt(items: readonly BallotItem[], pos: number, seen: ReadonlySet<number>): AgendaDivider | null {
-  const item = items[pos];
-  if (!item) return null;
-  const m = /^([123])-\d{1,2}$/.exec(motionNumber(item));
-  if (!m) return null;
-  const no = Number(m[1]) as 1 | 2 | 3;
-  if (seen.has(no)) return null;
-  const prev = pos > 0 ? /^([123])-/.exec(motionNumber(items[pos - 1])) : null;
-  if (prev && Number(prev[1]) === no) return null;
-  const idx = items.map((it, i) => (motionNumber(it).startsWith(`${no}-`) ? i : -1)).filter((i) => i >= 0);
-  return { no, name: AGENDA_NAMES[no], count: idx.length, from: idx[0] + 1, to: idx[idx.length - 1] + 1, done: pos };
+function agendaOfItem(item: BallotItem | undefined): 1 | 2 | 3 | null {
+  const m = item ? /^([123])-\d{1,2}$/.exec(motionNumber(item)) : null;
+  return m ? (Number(m[1]) as 1 | 2 | 3) : null;
 }
 
-export function AgendaDividerView({
-  divider,
-  total,
+function agendaPositions(items: readonly BallotItem[], no: 1 | 2 | 3): number[] {
+  return items.map((it, i) => (agendaOfItem(it) === no ? i : -1)).filter((i) => i >= 0);
+}
+
+/** pos 가 다음 의제의 첫 건이고(바로 앞 건이 다른 의제) 그 확인 화면을 아직 안 넘겼으면 확인 정보. 아니면 null. */
+export function agendaCheckAt(items: readonly BallotItem[], pos: number, seen: ReadonlySet<number>): AgendaCheck | null {
+  const next = agendaOfItem(items[pos]);
+  const done = pos > 0 ? agendaOfItem(items[pos - 1]) : null;
+  if (!next || !done || next === done || seen.has(next)) return null;
+  return { done, next, positions: agendaPositions(items, done) };
+}
+
+/** 한 의제의 찬성 · 반대 · 미응답과 번호(위치는 투표지 전체 기준). */
+function agendaTally(items: readonly BallotItem[], positions: number[], answers: Record<string, number>) {
+  const s = pagerSummary(
+    positions.map((p) => items[p]),
+    answers,
+  );
+  const abs = (e: { pos: number; number: string }) => ({ pos: positions[e.pos], number: e.number });
+  return { ...s, noItems: s.noItems.map(abs), unansweredItems: s.unansweredItems.map(abs) };
+}
+
+function TallyLine({ yes, no, unanswered }: { yes: number; no: number; unanswered: number }) {
+  return (
+    <>
+      <span className="text-[#2F6F25]">찬성 {yes}</span>
+      <span className="text-[#5A6B73]"> · </span>
+      <span className="text-[#B91C1C]">반대 {no}</span>
+      <span className="text-[#5A6B73]"> · </span>
+      <span className="text-[#8A4B08]">미응답 {unanswered}</span>
+    </>
+  );
+}
+
+export function AgendaCheckView({
+  check,
+  items,
+  answers,
   voterLine,
-  onStart,
-  onBack,
+  onGo,
+  onNext,
 }: {
-  divider: AgendaDivider;
-  total: number;
+  check: AgendaCheck;
+  items: readonly BallotItem[];
+  answers: Record<string, number>;
   voterLine: string | null;
-  onStart: () => void;
-  onBack?: () => void;
+  onGo: (pos: number) => void;
+  onNext: () => void;
 }) {
-  const c = AGENDA_COLORS[divider.no];
+  const c = AGENDA_COLORS[check.done];
+  const n = AGENDA_COLORS[check.next];
+  const t = agendaTally(items, check.positions, answers);
+  const last = check.positions[check.positions.length - 1];
   return (
     <Frame accent={c.accent}>
-      <VoterBar voterLine={voterLine} />
-      <div data-testid="pager-divider" className="relative px-6 pt-10 pb-8 text-center" style={{ background: c.soft }}>
-        <p className="text-[16px] font-bold text-[#5A6B73] tr-num" style={KEEP}>
-          {divider.done > 0 ? `${divider.done}건 마쳤습니다 · 전체 ${total}건` : `전체 ${total}건`}
+      <div className="border-b border-[#DCE7EE] px-5 pt-4 pb-3" style={{ background: c.soft }}>
+        <p style={KEEP}>
+          <span className="mr-1.5 inline-block rounded-full px-2.5 py-0.5 align-middle text-[15px] font-black text-white" style={{ background: c.accent }}>
+            의제{check.done}
+          </span>
+          <span className="align-middle text-[17px] font-extrabold" style={{ color: c.accent }}>
+            {AGENDA_NAMES[check.done]} · 권고안 {check.positions.length}건
+          </span>
         </p>
-        <p className="mt-6 inline-block rounded-full px-6 py-2 text-[30px] font-black text-white" style={{ background: c.accent }}>
-          의제 {divider.no}
-        </p>
-        <h1 className="mt-5 text-[32px] font-black leading-[1.3]" style={{ ...KEEP, color: c.accent }}>
-          {divider.name}
+        <h1 className="mt-1 text-[26px] font-black text-[#1F4E79]" style={KEEP}>
+          의제{check.done} 확인
         </h1>
-        <p className="mt-4 text-[22px] font-extrabold text-[#1F2933] tr-num" style={KEEP}>
-          권고안 {divider.count}건
-        </p>
-        <p className="mt-1 text-[17px] text-[#5A6B73] tr-num" style={KEEP}>
-          ({divider.from}번째 ~ {divider.to}번째 카드)
-        </p>
-        <img src="/ballot/geudeugi.png" alt="" width={240} height={314} className="mx-auto mt-6 h-[120px] w-auto" />
       </div>
-      <div className="px-5 pt-6 pb-7">
+      <VoterBar voterLine={voterLine} />
+      <div data-testid="pager-agenda-check" className="px-5 pt-5 pb-7">
+        <p data-testid="pager-agenda-counts" className="rounded-2xl border-2 px-4 py-4 text-center text-[26px] font-black leading-snug text-[#1F2933] tr-num" style={{ ...KEEP, borderColor: c.accent, background: c.soft }}>
+          <TallyLine yes={t.yes} no={t.no} unanswered={t.unanswered} />
+        </p>
+        {t.unansweredItems.length > 0 ? (
+          <section className="mt-6">
+            <h2 className="text-[20px] font-extrabold text-[#8A4B08]" style={KEEP}>
+              누르지 않은 권고안 {t.unanswered}건 — 번호를 누르면 그 건으로 갑니다
+            </h2>
+            <NumberButtons entries={t.unansweredItems} tone="missing" onGo={onGo} />
+          </section>
+        ) : null}
+        {t.noItems.length > 0 ? (
+          <section className="mt-6">
+            <h2 className="text-[20px] font-extrabold text-[#B91C1C]" style={KEEP}>
+              반대로 고른 권고안
+            </h2>
+            <NumberButtons entries={t.noItems} tone="no" onGo={onGo} />
+          </section>
+        ) : null}
+        <p className="mt-6 text-[17px] text-[#5A6B73]" style={KEEP}>
+          바꾸려면 번호를 눌러 그 카드로 가서 다시 고르면 됩니다.
+        </p>
         <button
           type="button"
-          data-testid="pager-divider-start"
-          onClick={onStart}
-          className="min-h-[76px] w-full rounded-2xl text-[24px] font-black text-white"
-          style={{ background: c.accent }}
+          data-testid="pager-agenda-next"
+          onClick={onNext}
+          className="mt-4 min-h-[76px] w-full rounded-2xl text-[23px] font-black text-white"
+          style={{ ...KEEP, background: n.accent }}
         >
-          의제 {divider.no} 투표 시작
+          다음 · 의제{check.next} {AGENDA_NAMES[check.next]}
         </button>
-        {onBack ? (
-          <button
-            type="button"
-            onClick={onBack}
-            className="mt-3 min-h-[60px] w-full rounded-2xl border-2 border-[#C4D8E4] bg-white text-[19px] font-bold text-[#1F4E79]"
-          >
-            ← 이전 건
-          </button>
-        ) : null}
+        <button
+          type="button"
+          onClick={() => onGo(last)}
+          className="mt-3 min-h-[60px] w-full rounded-2xl border-2 border-[#C4D8E4] bg-white text-[19px] font-bold text-[#1F4E79]"
+        >
+          ← 이전 건
+        </button>
       </div>
     </Frame>
+  );
+}
+
+/** 제출 전 확인(한 장 70건) — 의제마다 한 줄씩. */
+function AgendaTallyTable({ items, answers }: { items: readonly BallotItem[]; answers: Record<string, number> }) {
+  return (
+    <ul data-testid="pager-agenda-tallies" className="mt-4 space-y-2">
+      {([1, 2, 3] as const).map((no) => {
+        const pos = agendaPositions(items, no);
+        if (!pos.length) return null;
+        const t = agendaTally(items, pos, answers);
+        return (
+          <li key={no} className="rounded-xl border px-3 py-2.5" style={{ borderColor: AGENDA_COLORS[no].accent, background: AGENDA_COLORS[no].soft }}>
+            <p className="text-[16px] font-extrabold" style={{ ...KEEP, color: AGENDA_COLORS[no].accent }}>
+              의제{no} {AGENDA_NAMES[no]} · {pos.length}건
+            </p>
+            <p className="text-[20px] font-black tr-num" style={KEEP}>
+              <TallyLine yes={t.yes} no={t.no} unanswered={t.unanswered} />
+            </p>
+          </li>
+        );
+      })}
+    </ul>
   );
 }
 
@@ -735,32 +806,25 @@ export default function BallotPager({
   const voterLine = named && voter.team ? `${voter.team} ${voter.name.trim()} 님` : null;
   const go = (target: PagerPos) => setState((s) => pagerGo(s, target, total, Date.now()));
 
-  // 한 장 70건 — 의제가 바뀌는 첫 건 앞에 간지 한 장(의제 구분). 의제마다 한 번만 보인다.
-  const divider =
+  // 한 장 70건 — 의제 하나를 마치면(다음 의제 첫 건 앞) 그 의제 확인 화면(간지). [다음] 을 누르면 그 뒤로는 안 나온다.
+  const check =
     !voterStep && state.pos !== 'summary' && isPlenaryAllTitle(ballot.title)
-      ? agendaDividerAt(ballot.items, state.pos, seenDividers)
+      ? agendaCheckAt(ballot.items, state.pos, seenDividers)
       : null;
 
   if (voterStep) {
     return <VoterStep title={ballot.title} instructions={ballot.instructions} itemCount={ballot.items.length} teams={teams} voter={voter} onVoter={onVoter} onStart={() => setVoterStep(false)} />;
   }
 
-  if (divider) {
-    const seen = () => setSeenDividers((s) => new Set([...s, divider.no]));
+  if (check) {
     return (
-      <AgendaDividerView
-        divider={divider}
-        total={total}
+      <AgendaCheckView
+        check={check}
+        items={ballot.items}
+        answers={state.answers}
         voterLine={voterLine}
-        onStart={seen}
-        onBack={
-          typeof state.pos === 'number' && state.pos > 0
-            ? () => {
-                seen();
-                go((state.pos as number) - 1);
-              }
-            : undefined
-        }
+        onGo={go}
+        onNext={() => setSeenDividers((s) => new Set([...s, check.next]))}
       />
     );
   }
