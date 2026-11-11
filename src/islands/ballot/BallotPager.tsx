@@ -48,6 +48,17 @@ export function agendaTheme(title: string | null | undefined): AgendaTheme | nul
   return { no, name: m[2].trim(), ...AGENDA_COLORS[no] };
 }
 
+/**
+ * 11/14 전체회의 의결 — 권고 번호(「1-3」)에 맞는 사무국 권고카드 그림(public/ballot/cards1114, 권고카드_1109.pdf 에서 뽑음).
+ * 전체회의 의결 투표지가 아니거나 번호 모양이 다르면 null(글자 화면 그대로).
+ */
+export function plenaryCardSrc(title: string, number: string): string | null {
+  const theme = agendaTheme(title);
+  const m = /^([123])-(\d{1,2})$/.exec(number);
+  if (!theme || !m || Number(m[1]) !== theme.no) return null;
+  return `/ballot/cards1114/${m[1]}-${Number(m[2])}.webp`;
+}
+
 function Frame({ children, accent }: { children: React.ReactNode; accent?: string | null }) {
   return (
     <div className="min-h-screen bg-[#F5F8FB] flex justify-center px-3 py-4">
@@ -131,6 +142,16 @@ export function PagerItemView({
   };
 
   const theme = agendaTheme(title);
+  const card = plenaryCardSrc(title, number);
+  const [cardFailed, setCardFailed] = useState(false);
+  useEffect(() => setCardFailed(false), [card]);
+  // 다음 건 카드를 미리 받아 둔다(누르면 바로 다음 장).
+  const nextCard = pos + 1 < total ? plenaryCardSrc(title, motionNumber(items[pos + 1])) : null;
+  useEffect(() => {
+    if (!nextCard || typeof Image === 'undefined') return;
+    const im = new Image();
+    im.src = nextCard;
+  }, [nextCard]);
   return (
     <Frame accent={theme?.accent}>
       <div className="sticky top-0 z-10 bg-white border-b border-[#DCE7EE] px-5 pt-3 pb-3">
@@ -152,13 +173,38 @@ export function PagerItemView({
       </div>
       <VoterBar voterLine={voterLine} onChange={onChangeVoter} />
 
-      <section className="px-5 pt-6 pb-6" aria-label={`권고안 ${number}`}>
-        <p data-testid="pager-number" className="text-[30px] font-black text-[#1F4E79] tr-num mb-3">
-          권고안 {number}
-        </p>
-        <h2 data-testid="pager-title" className="text-[26px] font-extrabold leading-[1.45] text-[#1F2933] whitespace-pre-line" style={KEEP}>
-          {itemTitle(item)}
-        </h2>
+      <section className={`${card && !cardFailed ? 'px-3 pt-3' : 'px-5 pt-6'} pb-6`} aria-label={`권고안 ${number}`}>
+        {card && !cardFailed ? (
+          // 11/14 — 사무국 권고카드 한 장 = 투표용지 한 장. 글자는 카드 그림 안에 있고, 같은 문구를 화면 읽기용으로 둔다.
+          <div data-testid="pager-card">
+            <a href={card} target="_blank" rel="noopener" aria-label={`권고안 ${number} 권고카드 크게 보기`}>
+              <img
+                key={card}
+                src={card}
+                alt=""
+                width={1080}
+                height={1440}
+                onError={() => setCardFailed(true)}
+                className="block w-full h-auto rounded-2xl border border-[#DCE7EE]"
+              />
+            </a>
+            <p className="mt-2 text-center text-[15px] text-[#5A6B73]" style={KEEP}>
+              카드를 누르면 크게 볼 수 있습니다.
+            </p>
+            <h2 data-testid="pager-title" className="sr-only">
+              권고안 {number} {itemTitle(item)}
+            </h2>
+          </div>
+        ) : (
+          <>
+            <p data-testid="pager-number" className="text-[30px] font-black text-[#1F4E79] tr-num mb-3">
+              권고안 {number}
+            </p>
+            <h2 data-testid="pager-title" className="text-[26px] font-extrabold leading-[1.45] text-[#1F2933] whitespace-pre-line" style={KEEP}>
+              {itemTitle(item)}
+            </h2>
+          </>
+        )}
         {item.description ? (
           <details className="mt-4 rounded-xl border border-[#C4D8E4] bg-[#F7FAFC] px-4 py-3">
             <summary className="cursor-pointer text-[18px] font-bold text-[#135C73]">세부권고 보기</summary>
