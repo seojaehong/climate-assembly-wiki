@@ -307,6 +307,8 @@ describe('11/14 의제별 투표지 — 찬성 · 반대만(11/11 수정 의견)
     expect(h).toContain('data-testid="pager-no"');
     expect(h).not.toContain('data-testid="pager-prev"');
     expect(h).not.toContain('data-testid="pager-next"');
+    expect(h).toContain('내 투표 확인하기');
+    expect(h).not.toContain('요약 보고 제출하기');
   });
   it('제출 전 확인에 「반대로 고른 권고안」 다시 고르기 줄이 없다', () => {
     const answers = Object.fromEntries(a1.map((it, i) => [it.id, i === 2 ? 1 : 2]));

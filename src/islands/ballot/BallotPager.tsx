@@ -328,7 +328,7 @@ export function PagerItemView({
           onClick={() => onGo('summary')}
           className="mt-3 min-h-[64px] w-full rounded-2xl border-2 border-[#135C73] bg-[#F1F7FA] text-[20px] font-extrabold text-[#135C73]"
         >
-          요약 보고 제출하기
+          {choiceOnly ? '내 투표 확인하기' : '요약 보고 제출하기'}
         </button>
       </section>
     </Frame>

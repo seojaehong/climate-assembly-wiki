@@ -302,7 +302,9 @@ function DoneScreen({
       body={
         duplicate
           ? '이 기기의 답변은 정상적으로 제출되어 있습니다.'
-          : copy.doneBody
+          : agendaNo
+            ? undefined // 11/11 수정 의견 — 「참여해 주셔서 감사합니다. 결과는…」 줄 삭제
+            : copy.doneBody
       }
       color={duplicate ? '#8A4B08' : '#2D6A24'}
     >
@@ -311,7 +313,7 @@ function DoneScreen({
           {namedDoneText(voter)}
         </p>
       ) : null}
-      <p className="mt-5 text-[14px] leading-relaxed text-[#5A6B73]">집계는 운영진 확인을 거쳐 공개됩니다.</p>
+      {agendaNo ? null : <p className="mt-5 text-[14px] leading-relaxed text-[#5A6B73]">집계는 운영진 확인을 거쳐 공개됩니다.</p>}
       <RefreshButton onRefresh={onRefresh} refreshing={refreshing} refreshNotice={refreshNotice} />
     </CenterMessage>
   );
