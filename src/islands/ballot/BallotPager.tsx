@@ -196,6 +196,8 @@ export function PagerItemView({
   const agendaItems = all && theme ? items.filter((it) => motionNumber(it).startsWith(`${theme.no}-`)) : null;
   const agendaPos = agendaItems ? agendaItems.findIndex((it) => it.id === item.id) + 1 : 0;
   const card = plenaryCardSrc(title, number);
+  // 11/14 의제별 투표지(11/11 수정 의견) — 찬성 · 반대만. 이전 · 다음 건 단추를 두지 않는다.
+  const choiceOnly = !all && !!agendaTheme(title);
   const [cardFailed, setCardFailed] = useState(false);
   const [zoom, setZoom] = useState(false);
   useEffect(() => {
@@ -299,6 +301,7 @@ export function PagerItemView({
           누르면 다음 권고안으로 넘어갑니다.
         </p>
 
+        {choiceOnly ? null : (
         <div className="mt-6 grid grid-cols-2 gap-3">
           <button
             type="button"
@@ -318,13 +321,14 @@ export function PagerItemView({
             다음 건 →
           </button>
         </div>
+        )}
         <button
           type="button"
           data-testid="pager-to-summary"
           onClick={() => onGo('summary')}
           className="mt-3 min-h-[64px] w-full rounded-2xl border-2 border-[#135C73] bg-[#F1F7FA] text-[20px] font-extrabold text-[#135C73]"
         >
-          요약 보고 제출하기
+          {choiceOnly ? '내 투표 확인하기' : '요약 보고 제출하기'}
         </button>
       </section>
     </Frame>
@@ -418,7 +422,7 @@ export function PagerSummaryView({
             <NumberButtons entries={s.unansweredItems} tone="missing" onGo={onGo} />
           </section>
         ) : null}
-        {s.noItems.length > 0 ? (
+        {s.noItems.length > 0 && !(agendaTheme(title) && !all) ? (
           <section className="mt-6" data-testid="pager-nos">
             <h2 className="text-[20px] font-extrabold text-[#B91C1C]" style={KEEP}>
               반대로 고른 권고안
