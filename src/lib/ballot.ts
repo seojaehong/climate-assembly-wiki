@@ -137,6 +137,44 @@ export async function fetchBallotRoster(token: string): Promise<RosterRow[]> {
 
 export type NamedSubmitResult = BallotSubmitResult | 'name_taken' | 'named_off';
 
+/**
+ * 11/11 — 「투표 시작」 기록(이름 확인 「네」를 누른 순간). 찬성·반대는 보내지 않는다.
+ * 실패해도 투표는 그대로 이어진다 — 오류를 삼키고 false 만 돌려준다(s33 미적용 포함).
+ */
+export async function startBallotNamed(token: string, clientId: string, voterTeam: string, voterName: string): Promise<boolean> {
+  try {
+    const sb = client();
+    const { error } = await sb.schema('climate_vote').rpc('ballot_start_named', {
+      p_token: token,
+      p_client_id: clientId,
+      p_voter_team: voterTeam,
+      p_voter_name: voterName,
+    });
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export type BallotLiveCounts = {
+  status: string;
+  title: string;
+  items: number;
+  started: number;
+  submitted: number;
+  in_progress: number;
+  roster: number;
+  at: string;
+};
+
+/** 표출 화면 — 시작·제출·투표 중 인원(수만, 이름 없음). */
+export async function fetchBallotLiveCounts(token: string): Promise<BallotLiveCounts> {
+  const sb = client();
+  const { data, error } = await sb.schema('climate_vote').rpc('ballot_live_counts', { p_token: token });
+  if (error) throw error;
+  return data as BallotLiveCounts;
+}
+
 /** 실명 제출. 같은 이름이 이미 있으면 'name_taken'(이 기기는 잠그지 않는다). */
 export async function submitBallotNamed(
   token: string,

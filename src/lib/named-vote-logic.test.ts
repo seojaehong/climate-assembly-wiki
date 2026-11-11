@@ -239,3 +239,19 @@ describe('제출자 찾기(정정용)', () => {
     expect(searchResponses(list, '1분과1조가나').map((r) => r.voter_name)).toEqual(['가나다']);
   });
 });
+
+describe('(11/11) 투표 시작 기록 — 시작했으나 아직 안 낸 사람', () => {
+  it('시작 기록에서 제출한 이름을 빼고, 같은 사람이 두 번 시작했으면 한 번만 센다', async () => {
+    const { startedNotSubmitted } = await import('./named-vote-logic');
+    const starts = [
+      { voter_team: '1분과 1조', voter_name: '김가람', voter_in_roster: true, started_at: '2026-11-14T05:20:00Z' },
+      { voter_team: '1분과 1조', voter_name: '이나래', voter_in_roster: true, started_at: '2026-11-14T05:21:00Z' },
+      { voter_team: '1분과 1조', voter_name: '이 나래', voter_in_roster: true, started_at: '2026-11-14T05:22:00Z' },
+      { voter_team: '2분과 3조', voter_name: '박다온', voter_in_roster: true, started_at: '2026-11-14T05:23:00Z' },
+    ];
+    const responses = [{ id: 'r1', voter_team: '1분과 1조', voter_name: '김가람', voter_in_roster: true, answers: {}, submitted_at: '2026-11-14T05:30:00Z' }];
+    const r = startedNotSubmitted(starts, responses);
+    expect(r.started).toBe(3);
+    expect(r.waiting.map((w) => w.voter_name)).toEqual(['이나래', '박다온']);
+  });
+});

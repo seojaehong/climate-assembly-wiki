@@ -4,6 +4,7 @@ import {
   fetchBallotResults,
   fetchBallotRoster,
   submitBallot,
+  startBallotNamed,
   submitBallotNamed,
   type Ballot,
   type RosterRow,
@@ -1164,6 +1165,9 @@ export default function BallotCard() {
         onVoter={(v) => {
           setVoter(v);
           setError(null);
+        }}
+        onStarted={() => {
+          if (token && voter.team && voter.name) void startBallotNamed(token, getDeviceToken(), voter.team, displayVoterName(voter.name));
         }}
       />
     );

@@ -8,6 +8,7 @@ import {
   responseChoiceText,
   rosterTeams,
   searchResponses,
+  startedNotSubmitted,
   type NamedResponse,
 } from '../../lib/named-vote-logic';
 import { useNamedResponses } from './NamedResultBoard';
@@ -32,6 +33,8 @@ export default function VoterReconcileBox({
   const { data, missing, failed, reload } = useNamedResponses(access, ballotId, open, 5000);
   const rec = useMemo(() => (data ? reconcile(data.roster, data.responses) : null), [data]);
   const teams = useMemo(() => (data ? rosterTeams(data.roster) : []), [data]);
+  // s33(11/11) — 「투표 시작」을 누른 사람 · 그중 아직 안 낸 사람(투표 중이거나 막힌 분).
+  const st = useMemo(() => (data?.starts ? startedNotSubmitted(data.starts, data.responses) : null), [data]);
   const [edit, setEdit] = useState<{ id: string; team: string; name: string } | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
@@ -85,7 +88,7 @@ export default function VoterReconcileBox({
       onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}
     >
       <summary className="min-h-12 cursor-pointer px-4 py-3 text-[17px] font-extrabold text-[#1F4E79] tr-num">
-        제출자 대조{rec ? ` · 명단 ${rec.rosterCount} · 제출 ${rec.submitted} · 미제출 ${rec.missingCount}` : ''}
+        제출자 대조{rec ? ` · 명단 ${rec.rosterCount}${st ? ` · 시작 ${Math.max(st.started, rec.submitted)}` : ''} · 제출 ${rec.submitted}${st ? ` · 투표 중 ${st.waiting.length}` : ''} · 미제출 ${rec.missingCount}` : ''}
         {rec && (rec.offRoster.length || rec.duplicates.length) ? (
           <span className="ml-2 text-[#B45309]">· 확인 필요 {rec.offRoster.length + rec.duplicates.length}</span>
         ) : null}
@@ -162,6 +165,24 @@ export default function VoterReconcileBox({
               />
               <ul className="mt-2 max-h-80 space-y-1 overflow-auto">{found.map((r) => row(r))}</ul>
             </section>
+            {st ? (
+              <section data-testid="reconcile-started">
+                <h4 className="text-[16px] font-extrabold text-[#1F4E79]">
+                  투표 시작했지만 아직 안 낸 분 {st.waiting.length} (시작 {st.started}) — 오래 머물러 있으면 진행요원이 찾아가 돕습니다
+                </h4>
+                <ul className="mt-1 max-h-60 space-y-1 overflow-auto text-[16px]">
+                  {st.waiting.map((w) => (
+                    <li key={`${w.voter_team}|${w.voter_name}`}>
+                      <b>{w.voter_team}</b> {displayVoterName(w.voter_name)}
+                      <span className="ml-2 text-[#5A6B73] tr-num">
+                        {new Date(w.started_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Seoul' })} 시작
+                      </span>
+                      {w.voter_in_roster ? null : <span className="ml-2 text-[#B45309]">명단에 없음</span>}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ) : null}
             <section>
               <h4 className="text-[16px] font-extrabold text-[#1F4E79]">QR 미제출 {rec.missingCount} (거수한 분 포함)</h4>
               <ul className="mt-1 space-y-1 text-[16px]">
