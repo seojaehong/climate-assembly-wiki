@@ -227,7 +227,7 @@ describe.skipIf(!haveSources)('원자료(cards_1114.json · v3 hwpx)에서 다�
       encoding: 'utf8',
     });
     expect(r.status, r.stderr).toBe(0);
-    expect(readdirSync(out).sort()).toEqual(['agenda1.txt', 'agenda2.txt', 'agenda3.txt', 'sources.json']);
+    expect(readdirSync(out).sort()).toEqual(['agenda1.txt', 'agenda2.txt', 'agenda3.txt', 'all.txt', 'sources.json']);
     for (const name of readdirSync(out)) expect(readFileSync(join(out, name), 'utf8')).toBe(readCommitted(name).replace(/\r\n/g, '\n'));
   });
 });

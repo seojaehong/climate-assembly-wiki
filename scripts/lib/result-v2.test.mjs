@@ -575,3 +575,15 @@ describe('검증자용 요약', () => {
     expect(t).toMatch(/합계 2건/);
   });
 });
+
+describe('(11/11) 한 장 70건 투표지를 의제별로 나눠 센다', () => {
+  test('제목이 「전체회의 의결 정책권고안」이면 번호 앞자리 문항만 남긴다', async () => {
+    const { sliceAgendaOfAll } = await import('./result-v2.mjs');
+    const a = rawAgenda(1, 2, []);
+    const b = rawAgenda(2, 3, []);
+    const all = { ...a, id: 'one', title: '전체회의 의결 정책권고안', items: [...a.items, ...b.items] };
+    expect(sliceAgendaOfAll(all, 2).items.map((it) => it.statement.slice(0, 3))).toEqual(['2-1', '2-2', '2-3']);
+    expect(sliceAgendaOfAll(all, 1).items).toHaveLength(2);
+    expect(sliceAgendaOfAll(a, 2)).toBe(a);
+  });
+});

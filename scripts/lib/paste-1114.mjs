@@ -152,6 +152,8 @@ export function pasteFiles({ cardsBuf, hwpxBuf, cardsName, hwpxName }) {
     'agenda1.txt': pasteText(agendas[1]),
     'agenda2.txt': pasteText(agendas[2]),
     'agenda3.txt': pasteText(agendas[3]),
+    // 11/11 주최 결정 — 투표지 1장(QR 하나)에 70건. 제목 「전체회의 의결 정책권고안」 투표지에 붙여 넣는다.
+    'all.txt': pasteText([...agendas[1], ...agendas[2], ...agendas[3]]),
     'sources.json': `${JSON.stringify(sources, null, 2)}\n`,
   };
 }

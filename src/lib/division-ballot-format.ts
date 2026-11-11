@@ -39,17 +39,27 @@ export function isDivisionDecisionBallot(ballot: { title?: string | null; subgro
  * 「N분과 의결」 모양과 겹치지 않게 접두를 따로 둔다(20_투표_최종안 W00/W01). 건수는 제목에 넣지 않는다 —
  * 넘김식 요약이 「· 권고안 N건」을 덧붙인다.
  */
-const PLENARY_TITLE = /^전체회의 의결 의제([1-9])(?:\s|$)/;
+const PLENARY_TITLE = /^전체회의 의결 (?:의제([1-9])(?:\s|$)|정책권고안(?:\s|$))/;
+
+/**
+ * 11/11 주최 결정 — 투표지를 의제별 3장으로 나누지 않고 1장(QR 하나)에 70건을 넣는다.
+ * 제목 `전체회의 의결 정책권고안` 은 plenaryAgendaNo 가 0(의제 전체)을 낸다. 의제 구분은 문항 번호 앞자리(「2-5」 → 의제2)로 한다.
+ */
+export const PLENARY_ALL_TITLE = '전체회의 의결 정책권고안';
+export function isPlenaryAllTitle(title: string | null | undefined): boolean {
+  return plenaryAgendaNo(title) === 0;
+}
 
 export function plenaryBallotTitle(agendaNo: number, name?: string): string {
   const n = name?.trim();
   return n ? `전체회의 의결 의제${agendaNo} ${n}` : `전체회의 의결 의제${agendaNo}`;
 }
 
-/** 제목에서 의제 번호. 전체회의 의결 제목이 아니면 null. */
+/** 제목에서 의제 번호. 의제 전체를 한 장에 담은 투표지(PLENARY_ALL_TITLE)는 0. 전체회의 의결 제목이 아니면 null. */
 export function plenaryAgendaNo(title: string | null | undefined): number | null {
   const m = PLENARY_TITLE.exec(title?.trim() ?? '');
-  return m ? Number(m[1]) : null;
+  if (!m) return null;
+  return m[1] ? Number(m[1]) : 0;
 }
 
 export type DecisionBallotKind = 'division' | 'plenary';

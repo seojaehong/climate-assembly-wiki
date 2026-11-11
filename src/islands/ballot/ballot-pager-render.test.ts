@@ -177,3 +177,58 @@ describe('(11/14) 전체회의 의결 의제별 색 띠 · 인사말', () => {
     expect(agendaTheme('전체회의 의결 의제 1 띄어씀')).toBeNull();
   });
 });
+
+describe('(11/11) 한 장 70건 투표지 「전체회의 의결 정책권고안」', () => {
+  const mk = (no: string, i: number): BallotItem =>
+    ({ id: `x${i}`, ordinal: i + 1, statement: `${no}-안1 가상 권고 ${no}`, description: null, scale: 2, required: true }) as BallotItem;
+  const items = [mk('1-1', 0), mk('1-2', 1), mk('2-1', 2), mk('3-1', 3)];
+
+  it('건마다 번호 앞자리로 의제를 정하고 카드 그림을 고른다', async () => {
+    const { itemAgendaTheme, plenaryCardSrc } = await import('./BallotPager');
+    expect(itemAgendaTheme('전체회의 의결 정책권고안', '2-5')).toMatchObject({ no: 2, name: '일회용품 줄이기 등 자원순환' });
+    expect(plenaryCardSrc('전체회의 의결 정책권고안', '3-23')).toBe('/ballot/cards1114/3-23.webp');
+    expect(plenaryCardSrc('전체회의 의결 의제1 가상', '2-5')).toBeNull();
+    expect(itemAgendaTheme('일반 투표', '2-5')).toBeNull();
+  });
+
+  it('넘김 화면 머리에 의제와 그 의제 안 위치, 카드 크게 보기 단추', () => {
+    const html = renderToStaticMarkup(
+      createElement(PagerItemView, {
+        title: '전체회의 의결 정책권고안',
+        subgroup: null,
+        items,
+        pos: 2,
+        answers: {},
+        flashValue: null,
+        disabled: false,
+        onChoose: () => {},
+        onGo: () => {},
+        voterLine: null,
+      }),
+    );
+    expect(html).toContain('data-testid="pager-agenda"');
+    expect(html).toContain('일회용품 줄이기 등 자원순환');
+    expect(html).toContain('의제2 안에서 1 / 1');
+    expect(html).toContain('3 / 4');
+    expect(html).toContain('data-testid="pager-zoom"');
+    expect(html).toContain('/ballot/cards1114/2-1.webp');
+  });
+
+  it('마지막 장(제출 전 확인)에 마무리말', () => {
+    const html = renderToStaticMarkup(
+      createElement(PagerSummaryView, {
+        title: '전체회의 의결 정책권고안',
+        items,
+        answers: {},
+        submitting: false,
+        error: null,
+        onGo: () => {},
+        onSubmit: () => {},
+        voterLine: null,
+        allRequired: true,
+      }),
+    );
+    expect(html).toContain('data-testid="pager-closing"');
+    expect(html).toContain('정책권고안 4건');
+  });
+});

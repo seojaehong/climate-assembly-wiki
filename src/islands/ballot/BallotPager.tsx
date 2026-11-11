@@ -7,7 +7,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import type { Ballot, BallotItem } from '../../lib/ballot';
-import { parseMotionStatement } from '../../lib/division-ballot-format';
+import { isPlenaryAllTitle, parseMotionStatement } from '../../lib/division-ballot-format';
 import { voterReady, type RosterTeam } from '../../lib/named-vote-logic';
 import { useModalDialog } from '../mod/use-modal-dialog';
 import { requiresAllItems } from './ballot-logic';
@@ -48,15 +48,64 @@ export function agendaTheme(title: string | null | undefined): AgendaTheme | nul
   return { no, name: m[2].trim(), ...AGENDA_COLORS[no] };
 }
 
+/** 11/14 의제 이름(권고카드_1109.pdf 「[의제N]」 · 사무국 안내). 한 장 70건 투표지에서 건마다 의제를 보여 줄 때 쓴다. */
+export const AGENDA_NAMES: Record<1 | 2 | 3, string> = {
+  1: '기업 온실가스 감축 촉진',
+  2: '일회용품 줄이기 등 자원순환',
+  3: '기후시민 의식제고 교육',
+};
+
+/**
+ * 건 하나의 의제 — 의제별 투표지면 제목에서, 한 장 70건 투표지(「전체회의 의결 정책권고안」)면 번호 앞자리(「2-5」 → 의제2)에서.
+ * 전체회의 의결이 아니면 null.
+ */
+export function itemAgendaTheme(title: string | null | undefined, number: string): AgendaTheme | null {
+  const byTitle = agendaTheme(title);
+  if (byTitle) return byTitle;
+  if (!isPlenaryAllTitle(title)) return null;
+  const m = /^([123])-\d{1,2}$/.exec(number);
+  if (!m) return null;
+  const no = Number(m[1]) as 1 | 2 | 3;
+  return { no, name: AGENDA_NAMES[no], ...AGENDA_COLORS[no] };
+}
+
 /**
  * 11/14 전체회의 의결 — 권고 번호(「1-3」)에 맞는 사무국 권고카드 그림(public/ballot/cards1114, 권고카드_1109.pdf 에서 뽑음).
  * 전체회의 의결 투표지가 아니거나 번호 모양이 다르면 null(글자 화면 그대로).
  */
 export function plenaryCardSrc(title: string, number: string): string | null {
-  const theme = agendaTheme(title);
+  const theme = itemAgendaTheme(title, number);
   const m = /^([123])-(\d{1,2})$/.exec(number);
   if (!theme || !m || Number(m[1]) !== theme.no) return null;
   return `/ballot/cards1114/${m[1]}-${Number(m[2])}.webp`;
+}
+
+/** 크게 보기 — 화면 가득 카드 한 장. 단추로 키우고 줄이며, 손가락으로 밀어 본다(두 손가락 확대도 그대로 된다). */
+const ZOOM_STEPS = [1, 1.5, 2, 2.5, 3] as const;
+function CardZoom({ src, label, onClose }: { src: string; label: string; onClose: () => void }) {
+  const [step, setStep] = useState(2);
+  const ref = useModalDialog<HTMLDivElement>(true, onClose);
+  const btn = 'min-h-[52px] min-w-[64px] rounded-xl bg-white/95 px-3 text-[20px] font-black text-[#1F4E79] disabled:opacity-35';
+  return (
+    <div ref={ref} role="dialog" aria-modal="true" aria-label={`${label} 크게 보기`} tabIndex={-1} data-testid="card-zoom" className="fixed inset-0 z-50 flex flex-col bg-[#0F1A24]/95">
+      <div className="flex shrink-0 items-center justify-between gap-2 px-3 py-2">
+        <div className="flex gap-2">
+          <button type="button" data-testid="card-zoom-out" aria-label="작게" disabled={step === 0} onClick={() => setStep((s) => Math.max(0, s - 1))} className={btn}>
+            − 작게
+          </button>
+          <button type="button" data-testid="card-zoom-in" aria-label="크게" disabled={step === ZOOM_STEPS.length - 1} onClick={() => setStep((s) => Math.min(ZOOM_STEPS.length - 1, s + 1))} className={btn}>
+            + 크게
+          </button>
+        </div>
+        <button type="button" data-dialog-initial-focus data-testid="card-zoom-close" onClick={onClose} className="min-h-[52px] rounded-xl bg-[#1F4E79] px-4 text-[20px] font-black text-white">
+          닫기 ✕
+        </button>
+      </div>
+      <div className="min-h-0 flex-1 overflow-auto" style={{ touchAction: 'pan-x pan-y pinch-zoom' }}>
+        <img src={src} alt={label} className="block h-auto max-w-none" style={{ width: `${ZOOM_STEPS[step] * 100}%` }} />
+      </div>
+    </div>
+  );
 }
 
 function Frame({ children, accent }: { children: React.ReactNode; accent?: string | null }) {
@@ -141,10 +190,18 @@ export function PagerItemView({
     );
   };
 
-  const theme = agendaTheme(title);
+  const theme = itemAgendaTheme(title, number);
+  const all = isPlenaryAllTitle(title);
+  // 한 장 70건 — 머리에 「의제N 이름」, 위치는 전체(3 / 70)와 그 의제 안(의제2 5 / 28)을 함께.
+  const agendaItems = all && theme ? items.filter((it) => motionNumber(it).startsWith(`${theme.no}-`)) : null;
+  const agendaPos = agendaItems ? agendaItems.findIndex((it) => it.id === item.id) + 1 : 0;
   const card = plenaryCardSrc(title, number);
   const [cardFailed, setCardFailed] = useState(false);
-  useEffect(() => setCardFailed(false), [card]);
+  const [zoom, setZoom] = useState(false);
+  useEffect(() => {
+    setCardFailed(false);
+    setZoom(false);
+  }, [card]);
   // 다음 건 카드를 미리 받아 둔다(누르면 바로 다음 장).
   const nextCard = pos + 1 < total ? plenaryCardSrc(title, motionNumber(items[pos + 1])) : null;
   useEffect(() => {
@@ -156,14 +213,28 @@ export function PagerItemView({
     <Frame accent={theme?.accent}>
       <div className="sticky top-0 z-10 bg-white border-b border-[#DCE7EE] px-5 pt-3 pb-3">
         <div className="flex items-baseline justify-between gap-2">
-          <span className="text-[17px] font-extrabold text-[#135C73]" style={theme ? { ...KEEP, color: theme.accent } : KEEP}>
-            {title}
-          </span>
+          {all && theme ? (
+            <span data-testid="pager-agenda" className="min-w-0" style={KEEP}>
+              <span className="mr-1.5 inline-block rounded-full px-2.5 py-0.5 align-middle text-[15px] font-black text-white" style={{ background: theme.accent }}>
+                의제{theme.no}
+              </span>
+              <span className="align-middle text-[17px] font-extrabold" style={{ color: theme.accent }}>
+                {theme.name}
+              </span>
+              <span className="block text-[14px] font-bold text-[#5A6B73] tr-num">
+                의제{theme.no} 안에서 {agendaPos} / {agendaItems?.length}
+              </span>
+            </span>
+          ) : (
+            <span className="text-[17px] font-extrabold text-[#135C73]" style={theme ? { ...KEEP, color: theme.accent } : KEEP}>
+              {title}
+            </span>
+          )}
           <span data-testid="pager-position" className="shrink-0 whitespace-nowrap text-[26px] font-black text-[#1F4E79] tr-num" role="status" aria-live="polite">
             {pos + 1} / {total}
           </span>
         </div>
-        <div className="mt-2 flex gap-[3px]" aria-hidden="true">
+        <div className={`mt-2 flex ${total > 30 ? 'gap-px' : 'gap-[3px]'}`} aria-hidden="true">
           {items.map((it, i) => {
             const v = answers[it.id];
             const cls = i === pos ? 'bg-[#1F4E79]' : v === YES ? 'bg-[#2F6F25]' : v === NO ? 'bg-[#B91C1C]' : 'bg-[#DCE7EE]';
@@ -177,7 +248,7 @@ export function PagerItemView({
         {card && !cardFailed ? (
           // 11/14 — 사무국 권고카드 한 장 = 투표용지 한 장. 글자는 카드 그림 안에 있고, 같은 문구를 화면 읽기용으로 둔다.
           <div data-testid="pager-card">
-            <a href={card} target="_blank" rel="noopener" aria-label={`권고안 ${number} 권고카드 크게 보기`}>
+            <button type="button" onClick={() => setZoom(true)} aria-label={`권고안 ${number} 권고카드 크게 보기`} className="block w-full">
               <img
                 key={card}
                 src={card}
@@ -187,10 +258,16 @@ export function PagerItemView({
                 onError={() => setCardFailed(true)}
                 className="block w-full h-auto rounded-2xl border border-[#DCE7EE]"
               />
-            </a>
-            <p className="mt-2 text-center text-[15px] text-[#5A6B73]" style={KEEP}>
-              카드를 누르면 크게 볼 수 있습니다.
-            </p>
+            </button>
+            <button
+              type="button"
+              data-testid="pager-zoom"
+              onClick={() => setZoom(true)}
+              className="mt-2 min-h-[52px] w-full rounded-2xl border-2 border-[#135C73] bg-[#F1F7FA] text-[19px] font-extrabold text-[#135C73]"
+            >
+              🔍 카드 크게 보기
+            </button>
+            {zoom ? <CardZoom src={card} label={`권고안 ${number}`} onClose={() => setZoom(false)} /> : null}
             <h2 data-testid="pager-title" className="sr-only">
               권고안 {number} {itemTitle(item)}
             </h2>
@@ -304,15 +381,25 @@ export function PagerSummaryView({
   const gate = pagerSubmitGate(items, answers, allRequired);
   const blocked = gate === 'none-answered' || gate === 'required-missing';
   const firstMissing = s.unansweredItems[0] ?? null;
+  const all = isPlenaryAllTitle(title);
   return (
-    <Frame accent={agendaTheme(title)?.accent}>
+    <Frame accent={all ? AGENDA_COLORS[1].accent : agendaTheme(title)?.accent}>
       <div className="border-b border-[#DCE7EE] px-5 pt-4 pb-3">
         <p className="text-[17px] font-extrabold text-[#135C73]" style={KEEP}>
-          {title} · 권고안 {items.length}건
+          {all ? `제9차 기후시민회의 최종 의결 · 정책권고안 ${items.length}건` : `${title} · 권고안 ${items.length}건`}
         </p>
         <h1 className="mt-1 text-[26px] font-black text-[#1F4E79]">제출 전 확인</h1>
       </div>
       <VoterBar voterLine={voterLine} />
+      {all ? (
+        // 마무리말 — 인사말(첫 장) · 권고안 70장 · 이 장 = 72쪽.
+        <div data-testid="pager-closing" className="relative px-5 pt-5 pb-4" style={{ background: AGENDA_COLORS[1].soft }}>
+          <img src="/ballot/geudeugi.png" alt="" width={240} height={314} className="absolute right-4 bottom-3 h-[84px] w-auto" />
+          <p className="pr-[80px] text-[18px] leading-[1.65] text-[#1F2933]" style={KEEP}>
+            마지막 장입니다. 아래에서 고른 내용을 확인하고 [제출하기]를 눌러 주세요. 그동안 기후시민회의에 함께해 주신 시민참여단 여러분께 깊이 감사드립니다.
+          </p>
+        </div>
+      ) : null}
       <div className="px-5 pt-5 pb-7">
         <p data-testid="pager-counts" className="rounded-2xl border-2 border-[#1F4E79] bg-[#F1F7FA] px-4 py-4 text-center text-[26px] font-black leading-snug text-[#1F2933] tr-num" style={KEEP}>
           <span className="text-[#2F6F25]">찬성 {s.yes}</span>
@@ -420,6 +507,7 @@ function MissingConfirm({ count, onCancel, onConfirm }: { count: number; onCance
 function VoterStep({
   title,
   instructions,
+  itemCount = 0,
   teams,
   voter,
   onVoter,
@@ -427,6 +515,7 @@ function VoterStep({
 }: {
   title: string;
   instructions?: string | null;
+  itemCount?: number;
   teams: RosterTeam[];
   voter: VoterDraft;
   onVoter: (v: VoterDraft) => void;
@@ -434,9 +523,32 @@ function VoterStep({
 }) {
   const ok = voterReady(voter.team, voter.name, teams);
   const theme = agendaTheme(title);
+  const all = isPlenaryAllTitle(title);
   return (
-    <Frame accent={theme?.accent}>
-      {theme ? (
+    <Frame accent={all ? AGENDA_COLORS[1].accent : theme?.accent}>
+      {all ? (
+        <div data-testid="pager-hero" className="relative px-5 pt-5 pb-5" style={{ background: AGENDA_COLORS[1].soft }}>
+          <img src="/ballot/geudeugi.png" alt="" width={240} height={314} className="absolute right-4 top-4 h-[104px] w-auto" />
+          <p className="pr-[92px] text-[15px] font-bold text-[#5A6B73]" style={KEEP}>
+            제9차 기후시민회의 · 최종 의결
+          </p>
+          <p className="mt-2 pr-[92px] text-[26px] font-black leading-[1.3] text-[#1F4E79]" style={KEEP}>
+            정책권고안 {itemCount}건
+          </p>
+          <ul className="mt-3 space-y-1.5">
+            {([1, 2, 3] as const).map((no) => (
+              <li key={no} className="flex items-center gap-2" style={KEEP}>
+                <span className="shrink-0 rounded-full px-2.5 py-0.5 text-[15px] font-black text-white" style={{ background: AGENDA_COLORS[no].accent }}>
+                  의제{no}
+                </span>
+                <span className="text-[17px] font-extrabold" style={{ color: AGENDA_COLORS[no].accent }}>
+                  {AGENDA_NAMES[no]}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : theme ? (
         <div data-testid="pager-hero" className="relative px-5 pt-5 pb-5" style={{ background: theme.soft }}>
           <img src="/ballot/geudeugi.png" alt="" width={240} height={314} className="absolute right-4 bottom-3 h-[104px] w-auto" />
           <p className="pr-[92px] text-[15px] font-bold text-[#5A6B73]" style={KEEP}>
@@ -456,7 +568,7 @@ function VoterStep({
         </p>
       ) : null}
       <div className="px-5 pt-5 pb-7">
-        {theme ? null : (
+        {theme || all ? null : (
           <p className="text-[17px] font-extrabold text-[#135C73]" style={KEEP}>
             {title}
           </p>
@@ -546,7 +658,7 @@ export default function BallotPager({
   const go = (target: PagerPos) => setState((s) => pagerGo(s, target, total, Date.now()));
 
   if (voterStep) {
-    return <VoterStep title={ballot.title} instructions={ballot.instructions} teams={teams} voter={voter} onVoter={onVoter} onStart={() => setVoterStep(false)} />;
+    return <VoterStep title={ballot.title} instructions={ballot.instructions} itemCount={ballot.items.length} teams={teams} voter={voter} onVoter={onVoter} onStart={() => setVoterStep(false)} />;
   }
 
   if (state.pos === 'summary') {
