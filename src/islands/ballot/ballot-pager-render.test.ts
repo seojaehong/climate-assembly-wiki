@@ -188,6 +188,15 @@ describe('(11/11) 한 장 70건 투표지 「전체회의 의결 정책권고안
     expect(itemAgendaTheme('전체회의 의결 정책권고안', '2-5')).toMatchObject({ no: 2, name: '일회용품 줄이기 등 자원순환' });
     expect(plenaryCardSrc('전체회의 의결 정책권고안', '3-23')).toBe('/ballot/cards1114/3-23.webp');
     expect(plenaryCardSrc('전체회의 의결 의제1 가상', '2-5')).toBeNull();
+    // 11/11 경량화 — 화면용은 가벼운 판, 「크게 보기」만 원래 해상도
+    expect(plenaryCardSrc('전체회의 의결 정책권고안', '3-23', true)).toBe('/ballot/cards1114hd/3-23.webp');
+  });
+
+  it('(11/11 경량화) 미리 받을 카드 — 지금 자리 뒤로 n장, 카드가 없는 건은 건너뛴다', async () => {
+    const { cardPrefetchList, itemAgendaTheme } = await import('./BallotPager');
+    expect(cardPrefetchList('전체회의 의결 정책권고안', items, 0, 2)).toEqual(['/ballot/cards1114/1-1.webp', '/ballot/cards1114/1-2.webp']);
+    expect(cardPrefetchList('전체회의 의결 정책권고안', items, 3, 3)).toEqual(['/ballot/cards1114/3-1.webp']);
+    expect(cardPrefetchList('일반 투표지', items, 0, 3)).toEqual([]);
     expect(itemAgendaTheme('일반 투표', '2-5')).toBeNull();
   });
 

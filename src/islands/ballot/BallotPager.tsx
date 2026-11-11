@@ -73,11 +73,33 @@ export function itemAgendaTheme(title: string | null | undefined, number: string
  * 11/14 전체회의 의결 — 권고 번호(「1-3」)에 맞는 사무국 권고카드 그림(public/ballot/cards1114, 권고카드_1109.pdf 에서 뽑음).
  * 전체회의 의결 투표지가 아니거나 번호 모양이 다르면 null(글자 화면 그대로).
  */
-export function plenaryCardSrc(title: string, number: string): string | null {
+export function plenaryCardSrc(title: string, number: string, hd = false): string | null {
   const theme = itemAgendaTheme(title, number);
   const m = /^([123])-(\d{1,2})$/.exec(number);
   if (!theme || !m || Number(m[1]) !== theme.no) return null;
-  return `/ballot/cards1114/${m[1]}-${Number(m[2])}.webp`;
+  // 11/11 경량화 — 화면용 cards1114 는 가로 800px(현장 와이파이 총량을 줄인다), 「크게 보기」만 원래 1080px(cards1114hd).
+  return `/ballot/${hd ? 'cards1114hd' : 'cards1114'}/${m[1]}-${Number(m[2])}.webp`;
+}
+
+/** 지금 자리(from)부터 n장 — 미리 받아 둘 카드 그림. 카드가 없는 건은 건너뛴다. */
+export function cardPrefetchList(title: string, items: readonly BallotItem[], from: number, n: number): string[] {
+  const out: string[] = [];
+  for (let i = from; i < items.length && out.length < n; i++) {
+    const src = plenaryCardSrc(title, motionNumber(items[i]));
+    if (src) out.push(src);
+  }
+  return out;
+}
+
+function useCardPrefetch(srcs: string[]) {
+  const key = srcs.join('|');
+  useEffect(() => {
+    if (!key || typeof Image === 'undefined') return;
+    for (const s of key.split('|')) {
+      const im = new Image();
+      im.src = s;
+    }
+  }, [key]);
 }
 
 /** 크게 보기 — 화면 가득 카드 한 장. 단추로 키우고 줄이며, 손가락으로 밀어 본다(두 손가락 확대도 그대로 된다). */
@@ -204,13 +226,8 @@ export function PagerItemView({
     setCardFailed(false);
     setZoom(false);
   }, [card]);
-  // 다음 건 카드를 미리 받아 둔다(누르면 바로 다음 장).
-  const nextCard = pos + 1 < total ? plenaryCardSrc(title, motionNumber(items[pos + 1])) : null;
-  useEffect(() => {
-    if (!nextCard || typeof Image === 'undefined') return;
-    const im = new Image();
-    im.src = nextCard;
-  }, [nextCard]);
+  // 다음 두 건 카드를 미리 받아 둔다(누르면 바로 다음 장).
+  useCardPrefetch(cardPrefetchList(title, items, pos + 1, 2));
   return (
     <Frame accent={theme?.accent}>
       <div className="sticky top-0 z-10 bg-white border-b border-[#DCE7EE] px-5 pt-3 pb-3">
@@ -269,7 +286,7 @@ export function PagerItemView({
             >
               🔍 카드 크게 보기
             </button>
-            {zoom ? <CardZoom src={card} label={`권고안 ${number}`} onClose={() => setZoom(false)} /> : null}
+            {zoom ? <CardZoom src={plenaryCardSrc(title, number, true) ?? card} label={`권고안 ${number}`} onClose={() => setZoom(false)} /> : null}
             <h2 data-testid="pager-title" className="sr-only">
               권고안 {number} {itemTitle(item)}
             </h2>
@@ -556,6 +573,7 @@ function VoterStep({
   voter,
   onVoter,
   onStart,
+  prefetch = [],
 }: {
   title: string;
   instructions?: string | null;
@@ -564,7 +582,10 @@ function VoterStep({
   voter: VoterDraft;
   onVoter: (v: VoterDraft) => void;
   onStart: () => void;
+  prefetch?: string[];
 }) {
+  // 이름을 고르는 동안 앞 카드 몇 장을 미리 받아 둔다(첫 장이 바로 뜨게).
+  useCardPrefetch(prefetch);
   const ok = voterReady(voter.team, voter.name, teams);
   const theme = agendaTheme(title);
   const all = isPlenaryAllTitle(title);
@@ -846,7 +867,7 @@ export default function BallotPager({
       : null;
 
   if (voterStep) {
-    return <VoterStep title={ballot.title} instructions={ballot.instructions} itemCount={ballot.items.length} teams={teams} voter={voter} onVoter={onVoter} onStart={() => setVoterStep(false)} />;
+    return <VoterStep title={ballot.title} instructions={ballot.instructions} itemCount={ballot.items.length} teams={teams} voter={voter} onVoter={onVoter} onStart={() => setVoterStep(false)} prefetch={cardPrefetchList(ballot.title, ballot.items, 0, 3)} />;
   }
 
   if (check) {
