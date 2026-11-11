@@ -13,7 +13,9 @@
     'survey is closed': '설문이 마감되었습니다.',
     'invalid answers': '응답을 확인해 주세요.',
     'invalid hq key': '본부 주소가 맞지 않습니다.',
-    'no picks to show': '선정 과제를 하나 이상 고른 뒤 내보낼 수 있습니다.'
+    'no picks to show': '선정 과제를 하나 이상 고른 뒤 내보낼 수 있습니다.',
+    'invalid image': '사진을 올리지 못했습니다. 카메라로 다시 찍어 주세요.',
+    'too many photos': '사진이 너무 많습니다. 잘못 올린 사진을 지운 뒤 다시 올려 주세요.'
   };
 
   function rpc(fn, args) {

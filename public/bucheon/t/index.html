@@ -62,6 +62,15 @@
     .bar .msg { margin: 0; }
   }
   .hidden { display: none; }
+  .card h2 { margin-top: 0; }
+  label.shoot { display: flex; align-items: center; justify-content: center; width: 100%; min-height: 64px; font-size: 20px;
+                font-weight: 800; border-radius: var(--r-ctl); cursor: pointer; margin: 8px 0; }
+  .ph { display: grid; grid-template-columns: 72px 1fr auto; gap: 12px; align-items: center; padding: 8px 0; border-top: 1px solid var(--rule); }
+  .ph img, .ph .noimg { width: 72px; height: 72px; object-fit: cover; border-radius: 8px; background: var(--ground);
+                        display: grid; place-items: center; font-size: 14px; color: var(--ink-3); }
+  .ph .meta { display: flex; flex-direction: column; gap: 2px; font-size: 16px; }
+  .ph .meta .ok { color: var(--ok); font-weight: 700; }
+  .ph button { font-size: 15px; padding: 8px 12px; }
 </style>
 </head>
 <body>
@@ -156,15 +165,86 @@
     g.appendChild(area('note', '참고', '질문 배경 등 연구진이 알면 좋을 내용', 1000, 'note', false));
   }
 
-  // 세션2 결과는 여기서 입력하지 않는다(진행계획 4.0). 템플릿 사진을 단체방에 올리면 본부가 읽어 스크린에 낸다.
+  // 세션2 결과는 글로 입력하지 않는다(진행계획 4.0). 템플릿 사진을 여기서 올리면 본부 노트북이 읽고, 본부가 확인한 뒤 스크린에 낸다.
+  var thumbs = {}, s2Timer = null, uploading = false;
+
+  // 휴대폰 사진(3~8MB)을 긴 변 2000px JPEG 로 줄인다. DB 한도 1.4MB(base64) 안으로.
+  function shrinkPhoto(file) {
+    function draw(src, w, h) {
+      var k = Math.min(1, 2000 / Math.max(w, h)), c = document.createElement('canvas');
+      c.width = Math.round(w * k); c.height = Math.round(h * k);
+      var g = c.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height);
+      g.drawImage(src, 0, 0, c.width, c.height);
+      var q = 0.85, url = c.toDataURL('image/jpeg', q);
+      while (url.length > 1400000 && q > 0.4) { q -= 0.1; url = c.toDataURL('image/jpeg', q); }
+      return url;
+    }
+    return new Promise(function (ok, fail) {
+      var u = URL.createObjectURL(file), img = new Image();
+      img.onload = function () { try { ok(draw(img, img.naturalWidth, img.naturalHeight)); } catch (e) { fail(e); } finally { URL.revokeObjectURL(u); } };
+      img.onerror = function () { URL.revokeObjectURL(u); fail(new Error('사진을 열지 못했습니다. 카메라로 다시 찍어 주세요.')); };
+      img.src = u;
+    });
+  }
+
+  function upload(files) {
+    if (!files.length) return;
+    uploading = true;
+    var list = Array.prototype.slice.call(files, 0, 6), i = 0;
+    var st2 = document.getElementById('upMsg');
+    function next() {
+      if (i >= list.length) { uploading = false; st2.textContent = list.length + '장 올렸습니다. 본부가 읽는 중입니다.'; st2.className = 'msg ok'; refreshS2(); return; }
+      st2.textContent = (i + 1) + '/' + list.length + '장 올리는 중…'; st2.className = 'msg';
+      shrinkPhoto(list[i]).then(function (url) {
+        return BF.rpc('bucheon_upload_result_photo', { p_code: code, p_image: url }).then(function (r) { thumbs[r.id] = url; });
+      }).then(function () { i++; next(); })
+        .catch(function (e) { uploading = false; st2.textContent = e.message + ' (' + (i + 1) + '번째 사진)'; st2.className = 'msg err'; refreshS2(); });
+    }
+    next();
+  }
+
+  function refreshS2() {
+    var box = document.getElementById('myPhotos'), state = document.getElementById('myState');
+    if (!box) return;
+    BF.rpc('bucheon_my_result', { p_code: code }).then(function (d) {
+      box.innerHTML = '';
+      var web = d.photos.filter(function (p) { return p.source === 'web'; });
+      if (!d.photos.length) box.appendChild(el('p', { class: 'help', text: '아직 올린 사진이 없습니다.' }));
+      d.photos.forEach(function (p, k) {
+        var del = p.source === 'web' ? el('button', { class: 'ghost', text: '지우기', onclick: function () {
+          if (!confirm('이 사진을 지울까요?')) return;
+          BF.rpc('bucheon_delete_result_photo', { p_code: code, p_id: p.id }).then(refreshS2).catch(function (e) { alert(e.message); });
+        } }) : null;
+        box.appendChild(el('div', { class: 'ph' }, [
+          thumbs[p.id] ? el('img', { src: thumbs[p.id], alt: '올린 사진 ' + (k + 1) }) : el('div', { class: 'noimg', text: p.source === 'web' ? '사진' : '카톡' }),
+          el('div', { class: 'meta' }, [el('b', { text: '사진 ' + (k + 1) + ' · ' + BF.hhmm(p.created_at) }),
+            el('span', { class: p.read ? 'ok' : '', text: p.read ? '읽음' : '읽는 중…' })]), del]));
+      });
+      var r = d.result, t;
+      if (r && r.confirmed) t = '본부 확인 완료 — 발표 때 스크린에 나갑니다.';
+      else if (r) t = '읽기 완료 — 본부가 사진과 맞춰 보는 중입니다.';
+      else if (d.photos.length) t = '받았습니다 — 읽는 중입니다(1분 안팎).';
+      else t = '';
+      state.textContent = t; state.className = 'msg' + (r && r.confirmed ? ' ok' : '');
+    }).catch(function (e) { state.textContent = e.message; state.className = 'msg err'; });
+  }
+
   function renderS2() {
     var s = document.getElementById('s2'); s.innerHTML = '';
+    var input = el('input', { type: 'file', accept: 'image/*', multiple: 'multiple', id: 'pick', class: 'hidden' });
+    input.onchange = function () { upload(input.files); input.value = ''; };
     s.appendChild(el('div', { class: 'card' }, [
-      el('h2', { text: '세션2 결과는 사진으로 보내 주세요' }),
-      el('p', { text: '① 단체방에 「' + team + '조결과」라고 먼저 적고' }),
-      el('p', { text: '② 바로 이어서 템플릿 사진 두 장(우선순위 선정 · 아이디어)을 올립니다.' }),
-      el('p', { class: 'help', text: '글씨가 화면을 꽉 채우게, 정면에서, 그림자 없이 찍어 주세요. 다시 찍어 올리면 새 사진으로 바뀝니다. 본부가 확인한 뒤 스크린에 나갑니다.' })
+      el('h2', { text: '세션2 결과 사진 올리기' }),
+      el('p', { text: '템플릿 두 장(우선순위 선정 · 아이디어)을 찍어 올려 주세요. 한 장씩 올려도 됩니다.' }),
+      el('label', { class: 'primary shoot', for: 'pick', text: '사진 찍기 · 고르기' }), input,
+      el('p', { class: 'msg', id: 'upMsg' }),
+      el('p', { class: 'help', text: '종이가 화면을 꽉 채우게, 정면에서, 그림자 없이 찍어 주세요. 잘못 올렸으면 지우고 다시 올리면 됩니다.' })
     ]));
+    s.appendChild(el('div', { class: 'card' }, [
+      el('h2', { text: '우리 조 상태' }), el('p', { class: 'msg', id: 'myState' }), el('div', { id: 'myPhotos' })
+    ]));
+    s.appendChild(el('p', { class: 'help', text: '여기서 올리기가 안 되면: 단체방에 「' + team + '조결과」라고 적고 바로 사진을 올려 주세요.' }));
+    refreshS2();
   }
 
   function render() {
@@ -174,7 +254,9 @@
     document.getElementById('s2').classList.toggle('hidden', tab !== 2);
     document.getElementById('submit').textContent = '세션1 질문 제출';
     document.getElementById('bar').classList.toggle('hidden', tab !== 1);
-    if (tab === 1) renderS1(); else renderS2();
+    clearInterval(s2Timer);
+    if (tab === 1) renderS1();
+    else { renderS2(); s2Timer = setInterval(function () { if (!uploading) refreshS2(); }, 5000); }
   }
 
   function submit() {

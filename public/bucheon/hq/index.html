@@ -462,7 +462,7 @@
         r.picks.forEach(function (p) { card.appendChild(el('div', { class: 'pk' }, [el('b', { text: p.code }), taskOf(p.code).title])); });
         if (!r.picks.length) card.appendChild(el('div', { class: 'st', text: '선정 과제 없음' }));
       } else {
-        card.appendChild(el('div', { class: 'st', text: r ? '확인 중' : '기다리는 중' }));
+        card.appendChild(el('div', { class: 'st', text: photoOf(t).unread ? '사진 읽는 중' : r ? '확인 중' : photoOf(t).n ? '사진 받음' : '기다리는 중' }));
       }
       grid.appendChild(card);
     });
@@ -529,9 +529,9 @@
       el('span', { class: 'note', text: '정리 모드 · E 로 끝내기' })]));
     var bar = el('div', { class: 'rteams' });
     data.teams.forEach(function (t) {
-      var r = res[t];
-      bar.appendChild(el('button', { class: r ? (r.confirmed ? 'ok' : 'has') : '', 'aria-pressed': String(draft.team === t),
-        text: t + '조' + (r ? (r.confirmed ? ' ✓' : ' ●') : ''),
+      var r = res[t], ph = photoOf(t);
+      bar.appendChild(el('button', { class: r ? (r.confirmed ? 'ok' : 'has') : (ph.n ? 'has' : ''), 'aria-pressed': String(draft.team === t),
+        text: t + '조' + (ph.unread ? ' …' : r ? (r.confirmed ? ' ✓' : ' ●') : ''),
         onclick: function () { if (draft.dirty && !confirm('고친 내용을 저장하지 않고 넘어갈까요?')) return; loadDraft(t); render(); } }));
     });
     V.appendChild(bar);
@@ -542,15 +542,17 @@
     drawForm(form);
   }
 
+  function photoOf(t) { return (data.photos || []).filter(function (p) { return p.team_no === t; })[0] || { n: 0, unread: 0, last: 0 }; }
+
   function drawPhotos(box, t, r) {
-    var stamp = r ? r.updated_at + '/' + r.photos : 'none';
+    var ph = photoOf(t), stamp = (r ? r.updated_at : '') + '/' + ph.n + '/' + ph.last + '/' + ph.unread;
     function show(list) {
       box.innerHTML = '';
       if (!list.length) { box.appendChild(el('div', { text: '받은 사진이 없습니다. 사진 없이 직접 적어도 됩니다.' })); return; }
       list.forEach(function (p) { box.appendChild(el('img', { src: p.image, alt: t + '조 ' + ({ priority: '우선순위 템플릿', idea: '아이디어 템플릿' }[p.kind] || '사진') })); });
     }
     if (photoCache[t] && photoCache[t].stamp === stamp) return show(photoCache[t].list);
-    if (!r || !r.photos) return show([]);
+    if (!ph.n) return show([]);
     BF.rpc('bucheon_result_photos', { p_key: key, p_team_no: t }).then(function (list) {
       photoCache[t] = { stamp: stamp, list: list };
       if (draft && draft.team === t && box.isConnected) show(list);
