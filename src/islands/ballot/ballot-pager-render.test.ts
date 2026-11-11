@@ -168,3 +168,12 @@ describe('(11/10 결정 · 기권 불인정) 넘김식 요약 — 미응답 건�
     expect(html).toContain('누르지 않은 건은 기권으로 기록됩니다');
   });
 });
+
+describe('(11/14) 전체회의 의결 의제별 색 띠 · 인사말', () => {
+  it('제목에서 의제 번호와 이름을 읽고, 그 밖 투표지는 null', async () => {
+    const { agendaTheme } = await import('./BallotPager');
+    expect(agendaTheme('전체회의 의결 의제2 일회용품 줄이기 등 자원순환')).toMatchObject({ no: 2, name: '일회용품 줄이기 등 자원순환' });
+    expect(agendaTheme('1분과 의결 3차')).toBeNull();
+    expect(agendaTheme('전체회의 의결 의제 1 띄어씀')).toBeNull();
+  });
+});

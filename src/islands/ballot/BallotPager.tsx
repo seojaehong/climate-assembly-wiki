@@ -33,10 +33,28 @@ function itemTitle(item: BallotItem): string {
   return parseMotionStatement(item.statement)?.title ?? item.statement;
 }
 
-function Frame({ children }: { children: React.ReactNode }) {
+/** 11/14 전체회의 의결 투표지(「전체회의 의결 의제N 이름」) — 의제마다 띠 색을 달리해 지금 어느 의제인지 한눈에 보이게. 그 밖 투표지는 null. */
+export type AgendaTheme = { no: 1 | 2 | 3; name: string; accent: string; soft: string };
+const AGENDA_COLORS: Record<1 | 2 | 3, { accent: string; soft: string }> = {
+  // 새 색을 만들지 않는다 — 지금 투표 화면·안내 덱에서 쓰는 남색 · 청록 · 파랑 안에서 고른다.
+  1: { accent: '#1F4E79', soft: '#F1F7FA' },
+  2: { accent: '#135C73', soft: '#EEF6F7' },
+  3: { accent: '#2E75B6', soft: '#F0F6FC' },
+};
+export function agendaTheme(title: string | null | undefined): AgendaTheme | null {
+  const m = /^전체회의 의결 의제([123])\s*(.*)$/.exec((title ?? '').trim());
+  if (!m) return null;
+  const no = Number(m[1]) as 1 | 2 | 3;
+  return { no, name: m[2].trim(), ...AGENDA_COLORS[no] };
+}
+
+function Frame({ children, accent }: { children: React.ReactNode; accent?: string | null }) {
   return (
     <div className="min-h-screen bg-[#F5F8FB] flex justify-center px-3 py-4">
-      <div className="w-full max-w-md bg-white rounded-3xl border border-[#DCE7EE] overflow-hidden">{children}</div>
+      <div className="w-full max-w-md bg-white rounded-3xl border border-[#DCE7EE] overflow-hidden">
+        {accent ? <div data-testid="pager-accent" aria-hidden="true" className="h-[6px]" style={{ background: accent }} /> : null}
+        {children}
+      </div>
     </div>
   );
 }
@@ -112,11 +130,12 @@ export function PagerItemView({
     );
   };
 
+  const theme = agendaTheme(title);
   return (
-    <Frame>
+    <Frame accent={theme?.accent}>
       <div className="sticky top-0 z-10 bg-white border-b border-[#DCE7EE] px-5 pt-3 pb-3">
         <div className="flex items-baseline justify-between gap-2">
-          <span className="text-[17px] font-extrabold text-[#135C73]" style={KEEP}>
+          <span className="text-[17px] font-extrabold text-[#135C73]" style={theme ? { ...KEEP, color: theme.accent } : KEEP}>
             {title}
           </span>
           <span data-testid="pager-position" className="shrink-0 whitespace-nowrap text-[26px] font-black text-[#1F4E79] tr-num" role="status" aria-live="polite">
@@ -240,7 +259,7 @@ export function PagerSummaryView({
   const blocked = gate === 'none-answered' || gate === 'required-missing';
   const firstMissing = s.unansweredItems[0] ?? null;
   return (
-    <Frame>
+    <Frame accent={agendaTheme(title)?.accent}>
       <div className="border-b border-[#DCE7EE] px-5 pt-4 pb-3">
         <p className="text-[17px] font-extrabold text-[#135C73]" style={KEEP}>
           {title} · 권고안 {items.length}건
@@ -354,24 +373,48 @@ function MissingConfirm({ count, onCancel, onConfirm }: { count: number; onCance
 
 function VoterStep({
   title,
+  instructions,
   teams,
   voter,
   onVoter,
   onStart,
 }: {
   title: string;
+  instructions?: string | null;
   teams: RosterTeam[];
   voter: VoterDraft;
   onVoter: (v: VoterDraft) => void;
   onStart: () => void;
 }) {
   const ok = voterReady(voter.team, voter.name, teams);
+  const theme = agendaTheme(title);
   return (
-    <Frame>
-      <div className="px-5 pt-5 pb-7">
-        <p className="text-[17px] font-extrabold text-[#135C73]" style={KEEP}>
-          {title}
+    <Frame accent={theme?.accent}>
+      {theme ? (
+        <div data-testid="pager-hero" className="relative px-5 pt-5 pb-5" style={{ background: theme.soft }}>
+          <img src="/ballot/geudeugi.png" alt="" width={240} height={314} className="absolute right-4 bottom-3 h-[104px] w-auto" />
+          <p className="pr-[92px] text-[15px] font-bold text-[#5A6B73]" style={KEEP}>
+            제9차 기후시민회의 · 최종 의결
+          </p>
+          <p className="mt-2 inline-block rounded-full px-3 py-1 text-[17px] font-black text-white" style={{ background: theme.accent }}>
+            의제 {theme.no}
+          </p>
+          <p className="mt-2 pr-[92px] text-[26px] font-black leading-[1.3]" style={{ ...KEEP, color: theme.accent }}>
+            {theme.name}
+          </p>
+        </div>
+      ) : null}
+      {instructions ? (
+        <p data-testid="pager-greeting" className="px-5 pt-5 text-[18px] leading-[1.65] text-[#1F2933] whitespace-pre-line" style={KEEP}>
+          {instructions}
         </p>
+      ) : null}
+      <div className="px-5 pt-5 pb-7">
+        {theme ? null : (
+          <p className="text-[17px] font-extrabold text-[#135C73]" style={KEEP}>
+            {title}
+          </p>
+        )}
         <h1 className="mt-1 mb-4 text-[26px] font-black text-[#1F4E79]" style={KEEP}>
           먼저 조와 이름을 눌러 주세요
         </h1>
@@ -457,7 +500,7 @@ export default function BallotPager({
   const go = (target: PagerPos) => setState((s) => pagerGo(s, target, total, Date.now()));
 
   if (voterStep) {
-    return <VoterStep title={ballot.title} teams={teams} voter={voter} onVoter={onVoter} onStart={() => setVoterStep(false)} />;
+    return <VoterStep title={ballot.title} instructions={ballot.instructions} teams={teams} voter={voter} onVoter={onVoter} onStart={() => setVoterStep(false)} />;
   }
 
   if (state.pos === 'summary') {
