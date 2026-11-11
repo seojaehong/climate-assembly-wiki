@@ -594,6 +594,83 @@ function VoterStep({
   );
 }
 
+// ── 간지(한 장 70건 투표지의 의제 구분) ─────────────────────────────────
+
+export type AgendaDivider = { no: 1 | 2 | 3; name: string; count: number; from: number; to: number; done: number };
+
+/** pos 가 어떤 의제의 첫 건이고 그 간지를 아직 안 봤으면 간지 정보. 아니면 null. */
+export function agendaDividerAt(items: readonly BallotItem[], pos: number, seen: ReadonlySet<number>): AgendaDivider | null {
+  const item = items[pos];
+  if (!item) return null;
+  const m = /^([123])-\d{1,2}$/.exec(motionNumber(item));
+  if (!m) return null;
+  const no = Number(m[1]) as 1 | 2 | 3;
+  if (seen.has(no)) return null;
+  const prev = pos > 0 ? /^([123])-/.exec(motionNumber(items[pos - 1])) : null;
+  if (prev && Number(prev[1]) === no) return null;
+  const idx = items.map((it, i) => (motionNumber(it).startsWith(`${no}-`) ? i : -1)).filter((i) => i >= 0);
+  return { no, name: AGENDA_NAMES[no], count: idx.length, from: idx[0] + 1, to: idx[idx.length - 1] + 1, done: pos };
+}
+
+export function AgendaDividerView({
+  divider,
+  total,
+  voterLine,
+  onStart,
+  onBack,
+}: {
+  divider: AgendaDivider;
+  total: number;
+  voterLine: string | null;
+  onStart: () => void;
+  onBack?: () => void;
+}) {
+  const c = AGENDA_COLORS[divider.no];
+  return (
+    <Frame accent={c.accent}>
+      <VoterBar voterLine={voterLine} />
+      <div data-testid="pager-divider" className="relative px-6 pt-10 pb-8 text-center" style={{ background: c.soft }}>
+        <p className="text-[16px] font-bold text-[#5A6B73] tr-num" style={KEEP}>
+          {divider.done > 0 ? `${divider.done}건 마쳤습니다 · 전체 ${total}건` : `전체 ${total}건`}
+        </p>
+        <p className="mt-6 inline-block rounded-full px-6 py-2 text-[30px] font-black text-white" style={{ background: c.accent }}>
+          의제 {divider.no}
+        </p>
+        <h1 className="mt-5 text-[32px] font-black leading-[1.3]" style={{ ...KEEP, color: c.accent }}>
+          {divider.name}
+        </h1>
+        <p className="mt-4 text-[22px] font-extrabold text-[#1F2933] tr-num" style={KEEP}>
+          권고안 {divider.count}건
+        </p>
+        <p className="mt-1 text-[17px] text-[#5A6B73] tr-num" style={KEEP}>
+          ({divider.from}번째 ~ {divider.to}번째 카드)
+        </p>
+        <img src="/ballot/geudeugi.png" alt="" width={240} height={314} className="mx-auto mt-6 h-[120px] w-auto" />
+      </div>
+      <div className="px-5 pt-6 pb-7">
+        <button
+          type="button"
+          data-testid="pager-divider-start"
+          onClick={onStart}
+          className="min-h-[76px] w-full rounded-2xl text-[24px] font-black text-white"
+          style={{ background: c.accent }}
+        >
+          의제 {divider.no} 투표 시작
+        </button>
+        {onBack ? (
+          <button
+            type="button"
+            onClick={onBack}
+            className="mt-3 min-h-[60px] w-full rounded-2xl border-2 border-[#C4D8E4] bg-white text-[19px] font-bold text-[#1F4E79]"
+          >
+            ← 이전 건
+          </button>
+        ) : null}
+      </div>
+    </Frame>
+  );
+}
+
 // ── 묶음 ──────────────────────────────────────────────────────────────
 
 export default function BallotPager({
@@ -625,6 +702,7 @@ export default function BallotPager({
   const named = teams.length > 0;
   const [voterStep, setVoterStep] = useState(() => named && !voterReady(voter.team, voter.name, teams));
   const [confirmMissing, setConfirmMissing] = useState(false);
+  const [seenDividers, setSeenDividers] = useState<ReadonlySet<number>>(() => new Set());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const total = ballot.items.length;
   // 전체회의 의결 — 기권 불인정(11/10 주최 결정). 「기권으로 두고 제출」 확인 길을 열지 않는다.
@@ -646,7 +724,7 @@ export default function BallotPager({
   // 위치가 바뀌면 화면 맨 위로(긴 제목 아래에 있던 손가락이 다음 건의 아래쪽을 누르지 않게).
   useEffect(() => {
     if (typeof window !== 'undefined') window.scrollTo(0, 0);
-  }, [state.pos, voterStep]);
+  }, [state.pos, voterStep, seenDividers]);
 
   // 명단이 늦게 와서 실명으로 바뀌면 본인 확인부터.
   useEffect(() => {
@@ -657,8 +735,34 @@ export default function BallotPager({
   const voterLine = named && voter.team ? `${voter.team} ${voter.name.trim()} 님` : null;
   const go = (target: PagerPos) => setState((s) => pagerGo(s, target, total, Date.now()));
 
+  // 한 장 70건 — 의제가 바뀌는 첫 건 앞에 간지 한 장(의제 구분). 의제마다 한 번만 보인다.
+  const divider =
+    !voterStep && state.pos !== 'summary' && isPlenaryAllTitle(ballot.title)
+      ? agendaDividerAt(ballot.items, state.pos, seenDividers)
+      : null;
+
   if (voterStep) {
     return <VoterStep title={ballot.title} instructions={ballot.instructions} itemCount={ballot.items.length} teams={teams} voter={voter} onVoter={onVoter} onStart={() => setVoterStep(false)} />;
+  }
+
+  if (divider) {
+    const seen = () => setSeenDividers((s) => new Set([...s, divider.no]));
+    return (
+      <AgendaDividerView
+        divider={divider}
+        total={total}
+        voterLine={voterLine}
+        onStart={seen}
+        onBack={
+          typeof state.pos === 'number' && state.pos > 0
+            ? () => {
+                seen();
+                go((state.pos as number) - 1);
+              }
+            : undefined
+        }
+      />
+    );
   }
 
   if (state.pos === 'summary') {

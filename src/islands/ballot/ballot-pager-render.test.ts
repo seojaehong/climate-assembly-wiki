@@ -232,3 +232,48 @@ describe('(11/11) 한 장 70건 투표지 「전체회의 의결 정책권고안
     expect(html).toContain('정책권고안 4건');
   });
 });
+
+describe('(11/11) 간지 — 의제가 바뀌는 첫 건 앞', () => {
+  const mk = (no: string, i: number): BallotItem =>
+    ({ id: `d${i}`, ordinal: i + 1, statement: `${no}-안1 가상 ${no}`, description: null, scale: 2, required: true }) as BallotItem;
+  const items = [mk('1-1', 0), mk('1-2', 1), mk('2-1', 2), mk('2-2', 3), mk('3-1', 4)];
+
+  it('의제 첫 건에서만, 본 간지는 다시 안 나온다', async () => {
+    const { agendaDividerAt } = await import('./BallotPager');
+    expect(agendaDividerAt(items, 0, new Set())).toMatchObject({ no: 1, count: 2, from: 1, to: 2, done: 0 });
+    expect(agendaDividerAt(items, 1, new Set())).toBeNull();
+    expect(agendaDividerAt(items, 2, new Set())).toMatchObject({ no: 2, name: '일회용품 줄이기 등 자원순환', count: 2, from: 3, to: 4, done: 2 });
+    expect(agendaDividerAt(items, 2, new Set([2]))).toBeNull();
+    expect(agendaDividerAt(items, 4, new Set())).toMatchObject({ no: 3, count: 1 });
+  });
+
+  it('간지 화면', async () => {
+    const { AgendaDividerView } = await import('./BallotPager');
+    const html = renderToStaticMarkup(
+      createElement(AgendaDividerView, { divider: { no: 2, name: '일회용품 줄이기 등 자원순환', count: 28, from: 20, to: 47, done: 19 }, total: 70, voterLine: null, onStart: () => {}, onBack: () => {} }),
+    );
+    expect(html).toContain('data-testid="pager-divider"');
+    expect(html).toContain('19건 마쳤습니다');
+    expect(html).toContain('의제 2 투표 시작');
+    expect(html).toContain('20번째 ~ 47번째');
+  });
+
+  it('한 장 투표지 묶음은 첫 화면(이름 확인 뒤) 간지부터', () => {
+    const html = renderToStaticMarkup(
+      createElement(BallotPager, {
+        ballot: { id: 'b', title: '전체회의 의결 정책권고안', instructions: null, status: 'open', subgroup: null, items } as never,
+        initialAnswers: {},
+        initialPos: 0,
+        onChange: () => {},
+        onSubmit: () => {},
+        submitting: false,
+        error: null,
+        teams: [],
+        voter: { team: null, name: '' },
+        onVoter: () => {},
+      }),
+    );
+    expect(html).toContain('data-testid="pager-divider"');
+    expect(html).toContain('의제 1 투표 시작');
+  });
+});
