@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { Ballot, BallotItem } from '../../lib/ballot';
 import { isPlenaryAllTitle, parseMotionStatement } from '../../lib/division-ballot-format';
-import { voterReady, type RosterTeam } from '../../lib/named-vote-logic';
+import { displayVoterName, voterReady, type RosterTeam } from '../../lib/named-vote-logic';
 import { useModalDialog } from '../mod/use-modal-dialog';
 import { requiresAllItems } from './ballot-logic';
 import {
@@ -563,6 +563,39 @@ function AgendaGanji({ no, name, soft, accent }: { no: 1 | 2 | 3; name: string; 
   );
 }
 
+/** 이름 확인 — 고른 조·이름을 크게 보이고 한 번 더 묻는다. 「네」를 눌러야 투표가 시작된다. */
+export function VoterConfirm({ team, name, onYes, onNo }: { team: string; name: string; onYes: () => void; onNo: () => void }) {
+  return (
+    <div data-testid="voter-confirm" className="px-5 pt-10 pb-8">
+      <p className="text-[20px] font-bold text-[#5A6B73]" style={KEEP}>
+        {team}
+      </p>
+      <h1 className="mt-2 text-[34px] font-black leading-snug text-[#1F2933]" style={KEEP}>
+        <span className="text-[#1F4E79]">{name}</span> 님이 맞나요?
+      </h1>
+      <p className="mt-3 text-[18px] text-[#5A6B73]" style={KEEP}>
+        본인 이름이 맞는지 한 번 더 확인해 주세요.
+      </p>
+      <button
+        type="button"
+        data-testid="pager-confirm-yes"
+        onClick={onYes}
+        className="mt-8 min-h-[72px] w-full rounded-2xl bg-[#1F4E79] text-white text-[24px] font-black"
+      >
+        네, 맞습니다 · 투표 시작
+      </button>
+      <button
+        type="button"
+        data-testid="pager-confirm-no"
+        onClick={onNo}
+        className="mt-3 min-h-[60px] w-full rounded-2xl border-2 border-[#1F4E79] bg-white text-[20px] font-extrabold text-[#1F4E79]"
+      >
+        아니요, 다시 고르기
+      </button>
+    </div>
+  );
+}
+
 // ── F: 본인 확인(실명 투표지) ──────────────────────────────────────────
 
 function VoterStep({
@@ -589,6 +622,23 @@ function VoterStep({
   const ok = voterReady(voter.team, voter.name, teams);
   const theme = agendaTheme(title);
   const all = isPlenaryAllTitle(title);
+  // 11/11 상규 대표님 메일 — 이름을 고른 뒤 「OOO 님이 맞나요?」를 한 번 더 묻는다.
+  const [confirming, setConfirming] = useState(false);
+  if (confirming && ok) {
+    return (
+      <Frame accent={all ? AGENDA_COLORS[1].accent : theme?.accent}>
+        <VoterConfirm
+          team={voter.team as string}
+          name={displayVoterName(voter.name)}
+          onYes={() => {
+            setConfirming(false);
+            onStart();
+          }}
+          onNo={() => setConfirming(false)}
+        />
+      </Frame>
+    );
+  }
   return (
     <Frame accent={all ? AGENDA_COLORS[1].accent : theme?.accent}>
       {all ? (
@@ -636,10 +686,10 @@ function VoterStep({
           type="button"
           data-testid="pager-start"
           disabled={!ok}
-          onClick={onStart}
+          onClick={() => setConfirming(true)}
           className="min-h-[72px] w-full rounded-2xl bg-[#1F4E79] text-white text-[24px] font-black disabled:opacity-35"
         >
-          맞습니다 · 투표 시작
+          다음
         </button>
         <p className="mt-4 text-[16px] text-[#5A6B73]" style={KEEP}>
           이름은 1인 1표 확인에만 씁니다. 개인별 찬반은 공개하지 않습니다.
@@ -809,10 +859,13 @@ export default function BallotPager({
   teams,
   voter,
   onVoter,
+  onStarted,
 }: {
   ballot: Ballot;
   initialAnswers: Record<string, number>;
   initialPos: PagerPos;
+  /** 이름 확인 「네」 — 부모가 서버에 「투표 시작」을 남긴다(실패해도 진행). */
+  onStarted?: () => void;
   /** 누를 때마다 — 부모가 답과 위치를 들고 임시 저장한다. */
   onChange: (answers: Record<string, number>, pos: PagerPos) => void;
   /** 제출 — 화면에 보이는 답(이 컴포넌트의 상태)을 그대로 넘긴다. */
@@ -867,7 +920,10 @@ export default function BallotPager({
       : null;
 
   if (voterStep) {
-    return <VoterStep title={ballot.title} instructions={ballot.instructions} itemCount={ballot.items.length} teams={teams} voter={voter} onVoter={onVoter} onStart={() => setVoterStep(false)} prefetch={cardPrefetchList(ballot.title, ballot.items, 0, 3)} />;
+    return <VoterStep title={ballot.title} instructions={ballot.instructions} itemCount={ballot.items.length} teams={teams} voter={voter} onVoter={onVoter} onStart={() => {
+          onStarted?.();
+          setVoterStep(false);
+        }} prefetch={cardPrefetchList(ballot.title, ballot.items, 0, 3)} />;
   }
 
   if (check) {

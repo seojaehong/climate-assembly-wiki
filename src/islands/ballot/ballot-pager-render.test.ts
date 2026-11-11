@@ -369,3 +369,18 @@ describe('11/14 의제별 투표지 첫 화면 — 의제 간지(11/11 피알원
     expect(first('전체회의 의결 정책권고안')).not.toContain('pager-ganji');
   });
 });
+
+describe('(11/11 상규 대표님 메일) 이름을 고른 뒤 「OOO 님이 맞나요?」를 한 번 더 묻는다', () => {
+  it('조와 이름을 크게 보이고 「네」·「다시 고르기」 두 단추를 둔다', async () => {
+    const { VoterConfirm } = await import('./BallotPager');
+    const html = renderToStaticMarkup(
+      createElement(VoterConfirm, { team: '2분과 4조', name: '홍길동', onYes: () => {}, onNo: () => {} }),
+    );
+    expect(html).toContain('data-testid="voter-confirm"');
+    expect(html).toContain('홍길동');
+    expect(html).toContain('님이 맞나요?');
+    expect(html).toContain('2분과 4조');
+    expect(html).toContain('data-testid="pager-confirm-yes"');
+    expect(html).toContain('data-testid="pager-confirm-no"');
+  });
+});

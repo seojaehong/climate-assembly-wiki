@@ -289,3 +289,26 @@ export function searchResponses(responses: readonly NamedResponse[], query: stri
         displayVoterName(a.voter_name).localeCompare(displayVoterName(b.voter_name), 'ko'),
     );
 }
+
+/** 11/11 s33 — 「투표 시작」 기록 한 줄(이름 확인 「네」). */
+export type BallotStartRow = { voter_team: string; voter_name: string; voter_in_roster: boolean; started_at: string };
+
+/**
+ * 시작한 사람(조+이름 기준 중복 제거)과 그중 아직 제출하지 않은 사람.
+ * 제출은 이름만으로 맞춘다(제출 때 조를 바꿨어도 같은 사람이 낸 것으로 본다).
+ */
+export function startedNotSubmitted(
+  starts: readonly BallotStartRow[],
+  responses: readonly NamedResponse[],
+): { started: number; waiting: BallotStartRow[] } {
+  const seen = new Set<string>();
+  const uniq: BallotStartRow[] = [];
+  for (const s of starts) {
+    const k = `${s.voter_team}|${normalizeVoterName(s.voter_name)}`;
+    if (seen.has(k)) continue;
+    seen.add(k);
+    uniq.push(s);
+  }
+  const done = new Set(responses.map((r) => normalizeVoterName(r.voter_name)));
+  return { started: uniq.length, waiting: uniq.filter((s) => !done.has(normalizeVoterName(s.voter_name))) };
+}

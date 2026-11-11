@@ -1,6 +1,6 @@
 import { getSupabase } from './supabase';
 import type { WorkshopSession } from './workshop-access';
-import type { NamedItem, NamedResponse, RosterRow } from './named-vote-logic';
+import type { BallotStartRow, NamedItem, NamedResponse, RosterRow } from './named-vote-logic';
 
 /**
  * 숙의 운영 데이터 레이어 — 20260808_s1(주제·조별 산출물)과 20260808_s2(다의제 투표)의
@@ -393,6 +393,8 @@ export type BallotNamedResponses = {
   items: NamedItem[];
   roster: RosterRow[];
   responses: NamedResponse[];
+  /** s33(11/11) — 투표 시작 기록. 미적용이면 없다. */
+  starts?: BallotStartRow[];
 };
 
 /** 투표 하나의 실명 응답·명단·문항. s28 미적용이면 null(화면은 수만 보인다). */
