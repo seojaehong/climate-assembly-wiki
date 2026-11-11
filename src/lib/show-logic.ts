@@ -127,3 +127,72 @@ export function parseShowParams(search: string): ShowParams {
   const minutes = q.get('min') != null && Number.isFinite(minRaw) && minRaw > 0 ? minRaw : null;
   return { tokens, present: q.get('present'), minutes };
 }
+
+// ── 실시간 순환 화면(투표율만 — 찬반은 결과 발표 때 공개) ─────────────────────
+
+/** 투표율(%) = 제출 / 참석, 반올림, 100 상한. 참석 0 이면 0. */
+export function turnoutPct(submitted: number, present: number): number {
+  if (present <= 0) return 0;
+  return Math.min(100, Math.round((submitted / present) * 100));
+}
+
+export type OverallTurnout = { submitted: number; capacity: number; pct: number; inProgress: number };
+
+/** 전체 투표율 = 의제별 제출 합 / (참석 × 의제 수). 「지금 투표 중」 = in_progress 합. */
+export function overallTurnout(
+  lives: ReadonlyArray<{ submitted: number; in_progress: number }>,
+  present: number,
+): OverallTurnout {
+  const submitted = lives.reduce((s, l) => s + Math.max(0, l.submitted), 0);
+  const inProgress = lives.reduce((s, l) => s + Math.max(0, l.in_progress), 0);
+  const capacity = Math.max(0, present) * lives.length;
+  return { submitted, capacity, pct: turnoutPct(submitted, capacity), inProgress };
+}
+
+/** 의제별 막대 — 제출 길이와 투표 시작 표시선 위치(%, 100 에서 자른다). */
+export function turnoutBar(submitted: number, started: number, present: number): { submittedPct: number; startedPct: number } {
+  if (present <= 0) return { submittedPct: 0, startedPct: 0 };
+  return {
+    submittedPct: Math.min(100, (submitted / present) * 100),
+    startedPct: Math.min(100, (started / present) * 100),
+  };
+}
+
+export type RotationPanel = 'overall' | 'agendas' | 'single';
+
+/** 의제 하나 주소 = 전체 투표율 → 그 의제 큰 판. 종합 주소 = 전체 투표율 → 의제별 투표율. */
+export function rotationPanels(agendaCount: number): RotationPanel[] {
+  return agendaCount > 1 ? ['overall', 'agendas'] : ['overall', 'single'];
+}
+
+/** ←/→ — 끝에서 처음으로 돌아 나간다. */
+export function stepPanel(index: number, count: number, delta: number): number {
+  if (count <= 0) return 0;
+  return (((index + delta) % count) + count) % count;
+}
+
+// ── 의제 하나 주소의 화면 전환 ───────────────────────────────────────────
+
+/** view: 진행(live) · 결과 상세 · 결과 요약 · 실시간 순환(rotate). video: 진행 화면을 영상 모드로 그리는가. */
+export type ShowMode = { view: 'live' | 'detail' | 'summary' | 'rotate'; video: boolean };
+
+/**
+ * 1 진행(영상 켜 두었으면 영상) · 2 결과 상세 · 3 결과 요약 · 4 실시간(다시 4 = 진행) ·
+ * V 진행 화면에서는 영상 켜고 끄기, 다른 화면에서는 영상으로 돌아오기.
+ */
+export function showModeKey(m: ShowMode, key: '1' | '2' | '3' | '4' | 'V'): ShowMode {
+  switch (key) {
+    case '1':
+      return { view: 'live', video: m.video };
+    case '2':
+      return { view: 'detail', video: m.video };
+    case '3':
+      return { view: 'summary', video: m.video };
+    case '4':
+      return { view: m.view === 'rotate' ? 'live' : 'rotate', video: m.video };
+    case 'V':
+      return m.view === 'live' ? { view: 'live', video: !m.video } : { view: 'live', video: true };
+    default:
+      return m;
+  }
+}
