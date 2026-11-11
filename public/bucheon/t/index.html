@@ -144,8 +144,7 @@
 
   function renderS1() {
     var s = document.getElementById('s1'); s.innerHTML = '';
-    s.appendChild(area('q1', '질문 1', '스티커를 가장 많이 받은 질문', 500, 'q1', true));
-    s.appendChild(area('q2', '질문 2', '스티커를 두 번째로 많이 받은 질문', 500, 'q2', true));
+    s.appendChild(area('q1', '우리 조 질문', '스티커를 가장 많이 받은 질문 (카톡 단체방이 안 될 때 여기에)', 500, 'q1', true));
     s.appendChild(area('note', '참고', '질문 배경 등 연구진이 알면 좋을 내용', 1000, 'note', false));
   }
 
@@ -198,7 +197,7 @@
   function submit() {
     var b = document.getElementById('submit'); b.disabled = true; msg('저장 중…');
     var p = tab === 1
-      ? BF.rpc('bucheon_submit_questions', { p_code: code, p_q1: draft.q1, p_q2: draft.q2, p_note: draft.note })
+      ? BF.rpc('bucheon_submit_questions', { p_code: code, p_q1: draft.q1, p_q2: null, p_note: draft.note })
       : (function () {
           var terms = {}; policies.forEach(function (x) { if (draft.terms[x.id]) terms[x.id] = draft.terms[x.id]; });
           return BF.rpc('bucheon_submit_priority', { p_code: code, p_terms: terms, p_ranking: draft.ranking,
