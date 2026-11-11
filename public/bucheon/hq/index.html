@@ -89,22 +89,61 @@
   .empty { flex: 1; display: grid; place-items: center; text-align: center; font-size: 34px; font-weight: 800; color: var(--ink-2); }
   .empty small { display: block; font-size: 26px; font-weight: 600; margin-top: 10px; }
 
-  /* 3 우선순위 — 호버 없이 과제명을 두 줄까지 보인다 */
-  .legend { display: flex; gap: 28px; font-size: 26px; align-items: center; color: var(--ink-2); font-weight: 700; white-space: nowrap; }
-  .legend i { display: inline-block; width: 26px; height: 26px; border-radius: 6px; vertical-align: -4px; margin-right: 8px; }
-  .prows { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
-  .prow { display: grid; grid-template-columns: 76px minmax(0, 1.6fr) 140px minmax(0, 1fr); gap: 20px; align-items: center;
-          padding: 6px 18px; border-radius: 12px; overflow: hidden; }
-  .prows .prow { background: var(--paper); border: 3px solid var(--rule); }
-  .prows .prow.top { border-color: var(--vest); }
-  .prow .rk { font-size: 36px; font-weight: 900; text-align: center; color: var(--ink-2); }
-  .prow.top .rk { color: var(--edge-vest); }
-  :root[data-theme="dark"] .prow.top .rk { color: var(--vest); }
-  .prow .t { font-size: 28px; font-weight: 800; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-  .prow .avg { font-size: 36px; font-weight: 900; text-align: right; color: var(--cyan); }
-  .stack { display: flex; gap: 3px; height: min(44px, 80%); border-radius: 9px; overflow: hidden; background: var(--paper-2); border: 3px solid var(--rule); }
-  .stack div { display: grid; place-items: center; color: var(--barText); font-size: 24px; font-weight: 900; min-width: 0; }
-  .phead { flex: none; font-size: 24px; color: var(--ink-2); font-weight: 800; padding-top: 0; padding-bottom: 4px; }
+  /* 3 분임 결과 — 슬라이드처럼 한 장씩 넘긴다(→). 첫 장 = 열 개 조 한눈에. 본부가 확인한 조만 내용이 보인다 */
+  .rgrid { flex: 1; min-height: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); grid-template-rows: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  .rcard { padding: 14px 20px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+  .rcard.ok { border-color: var(--vest); }
+  .rcard.wait { opacity: .6; }
+  .rcard .h { display: flex; align-items: baseline; gap: 12px; white-space: nowrap; }
+  .rcard .h .tag { font-size: 30px; }
+  .rcard .h span { font-size: 24px; font-weight: 800; color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; }
+  .rcard .pk { font-size: 26px; font-weight: 800; line-height: 1.25; }
+  .rcard .pk b { color: var(--edge-vest); margin-right: 8px; }
+  :root[data-theme="dark"] .rcard .pk b { color: var(--vest); }
+  .rcard .st { margin-top: auto; font-size: 24px; font-weight: 700; color: var(--ink-2); }
+  .slide { flex: 1; min-height: 0; display: grid; grid-template-columns: 540px minmax(0, 1fr); gap: 24px; }
+  @media (max-width: 1500px) { .slide { grid-template-columns: 420px minmax(0, 1fr); } }
+  .votes { min-height: 0; padding: 20px 24px; display: flex; flex-direction: column; justify-content: space-around; gap: 10px; overflow: hidden; }
+  .votes .vt { font-size: 26px; font-weight: 900; color: var(--ink-2); }
+  .vrow { display: grid; grid-template-columns: 64px minmax(0, 1fr) 56px; column-gap: 10px; row-gap: 6px; align-items: center; font-size: 24px; font-weight: 800; padding-left: 12px; }
+  .vrow .c { color: var(--ink-2); }
+  .vrow .t { line-height: 1.2; color: var(--ink-2); }
+  .vrow .n { text-align: right; font-size: 32px; color: var(--indigo); }
+  .vrow.pick { box-shadow: inset 7px 0 0 var(--vest); }
+  .vrow.pick .c, .vrow.pick .t { color: var(--ink); }
+  .vbar { grid-column: 2 / 4; height: 14px; border-radius: 7px; background: var(--paper-2); border: 3px solid var(--rule); overflow: hidden; }
+  .vbar span { display: block; height: 100%; background: var(--indigo); }
+  .ideas { min-height: 0; display: flex; flex-direction: column; gap: 18px; overflow: hidden; }
+  .ipanel { flex: 1 1 0; min-height: 0; padding: 16px 28px; overflow: hidden; }
+  .ipanel h3 { margin: 0 0 .3em; font-size: 1.05em; font-weight: 900; line-height: 1.25; letter-spacing: -.01em; }
+  .ipanel h3 b { color: var(--edge-vest); margin-right: .4em; }
+  :root[data-theme="dark"] .ipanel h3 b { color: var(--vest); }
+  .ipanel ul { margin: 0; padding-left: 1.1em; }
+  .ipanel li { font-weight: 700; line-height: 1.3; margin: 0 0 .2em; }
+  .ipanel li::marker { color: var(--cyan); }
+  .ipanel .none { color: var(--ink-2); font-weight: 700; }
+  /* 결과 확인(E) — 투영 안 하는 창에서. 왼쪽 사진, 오른쪽 읽은 글 고치기 */
+  .redit { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+  .rteams { flex: none; display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .rteams button, .racts button { font-size: 24px; font-weight: 800; padding: 6px 16px; border-radius: 9px; border: 3px solid var(--field-line);
+                                  background: var(--paper); color: var(--ink); cursor: pointer; }
+  .rteams button.has { border-color: var(--cyan); }
+  .rteams button.ok { border-color: var(--vest); background: color-mix(in srgb, var(--vest) 22%, var(--paper)); }
+  .rteams button[aria-pressed="true"] { outline: 4px solid var(--ink); outline-offset: 1px; }
+  .rphotos { min-height: 0; overflow: auto; padding: 12px; font-size: 24px; }
+  .rphotos img { width: 100%; display: block; margin-bottom: 12px; border-radius: 8px; }
+  .rform { min-height: 0; overflow: auto; padding: 16px 20px; font-size: 24px; }
+  .rform h3 { margin: 0 0 8px; font-size: 28px; }
+  .rform .memo { color: var(--warn); font-weight: 700; margin: 0 0 10px; }
+  .rform .tr { display: grid; grid-template-columns: 64px 100px 96px minmax(0, 1fr); gap: 10px; align-items: center; margin-bottom: 6px; }
+  .rform input[type=number] { width: 90px; font-size: 24px; padding: 2px 6px; border: 3px solid var(--field-line); border-radius: 8px; background: var(--paper-2); color: var(--ink); }
+  .rform input[type=checkbox] { width: 28px; height: 28px; }
+  .rform textarea { width: 100%; min-height: 170px; font-size: 24px; font-family: inherit; line-height: 1.35; padding: 8px 10px;
+                    border: 3px solid var(--field-line); border-radius: 8px; background: var(--paper-2); color: var(--ink); }
+  .rform .ib { margin-top: 14px; }
+  .rform .ib b { display: block; margin-bottom: 4px; }
+  .racts { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; align-items: center; }
+  .racts .go { background: var(--vest); color: #0b1830; border-color: var(--edge-vest); }
 
   /* 4 설문 — 5칸 같은 폭, 칸을 응답 수만큼 진하게 */
   .sgrid { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 28px; flex: 1; min-height: 0; }
@@ -148,7 +187,13 @@
     .dist { height: 44px; gap: 6px; }
     .dist div { font-size: 24px; }
     .again { margin-top: 14px; padding-top: 10px; }
+    .votes { padding: 10px 16px; gap: 4px; }
+    .votes .vt { display: none; }
+    .vbar { height: 10px; }
+    .vrow .n { font-size: 28px; }
+    .ipanel { padding: 10px 20px; }
   }
+  .votes.tight .vbar { display: none; }   /* 그래도 넘치면 막대를 빼고 숫자만 */
   @media print {
     :root, :root[data-theme="dark"] { --paper: #fff; --ink: #000; --ink-2: #333; --rule: #999; color-scheme: light; }
     header, .tools, .pager { display: none; }
@@ -172,7 +217,7 @@
   <nav>
     <button data-v="1">1 현황</button>
     <button data-v="2">2 질문</button>
-    <button data-v="3">3 우선순위</button>
+    <button data-v="3">3 분임 결과</button>
     <button data-v="4">4 설문</button>
   </nav>
   <div class="stamp" id="stamp"></div>
@@ -189,8 +234,6 @@
   // 밝은 판이 기본. D 로 바꾼 판은 이 기기에 기억한다(리허설에서 고른 판이 당일에도 유지되게)
   if (BF.store('bf_hq_theme') === 'dark') document.documentElement.dataset.theme = 'dark';
   var data = null, view = 1, page = 0, failures = 0, editing = false;
-  var TERM_COLOR = { S: 'var(--S)', M: 'var(--M)', LI: 'var(--LI)', LR: 'var(--LR)' };
-  var TERM_LABEL = { S: '단기', M: '중기', LI: '장기·중요도', LR: '장기·현실제약' };
   var SURVEY_LABEL = { overall: '전반 만족', info: '발표 이해', talk: '의견 발언', reflect: '정책 반영 기대' };
 
   var V = document.getElementById('view');
@@ -216,8 +259,10 @@
     BF.rpc('bucheon_hq', { p_key: key }).then(function (d) {
       data = d; failures = 0; BF.store('bf_hq_key', key);
       setStamp(BF.hhmm(d.now), '실시간 갱신');
-      // 정리 모드에서 목록 상자를 펼친 채로 화면이 다시 그려지면 선택이 끊긴다
-      if (!(editing && document.activeElement && document.activeElement.tagName === 'SELECT')) render();
+      // 정리 모드에서 목록 상자를 펼친 채로 화면이 다시 그려지면 선택이 끊긴다.
+      // 결과 확인 중에는 고치던 글이 날아가지 않게 다시 그리지 않는다(저장·조 바꾸기 때 그린다)
+      var a = document.activeElement, typing = a && /^(SELECT|INPUT|TEXTAREA)$/.test(a.tagName);
+      if (!(editing && (typing || (view === 3 && draft && draft.dirty)))) render();
     }).catch(function (e) {
       if (e.raw === 'invalid hq key') { BF.store('bf_hq_key', null); key = ''; return gate(e.message); }
       failures++;
@@ -247,11 +292,12 @@
   }
 
   function renderStatus() {
-    var q = byTeam(data.questions), p = byTeam(data.priorities), n = data.teams.length;
+    var q = byTeam(data.questions), p = byTeam(data.results), n = data.teams.length;
     var waitQ = data.teams.filter(function (t) { return !q[t]; }), waitP = data.teams.filter(function (t) { return !p[t]; });
-    // 가운데 숫자: 세션2 순위가 하나라도 들어오면 순위로 넘어간다(세션1 → 세션2 순서로 진행)
-    var core = data.priorities.length
-      ? { n: data.priorities.length, of: n, label: '우선순위 제출', kind: 'p' }
+    var shown = data.results.filter(function (r) { return r.confirmed; }).length;
+    // 가운데 숫자: 세션2 결과(템플릿 사진)가 하나라도 들어오면 결과로 넘어간다(세션1 → 세션2 순서로 진행)
+    var core = data.results.length
+      ? { n: data.results.length, of: n, label: '분임 결과', kind: 'p' }
       : { n: data.questions.length, of: n, label: '질문 제출', kind: 'q' };
     var items = data.teams.map(function (t) { return { no: t, q: !!q[t], p: !!p[t] }; });
     ring = BF.orbit(items, core, ring);
@@ -263,19 +309,19 @@
       fitbox]);
     var side = el('div', { class: 'side' }, [
       kpi('q', '세션1 질문 제출', data.questions.length, n, waitQ.length ? '남은 조 ' + waitQ.join('·') : '모든 조 제출'),
-      kpi('p', '세션2 우선순위 제출', data.priorities.length, n, waitP.length ? '남은 조 ' + waitP.join('·') : '모든 조 제출'),
+      kpi('p', '세션2 분임 결과', data.results.length, n, '송출 확인 ' + shown + '개 · ' + (waitP.length ? '남은 조 ' + waitP.join('·') : '모든 조 들어옴')),
       kpi('s', '만족도 설문 응답', data.surveys.length, 0, data.survey_open ? '설문 받는 중' : '설문 마감')
     ]);
     V.appendChild(el('div', { class: 'status' }, [stage, side]));
     var compact = fitRing(fitbox);
     (compact
-      ? [el('span', null, [dot('var(--cyan)', 1), '질문']), el('span', null, [dot('var(--indigo)', 1), '순위']), el('span', null, [dot('var(--vest)'), '모두 제출'])]
-      : [el('span', null, [dot('var(--cyan)'), '하나 제출']), el('span', null, [dot('var(--vest)'), '질문·순위 모두'])]
+      ? [el('span', null, [dot('var(--cyan)', 1), '질문']), el('span', null, [dot('var(--indigo)', 1), '결과']), el('span', null, [dot('var(--vest)'), '둘 다'])]
+      : [el('span', null, [dot('var(--cyan)'), '하나 들어옴']), el('span', null, [dot('var(--vest)'), '질문·결과 모두'])]
     ).forEach(function (s) { key.appendChild(s); });
     V.appendChild(el('div', { class: 'tools' }, [
       el('button', { text: '질문 인쇄', onclick: function () { show(2, -1); setTimeout(function () { window.print(); }, 150); } }),
       el('button', { text: '질문 CSV', onclick: function () { csv('questions'); } }),
-      el('button', { text: '우선순위 CSV', onclick: function () { csv('priorities'); } }),
+      el('button', { text: '분임 결과 CSV', onclick: function () { csv('results'); } }),
       el('button', { text: '설문 CSV', onclick: function () { csv('surveys'); } }),
       el('button', { text: '밝게/어둡게', onclick: toggleTheme })
     ]));
@@ -381,70 +427,174 @@
     return { clipped: clipped, pages: pages };
   }
 
-  function aggregate() {
-    return data.policies.map(function (pl) {
-      var counts = { S: 0, M: 0, LI: 0, LR: 0 }, ranks = [];
-      data.priorities.forEach(function (p) {
-        var t = p.terms[String(pl.id)]; if (t) counts[t]++;
-        var r = p.ranking.indexOf(pl.id); if (r >= 0) ranks.push(r + 1);
-      });
-      var avg = ranks.length ? ranks.reduce(function (a, b) { return a + b; }, 0) / ranks.length : null;
-      return { id: pl.id, title: pl.title, counts: counts, avg: avg, n: ranks.length };
-    }).sort(function (a, b) {
-      if (a.avg === null) return 1; if (b.avg === null) return -1;
-      return a.avg - b.avg || b.counts.S - a.counts.S || a.id - b.id;
+  // ── 3 분임 결과 ────────────────────────────────────────────────
+  // 결과는 퍼실이 카톡에 올린 템플릿 사진을 브리지가 읽어 넣는다(본인 입력 없음). 읽은 글은 틀릴 수 있어서
+  // 본부가 확인(E, 스크린에 안 나가는 창)한 조만 스크린에 나간다. 첫 장 = 열 개 조, → 로 조마다 한 장.
+  function taskOf(code) { for (var i = 0; i < data.tasks.length; i++) if (data.tasks[i].code === code) return data.tasks[i]; return { code: code, title: code }; }
+  function teamOf(t) { for (var i = 0; i < data.team_info.length; i++) if (data.team_info[i].team_no === t) return data.team_info[i]; return { team_no: t }; }
+  function stratOf(id) { for (var i = 0; i < data.strategies.length; i++) if (data.strategies[i].id === id) return data.strategies[i]; return null; }
+  function tasksFor(info, extra) {
+    var list = data.tasks.filter(function (x) { return x.strategy === info.strategy; }).map(function (x) { return x.code; });
+    (extra || []).forEach(function (c) { if (list.indexOf(c) < 0) list.push(c); });   // 글자 읽기가 다른 전략 과제를 고른 경우도 보인다
+    return list;
+  }
+
+  function renderResults() {
+    if (editing) return renderResultEdit();
+    var conf = data.results.filter(function (r) { return r.confirmed; });
+    var pages = 1 + conf.length;
+    if (page >= pages || page < 0) page = 0;
+    if (page === 0) return resultOverview(conf);
+    resultSlide(conf[page - 1], pages);
+  }
+
+  function resultOverview(conf) {
+    var res = byTeam(data.results);
+    V.appendChild(el('div', { class: 'vhead' }, [
+      el('h2', null, ['세션2 · 분임 결과', el('small', { text: conf.length + '/' + data.teams.length + '개 조' })]),
+      el('span', { class: 'note', text: conf.length ? '→ 로 조별 보기' : '' })]));
+    var grid = el('div', { class: 'rgrid' });
+    data.teams.forEach(function (t) {
+      var info = teamOf(t), r = res[t], s = stratOf(info.strategy);
+      var card = el('div', { class: 'panel rcard' + (r && r.confirmed ? ' ok' : ' wait') }, [
+        el('div', { class: 'h' }, [el('span', { class: 'tag', text: t + '조' }), el('span', { text: info.label || (s ? s.name : '') })])]);
+      if (r && r.confirmed) {
+        r.picks.forEach(function (p) { card.appendChild(el('div', { class: 'pk' }, [el('b', { text: p.code }), taskOf(p.code).title])); });
+        if (!r.picks.length) card.appendChild(el('div', { class: 'st', text: '선정 과제 없음' }));
+      } else {
+        card.appendChild(el('div', { class: 'st', text: r ? '확인 중' : '기다리는 중' }));
+      }
+      grid.appendChild(card);
+    });
+    V.appendChild(grid);
+    // 카드 안 과제명이 넘치면 그 카드만 글자를 줄인다(24px 까지)
+    Array.prototype.forEach.call(grid.querySelectorAll('.rcard'), function (c) {
+      var fs = 26;
+      while (c.scrollHeight > c.clientHeight + 1 && fs > 24) { fs--; Array.prototype.forEach.call(c.querySelectorAll('.pk'), function (p) { p.style.fontSize = fs + 'px'; }); }
     });
   }
 
-  function renderPriority() {
-    var rows = aggregate(), n = data.priorities.length;
-    var legend = el('div', { class: 'legend' });
-    ['S', 'M', 'LI', 'LR'].forEach(function (k) {
-      var i = el('i'); i.style.background = TERM_COLOR[k];
-      legend.appendChild(el('span', null, [i, TERM_LABEL[k]]));
+  function resultSlide(r, pages) {
+    var info = teamOf(r.team_no), s = stratOf(info.strategy);
+    V.appendChild(el('div', { class: 'vhead' }, [
+      el('h2', null, [el('span', { class: 'tag', text: r.team_no + '조' }), ' ' + (info.label || ''),
+        el('small', { text: s ? s.name + ' · ' + s.goal : '' })]),
+      el('span', { class: 'note', text: '' })]));
+    var picked = r.picks.map(function (p) { return p.code; });
+    var codes = tasksFor(info, picked);
+    var max = 0; codes.forEach(function (c) { max = Math.max(max, r.votes[c] || 0); });
+    var votes = el('div', { class: 'panel votes' }, [el('div', { class: 'vt', text: Object.keys(r.votes).length ? '세부과제 투표' : '세부과제' })]);
+    codes.forEach(function (c) {
+      var v = r.votes[c], bar = el('span'); bar.style.width = (max && v ? Math.round(v / max * 100) : 0) + '%';
+      votes.appendChild(el('div', { class: 'vrow' + (picked.indexOf(c) >= 0 ? ' pick' : '') }, [
+        el('span', { class: 'c', text: c }), el('span', { class: 't', text: taskOf(c).title }),
+        el('span', { class: 'n', text: v === undefined ? '' : String(v) }),
+        Object.keys(r.votes).length ? el('div', { class: 'vbar' }, [bar]) : null]));
     });
-    V.appendChild(el('div', { class: 'vhead' }, [el('h2', null, ['세션2 · 정책과제 우선순위', el('small', { text: n + '/' + data.teams.length + '개 조 집계' })]), legend]));
-    V.appendChild(el('div', { class: 'prow phead' }, [el('span', { text: '순위', style: 'text-align:center' }), el('span', { text: '정책과제' }),
-      el('span', { text: '평균 순위', style: 'text-align:right' }), el('span', { text: '시기 분류 (조 수)' })]));
-    var box = el('div', { class: 'prows' });
-    V.appendChild(box);
-    // 한 행은 56px 밑으로 줄이지 않는다(글자 24px 하한). 안 들어가면 쪽을 나눈다(← → 로 넘김)
-    // 먼저 한 쪽에 다 넣어 본다(행 48px 이상). 과제명이 잘리면 두 줄이 들어가는 72px 행으로 쪽을 나눈다.
-    // 쪽을 나눌 때는 아래 쪽 표시(약 56px) 자리를 빼고 센다.
-    var GAP = 6, avail = box.clientHeight, all = rows.length;
-    var hAll = Math.floor((avail - GAP * (all - 1)) / all);
-    var per = all, pages = 1;
-    if (hAll >= 48) {
-      drawRows(0, all, hAll);
-      var cut = Array.prototype.some.call(box.querySelectorAll('.t'), function (t) { return t.scrollHeight > t.clientHeight + 1 || t.offsetHeight > t.parentNode.clientHeight; });
-      if (!cut) { page = 0; return; }
-      box.innerHTML = '';
-    }
-    per = Math.max(3, Math.floor((avail - 56 + GAP) / (72 + GAP)));
-    pages = Math.ceil(all / per);
-    if (page >= pages || page < 0) page = 0;
-    drawRows(page * per, per, 72);
+    var ideas = el('div', { class: 'ideas' });
+    r.picks.forEach(function (p) {
+      var ul = el('ul');
+      p.ideas.forEach(function (x) { ul.appendChild(el('li', { text: x })); });
+      ideas.appendChild(el('div', { class: 'panel mark ipanel' }, [
+        el('h3', null, [el('b', { text: p.code }), taskOf(p.code).title]),
+        p.ideas.length ? ul : el('div', { class: 'none', text: '아이디어 없음' })]));
+    });
+    if (!r.picks.length) ideas.appendChild(el('div', { class: 'empty' }, ['선정 과제가 없습니다']));
+    V.appendChild(el('div', { class: 'slide' }, [votes, ideas]));
     V.appendChild(el('div', { class: 'pager' }, [el('b', { text: (page + 1) + ' / ' + pages + '쪽 · → 로 넘김' })]));
+    if (votes.scrollHeight > votes.clientHeight + 1) votes.classList.add('tight');
+    // 아이디어 글자는 40px 에서 시작해 32px 까지 줄인다(가시성 우선). 그래도 넘치면 28px, 마지막 24px
+    var panels = ideas.querySelectorAll('.ipanel');
+    var fs = 40;
+    function over() { return Array.prototype.some.call(panels, function (p) { return p.scrollHeight > p.clientHeight + 1; }); }
+    ideas.style.fontSize = fs + 'px';
+    while (over() && fs > 24) { fs--; ideas.style.fontSize = fs + 'px'; }
+  }
 
-    function drawRows(start, count, h) { rows.slice(start, start + count).forEach(function (r, j) {
-      var i = start + j;
-      var stack = el('div', { class: 'stack' });
-      ['S', 'M', 'LI', 'LR'].forEach(function (k) {
-        if (!r.counts[k]) return;
-        var d = el('div', { text: String(r.counts[k]) });
-        d.style.flex = String(r.counts[k]); d.style.background = TERM_COLOR[k];
-        stack.appendChild(d);
-      });
-      var row = el('div', { class: 'prow' + (r.avg !== null && i < 3 ? ' top' : '') }, [
-        el('span', { class: 'rk', text: r.avg === null ? '–' : String(i + 1) }),
-        el('span', { class: 't', text: r.title }),
-        el('span', { class: 'avg' }, [r.avg === null ? '–' : r.avg.toFixed(1)]),
-        stack
-      ]);
-      // 행 높이를 정해 두면 과제 수가 바뀌어도 줄 간격이 고르다(최대 96px)
-      row.style.height = Math.min(96, h) + 'px'; row.style.paddingTop = row.style.paddingBottom = '0';
-      box.appendChild(row);
-    }); }
+  // 결과 확인·수정(E). draft = 고치는 중인 조의 사본(5초 갱신이 덮어쓰지 않는다)
+  var draft = null, photoCache = {};
+  function loadDraft(t) {
+    var r = byTeam(data.results)[t];
+    draft = { team: t, dirty: false, votes: r ? JSON.parse(JSON.stringify(r.votes)) : {},
+              picks: r ? JSON.parse(JSON.stringify(r.picks)) : [], confirmed: !!(r && r.confirmed), note: r ? r.note : '' };
+  }
+
+  function renderResultEdit() {
+    var res = byTeam(data.results);
+    if (!draft) {
+      var first = data.results.filter(function (r) { return !r.confirmed; })[0];
+      loadDraft(first ? first.team_no : data.teams[0]);
+    }
+    V.appendChild(el('div', { class: 'vhead' }, [el('h2', null, ['분임 결과 확인', el('small', { text: '확인한 조만 스크린에 나갑니다' })]),
+      el('span', { class: 'note', text: '정리 모드 · E 로 끝내기' })]));
+    var bar = el('div', { class: 'rteams' });
+    data.teams.forEach(function (t) {
+      var r = res[t];
+      bar.appendChild(el('button', { class: r ? (r.confirmed ? 'ok' : 'has') : '', 'aria-pressed': String(draft.team === t),
+        text: t + '조' + (r ? (r.confirmed ? ' ✓' : ' ●') : ''),
+        onclick: function () { if (draft.dirty && !confirm('고친 내용을 저장하지 않고 넘어갈까요?')) return; loadDraft(t); render(); } }));
+    });
+    V.appendChild(bar);
+    var photos = el('div', { class: 'panel rphotos' }, [el('div', { text: '사진 불러오는 중…' })]);
+    var form = el('div', { class: 'panel rform' });
+    V.appendChild(el('div', { class: 'redit' }, [photos, form]));
+    drawPhotos(photos, draft.team, res[draft.team]);
+    drawForm(form);
+  }
+
+  function drawPhotos(box, t, r) {
+    var stamp = r ? r.updated_at + '/' + r.photos : 'none';
+    function show(list) {
+      box.innerHTML = '';
+      if (!list.length) { box.appendChild(el('div', { text: '받은 사진이 없습니다. 사진 없이 직접 적어도 됩니다.' })); return; }
+      list.forEach(function (p) { box.appendChild(el('img', { src: p.image, alt: t + '조 ' + ({ priority: '우선순위 템플릿', idea: '아이디어 템플릿' }[p.kind] || '사진') })); });
+    }
+    if (photoCache[t] && photoCache[t].stamp === stamp) return show(photoCache[t].list);
+    if (!r || !r.photos) return show([]);
+    BF.rpc('bucheon_result_photos', { p_key: key, p_team_no: t }).then(function (list) {
+      photoCache[t] = { stamp: stamp, list: list };
+      if (draft && draft.team === t && box.isConnected) show(list);
+    }).catch(function (e) { box.innerHTML = ''; box.appendChild(el('div', { text: '사진을 못 불러왔습니다: ' + e.message })); });
+  }
+
+  function drawForm(form) {
+    form.innerHTML = '';
+    var info = teamOf(draft.team), s = stratOf(info.strategy);
+    var picked = draft.picks.map(function (p) { return p.code; });
+    form.appendChild(el('h3', { text: draft.team + '조 · ' + (info.label || '') + (s ? ' (' + s.name + ')' : '') }));
+    if (draft.note) form.appendChild(el('p', { class: 'memo', text: '읽기 메모: ' + draft.note }));
+    form.appendChild(el('div', { class: 'tr' }, [el('b', { text: '과제' }), el('b', { text: '투표 수' }), el('b', { text: '선정' }), el('b', { text: '세부과제' })]));
+    tasksFor(info, picked).forEach(function (c) {
+      var num = el('input', { type: 'number', min: '0', max: '999', value: draft.votes[c] === undefined ? '' : String(draft.votes[c]), 'aria-label': c + ' 투표 수' });
+      num.oninput = function () { if (num.value === '') delete draft.votes[c]; else draft.votes[c] = Math.max(0, parseInt(num.value, 10) || 0); draft.dirty = true; };
+      var chk = el('input', { type: 'checkbox', 'aria-label': c + ' 선정' }); chk.checked = picked.indexOf(c) >= 0;
+      chk.onchange = function () {
+        if (chk.checked) draft.picks.push({ code: c, ideas: [] });
+        else draft.picks = draft.picks.filter(function (p) { return p.code !== c; });
+        draft.dirty = true; drawForm(form);
+      };
+      form.appendChild(el('div', { class: 'tr' }, [el('span', { text: c }), num, chk, el('span', { text: taskOf(c).title })]));
+    });
+    draft.picks.forEach(function (p) {
+      var ta = el('textarea', { 'aria-label': p.code + ' 아이디어' }); ta.value = p.ideas.join('\n');
+      ta.oninput = function () { p.ideas = ta.value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean); draft.dirty = true; };
+      form.appendChild(el('div', { class: 'ib' }, [el('b', { text: p.code + ' ' + taskOf(p.code).title + ' — 아이디어 (한 줄에 하나)' }), ta]));
+    });
+    function save(confirmed) {
+      // 빈 조가 스크린에 나가지 않게: 선정 과제가 하나는 있어야 송출한다
+      if (confirmed && !draft.picks.length) { alert('선정 과제를 하나 이상 고른 뒤 내보낼 수 있습니다.'); return; }
+      BF.rpc('bucheon_result_edit', { p_key: key, p_team_no: draft.team, p_votes: draft.votes, p_picks: draft.picks, p_confirmed: confirmed })
+        .then(function () { var t = draft.team; draft = null; loadAfter(t); }).catch(function (e) { alert(e.message); });
+    }
+    form.appendChild(el('div', { class: 'racts' }, [
+      el('button', { class: 'go', text: draft.confirmed ? '고친 내용 송출' : '확인 · 스크린에 내보내기', onclick: function () { save(true); } }),
+      el('button', { text: '저장만 (확인 전)', onclick: function () { save(false); } }),
+      draft.confirmed ? el('button', { text: '스크린에서 내리기', onclick: function () { save(false); } }) : null,
+      el('span', { text: draft.confirmed ? '지금 스크린에 나가는 중' : '아직 스크린에 안 나감' })]));
+  }
+
+  function loadAfter(t) {
+    BF.rpc('bucheon_hq', { p_key: key }).then(function (d) { data = d; loadDraft(t); render(); }).catch(function () { load(); });
   }
 
   function renderSurvey() {
@@ -487,7 +637,7 @@
     Array.prototype.forEach.call(document.querySelectorAll('nav button'), function (b) {
       b.setAttribute('aria-pressed', String(+b.dataset.v === view));
     });
-    [null, renderStatus, renderQuestions, renderPriority, renderSurvey][view]();
+    [null, renderStatus, renderQuestions, renderResults, renderSurvey][view]();
   }
 
   function show(v, p) { view = v; page = p === undefined ? 0 : p; render(); }
@@ -505,13 +655,16 @@
       rows = [['조', '질문', '질문2', '묶은 조', '숨김', '경로', '보낸 시각', '참고', '저장 시각']].concat(data.questions.map(function (q) {
         return [q.team_no + '조', q.q1, q.q2 || '', q.group_lead ? q.group_lead + '조' : '', q.hidden ? '숨김' : '',
                 q.source === 'kakao' ? '카톡' : '조 화면', q.sent_at || '', q.note || '', q.updated_at]; }));
-    } else if (kind === 'priorities') {
-      var title = {}; data.policies.forEach(function (p) { title[p.id] = p.title; });
-      rows = [['조', '정책과제', '시기', '순위', '1~3순위 이유', '장기 이유', '의견 갈림']];
-      data.priorities.forEach(function (p) {
-        data.policies.forEach(function (pl) {
-          rows.push([p.team_no + '조', pl.title, TERM_LABEL[p.terms[String(pl.id)]] || '', p.ranking.indexOf(pl.id) + 1,
-                     p.reason_top, p.reason_long || '', p.split || '']);
+    } else if (kind === 'results') {
+      rows = [['조', '분임', '전략', '과제', '세부과제', '투표 수', '선정', '아이디어', '송출 확인', '경로', '저장 시각']];
+      data.results.forEach(function (r) {
+        var info = teamOf(r.team_no), s = stratOf(info.strategy);
+        var picked = r.picks.map(function (p) { return p.code; });
+        tasksFor(info, picked).forEach(function (c) {
+          var p = r.picks[picked.indexOf(c)];
+          rows.push([r.team_no + '조', info.label || '', s ? s.name : '', c, taskOf(c).title,
+                     r.votes[c] === undefined ? '' : r.votes[c], p ? '선정' : '', p ? p.ideas.join('\n') : '',
+                     r.confirmed ? '확인' : '', r.source === 'hq' ? '본부 수정' : '사진 읽기', r.updated_at]);
         });
       });
     } else {
@@ -527,16 +680,23 @@
   }
 
   Array.prototype.forEach.call(document.querySelectorAll('nav button'), function (b) {
-    b.onclick = function () { show(+b.dataset.v); };
+    b.onclick = function () {
+      if (editing && view === 3 && draft && draft.dirty && !confirm('고친 내용을 저장하지 않고 나갈까요?')) return;
+      if (+b.dataset.v !== view) { editing = false; draft = null; }
+      show(+b.dataset.v);
+    };
   });
   document.addEventListener('keydown', function (e) {
-    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
-    if (e.key >= '1' && e.key <= '4') show(+e.key);
-    else if (e.key === 'ArrowRight' && (view === 2 || view === 3)) { page++; render(); }
-    else if (e.key === 'ArrowLeft' && (view === 2 || view === 3)) { page = Math.max(0, page - 1); render(); }
+    if (/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+    if (e.key >= '1' && e.key <= '4') { if (editing && view === 3 && draft && draft.dirty && !confirm('고친 내용을 저장하지 않고 나갈까요?')) return; editing = false; draft = null; show(+e.key); }
+    else if (e.key === 'ArrowRight' && (view === 2 || view === 3) && !editing) { page++; render(); }
+    else if (e.key === 'ArrowLeft' && (view === 2 || view === 3) && !editing) { page = Math.max(0, page - 1); render(); }
     else if (e.key === 'd' || e.key === 'D') toggleTheme();
     else if (e.key === 't' || e.key === 'T') document.body.classList.toggle('ops');
-    else if ((e.key === 'e' || e.key === 'E') && view === 2) { editing = !editing; render(); }
+    else if ((e.key === 'e' || e.key === 'E') && (view === 2 || view === 3)) {
+      if (editing && view === 3 && draft && draft.dirty && !confirm('고친 내용을 저장하지 않고 끝낼까요?')) return;
+      editing = !editing; draft = null; page = 0; render();
+    }
   });
   window.addEventListener('resize', render);
   load(true);

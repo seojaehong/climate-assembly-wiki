@@ -12,7 +12,8 @@
     'ranking must list every policy exactly once': '모든 과제의 순위를 매겨 주세요.',
     'survey is closed': '설문이 마감되었습니다.',
     'invalid answers': '응답을 확인해 주세요.',
-    'invalid hq key': '본부 주소가 맞지 않습니다.'
+    'invalid hq key': '본부 주소가 맞지 않습니다.',
+    'no picks to show': '선정 과제를 하나 이상 고른 뒤 내보낼 수 있습니다.'
   };
 
   function rpc(fn, args) {
@@ -111,7 +112,7 @@
     return n ? inter / n : 0;
   }
 
-  // 원탁 고리: items = [{ no, q(질문 냄), p(순위 냄) }], core = { n, of, label, kind('q'|'p') } 또는 null.
+  // 원탁 고리: items = [{ no, q(질문 냄), p(세션2 결과 들어옴) }], core = { n, of, label, kind('q'|'p') } 또는 null.
   // 같은 상자를 다시 넘기면 자리를 다시 만들지 않는다 — 상태가 바뀐 조만 한 번 튄다(5초 갱신에도 깜빡이지 않게).
   function orbit(items, core, box) {
     var first = !box;
@@ -147,7 +148,7 @@
       s.querySelector('.tag').textContent = it.no + '조';
       var bq = s.querySelector('b.q'), bp = s.querySelector('b.p');
       bq.textContent = it.q ? '질문 ✓' : '질문'; bq.classList.toggle('on', !!it.q);
-      bp.textContent = it.p ? '순위 ✓' : '순위'; bp.classList.toggle('on', !!it.p);
+      bp.textContent = it.p ? '결과 ✓' : '결과'; bp.classList.toggle('on', !!it.p);
     });
     for (var k = seats.length - 1; k >= items.length; k--) seats[k].remove();
     return box;

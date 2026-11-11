@@ -80,7 +80,7 @@
   <div id="main" class="hidden">
     <div class="tabs" role="tablist">
       <button role="tab" id="tab1" aria-selected="true">세션1 · 질문</button>
-      <button role="tab" id="tab2" aria-selected="false">세션2 · 우선순위</button>
+      <button role="tab" id="tab2" aria-selected="false">세션2 · 결과 사진</button>
     </div>
     <section id="s1"></section>
     <section id="s2" class="hidden"></section>
@@ -133,7 +133,6 @@
       document.title = team + '조 · 100인 공론장';
       var stamp = [];
       if (d.question) stamp.push('세션1 제출 ' + BF.hhmm(d.question.updated_at));
-      if (d.priority) stamp.push('세션2 제출 ' + BF.hhmm(d.priority.updated_at));
       msg(stamp.join(' · '), stamp.length ? 'ok' : '');
       render();
     }).catch(function (e) { showGate(e.message); });
@@ -157,42 +156,15 @@
     g.appendChild(area('note', '참고', '질문 배경 등 연구진이 알면 좋을 내용', 1000, 'note', false));
   }
 
+  // 세션2 결과는 여기서 입력하지 않는다(진행계획 4.0). 템플릿 사진을 단체방에 올리면 본부가 읽어 스크린에 낸다.
   function renderS2() {
     var s = document.getElementById('s2'); s.innerHTML = '';
-    s.appendChild(el('h2', { text: '1. 시기 분류 (' + Object.keys(draft.terms).length + ' / ' + policies.length + ')' }));
-    var terms = el('div', { class: 'terms' }); s.appendChild(terms);
-    policies.forEach(function (p) {
-      var seg = el('div', { class: 'seg' });
-      BF.TERMS.forEach(function (t) {
-        seg.appendChild(el('button', { type: 'button', 'aria-pressed': String(draft.terms[p.id] === t.k), text: t.label,
-          onclick: function () { draft.terms[p.id] = t.k; saveDraft(); renderS2(); } }));
-      });
-      terms.appendChild(el('div', { class: 'card' }, [el('div', { class: 'pt', text: p.title }), seg]));
-    });
-
-    s.appendChild(el('h2', { text: '2. 우선순위 (' + draft.ranking.length + ' / ' + policies.length + ')' }));
-    s.appendChild(el('div', { class: 'row' }, [
-      el('span', { class: 'help', text: '1순위부터 차례로 누르세요. 다시 누르면 빠집니다.' }),
-      el('button', { type: 'button', class: 'ghost', text: '처음부터', onclick: function () { draft.ranking = []; saveDraft(); renderS2(); } })
+    s.appendChild(el('div', { class: 'card' }, [
+      el('h2', { text: '세션2 결과는 사진으로 보내 주세요' }),
+      el('p', { text: '① 단체방에 「' + team + '조결과」라고 먼저 적고' }),
+      el('p', { text: '② 바로 이어서 템플릿 사진 두 장(우선순위 선정 · 아이디어)을 올립니다.' }),
+      el('p', { class: 'help', text: '글씨가 화면을 꽉 채우게, 정면에서, 그림자 없이 찍어 주세요. 다시 찍어 올리면 새 사진으로 바뀝니다. 본부가 확인한 뒤 스크린에 나갑니다.' })
     ]));
-    var box = el('div', { class: 'rank' });
-    var ordered = draft.ranking.map(function (id) { return policies.filter(function (p) { return p.id === id; })[0]; })
-      .concat(policies.filter(function (p) { return draft.ranking.indexOf(p.id) < 0; }));
-    ordered.forEach(function (p) {
-      var r = draft.ranking.indexOf(p.id);
-      box.appendChild(el('button', { type: 'button', class: 'item' + (r >= 0 ? ' on' : ''),
-        onclick: function () {
-          var i = draft.ranking.indexOf(p.id);
-          if (i >= 0) draft.ranking.splice(i, 1); else draft.ranking.push(p.id);
-          saveDraft(); renderS2();
-        } }, [el('span', { class: 'badge', text: r >= 0 ? String(r + 1) : '' }), el('span', { text: p.title })]));
-    });
-    s.appendChild(box);
-
-    s.appendChild(el('h2', { text: '3. 이유' }));
-    s.appendChild(area('top', '1~3순위를 고른 이유', '', 2000, 'top', true));
-    s.appendChild(area('long', '장기로 분류한 과제와 그 이유', '「중요도가 낮아서」인지 「현실 제약 때문에」인지 함께', 2000, 'long', false));
-    s.appendChild(area('split', '조 안에서 의견이 갈린 과제', '', 2000, 'split', false));
   }
 
   function render() {
@@ -200,7 +172,8 @@
     document.getElementById('tab2').setAttribute('aria-selected', String(tab === 2));
     document.getElementById('s1').classList.toggle('hidden', tab !== 1);
     document.getElementById('s2').classList.toggle('hidden', tab !== 2);
-    document.getElementById('submit').textContent = tab === 1 ? '세션1 질문 제출' : '세션2 우선순위 제출';
+    document.getElementById('submit').textContent = '세션1 질문 제출';
+    document.getElementById('bar').classList.toggle('hidden', tab !== 1);
     if (tab === 1) renderS1(); else renderS2();
   }
 
