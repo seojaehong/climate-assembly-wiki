@@ -385,6 +385,40 @@ describe('(11/11 상규 대표님 메일) 이름을 고른 뒤 「OOO 님이 맞
   });
 });
 
+describe('(11/12) 새로고침 — 조·이름을 되살려도 「네」를 누르기 전이면 확인 화면부터', () => {
+  const teams = [{ team: '1분과 1조', short: '1조', names: [{ team: '1분과 1조', no: 1, name: '가나다' }] }];
+  const render = (voter: { team: string | null; name: string; confirmed?: boolean }) =>
+    renderToStaticMarkup(
+      createElement(BallotPager, {
+        ballot: { id: 'b-r', title: '전체회의 의결 의제2 일회용품 줄이기 등 자원순환', instructions: null, status: 'open', subgroup: null, items },
+        initialAnswers: {},
+        initialPos: 0,
+        onChange: noop,
+        onSubmit: noop,
+        submitting: false,
+        error: null,
+        teams,
+        voter,
+        onVoter: noop,
+      }),
+    );
+  it('골랐지만 확인 안 함 → 「OOO 님이 맞나요?」', () => {
+    const h = render({ team: '1분과 1조', name: '가나다' });
+    expect(h).toContain('data-testid="voter-confirm"');
+    expect(h).not.toContain('data-testid="pager-position"');
+  });
+  it('「네」까지 누른 사람 → 카드로 바로', () => {
+    const h = render({ team: '1분과 1조', name: '가나다', confirmed: true });
+    expect(h).toContain('data-testid="pager-position"');
+    expect(h).not.toContain('data-testid="voter-confirm"');
+  });
+  it('아직 안 고름 → 고르는 화면', () => {
+    const h = render({ team: null, name: '' });
+    expect(h).toContain('data-testid="pager-start"');
+    expect(h).not.toContain('data-testid="voter-confirm"');
+  });
+});
+
 describe('(11/11) 의제 이름 = 권고카드 머리띠 원문(투표지 제목의 줄임말을 쓰지 않는다)', () => {
   it('의제별 투표지·70건 투표지 모두 카드 원문 이름', async () => {
     const { agendaTheme, itemAgendaTheme } = await import('./BallotPager');

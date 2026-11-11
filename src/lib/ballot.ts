@@ -140,13 +140,19 @@ export type NamedSubmitResult = BallotSubmitResult | 'name_taken' | 'named_off';
 /**
  * 11/11 — 「투표 시작」 기록(이름 확인 「네」를 누른 순간). 찬성·반대는 보내지 않는다.
  * 실패해도 투표는 그대로 이어진다 — 오류를 삼키고 false 만 돌려준다(s33 미적용 포함).
+ * clientId 는 함수로도 받는다 — 기기 토큰 만들기가 던져도(crypto.randomUUID 없는 옛 iOS) 이 try 안에서 삼킨다.
  */
-export async function startBallotNamed(token: string, clientId: string, voterTeam: string, voterName: string): Promise<boolean> {
+export async function startBallotNamed(
+  token: string,
+  clientId: string | (() => string),
+  voterTeam: string,
+  voterName: string,
+): Promise<boolean> {
   try {
     const sb = client();
     const { error } = await sb.schema('climate_vote').rpc('ballot_start_named', {
       p_token: token,
-      p_client_id: clientId,
+      p_client_id: typeof clientId === 'function' ? clientId() : clientId,
       p_voter_team: voterTeam,
       p_voter_name: voterName,
     });

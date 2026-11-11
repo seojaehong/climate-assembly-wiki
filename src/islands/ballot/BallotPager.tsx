@@ -105,8 +105,25 @@ function useCardPrefetch(srcs: string[]) {
 
 /** 크게 보기 — 화면 가득 카드 한 장. 단추로 키우고 줄이며, 손가락으로 밀어 본다(두 손가락 확대도 그대로 된다). */
 const ZOOM_STEPS = [1, 1.5, 2, 2.5, 3] as const;
-function CardZoom({ src, label, onClose }: { src: string; label: string; onClose: () => void }) {
+function CardZoom({ src, hdSrc, label, onClose }: { src: string; hdSrc: string | null; label: string; onClose: () => void }) {
   const [step, setStep] = useState(2);
+  // 화면용 800px(이미 받아 둔 그림)을 바로 보이고, 1080px 가 다 오면 그때 바꾼다. 1080px 가 실패하면 800px 그대로.
+  const [hdReady, setHdReady] = useState(false);
+  useEffect(() => {
+    setHdReady(false);
+    if (!hdSrc || typeof Image === 'undefined') return;
+    let alive = true;
+    const im = new Image();
+    im.onload = () => {
+      if (alive) setHdReady(true);
+    };
+    im.src = hdSrc;
+    return () => {
+      alive = false;
+      im.onload = null;
+    };
+  }, [hdSrc]);
+  const shown = hdReady && hdSrc ? hdSrc : src;
   const ref = useModalDialog<HTMLDivElement>(true, onClose);
   const btn = 'min-h-[52px] min-w-[64px] rounded-xl bg-white/95 px-3 text-[20px] font-black text-[#1F4E79] disabled:opacity-35';
   return (
@@ -125,7 +142,7 @@ function CardZoom({ src, label, onClose }: { src: string; label: string; onClose
         </button>
       </div>
       <div className="min-h-0 flex-1 overflow-auto" style={{ touchAction: 'pan-x pan-y pinch-zoom' }}>
-        <img src={src} alt={label} className="block h-auto max-w-none" style={{ width: `${ZOOM_STEPS[step] * 100}%` }} />
+        <img src={shown} data-testid="card-zoom-img" data-hd={hdReady ? '1' : '0'} alt={label} className="block h-auto max-w-none" style={{ width: `${ZOOM_STEPS[step] * 100}%` }} />
       </div>
     </div>
   );
@@ -287,7 +304,7 @@ export function PagerItemView({
             >
               🔍 카드 크게 보기
             </button>
-            {zoom ? <CardZoom src={plenaryCardSrc(title, number, true) ?? card} label={`권고안 ${number}`} onClose={() => setZoom(false)} /> : null}
+            {zoom ? <CardZoom src={card} hdSrc={plenaryCardSrc(title, number, true)} label={`권고안 ${number}`} onClose={() => setZoom(false)} /> : null}
             <h2 data-testid="pager-title" className="sr-only">
               권고안 {number} {itemTitle(item)}
             </h2>
@@ -608,6 +625,7 @@ function VoterStep({
   onVoter,
   onStart,
   prefetch = [],
+  initialConfirming = false,
 }: {
   title: string;
   instructions?: string | null;
@@ -617,6 +635,8 @@ function VoterStep({
   onVoter: (v: VoterDraft) => void;
   onStart: () => void;
   prefetch?: string[];
+  /** 새로고침 — 조·이름은 되살렸지만 「네」를 아직 안 눌렀으면 확인 화면부터. */
+  initialConfirming?: boolean;
 }) {
   // 이름을 고르는 동안 앞 카드 몇 장을 미리 받아 둔다(첫 장이 바로 뜨게).
   useCardPrefetch(prefetch);
@@ -624,7 +644,7 @@ function VoterStep({
   const theme = agendaTheme(title);
   const all = isPlenaryAllTitle(title);
   // 11/11 상규 대표님 메일 — 이름을 고른 뒤 「OOO 님이 맞나요?」를 한 번 더 묻는다.
-  const [confirming, setConfirming] = useState(false);
+  const [confirming, setConfirming] = useState(initialConfirming);
   if (confirming && ok) {
     return (
       <Frame accent={all ? AGENDA_COLORS[1].accent : theme?.accent}>
@@ -879,7 +899,8 @@ export default function BallotPager({
 }) {
   const [state, setState] = useState<PagerState>(() => initialPagerState(initialAnswers, initialPos));
   const named = teams.length > 0;
-  const [voterStep, setVoterStep] = useState(() => named && !voterReady(voter.team, voter.name, teams));
+  // 조·이름을 골랐어도 이 기기에서 「네」(confirmed)를 누르기 전이면 본인 확인부터(새로고침해도 확인을 건너뛰지 않게).
+  const [voterStep, setVoterStep] = useState(() => named && !(voterReady(voter.team, voter.name, teams) && voter.confirmed === true));
   const [confirmMissing, setConfirmMissing] = useState(false);
   const [seenDividers, setSeenDividers] = useState<ReadonlySet<number>>(() => new Set());
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -907,9 +928,24 @@ export default function BallotPager({
 
   // 명단이 늦게 와서 실명으로 바뀌면 본인 확인부터.
   useEffect(() => {
-    if (named && !voterReady(voter.team, voter.name, teams)) setVoterStep(true);
+    if (named && !(voterReady(voter.team, voter.name, teams) && voter.confirmed === true)) setVoterStep(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [named]);
+
+  // 새로고침 — 이미 「네」를 누른 사람이 카드로 바로 돌아오면 「투표 시작」 기록을 한 번 더 남긴다(upsert 라 겹쳐도 안전).
+  const restartRecorded = useRef(false);
+  useEffect(() => {
+    if (restartRecorded.current) return;
+    restartRecorded.current = true;
+    if (named && voterReady(voter.team, voter.name, teams) && voter.confirmed === true) {
+      try {
+        onStarted?.();
+      } catch {
+        // 기록 실패는 투표를 막지 않는다.
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const voterLine = named && voter.team ? `${voter.team} ${voter.name.trim()} 님` : null;
   const go = (target: PagerPos) => setState((s) => pagerGo(s, target, total, Date.now()));
@@ -922,9 +958,15 @@ export default function BallotPager({
 
   if (voterStep) {
     return <VoterStep title={ballot.title} instructions={ballot.instructions} itemCount={ballot.items.length} teams={teams} voter={voter} onVoter={onVoter} onStart={() => {
-          onStarted?.();
+          // 먼저 넘기고 기록은 나중에 — 기록이 던져도(옛 기기) 투표 시작이 막히지 않게.
           setVoterStep(false);
-        }} prefetch={cardPrefetchList(ballot.title, ballot.items, 0, 3)} />;
+          try {
+            onStarted?.();
+          } catch {
+            // 무시 — 「투표 시작」 기록은 실패해도 투표는 이어진다.
+          }
+        }} prefetch={cardPrefetchList(ballot.title, ballot.items, 0, 3)}
+        initialConfirming={voterReady(voter.team, voter.name, teams) && voter.confirmed !== true} />;
   }
 
   if (check) {
