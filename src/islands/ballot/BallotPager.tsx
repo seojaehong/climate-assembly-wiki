@@ -507,6 +507,45 @@ function MissingConfirm({ count, onCancel, onConfirm }: { count: number; onCance
   );
 }
 
+// ── 의제 간지(11/11 피알원 · 국가기후위기대응위원회 간지 3장) ──────────────
+const GANJI_BACKGROUND: Record<1 | 2 | 3, string> = {
+  1: '탄소중립을 위해 기업의 온실가스 감축이 시급합니다. 기존 정책을 보완하고 실효성 있는 촉진방안을 마련할 필요가 있습니다.',
+  2: '탄소중립을 위해 늘어만 가는 일회용품 사용을 줄여야 합니다. 배달 및 다회용품 사용에 대한 문화 조성 등 자원순환을 더 확대할 방법이 필요합니다.',
+  3: '지속적인 기후위기대응을 위해서는 학교나 사회교육을 통해 기후시민에 대한 의식제고와 시민참여를 활성화 할 방안이 필요합니다.',
+};
+
+function AgendaGanji({ no, name, soft, accent }: { no: 1 | 2 | 3; name: string; soft: string; accent: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div data-testid="pager-hero" className="relative px-5 pt-5 pb-5" style={{ background: soft }}>
+        <img src="/ballot/geudeugi.png" alt="" width={240} height={314} className="absolute right-4 bottom-3 h-[104px] w-auto" />
+        <p className="pr-[92px] text-[15px] font-bold text-[#5A6B73]" style={KEEP}>
+          제9차 기후시민회의 · 최종 의결
+        </p>
+        <p className="mt-2 inline-block rounded-full px-3 py-1 text-[17px] font-black text-white" style={{ background: accent }}>
+          의제 {no}
+        </p>
+        <p className="mt-2 pr-[92px] text-[26px] font-black leading-[1.3]" style={{ ...KEEP, color: accent }}>
+          {name}
+        </p>
+      </div>
+    );
+  }
+  return (
+    <div data-testid="pager-ganji" className="px-3 pt-3">
+      <img
+        src={`/ballot/ganji/agenda${no}.jpg`}
+        alt={`의제 ${no} ${name}. 선정배경: ${GANJI_BACKGROUND[no]}`}
+        width={1008}
+        height={1344}
+        onError={() => setFailed(true)}
+        className="block w-full h-auto rounded-2xl border border-[#DCE7EE]"
+      />
+    </div>
+  );
+}
+
 // ── F: 본인 확인(실명 투표지) ──────────────────────────────────────────
 
 function VoterStep({
@@ -554,18 +593,8 @@ function VoterStep({
           </ul>
         </div>
       ) : theme ? (
-        <div data-testid="pager-hero" className="relative px-5 pt-5 pb-5" style={{ background: theme.soft }}>
-          <img src="/ballot/geudeugi.png" alt="" width={240} height={314} className="absolute right-4 bottom-3 h-[104px] w-auto" />
-          <p className="pr-[92px] text-[15px] font-bold text-[#5A6B73]" style={KEEP}>
-            제9차 기후시민회의 · 최종 의결
-          </p>
-          <p className="mt-2 inline-block rounded-full px-3 py-1 text-[17px] font-black text-white" style={{ background: theme.accent }}>
-            의제 {theme.no}
-          </p>
-          <p className="mt-2 pr-[92px] text-[26px] font-black leading-[1.3]" style={{ ...KEEP, color: theme.accent }}>
-            {theme.name}
-          </p>
-        </div>
+        // 11/11 피알원 — 의제별 투표지 첫 화면에 그 의제 간지(국가기후위기대응위원회 · 선정배경). 그림이 없으면 아래 띠로 물러선다.
+        <AgendaGanji no={theme.no} name={theme.name} soft={theme.soft} accent={theme.accent} />
       ) : null}
       {instructions ? (
         <p data-testid="pager-greeting" className="px-5 pt-5 text-[18px] leading-[1.65] text-[#1F2933] whitespace-pre-line" style={KEEP}>
