@@ -1,13 +1,14 @@
 import type { BallotItemInput, BallotScale, BallotStatus } from '../../lib/deliberation';
+import { plenaryAgendaNo } from '../../lib/division-ballot-format';
 
 /**
  * 다의제 투표(ballot) 패널의 순수 로직 — 상태 전이 가드, 생성 폼 검증, 결과 분포 계산.
- * 서버 규칙(20260808_s2_ballot_multi_agenda.sql)의 UI측 거울이다: RPC가 마지막 방어선이고,
+ * 서버 규칙(20260808_s2_ballot_multi_agenda.sql → 상한은 20261110_s31_ballot_limit_30.sql)의 UI측 거울이다: RPC가 마지막 방어선이고,
  * 여기서는 사용자가 그 방어선에 부딪히기 전에 버튼 자체를 막는다.
  */
 
 export const BALLOT_SCALES: readonly BallotScale[] = [2, 4, 5, 7] as const;
-export const MAX_BALLOT_ITEMS = 20;
+export const MAX_BALLOT_ITEMS = 30; // s31(11/14 의제별 투표지 최대 28건) — 20261110_s31_ballot_limit_30.sql 과 같은 값
 export const MAX_STATEMENT_LENGTH = 300;
 export const MAX_TITLE_LENGTH = 200;
 
@@ -91,7 +92,11 @@ export function scaleLabel(scale: BallotScale): string {
 
 // ── 생성 폼 ──────────────────────────────────────────────────
 
-export type BallotFormItem = { statement: string; scale: BallotScale };
+/**
+ * required 가 없으면 필수(옛 폼 그대로). false = 누르지 않아도 제출되고 그 건은 기권으로 남는다.
+ * 전체회의 의결 제목이면 false 여도 validateBallotForm 이 true 로 바꾼다(기권 불인정).
+ */
+export type BallotFormItem = { statement: string; scale: BallotScale; required?: boolean };
 
 export type BallotFormResult =
   | { ok: true; title: string; items: BallotItemInput[] }
@@ -103,7 +108,7 @@ export function emptyBallotFormItem(): BallotFormItem {
 
 /**
  * 생성 폼 검증 → ballot_create p_items 페이로드.
- * RPC와 같은 한계(1~20개, 문장 필수)를 클라이언트에서 먼저 잡고,
+ * RPC와 같은 한계(1~30개, 문장 필수)를 클라이언트에서 먼저 잡고,
  * 몇 번째 줄이 문제인지 사람 말로 알려 준다.
  */
 export function validateBallotForm(title: string, items: BallotFormItem[]): BallotFormResult {
@@ -129,6 +134,9 @@ export function validateBallotForm(title: string, items: BallotFormItem[]): Ball
     return { ok: false, error: `${badScaleIndex + 1}번 의제의 척도가 올바르지 않습니다(2·4·5·7점만 가능).` };
   }
 
+  // 전체회의 의결은 기권 불인정(11/10 주최 결정) — 「누르지 않은 건 허용」을 골랐어도 모든 건을 필수로 보낸다.
+  // 만들기 페이로드는 이 함수 결과로만 만들어진다(handleCreate) — 체크를 먼저 켜고 제목을 나중에 써도 여기서 막힌다.
+  const allRequired = plenaryLocksRequired(trimmedTitle);
   return {
     ok: true,
     title: trimmedTitle,
@@ -136,9 +144,62 @@ export function validateBallotForm(title: string, items: BallotFormItem[]): Ball
       ordinal: index + 1,
       statement: item.statement,
       scale: item.scale,
-      required: true,
+      required: allRequired ? true : item.required ?? true,
     })),
   };
+}
+
+/**
+ * (11/14) 「전체회의 의결」로 시작하는 제목 — 기권 불인정(11/10 주최 결정)이라 「누르지 않은 건 허용」을 쓸 수 없다.
+ * 모양이 어긋난 제목(「의제 1」 · 「의제①」)도 잠근다(그런 제목은 plenaryFormWarnings 가 따로 막는다).
+ */
+export function plenaryLocksRequired(title: string): boolean {
+  return title.trim().startsWith('전체회의 의결');
+}
+
+/**
+ * (11/14) 큰 화면 위생 — 전체회의 의결 결과는 16:30 에 한 번만 공개하고, 운영 노트북 화면을 그대로 프로젝터로 내보낸다.
+ * 그래서 QR 화면에 실시간 찬성 · 반대 · 제출 수와 「투표결과 보기」(조·이름 찬반표)를 그리지 않는다(QR · 제목만).
+ * 제목으로만 가른다 — 분과 지정이 잘못 남은 전체회의 투표지도 화면에서는 가린다(결과 내보내기가 따로 거부한다).
+ */
+export function plenaryQuietScreen(ballot: { title?: string | null; subgroup?: string | null }): boolean {
+  return plenaryLocksRequired(ballot.title ?? '');
+}
+
+/**
+ * (11/14) 여러 건 붙여넣기 — 한 줄 = 한 건, 빈 줄은 버린다. 의결 투표지라 전부 찬반(2점).
+ * optional = 「누르지 않은 건 허용」(문항 required=false → 넘김식이 「기권으로 두고 제출」 확인을 띄운다).
+ * 전체회의 의결 제목에서는 쓸 수 없다(폼 체크 잠김 · validateBallotForm 이 필수로 바꿈, 11/10 결정).
+ */
+export function parseBulkBallotItems(text: string, { optional }: { optional: boolean }): BallotFormItem[] {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0)
+    .map((statement) => ({ statement, scale: 2 as BallotScale, required: !optional }));
+}
+
+/**
+ * (11/14) 「전체회의 의결 의제N…」 제목이면 만들기 전에 점검한다 — 대상(세션 전체) · 찬반(2점) ·
+ * 문항 번호 모양(「N-M-안1 제목」, 결과 내보내기가 이 모양만 읽는다) · 의제 번호. 다른 제목이면 빈 목록.
+ */
+export function plenaryFormWarnings(title: string, target: string | null, items: readonly BallotFormItem[]): string[] {
+  const agendaNo = plenaryAgendaNo(title);
+  if (agendaNo === null) {
+    // 한 글자만 어긋나도(「의제 1」 · 「의제①」) 휴대폰이 의결 화면을 켜지 않는다 — 「전체회의 의결」로 시작하면 모양부터 막는다.
+    return title.trim().startsWith('전체회의 의결')
+      ? ['제목을 「전체회의 의결 의제1 의제 이름」 모양으로 쓰세요(「의제」 뒤에 띄어쓰기 · 원문자 없이 숫자). 이 모양이 아니면 휴대폰이 의결 화면을 켜지 않습니다.']
+      : [];
+  }
+  const out: string[] = [];
+  if (target?.trim()) out.push('대상을 「세션 전체」로 두세요. 분과를 고르면 그 분과 명단만 투표할 수 있습니다.');
+  items.forEach((item, i) => {
+    if (item.scale !== 2) out.push(`${i + 1}번 문항이 찬반(2점)이 아닙니다.`);
+    const m = /^(\d+)-(\d+)-안\d+\s+\S/.exec(item.statement.trim());
+    if (!m) out.push(`${i + 1}번 문항이 「${agendaNo}-M-안1 제목」 모양이 아닙니다.`);
+    else if (Number(m[1]) !== agendaNo) out.push(`${i + 1}번 문항 번호 ${m[1]}-${m[2]} 이 의제${agendaNo} 번호가 아닙니다.`);
+  });
+  return out;
 }
 
 export type BallotCreateIntent = { fingerprint: string; requestId: string };

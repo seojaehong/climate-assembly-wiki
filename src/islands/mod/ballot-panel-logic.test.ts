@@ -21,6 +21,10 @@ import {
   subgroupBadgeLabel,
   subgroupTargetLabel,
   validateBallotForm,
+  parseBulkBallotItems,
+  plenaryFormWarnings,
+  plenaryLocksRequired,
+  plenaryQuietScreen,
   type BallotFormItem,
 } from './ballot-panel-logic';
 import type { BallotStatus } from '../../lib/deliberation';
@@ -129,10 +133,30 @@ describe('validateBallotForm — 생성 폼 검증', () => {
     expect(validateBallotForm('제목', []).ok).toBe(false);
   });
 
-  it('의제 20개까지는 허용, 21개는 거부한다', () => {
-    const twenty = Array.from({ length: MAX_BALLOT_ITEMS }, (_, i) => item(`의제 ${i + 1}`));
-    expect(validateBallotForm('제목', twenty).ok).toBe(true);
-    expect(validateBallotForm('제목', [...twenty, item('초과')]).ok).toBe(false);
+  it('의제 30개까지는 허용, 31개는 거부한다(s31 — RPC 상한 1..30 과 같은 값)', () => {
+    expect(MAX_BALLOT_ITEMS).toBe(30);
+    const thirty = Array.from({ length: 30 }, (_, i) => item(`의제 ${i + 1}`));
+    expect(validateBallotForm('제목', thirty).ok).toBe(true);
+    expect(validateBallotForm('제목', [...thirty, item('초과')])).toEqual({
+      ok: false,
+      error: '의제는 최대 30개까지 담을 수 있습니다.',
+    });
+  });
+
+  it('11/14 의제별 투표지 최대 28건이 통과한다', () => {
+    const items28 = Array.from({ length: 28 }, (_, i) => item(`의제 ${i + 1}`));
+    expect(validateBallotForm('제목', items28).ok).toBe(true);
+  });
+
+  it('화면 상한 = ballot_create_v3 최신 마이그레이션의 상한(s31)', () => {
+    const sql = readFileSync(
+      new URL('../../../supabase/migrations/20261110_s31_ballot_limit_30.sql', import.meta.url),
+      'utf8',
+    );
+    expect(sql).toMatch(/function climate_vote\.ballot_create_v3\(/i);
+    expect(sql).toContain(`jsonb_array_length(p_items)>${MAX_BALLOT_ITEMS} then raise exception 'items must be array of 1..${MAX_BALLOT_ITEMS}'`);
+    const code = sql.split('\n').filter((line) => !line.trimStart().startsWith('--')).join('\n');
+    expect(code).not.toMatch(/>\s*20\b/);
   });
 
   it('빈 문장은 몇 번째 줄인지 짚어 거부한다', () => {
@@ -392,5 +416,77 @@ describe('ballotTargetOptions·defaultBallotTarget — 새 투표의 대상 분�
     expect(ballotTargetOptions(null, null)).toEqual([]);
     expect(defaultBallotTarget(null)).toBeNull();
     expect(defaultBallotTarget('  ')).toBeNull();
+  });
+});
+
+describe('(11/14) 여러 건 붙여넣기 · 전체회의 의결 투표지 점검', () => {
+  const pasted = '1-1-안1 첫째 권고\r\n\r\n  1-2-안1 둘째 권고  \n1-3-안1 셋째 권고\n';
+
+  it('한 줄 = 한 건, 빈 줄은 버리고 찬반(2점)으로 채운다', () => {
+    const items = parseBulkBallotItems(pasted, { optional: false });
+    expect(items).toEqual([
+      { statement: '1-1-안1 첫째 권고', scale: 2, required: true },
+      { statement: '1-2-안1 둘째 권고', scale: 2, required: true },
+      { statement: '1-3-안1 셋째 권고', scale: 2, required: true },
+    ]);
+  });
+
+  it('(일반 투표) 「누르지 않은 건 허용」이면 문항이 선택(required=false)으로 서버에 간다', () => {
+    const items = parseBulkBallotItems(pasted, { optional: true });
+    const r = validateBallotForm('폐회 일괄 투표', items);
+    expect(r.ok && r.items.every((it) => it.required === false && it.scale === 2)).toBe(true);
+    // 옛 폼 항목(required 없음)은 지금처럼 필수.
+    const old = validateBallotForm('제목', [{ statement: '의제', scale: 5 }]);
+    expect(old.ok && old.items[0].required).toBe(true);
+  });
+
+  it('(11/10 결정 · 기권 불인정) 전체회의 의결 제목이면 「허용」을 골랐어도 모든 건이 필수(required=true)로 서버에 간다', () => {
+    const items = parseBulkBallotItems(pasted, { optional: true });
+    for (const title of ['전체회의 의결 의제1 기업 온실가스 감축 촉진', '전체회의 의결 의제1', '  전체회의 의결 의제 1']) {
+      const r = validateBallotForm(title, items);
+      expect(r.ok && r.items.every((it) => it.required === true)).toBe(true);
+    }
+    expect(plenaryLocksRequired('전체회의 의결 의제3 가상')).toBe(true);
+    expect(plenaryLocksRequired(' 전체회의 의결 의제①')).toBe(true);
+    expect(plenaryLocksRequired('폐회 일괄 투표')).toBe(false);
+    expect(plenaryLocksRequired('1분과 의결 1-1-안1')).toBe(false);
+  });
+
+  it('(11/14 큰 화면 위생) 전체회의 의결 투표지는 QR 화면에 실시간 수 · 이름표를 그리지 않는다 — 분과 지정이 잘못 남아도', () => {
+    expect(plenaryQuietScreen({ title: '전체회의 의결 의제1 기업 온실가스 감축 촉진', subgroup: null })).toBe(true);
+    expect(plenaryQuietScreen({ title: '전체회의 의결 의제2', subgroup: '2분과' })).toBe(true);
+    expect(plenaryQuietScreen({ title: '1분과 의결 1-1-안1', subgroup: '1분과' })).toBe(false);
+    expect(plenaryQuietScreen({ title: '연습 투표', subgroup: null })).toBe(false);
+  });
+
+  it('28건도 한 번에 — 상한(30) 안', () => {
+    const text = Array.from({ length: 28 }, (_, i) => `2-${i + 1}-안1 권고 ${i + 1}`).join('\n');
+    const r = validateBallotForm('전체회의 의결 의제2', parseBulkBallotItems(text, { optional: true }));
+    expect(r.ok && r.items.length).toBe(28);
+  });
+
+  it('전체회의 의결 제목이면 대상 · 척도 · 번호 모양 · 의제 번호를 점검한다', () => {
+    const good = parseBulkBallotItems(pasted, { optional: true });
+    expect(plenaryFormWarnings('전체회의 의결 의제1 기업 온실가스 감축 촉진', null, good)).toEqual([]);
+    expect(plenaryFormWarnings('전체회의 의결 의제1', '1분과', good)).toEqual([
+      '대상을 「세션 전체」로 두세요. 분과를 고르면 그 분과 명단만 투표할 수 있습니다.',
+    ]);
+    const bad: BallotFormItem[] = [
+      { statement: '1-1-안1 첫째', scale: 5, required: false },
+      { statement: '첫째 권고', scale: 2, required: false },
+      { statement: '2-3-안1 다른 의제', scale: 2, required: false },
+    ];
+    expect(plenaryFormWarnings('전체회의 의결 의제1', null, bad)).toEqual([
+      '1번 문항이 찬반(2점)이 아닙니다.',
+      '2번 문항이 「1-M-안1 제목」 모양이 아닙니다.',
+      '3번 문항 번호 2-3 이 의제1 번호가 아닙니다.',
+    ]);
+    // 한 글자만 어긋나도 휴대폰이 의결 화면을 켜지 못한다 — 「전체회의 의결」로 시작하면 모양부터 본다.
+    const shapeWarning = '제목을 「전체회의 의결 의제1 의제 이름」 모양으로 쓰세요(「의제」 뒤에 띄어쓰기 · 원문자 없이 숫자). 이 모양이 아니면 휴대폰이 의결 화면을 켜지 않습니다.';
+    expect(plenaryFormWarnings('전체회의 의결 의제 1 기업', null, good)).toEqual([shapeWarning]);
+    expect(plenaryFormWarnings('전체회의 의결 의제① 기업', null, good)).toEqual([shapeWarning]);
+    expect(plenaryFormWarnings('  전체회의 의결', null, good)).toEqual([shapeWarning]);
+    // 전체회의 의결 제목이 아니면 점검하지 않는다(일반 투표 · 10/17 분과 의결).
+    expect(plenaryFormWarnings('폐회 투표', '1분과', bad)).toEqual([]);
   });
 });

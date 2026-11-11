@@ -319,7 +319,7 @@ export type BallotCreateInput = {
   subgroup?: string | null;
 };
 
-/** 다의제 투표 생성(초안). 의제 1~20개, 척도 2/4/5/7. subgroup 지정 시 그 분과 한정. */
+/** 다의제 투표 생성(초안). 의제 1~30개, 척도 2/4/5/7. subgroup 지정 시 그 분과 한정. */
 export async function ballotCreate(
   access: WorkshopAccess,
   input: BallotCreateInput,

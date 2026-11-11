@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  decisionBallotKind,
   divisionBallotTitle,
+  isDecisionBallot,
   isDivisionDecisionBallot,
+  plenaryAgendaNo,
+  plenaryBallotTitle,
   motionStatementOf,
   parseMotionStatement,
 } from './division-ballot-format';
@@ -34,5 +38,30 @@ describe('분과 의결 투표 모양 — 오퍼레이터 화면과 투표자 �
     const plan = buildDivisionBallot(2, [r.motion], r.motion.id);
     expect(isDivisionDecisionBallot({ title: plan.payload.title, subgroup: plan.payload.subgroup })).toBe(true);
     expect(parseMotionStatement(plan.payload.items[0].statement)).toEqual({ id: '2-1-안1', title: '합친 안 제목' });
+  });
+
+  it('(11/14) 전체회의 의결 투표지 — 분과 지정 없이 제목 「전체회의 의결 의제N …」로 알아본다', () => {
+    const t1 = plenaryBallotTitle(1, '기업 온실가스 감축 촉진');
+    expect(t1).toBe('전체회의 의결 의제1 기업 온실가스 감축 촉진');
+    expect(plenaryBallotTitle(2)).toBe('전체회의 의결 의제2');
+    for (const subgroup of [null, undefined, '', '  ']) {
+      expect(decisionBallotKind({ title: t1, subgroup })).toBe('plenary');
+      expect(isDecisionBallot({ title: t1, subgroup })).toBe(true);
+    }
+    expect(decisionBallotKind({ title: '전체회의 의결 의제3', subgroup: null })).toBe('plenary');
+    expect(plenaryAgendaNo(t1)).toBe(1);
+    expect(plenaryAgendaNo('전체회의 의결 의제3')).toBe(3);
+    expect(plenaryAgendaNo('2분과 의결')).toBeNull();
+    // 분과 지정이 남아 있으면 전원 투표가 아니다 — 의결 화면으로 켜지 않는다(운영자 실수를 화면에서 드러낸다).
+    expect(decisionBallotKind({ title: t1, subgroup: '1분과' })).toBeNull();
+    // 모양이 다르면 아니다.
+    expect(decisionBallotKind({ title: '전체회의 의결안 설명', subgroup: null })).toBeNull();
+    expect(decisionBallotKind({ title: '전체회의 의결 의제10', subgroup: null })).toBeNull();
+    expect(decisionBallotKind({ title: '전체회의 의결 의제', subgroup: null })).toBeNull();
+    // 분과 의결이라는 옛 판정은 그대로다.
+    expect(isDivisionDecisionBallot({ title: t1, subgroup: null })).toBe(false);
+    expect(decisionBallotKind({ title: '2분과 의결', subgroup: '2분과' })).toBe('division');
+    expect(decisionBallotKind({ title: '2분과 의결', subgroup: null })).toBeNull();
+    expect(isDecisionBallot({ title: '오전 투표', subgroup: null })).toBe(false);
   });
 });

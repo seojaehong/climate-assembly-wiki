@@ -38,6 +38,10 @@ import {
   defaultBallotTarget,
   distRows,
   emptyBallotFormItem,
+  parseBulkBallotItems,
+  plenaryFormWarnings,
+  plenaryLocksRequired,
+  plenaryQuietScreen,
   primaryAction,
   scaleLabel,
   sessionSubgroups,
@@ -129,7 +133,9 @@ export function BallotQrFullscreen({
   const [qr, setQr] = useState<string | null>(null);
   const [showNames, setShowNames] = useState(false);
   const url = ballotUrl(typeof window !== 'undefined' ? window.location.origin : '', ballot.token);
-  const live = useLiveCounts(access, ballot.token);
+  // 11/14 전체회의 의결 — 결과는 16:30 한 번에만 공개(큰 화면 위생). 실시간 수를 읽지도(폴링 끔) 그리지도 않고, 이름표도 열지 않는다.
+  const quiet = plenaryQuietScreen(ballot);
+  const live = useLiveCounts(access, ballot.token, !quiet);
   const submitted = live?.responses ?? ballot.response_count;
 
   useEffect(() => {
@@ -156,7 +162,7 @@ export function BallotQrFullscreen({
   const title = headline?.main ?? ballot.title;
   const sub = headline?.sub ?? '';
 
-  if (showNames && access) {
+  if (showNames && access && !quiet) {
     return (
       <NamedResultBoard
         key={ballot.id}
@@ -196,7 +202,7 @@ export function BallotQrFullscreen({
           {extra ? <div className="min-h-0 overflow-hidden">{extra}</div> : null}
         </div>
         <div className="shrink-0 pt-4" data-testid="qr-live">
-          {live && live.yes !== null && live.no !== null ? (
+          {quiet ? null : live && live.yes !== null && live.no !== null ? (
             <div className="flex items-end gap-10 tr-num">
               <div>
                 <p className="text-[clamp(22px,2vw,36px)] font-extrabold text-[#2F6F25]">찬성</p>
@@ -217,7 +223,7 @@ export function BallotQrFullscreen({
             </p>
           )}
           <div className="mt-4 flex flex-wrap gap-3">
-            {access && !hideNames ? (
+            {access && !hideNames && !quiet ? (
               <button
                 type="button"
                 onClick={() => setShowNames(true)}
@@ -559,7 +565,34 @@ function BallotResultsFullscreen({
 // 생성 폼 — 제목·안내문·의제 행(문장 + 척도 2/4/5/7)
 // ============================================================
 
-function CreateForm({
+/**
+ * 「누르지 않은 건 허용」 체크. 전체회의 의결 제목이면(locked) 꺼진 채 잠근다 — 기권 불인정(11/10 주최 결정).
+ * 잠겨도 만들기 페이로드는 validateBallotForm 이 필수로 바꾼다(체크를 먼저 켜고 제목을 나중에 쓴 경우).
+ */
+export function SkipMissingToggle({ locked, checked, onChange }: { locked: boolean; checked: boolean; onChange: (next: boolean) => void }) {
+  return (
+    <div>
+      <label className={`flex items-center gap-2 text-[15px] ${locked ? 'text-[#5A6B73]' : 'text-[#1F2933]'}`}>
+        <input
+          type="checkbox"
+          data-testid="ballot-optional"
+          checked={checked && !locked}
+          disabled={locked}
+          onChange={(e) => onChange(e.target.checked)}
+          className="h-5 w-5"
+        />
+        누르지 않은 건 허용 (그 건은 기권으로 기록)
+      </label>
+      {locked ? (
+        <p data-testid="ballot-optional-locked" className="mt-1 text-[14px] font-bold text-[#8A4B08]">
+          전체회의 의결 투표지는 모든 건을 눌러야 제출됩니다(기권 불인정).
+        </p>
+      ) : null}
+    </div>
+  );
+}
+
+export function CreateForm({
   submitting,
   subgroup,
   access,
@@ -581,6 +614,9 @@ function CreateForm({
   const [title, setTitle] = useState('');
   const [instructions, setInstructions] = useState('');
   const [items, setItems] = useState<BallotFormItem[]>([emptyBallotFormItem()]);
+  // (11/14) 여러 건 붙여넣기 · 「누르지 않은 건 허용」(문항 required=false).
+  const [bulk, setBulk] = useState('');
+  const [optional, setOptional] = useState(false);
   // 대상: null=세션 전체, 분과명=해당 분과 한정. 기본값은 내 분과(분과 없는 조는 세션 전체).
   // 분과 조는 다른 분과를 고를 수 없다. 분과 없는 운영 조(총괄 모더레이터)만 세션의 모든 분과를 고른다.
   const [target, setTarget] = useState<string | null>(() => defaultBallotTarget(subgroup));
@@ -616,7 +652,22 @@ function CreateForm({
   const setScale = (index: number, scale: BallotScale) =>
     setItems((prev) => prev.map((item, i) => (i === index ? { ...item, scale } : item)));
   const addItem = () =>
-    setItems((prev) => (prev.length < MAX_BALLOT_ITEMS ? [...prev, emptyBallotFormItem()] : prev));
+    setItems((prev) => (prev.length < MAX_BALLOT_ITEMS ? [...prev, { ...emptyBallotFormItem(), required: !optional }] : prev));
+  const applyBulk = () => {
+    const parsed = parseBulkBallotItems(bulk, { optional });
+    if (parsed.length === 0) return;
+    if (parsed.length > MAX_BALLOT_ITEMS) {
+      setError(`붙여넣은 줄이 ${parsed.length}개입니다. 의제는 최대 ${MAX_BALLOT_ITEMS}개까지 담을 수 있습니다.`);
+      return;
+    }
+    setError(null);
+    setItems(parsed);
+  };
+  const toggleOptional = (next: boolean) => {
+    setOptional(next);
+    setItems((prev) => prev.map((item) => ({ ...item, required: !next })));
+  };
+  const warnings = plenaryFormWarnings(title, target, items);
   const removeItem = (index: number) =>
     setItems((prev) => (prev.length > 1 ? prev.filter((_, i) => i !== index) : prev));
 
@@ -624,6 +675,10 @@ function CreateForm({
     const checked = validateBallotForm(title, items);
     if (!checked.ok) {
       setError(checked.error);
+      return;
+    }
+    if (warnings.length > 0) {
+      setError(`전체회의 의결 투표지 점검: ${warnings[0]}`);
       return;
     }
     setError(null);
@@ -722,6 +777,27 @@ function CreateForm({
         >
           의제 (1~{MAX_BALLOT_ITEMS}개 · 문장 + 척도)
         </label>
+        <div className="mb-3 rounded-xl border border-[#C4D8E4] bg-[#F7FAFC] p-3 space-y-2">
+          <p className="text-[15px] font-bold text-[#1F4E79]">여러 건 한 번에 붙여넣기 (한 줄 = 한 건, 찬반 2점)</p>
+          <textarea
+            data-testid="ballot-bulk"
+            value={bulk}
+            onChange={(e) => setBulk(e.target.value)}
+            rows={4}
+            placeholder="예: 1-1-안1 권고 제목"
+            className="w-full min-w-0 rounded-xl border border-[#C4D8E4] focus:border-[#23B2C3] px-3 py-2 text-[16px] text-[#1F2933] outline-none resize-y"
+          />
+          <SkipMissingToggle locked={plenaryLocksRequired(title)} checked={optional} onChange={toggleOptional} />
+          <button
+            type="button"
+            data-testid="ballot-bulk-apply"
+            onClick={applyBulk}
+            disabled={!bulk.trim()}
+            className="w-full h-12 rounded-xl border border-[#23B2C3] bg-white text-[#135C73] text-[16px] font-bold disabled:opacity-30"
+          >
+            붙여넣은 줄로 아래 의제 바꾸기
+          </button>
+        </div>
         <div className="space-y-3">
           {items.map((item, index) => (
             <div key={index} className="rounded-xl border border-[#C4D8E4] p-3 space-y-2">
@@ -774,6 +850,15 @@ function CreateForm({
           <span className="text-2xl leading-none">＋</span> 의제 추가
         </button>
       </div>
+
+      {warnings.length > 0 ? (
+        <ul data-testid="plenary-warnings" className="rounded-xl border border-[#B5651D]/40 bg-[#FFF7ED] px-4 py-2.5 text-[15px] font-bold text-[#8A4B08] space-y-1">
+          {warnings.slice(0, 6).map((w) => (
+            <li key={w}>{w}</li>
+          ))}
+          {warnings.length > 6 ? <li>외 {warnings.length - 6}건</li> : null}
+        </ul>
+      ) : null}
 
       {error ? (
         <p className="rounded-xl border border-[#DC2626]/30 bg-[#FEF2F2] px-4 py-2.5 text-[16px] font-bold text-[#B91C1C]">
@@ -1050,7 +1135,8 @@ export default function BallotPanel({
                         QR 크게 보기
                       </button>
                     ) : null}
-                    {ballot.status === 'open' || ballot.status === 'closed' ? (
+                    {/* 11/14 전체회의 의결은 잠정 결과도 띄우지 않는다 — 공식 수치는 16:30 재집계(result/v2) 한 번뿐. */}
+                    {(ballot.status === 'open' || ballot.status === 'closed') && !plenaryQuietScreen(ballot) ? (
                       <button
                         type="button"
                         onClick={() => setResultsId(ballot.id)}
@@ -1084,7 +1170,8 @@ export default function BallotPanel({
                         {busy ? '처리 중…' : action.label}
                       </button>
                     ) : null}
-                    {ballot.status !== 'draft' ? (
+                    {/* 11/14 전체회의 의결은 이름 찬반표를 띄우지 않는다 — 운영 노트북 화면이 그대로 프로젝터로 나간다(큰 화면 위생). */}
+                    {ballot.status !== 'draft' && !plenaryQuietScreen(ballot) ? (
                       <button
                         type="button"
                         onClick={() => setNamesId(ballot.id)}
@@ -1187,7 +1274,7 @@ export default function BallotPanel({
 
       {namesId && access ? (() => {
         const b = ballots?.find((x) => x.id === namesId);
-        return b ? (
+        return b && !plenaryQuietScreen(b) ? (
           <NamedResultBoard key={b.id} access={access} ballotId={b.id} title={b.title} onBack={() => setNamesId(null)} backLabel="닫기" live={b.status === 'open'} />
         ) : null;
       })() : null}

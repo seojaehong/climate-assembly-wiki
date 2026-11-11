@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   fetchBallot,
   fetchBallotResults,
@@ -14,18 +14,23 @@ import { getDeviceToken, isDeviceTokenPersistent } from '../../lib/mod-console';
 import {
   answeredCount,
   ballotChoices,
+  createSubmitLatch,
   decisionChoiceOf,
   getLocalSubmit,
-  anonymousSubmitGate,
   getLocalVoter,
   isComplete,
   isLocalSubmitStoragePersistent,
+  NAME_TAKEN_MESSAGE,
   parseBallotUrl,
+  requiresAllItems,
   recordLocalSubmit,
   recordLocalVoter,
   namedDoneText,
   refreshNoticeMessage,
   resolveBallotScreen,
+  rosterRequired,
+  ROSTER_MISSING_MESSAGE,
+  sendBallotOnce,
   scaleLabels,
   subgroupVoteBadge,
   SURVEY_EVIDENCE_BOUNDARY,
@@ -40,8 +45,21 @@ import {
   voterReady,
   type RosterTeam,
 } from '../../lib/named-vote-logic';
-import { isDivisionDecisionBallot, parseMotionStatement } from '../../lib/division-ballot-format';
+import { decisionBallotKind, type DecisionBallotKind, parseMotionStatement } from '../../lib/division-ballot-format';
 import { useModalDialog } from '../mod/use-modal-dialog';
+import { createSafeBrowserStorage } from '../../lib/safe-browser-storage';
+import BallotPager from './BallotPager';
+import {
+  clearPagerDraft,
+  loadPagerDraft,
+  pagerChoiceText,
+  savePagerDraft,
+  shouldUsePager,
+  type PagerPos,
+} from './ballot-pager-logic';
+
+/** 넘김식 임시 저장(투표지 id 별 키). 막힌 기기는 페이지 메모리로 내려간다. */
+const pagerStorage = createSafeBrowserStorage('localStorage');
 
 export const BALLOT_EVIDENCE_BOUNDARY = SURVEY_EVIDENCE_BOUNDARY;
 
@@ -197,6 +215,31 @@ export function LoadErrorScreen({
   );
 }
 
+/**
+ * (W05) 전체회의 의결 투표지인데 명단이 0행 — 무기명으로 받지 않고 투표지를 열자마자 막는다.
+ * 진행요원이 명단을 올린 뒤 「다시 확인」을 누르면 조·이름 고르기부터 시작한다.
+ */
+export function RosterMissingScreen({ onRetry, retrying }: { onRetry: () => void; retrying: boolean }) {
+  return (
+    <CenterMessage
+      icon="↻"
+      eyebrow="투표 준비 중"
+      title="명단이 아직 준비되지 않았습니다"
+      body="이 투표는 조와 이름 없이 낼 수 없습니다. 손을 들어 진행요원에게 알려 주세요. 명단이 올라오면 아래 「다시 확인」을 누릅니다."
+      color="#7C2D12"
+    >
+      <button
+        type="button"
+        onClick={onRetry}
+        disabled={retrying}
+        className="mt-6 min-h-[56px] w-full rounded-2xl border-2 border-[#B5651D] bg-white px-4 text-[17px] font-extrabold text-[#7C2D12] disabled:opacity-50"
+      >
+        {retrying ? '확인하는 중…' : '다시 확인'}
+      </button>
+    </CenterMessage>
+  );
+}
+
 function RefreshButton({
   onRefresh,
   refreshing,
@@ -232,7 +275,7 @@ function DoneScreen({
   voter = null,
 }: {
   duplicate: boolean;
-  decision: boolean;
+  decision: boolean | DecisionBallotKind | null;
   onRefresh: () => void;
   refreshing: boolean;
   refreshNotice: string | null;
@@ -271,7 +314,7 @@ export function ClosedScreen({
   refreshing,
   refreshNotice,
 }: {
-  decision: boolean;
+  decision: boolean | DecisionBallotKind | null;
   /** 어느 투표가 마감됐는지(10/14 voter-4) — 옛 QR 로 들어온 사람이 「지금 투표가 끝났다」고 오해하지 않게. */
   ballotTitle?: string | null;
   /** 제출을 눌렀는데 이미 마감돼 표가 들어가지 않았다(10/14 voter-4). */
@@ -612,9 +655,10 @@ function VotingScreen({
   const answered = answeredCount(ballot.items, answers);
   const named = teams.length > 0;
   const voterOk = !named || voterReady(voter.team, voter.name, teams);
-  const complete = isComplete(ballot.items, answers) && voterOk;
-  const decision = isDivisionDecisionBallot(ballot);
-  const copy = voterCopy(decision);
+  const complete = isComplete(ballot.items, answers, requiresAllItems(ballot)) && voterOk;
+  const decisionKind = decisionBallotKind(ballot);
+  const decision = decisionKind !== null;
+  const copy = voterCopy(decisionKind);
 
   return (
     <Shell align="top">
@@ -704,8 +748,9 @@ function VotingScreen({
 
 function ResultsScreen({ results }: { results: BallotResults | null }) {
   if (!results) return <LoadingScreen />;
-  const decision = isDivisionDecisionBallot(results);
-  const rcopy = voterCopy(decision);
+  const decisionKind = decisionBallotKind(results);
+  const decision = decisionKind !== null;
+  const rcopy = voterCopy(decisionKind);
 
   return (
     <Shell align="top">
@@ -791,7 +836,8 @@ export default function BallotCard() {
   const token = parsed?.token ?? null;
 
   const [ballot, setBallot] = useState<Ballot | null | undefined>(undefined);
-  const [answers, setAnswers] = useState<Record<string, number>>({});
+  const [answersState, setAnswers] = useState<Record<string, number>>({});
+  const answers = answersState;
   const [submitState, setSubmitState] = useState<'idle' | 'submitted' | 'duplicate'>('idle');
   /** 제출했는데 이미 마감 — 표가 들어가지 않았다(10/14 voter-4). */
   const [lateClosed, setLateClosed] = useState(false);
@@ -811,12 +857,30 @@ export default function BallotCard() {
   const [voter, setVoter] = useState<VoterDraft>({ team: null, name: '' });
   const [localVoter, setLocalVoter] = useState<LocalVoter | null>(null);
   const teams = useMemo(() => rosterTeams(roster), [roster]);
+  /** 넘김식(11/14 의제별 의결 투표지) — 지금 위치. 임시 저장에서 되살린 값으로 시작한다. */
+  const [pagerPos, setPagerPos] = useState<PagerPos>(0);
+  const [pagerRestoredFor, setPagerRestoredFor] = useState<string | null>(null);
+  /** 되살리기는 투표지마다 한 번 — 오래 사는 클로저에서 load 가 다시 불려도 고른 값을 덮지 않게 ref 로 지킨다. */
+  const pagerRestoredRef = useRef<string | null>(null);
+  // 제출 요청은 한 번에 하나 — 빠른 두 번 누름이 요청 두 개를 보내지 않게(createSubmitLatch 설명).
+  const submitLatchRef = useRef(createSubmitLatch());
+  const pagerView =
+    !!ballot && typeof window !== 'undefined' && shouldUsePager(ballot, window.location.search);
 
   const load = async ({ preserveCurrent = false }: { preserveCurrent?: boolean } = {}): Promise<Ballot | null> => {
     if (!token) return null;
     try {
       // 명단 조회가 실패하면(함수 없음 제외) 투표 화면을 띄우지 않는다 — 이름을 조용히 빼먹지 않게.
       const [b, r] = await Promise.all([fetchBallot(token), fetchBallotRoster(token)]);
+      if (b && b.id !== pagerRestoredRef.current && shouldUsePager(b, window.location.search)) {
+        pagerRestoredRef.current = b.id;
+        // 새로고침 · 화면 꺼짐 · QR 다시 찍기 — 같은 투표지면 고른 값과 위치를 되살린다(다른 투표지는 되살리지 않는다).
+        const draft = loadPagerDraft(pagerStorage, b.id, b.items);
+        setAnswers(draft?.answers ?? {});
+        setPagerPos(draft?.pos ?? 0);
+        if (draft?.voter) setVoter({ team: draft.voter.team, name: draft.voter.name });
+        setPagerRestoredFor(b.id);
+      }
       setRoster(r);
       setBallot(b);
       setBallotLoadError(null);
@@ -843,13 +907,19 @@ export default function BallotCard() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
-  // 10/17 분과 의결 투표면 「의견조사」 대신 「투표」 문구(일반 다의제 투표는 그대로).
-  const decisionBallot = !!ballot && isDivisionDecisionBallot(ballot);
+  // 의결 투표(10/17 분과 · 11/14 전체회의)면 「의견조사」 대신 「투표」 문구(일반 다의제 투표는 그대로).
+  const decisionBallot = ballot ? decisionBallotKind(ballot) : null;
   const screen = resolveBallotScreen({
     hasToken: !!token,
     ballot,
     submitted: locallySubmitted || submitState !== 'idle',
   });
+
+  // 넘김식 임시 저장 — 누를 때마다(답 · 위치 · 고른 조와 이름). 제출이 끝나면 handleSubmit 이 지운다.
+  useEffect(() => {
+    if (!ballot || !pagerView || screen !== 'active' || pagerRestoredFor !== ballot.id) return;
+    savePagerDraft(pagerStorage, ballot.id, { answers, pos: pagerPos, voter: voter.team || voter.name ? { team: voter.team, name: voter.name } : null });
+  }, [ballot, pagerView, screen, pagerRestoredFor, answers, pagerPos, voter]);
 
   // published가 되면 결과를 가져온다(p_code 없이 — published일 때만 non-null).
   useEffect(() => {
@@ -880,8 +950,20 @@ export default function BallotCard() {
     setAnswers((prev) => ({ ...prev, [itemId]: v }));
   };
 
-  const handleSubmit = async () => {
+  /** answersOverride = 넘김식이 들고 있는 값(부모 state 동기화를 기다리지 않고 화면에 보이는 값 그대로 낸다). */
+  const handleSubmit = async (answersOverride?: Record<string, number>) => {
     if (!token || !ballot) return;
+    if (!submitLatchRef.current.tryEnter()) return;
+    try {
+      await submitOnce(answersOverride);
+    } finally {
+      submitLatchRef.current.release();
+    }
+  };
+
+  const submitOnce = async (answersOverride?: Record<string, number>) => {
+    if (!token || !ballot) return;
+    const answers = answersOverride ?? answersState;
     setSubmitting(true);
     setError(null);
     const named = teams.length > 0;
@@ -892,48 +974,45 @@ export default function BallotCard() {
       setError('조와 이름을 먼저 골라 주세요.');
       return;
     }
-    if (!named) {
+    try {
       // 무기명으로 내기 직전에 명단을 한 번 더 본다 — 화면을 연 뒤 실명으로 바뀌었으면 조·이름부터 받는다.
-      // 명단 조회가 실패하면 무기명으로 내지 않는다(이름을 조용히 빼먹지 않게).
-      let fresh: RosterRow[] | 'error';
-      try {
-        fresh = await fetchBallotRoster(token);
-      } catch (rosterError: unknown) {
-        console.error('명단을 다시 확인하지 못했습니다.', rosterError);
-        fresh = 'error';
-      }
-      const gate = anonymousSubmitGate(fresh);
-      if (gate !== 'anonymous') {
+      // 명단 조회가 실패하거나, 전체회의 의결(실명 필수)인데 명단이 0행이면 내지 않는다(W05).
+      const outcome = await sendBallotOnce({
+        named,
+        rosterRequired: rosterRequired(ballot),
+        fetchRoster: () => fetchBallotRoster(token),
+        submitAnonymous: () => submitBallot(token, getDeviceToken(), answers),
+        submitNamed: () => submitBallotNamed(token, getDeviceToken(), answers, voter.team as string, voterName),
+      });
+      if (outcome.kind !== 'sent') {
         setConfirmOpen(false);
-        setSubmitting(false);
-        if (gate === 'need-voter' && fresh !== 'error') {
-          setRoster(fresh);
+        if (outcome.kind === 'need-voter') {
+          setRoster(outcome.roster);
           setError('실명 투표입니다. 위에서 조와 이름을 골라 주세요.');
+        } else if (outcome.reason === 'no-roster') {
+          // 실명 수집이 꺼졌거나 명단이 없다 — 막는 화면으로 바꾼다(명단이 올라오면 「다시 확인」).
+          setRoster([]);
+          setError(ROSTER_MISSING_MESSAGE);
         } else {
           setError('연결을 확인하지 못했습니다. 잠시 뒤 다시 제출해 주세요.');
         }
         return;
       }
-    }
-    try {
-      let result = named
-        ? await submitBallotNamed(token, getDeviceToken(), answers, voter.team as string, voterName)
-        : await submitBallot(token, getDeviceToken(), answers);
-      // 화면을 연 뒤 운영팀이 실명 수집을 껐다 — 지금처럼 무기명으로 낸다.
-      let namedSaved = named;
-      if (result === 'named_off') {
-        namedSaved = false;
-        result = await submitBallot(token, getDeviceToken(), answers);
-      }
+      const { result, namedSaved } = outcome;
       setConfirmOpen(false);
       const mine: LocalVoter | null = namedSaved
-        ? { team: voter.team as string, name: voterName, choice: responseChoiceText(answers, ballot.items) || null }
+        ? {
+            team: voter.team as string,
+            name: voterName,
+            choice: (pagerView ? pagerChoiceText(ballot.items, answers) : responseChoiceText(answers, ballot.items)) || null,
+          }
         : null;
       if (result === 'name_taken') {
         // 같은 이름이 이미 제출됨 — 이 기기는 잠그지 않는다(조·이름을 잘못 눌렀을 수 있다).
-        setError('이미 이 이름으로 제출되었습니다. 운영팀에 알려 주세요.');
+        setError(NAME_TAKEN_MESSAGE);
       } else if (result === 'ok') {
         recordLocalSubmit(ballot.id);
+        clearPagerDraft(pagerStorage, ballot.id);
         if (mine) {
           recordLocalVoter(ballot.id, mine);
           setLocalVoter(mine);
@@ -942,6 +1021,7 @@ export default function BallotCard() {
       } else if (result === 'duplicate') {
         // 이 디바이스의 제출이 이미 존재 — 로컬 기록을 보정하고 완료 화면으로.
         recordLocalSubmit(ballot.id);
+        clearPagerDraft(pagerStorage, ballot.id);
         setLocalVoter(getLocalVoter(ballot.id));
         setSubmitState('duplicate');
       } else {
@@ -981,6 +1061,16 @@ export default function BallotCard() {
     setBallotLoadError(null);
     try {
       await load();
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  const handleRosterRecheck = async () => {
+    setRefreshing(true);
+    try {
+      await load({ preserveCurrent: true });
+      setError(null);
     } finally {
       setRefreshing(false);
     }
@@ -1036,6 +1126,34 @@ export default function BallotCard() {
       />
     );
   }
+  if (screen === 'active' && ballot && rosterRequired(ballot) && teams.length === 0) {
+    // (W05) 전체회의 의결인데 명단 0행 — 넘김식 · 목록 화면 어느 쪽도 그리지 않는다(무기명으로 받지 않는다).
+    return <RosterMissingScreen onRetry={() => void handleRosterRecheck()} retrying={refreshing} />;
+  }
+  if (screen === 'active' && ballot && pagerView && pagerRestoredFor === ballot.id) {
+    // 11/14 의제별 의결 투표지 — 한 화면에 권고안 1건(넘김식). 요약 화면이 확인창을 대신한다.
+    return (
+      <BallotPager
+        key={ballot.id}
+        ballot={ballot}
+        initialAnswers={answers}
+        initialPos={pagerPos}
+        onChange={(nextAnswers, nextPos) => {
+          setAnswers(nextAnswers);
+          setPagerPos(nextPos);
+        }}
+        onSubmit={(pagerAnswers) => void handleSubmit(pagerAnswers)}
+        submitting={submitting}
+        error={error}
+        teams={teams}
+        voter={voter}
+        onVoter={(v) => {
+          setVoter(v);
+          setError(null);
+        }}
+      />
+    );
+  }
   if (screen === 'active' && ballot) {
     return (
       <>
@@ -1057,10 +1175,10 @@ export default function BallotCard() {
           <ConfirmDialog
             answered={answeredCount(ballot.items, answers)}
             total={ballot.items.length}
-            choice={decisionChoiceOf(ballot.items, answers, decisionBallot)}
+            choice={decisionChoiceOf(ballot.items, answers, decisionBallot !== null)}
             voterLine={teams.length > 0 && voter.team ? `${voter.team} ${displayVoterName(voter.name)} 님` : null}
             onCancel={() => setConfirmOpen(false)}
-            onConfirm={handleSubmit}
+            onConfirm={() => void handleSubmit()}
             submitting={submitting}
           />
         ) : null}

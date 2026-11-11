@@ -15,7 +15,7 @@ import { downloadBlob } from './svg-to-png';
 
 /**
  * 실명 투표(10/17) 「제출자 대조」 — 투표 하나의 명단 대비 제출 현황(운영 노트북 전용, 큰 화면에는 띄우지 않는다).
- * 명단 N · 제출 M · 미제출 K, 조별 미제출 이름(거수한 분도 여기 나온다 = 「QR 미제출」), 명단에 없는 이름(오타 의심),
+ * 명단 N · 제출 M · 미제출 K, 조별 미제출 이름(거수한 분도 여기 나온다 = 「QR 미제출」), 명단에 없는 이름(직접 입력 — 출석부와 맞으면 유효표),
  * 같은 이름 두 번. 조·이름 정정(찬반은 못 고침, 정정 이력은 서버 감사 기록). 실명 CSV.
  * 판단은 named-vote-logic.ts(순수, vitest).
  */
@@ -105,7 +105,9 @@ export default function VoterReconcileBox({
             {rec.anonymous ? <p className="text-[15px] text-[#5A6B73]">이름 없이 들어온 제출 {rec.anonymous}건(실명 받기 전 화면).</p> : null}
             {rec.offRoster.length ? (
               <section>
-                <h4 className="text-[16px] font-extrabold text-[#B45309]">명단에 없는 조·이름(오타 의심) {rec.offRoster.length}</h4>
+                <h4 className="text-[16px] font-extrabold text-[#B45309]">
+                  명단에 없는 조·이름 {rec.offRoster.length} — 직접 입력. 결과 내보내기에서 출석부와 조·이름이 맞으면 유효표(11/10 결정). 조·이름을 잘못 적었으면 고칩니다
+                </h4>
                 <ul className="mt-1 space-y-1">{rec.offRoster.map((o) => row(o.response, o.rosterTeam ? `명단에는 ${o.rosterTeam}` : null))}</ul>
               </section>
             ) : null}

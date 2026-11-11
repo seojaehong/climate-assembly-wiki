@@ -44,3 +44,26 @@ describe('제출자 대조 — 낸 사람 누구든 조·이름을 고칠 수 �
     expect(ballot).toMatch(/ballot\.status !== 'draft' && access \? \(\s*<div className="mt-3">\s*<VoterReconcileBox/);
   });
 });
+
+describe('(11/10 결정 + 방어선) 제출자 대조 — 직접 입력은 출석부와 맞으면 유효표', () => {
+  it('명단에 없는 조·이름을 「오타 의심」이 아니라 직접 입력으로 적고, 출석부 조건을 함께 적는다', () => {
+    const src = readFileSync(new URL('./VoterReconcileBox.tsx', import.meta.url), 'utf8');
+    expect(src).toContain('직접 입력');
+    expect(src).toContain('출석부와 조·이름이 맞으면 유효표');
+    expect(src).not.toContain('유효표로 셉니다(11/10 결정)');
+    expect(src).not.toContain('오타 의심');
+  });
+});
+
+describe('(11/14 큰 화면 위생) 투표 목록의 「투표결과 보기 (조·이름)」', () => {
+  it('전체회의 의결 투표지에는 단추를 그리지 않고, 이름 화면도 열지 않는다(같은 노트북을 프로젝터로 내보낸다)', () => {
+    const src = readFileSync(new URL('./BallotPanel.tsx', import.meta.url), 'utf8');
+    expect(src).toMatch(/ballot\.status !== 'draft' && !plenaryQuietScreen\(ballot\) \? \(\s*<button[\s\S]{0,200}data-testid="ballot-named-board"/);
+    expect(src).toMatch(/namesId && access[\s\S]{0,200}!plenaryQuietScreen\(b\)/);
+  });
+
+  it('전체회의 의결 투표지에는 「잠정 결과」 단추도 그리지 않는다(16:30 일괄 공개 전 숫자 노출 방지, 11/11 드라이런)', () => {
+    const src = readFileSync(new URL('./BallotPanel.tsx', import.meta.url), 'utf8');
+    expect(src).toMatch(/\(ballot\.status === 'open' \|\| ballot\.status === 'closed'\) && !plenaryQuietScreen\(ballot\) \? \(\s*<button[\s\S]{0,400}잠정 결과/);
+  });
+});

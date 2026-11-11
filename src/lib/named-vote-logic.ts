@@ -54,9 +54,13 @@ export function rosterTeams(rows: readonly RosterRow[]): RosterTeam[] {
     list.push(r);
     map.set(r.team, list);
   }
+  const teams = [...map.keys()];
+  // 전원 명단(11/14)에서는 「3조」가 분과마다 있다 — 줄인 이름이 하나라도 겹치면 전부 원래 이름(「1분과 3조」)으로 쓴다.
+  const shorts = teams.map(teamShort);
+  const ambiguous = new Set(shorts).size !== shorts.length;
   return [...map.entries()]
     .sort(([a], [b]) => compareTeam(a, b))
-    .map(([team, names]) => ({ team, short: teamShort(team), names: [...names].sort(compareRow) }));
+    .map(([team, names]) => ({ team, short: ambiguous ? team : teamShort(team), names: [...names].sort(compareRow) }));
 }
 
 /** 제출 전 검사 — 조·이름 둘 다 있어야 한다. 조는 명단의 조여야 한다. */
@@ -84,7 +88,7 @@ export type Reconciliation = {
   /** 명단에 있는데 이름으로 제출이 없는 사람. 거수한 분도 여기 나온다(「QR 미제출」). */
   missing: { team: string; short: string; names: RosterRow[] }[];
   missingCount: number;
-  /** 조·이름 짝이 명단에 없는 제출(오타 의심). */
+  /** 조·이름 짝이 명단에 없는 제출(직접 입력 — 11/14 결과 내보내기는 출석부의 같은 조·이름과 맞으면 유효표로 센다, 11/10 결정 + 방어선. 오타면 고친다). */
   offRoster: OffRoster[];
   /** 같은 이름(대조 키)으로 두 건 이상. */
   duplicates: { key: string; responses: NamedResponse[] }[];

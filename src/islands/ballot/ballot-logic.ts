@@ -1,4 +1,5 @@
-import type { Ballot, BallotItem } from '../../lib/ballot';
+import type { Ballot, BallotItem, BallotSubmitResult, NamedSubmitResult, RosterRow } from '../../lib/ballot';
+import { decisionBallotKind } from '../../lib/division-ballot-format';
 import { createSafeBrowserStorage } from '../../lib/safe-browser-storage';
 
 /** URL 쿼리에서 ballot 토큰(`?t=...`)을 파싱한다. 없거나 공백뿐이면 null. */
@@ -95,7 +96,21 @@ export const SURVEY_EVIDENCE_BOUNDARY =
 export const DECISION_EVIDENCE_BOUNDARY =
   '운영규정에 따라 참석자 3분의 2 이상 찬성하면 가결됩니다. 부결되면 다시 투표합니다.';
 
-export function voterCopy(decision: boolean): VoterCopy {
+/** 11/14 전체회의 의결 — 분과 이름도, 「부결되면 다시 투표합니다」도 내지 않는다(20_투표_최종안 329행). */
+export const PLENARY_EVIDENCE_BOUNDARY = '출석자 3분의 2 이상이 찬성하면 가결됩니다.';
+
+/** decision: true·'division' = 분과 의결, 'plenary' = 전체회의 의결, false·null = 일반 다의제 의견조사. */
+export function voterCopy(decision: boolean | 'division' | 'plenary' | null): VoterCopy {
+  if (decision === 'plenary') {
+    return {
+      eyebrow: '전체회의 의결 투표',
+      doneTitle: '투표가 제출되었습니다',
+      doneBody: '참여해 주셔서 감사합니다. 결과는 투표 마감 후 현장에서 발표합니다.',
+      closedTitle: '투표가 마감되었습니다',
+      resultsEyebrow: '투표 마감됨 · 결과',
+      evidence: PLENARY_EVIDENCE_BOUNDARY,
+    };
+  }
   if (decision) {
     return {
       eyebrow: '분과 의결 투표',
@@ -116,6 +131,25 @@ export function voterCopy(decision: boolean): VoterCopy {
   };
 }
 
+/**
+ * 제출 이중 전송 막기. React state(submitting)는 다음 그리기 전까지 바뀌지 않아 빠른 두 번 누름이
+ * 요청 두 개를 보낼 수 있다. 서버는 같은 기기 두 번째를 「already submitted」로 막지만, 늦게 온 그 응답이
+ * 성공 화면을 「이미 제출하셨습니다」로 덮는다. 요청 하나가 끝날 때까지 다음 누름을 받지 않는다.
+ */
+export function createSubmitLatch(): { tryEnter: () => boolean; release: () => void } {
+  let busy = false;
+  return {
+    tryEnter: () => {
+      if (busy) return false;
+      busy = true;
+      return true;
+    },
+    release: () => {
+      busy = false;
+    },
+  };
+}
+
 /** 유효 범위(1..scale) 안의 답변인지. */
 function hasValidAnswer(item: BallotItem, answers: Record<string, number>): boolean {
   const v = answers[item.id];
@@ -128,12 +162,28 @@ export function answeredCount(items: BallotItem[], answers: Record<string, numbe
 }
 
 /**
+ * 11/14 전체회의 의결 투표지는 기권을 받지 않는다(11/10 주최 결정) — 문항이 required=false 로 만들어졌어도
+ * 모든 건을 눌러야 제출된다. 넘김식 · 목록 화면(?view=list)이 같이 쓴다. 분과 의결 · 일반 투표는 문항 required 그대로.
+ */
+export function requiresAllItems(ballot: { title?: string | null; subgroup?: string | null }): boolean {
+  return decisionBallotKind(ballot) === 'plenary';
+}
+
+/**
  * 제출 가능 여부 — required 문항 전부에 유효 답변이 있어야 true.
  * (ballot_submit의 서버 가드와 동일 조건. optional 문항은 비워도 된다.)
+ * allRequired(전체회의 의결) 이면 optional 문항까지 전부.
  */
-export function isComplete(items: BallotItem[], answers: Record<string, number>): boolean {
-  return items.filter((item) => item.required).every((item) => hasValidAnswer(item, answers));
+export function isComplete(items: BallotItem[], answers: Record<string, number>, allRequired = false): boolean {
+  return items.filter((item) => allRequired || item.required).every((item) => hasValidAnswer(item, answers));
 }
+
+/**
+ * 같은 이름이 이미 제출됨(name_taken). 재투표 불가(11/10 주최 결정) — 다시 낼 수 없다고 분명히 말한다.
+ * 이 기기는 잠그지 않는다(남의 이름을 잘못 눌렀으면 자기 이름으로 고쳐 낸다).
+ */
+export const NAME_TAKEN_MESSAGE =
+  '이미 이 이름으로 제출되었습니다. 같은 이름으로는 다시 투표할 수 없습니다. 이름을 잘못 눌렀으면 고쳐 주시고, 낸 적이 없으면 손을 들어 운영팀에 알려 주세요.';
 
 // ── 로컬 제출 기록 ──────────────────────────────────────────────────
 // 제출 성공/중복 확인 시 localStorage에 시각을 남겨, 재진입(QR 재스캔)하면
@@ -233,7 +283,60 @@ export function refreshNoticeMessage(ballot: Ballot): string | null {
  * - 'need-voter': 그 사이 실명으로 바뀌었다 → 조·이름부터 받는다
  * - 'retry': 명단을 확인하지 못했다(네트워크·서버 오류) → 무기명으로 내지 않고 다시 시도하게
  */
-export function anonymousSubmitGate(fresh: readonly unknown[] | 'error'): 'anonymous' | 'need-voter' | 'retry' {
+export function anonymousSubmitGate(
+  fresh: readonly unknown[] | 'error',
+  rosterRequired = false,
+): 'anonymous' | 'need-voter' | 'retry' | 'no-roster' {
   if (fresh === 'error') return 'retry';
-  return fresh.length > 0 ? 'need-voter' : 'anonymous';
+  if (fresh.length > 0) return 'need-voter';
+  // - 'no-roster': 실명 수집 투표지(전체회의 의결)인데 명단이 비었다 → 무기명으로 내지 않고 막는다(W05)
+  return rosterRequired ? 'no-roster' : 'anonymous';
+}
+
+/**
+ * 실명 수집 투표지 — 11/14 전체회의 의결(제목이 「전체회의 의결」로 시작). 명단이 0행이면 무기명으로 받지 않는다.
+ * 분과 지정이 잘못 남은 투표지(decisionBallotKind 가 null)도 막는 쪽에 둔다.
+ */
+export function rosterRequired(ballot: { title?: string | null; subgroup?: string | null }): boolean {
+  return (ballot.title ?? '').trim().startsWith('전체회의 의결');
+}
+
+export const ROSTER_MISSING_MESSAGE =
+  '명단이 아직 준비되지 않았습니다. 이 투표는 조와 이름 없이 낼 수 없습니다. 손을 들어 진행요원에게 알려 주세요.';
+
+export type SendOutcome =
+  | { kind: 'sent'; result: BallotSubmitResult | 'name_taken'; namedSaved: boolean }
+  | { kind: 'need-voter'; roster: RosterRow[] }
+  | { kind: 'held'; reason: 'retry' | 'no-roster' };
+
+/**
+ * 제출 한 번(BallotCard 가 부르는 유일한 길). 요청 함수는 주입받는다 — 시험이 「요청 0건」을 셀 수 있게.
+ * - 무기명: 내기 직전 명단을 다시 읽고 gate 를 거친다. 실명 필수인데 0행이면 내지 않는다.
+ * - 실명: 화면을 연 뒤 실명 수집이 꺼졌으면(named_off) 일반 투표만 무기명으로 다시 낸다. 실명 필수면 내지 않는다.
+ * 제출 요청의 오류는 그대로 던진다(부르는 쪽이 「제출에 실패했습니다」를 띄운다).
+ */
+export async function sendBallotOnce(deps: {
+  named: boolean;
+  rosterRequired: boolean;
+  fetchRoster: () => Promise<RosterRow[]>;
+  submitAnonymous: () => Promise<BallotSubmitResult>;
+  submitNamed: () => Promise<NamedSubmitResult>;
+}): Promise<SendOutcome> {
+  if (!deps.named) {
+    let fresh: RosterRow[] | 'error';
+    try {
+      fresh = await deps.fetchRoster();
+    } catch (rosterError: unknown) {
+      console.error('명단을 다시 확인하지 못했습니다.', rosterError);
+      fresh = 'error';
+    }
+    const gate = anonymousSubmitGate(fresh, deps.rosterRequired);
+    if (gate === 'need-voter' && fresh !== 'error') return { kind: 'need-voter', roster: fresh };
+    if (gate === 'retry' || gate === 'no-roster') return { kind: 'held', reason: gate };
+    return { kind: 'sent', result: await deps.submitAnonymous(), namedSaved: false };
+  }
+  const result = await deps.submitNamed();
+  if (result !== 'named_off') return { kind: 'sent', result, namedSaved: true };
+  if (deps.rosterRequired) return { kind: 'held', reason: 'no-roster' };
+  return { kind: 'sent', result: await deps.submitAnonymous(), namedSaved: false };
 }
