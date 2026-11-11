@@ -8,11 +8,17 @@ import {
   itemOutcome,
   parseShowParams,
   participationPct,
+  overallTurnout,
   passThreshold,
   resetTimer,
   resolvePresent,
+  rotationPanels,
+  showModeKey,
+  stepPanel,
   timerRemainingMs,
   toggleTimer,
+  turnoutBar,
+  turnoutPct,
   yesCount,
 } from './show-logic';
 
@@ -108,6 +114,75 @@ describe('타이머 — 종료 시각 기준(탭이 느려져도 밀리지 않�
     t = resetTimer(t);
     expect(t.runningSince).toBeNull();
     expect(timerRemainingMs(t, 100_000)).toBe(600_000);
+  });
+});
+
+describe('turnoutPct — 실시간 화면 투표율(100% 상한, 반올림)', () => {
+  it('131/174 → 75', () => expect(turnoutPct(131, 174)).toBe(75));
+  it('제출이 참석보다 많으면 100', () => expect(turnoutPct(180, 174)).toBe(100));
+  it('참석 0 이면 0', () => expect(turnoutPct(5, 0)).toBe(0));
+});
+
+describe('overallTurnout — 제출 합 / (참석 × 의제 수), 투표 중 합', () => {
+  it('의제 셋', () => {
+    const o = overallTurnout(
+      [
+        { submitted: 100, in_progress: 10 },
+        { submitted: 80, in_progress: 5 },
+        { submitted: 60, in_progress: 0 },
+      ],
+      174,
+    );
+    expect(o).toEqual({ submitted: 240, capacity: 522, pct: Math.round((240 / 522) * 100), inProgress: 15 });
+  });
+  it('의제 하나', () => {
+    expect(overallTurnout([{ submitted: 2, in_progress: 1 }], 10)).toEqual({ submitted: 2, capacity: 10, pct: 20, inProgress: 1 });
+  });
+  it('상한 100, 참석 0 이면 0, 빈 목록이면 0', () => {
+    expect(overallTurnout([{ submitted: 300, in_progress: 0 }], 174).pct).toBe(100);
+    expect(overallTurnout([{ submitted: 3, in_progress: 0 }], 0).pct).toBe(0);
+    expect(overallTurnout([], 174)).toEqual({ submitted: 0, capacity: 0, pct: 0, inProgress: 0 });
+  });
+});
+
+describe('turnoutBar — 막대(제출)와 투표 시작 표시선 위치(%)', () => {
+  it('제출 50 · 시작 80 / 참석 100', () => expect(turnoutBar(50, 80, 100)).toEqual({ submittedPct: 50, startedPct: 80 }));
+  it('넘치면 100 에서 자른다, 참석 0 이면 0', () => {
+    expect(turnoutBar(120, 150, 100)).toEqual({ submittedPct: 100, startedPct: 100 });
+    expect(turnoutBar(1, 2, 0)).toEqual({ submittedPct: 0, startedPct: 0 });
+  });
+});
+
+describe('rotationPanels · stepPanel — 실시간 순환 판', () => {
+  it('의제 하나 주소 = 전체 투표율 → 그 의제 큰 판', () => expect(rotationPanels(1)).toEqual(['overall', 'single']));
+  it('종합 주소 = 전체 투표율 → 의제별 투표율', () => expect(rotationPanels(3)).toEqual(['overall', 'agendas']));
+  it('앞뒤로 넘기면 돌아 나간다', () => {
+    expect(stepPanel(0, 2, 1)).toBe(1);
+    expect(stepPanel(1, 2, 1)).toBe(0);
+    expect(stepPanel(0, 2, -1)).toBe(1);
+    expect(stepPanel(0, 0, 1)).toBe(0);
+  });
+});
+
+describe('showModeKey — 의제 하나 주소의 화면 전환(1·2·3·4·V)', () => {
+  const live = { view: 'live', video: false } as const;
+  it('V = 진행 화면에서 영상 켜고 끄기', () => {
+    expect(showModeKey(live, 'V')).toEqual({ view: 'live', video: true });
+    expect(showModeKey({ view: 'live', video: true }, 'V')).toEqual({ view: 'live', video: false });
+  });
+  it('영상 중 2·3 → 결과, 1 이나 V 로 영상에 돌아온다', () => {
+    const d = showModeKey({ view: 'live', video: true }, '2');
+    expect(d).toEqual({ view: 'detail', video: true });
+    expect(showModeKey(d, '1')).toEqual({ view: 'live', video: true });
+    expect(showModeKey(showModeKey(d, '3'), 'V')).toEqual({ view: 'live', video: true });
+  });
+  it('결과 화면에서 V 는 영상 없던 때에도 영상으로 간다', () => {
+    expect(showModeKey({ view: 'summary', video: false }, 'V')).toEqual({ view: 'live', video: true });
+  });
+  it('4 = 실시간 들어가기, 다시 4 = 진행 화면', () => {
+    const r = showModeKey(live, '4');
+    expect(r).toEqual({ view: 'rotate', video: false });
+    expect(showModeKey(r, '4')).toEqual({ view: 'live', video: false });
   });
 });
 
