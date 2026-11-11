@@ -11,7 +11,20 @@ import {
   overallTurnout,
   passThreshold,
   resetTimer,
-  resolvePresent,
+  classifyLoadError,
+  clickerStep,
+  clockDisplay,
+  liveDenominator,
+  parsePresent,
+  restoreTimer,
+  serializeTimer,
+  showQr,
+  staleSeconds,
+  statusText,
+  submittedExceedsPresent,
+  withTimeout,
+  PollTimeoutError,
+  type ShowMode,
   rotationPanels,
   showModeKey,
   stepPanel,
@@ -34,13 +47,136 @@ describe('passThreshold — 참석 P명의 3분의 2 이상(올림)', () => {
   });
 });
 
-describe('resolvePresent — URL present 우선, 없거나 잘못되면 명단 수', () => {
-  it('정수면 그 값', () => expect(resolvePresent('174', 180)).toBe(174));
-  it('없거나 0·음수·숫자 아님이면 roster', () => {
-    expect(resolvePresent(null, 180)).toBe(180);
-    expect(resolvePresent('0', 180)).toBe(180);
-    expect(resolvePresent('-3', 180)).toBe(180);
-    expect(resolvePresent('abc', 180)).toBe(180);
+describe('parsePresent — 양의 정수만, 아니면 null(명단 수로 조용히 바꾸지 않는다)', () => {
+  it('정수면 그 값(앞뒤 공백 허용)', () => {
+    expect(parsePresent('174')).toBe(174);
+    expect(parsePresent(' 174 ')).toBe(174);
+  });
+  it('없거나 0·음수·숫자 아님·단위 붙음·소수·지수면 null', () => {
+    for (const raw of [null, undefined, '', '0', '-3', 'abc', '174명', '174.5', '1e2', 'NaN', '17 4']) {
+      expect(parsePresent(raw)).toBeNull();
+    }
+  });
+});
+
+describe('liveDenominator — 진행·실시간 분모(출석 없으면 명단 기준이라고 적는다)', () => {
+  it('출석이 있으면 출석', () => expect(liveDenominator(174, 180)).toEqual({ n: 174, label: '참석 174명', byRoster: false }));
+  it('출석이 없으면 명단 + 「명단 기준」', () => expect(liveDenominator(null, 180)).toEqual({ n: 180, label: '명단 180명 기준', byRoster: true }));
+});
+
+describe('submittedExceedsPresent — 제출 > 출석 경고', () => {
+  it('하나라도 넘으면 true, 같으면 false, 출석 없으면 false', () => {
+    expect(submittedExceedsPresent(174, [100, 175])).toBe(true);
+    expect(submittedExceedsPresent(174, [174, 0])).toBe(false);
+    expect(submittedExceedsPresent(null, [999])).toBe(false);
+  });
+});
+
+describe('statusText · showQr · clockDisplay — 서버 상태와 노트북 타이머', () => {
+  it('상태 문구(닫힌 매핑)', () => {
+    expect(statusText('draft', false)).toBe('투표 시작 전');
+    expect(statusText('open', false)).toBe('투표 진행 중');
+    expect(statusText('closed', false)).toBe('투표 마감');
+    expect(statusText('published', false)).toBe('결과 공개');
+    expect(statusText('archived', false)).toBe('');
+    expect(statusText('', true)).toBe('');
+  });
+  it('타이머가 0 이어도 서버가 open 이면 「시간 종료」 — 「투표 마감」은 서버 closed 에서만', () => {
+    expect(statusText('open', true)).toBe('시간 종료');
+    expect(statusText('closed', true)).toBe('투표 마감');
+    expect(statusText('draft', true)).toBe('투표 시작 전');
+  });
+  it('QR 은 open 에서만', () => {
+    expect(showQr('open')).toBe(true);
+    for (const s of ['draft', 'closed', 'published', '']) expect(showQr(s)).toBe(false);
+  });
+  it('시계 칸', () => {
+    expect(clockDisplay('open', 61_000, 90_000)).toEqual({ text: '01:01', ended: false });
+    expect(clockDisplay('open', 0, 90_000)).toEqual({ text: '시간 종료', ended: true });
+    expect(clockDisplay('closed', 30_000, 90_000)).toEqual({ text: '마감', ended: true });
+    expect(clockDisplay('published', 0, 90_000)).toEqual({ text: '마감', ended: true });
+    expect(clockDisplay('draft', 90_000, 90_000)).toEqual({ text: '01:30', ended: false });
+  });
+});
+
+describe('타이머 저장 · 되살리기(F5)', () => {
+  const now = 1_000_000_000;
+  it('저장한 그대로 되살린다(흐르는 중이면 흐름 유지)', () => {
+    const t = { durationMs: 90_000, pausedRemainingMs: 50_000, runningSince: now - 5000 };
+    const r = restoreTimer(serializeTimer(t, now), 90_000, now + 1000);
+    expect(r).toEqual(t);
+    expect(timerRemainingMs(r!, now + 1000)).toBe(44_000);
+  });
+  it('전체 시간이 다르면(min= 바뀜) 버린다', () => {
+    const t = { durationMs: 90_000, pausedRemainingMs: 50_000, runningSince: null };
+    expect(restoreTimer(serializeTimer(t, now), 120_000, now)).toBeNull();
+  });
+  it('오래된 값(리허설)은 버린다', () => {
+    const t = { durationMs: 90_000, pausedRemainingMs: 0, runningSince: null };
+    expect(restoreTimer(serializeTimer(t, now), 90_000, now + 3 * 3600_000 + 1)).toBeNull();
+    expect(restoreTimer(serializeTimer(t, now), 90_000, now + 3600_000)).toEqual(t);
+  });
+  it('없거나 깨진 값은 null', () => {
+    expect(restoreTimer(null, 90_000, now)).toBeNull();
+    expect(restoreTimer('{broken', 90_000, now)).toBeNull();
+    expect(restoreTimer(JSON.stringify({ v: 1, durationMs: 90_000 }), 90_000, now)).toBeNull();
+    expect(restoreTimer(JSON.stringify({ v: 1, durationMs: 90_000, pausedRemainingMs: 1, runningSince: 'x', savedAt: now }), 90_000, now)).toBeNull();
+  });
+});
+
+describe('withTimeout · classifyLoadError · staleSeconds — 읽기 실패', () => {
+  it('시간 안에 끝나면 그 값', async () => expect(await withTimeout(Promise.resolve(3), 50)).toBe(3));
+  it('끝나지 않으면 PollTimeoutError', async () => {
+    await expect(withTimeout(new Promise(() => undefined), 20)).rejects.toBeInstanceOf(PollTimeoutError);
+  });
+  it('실패는 그대로 넘긴다', async () => {
+    await expect(withTimeout(Promise.reject(new Error('x')), 50)).rejects.toThrow('x');
+  });
+  it('「없는 토큰」과 연결 실패를 가른다', () => {
+    expect(classifyLoadError({ message: 'ballot not found' })).toBe('not_found');
+    expect(classifyLoadError({ message: 'ballot token required' })).toBe('not_found');
+    expect(classifyLoadError({ message: 'TypeError: Failed to fetch' })).toBe('network');
+    expect(classifyLoadError(new PollTimeoutError())).toBe('network');
+    expect(classifyLoadError(null)).toBe('network');
+  });
+  it('마지막 성공이 10초보다 오래되면 지난 초', () => {
+    expect(staleSeconds(1000, 0, 11_000)).toBeNull();
+    expect(staleSeconds(1000, 0, 11_001)).toBe(10);
+    expect(staleSeconds(1000, 0, 26_000)).toBe(25);
+    // 아직 한 번도 성공 못 했으면 읽기 시작 시각부터
+    expect(staleSeconds(null, 5000, 12_000)).toBeNull();
+    expect(staleSeconds(null, 5000, 20_000)).toBe(15);
+  });
+});
+
+describe('clickerStep — PageDown/PageUp 은 투표 중 화면끼리만, 결과 화면에는 닿지 않는다', () => {
+  const live: ShowMode = { view: 'live', video: false };
+  it('진행 → 실시간 → 영상 → 진행', () => {
+    const a = clickerStep(live, 1);
+    expect(a).toEqual({ view: 'rotate', video: false });
+    const b = clickerStep(a, 1);
+    expect(b).toEqual({ view: 'live', video: true });
+    expect(clickerStep(b, 1)).toEqual(live);
+  });
+  it('PageUp 은 거꾸로', () => {
+    expect(clickerStep(live, -1)).toEqual({ view: 'live', video: true });
+    expect(clickerStep({ view: 'live', video: true }, -1).view).toBe('rotate');
+  });
+  it('결과 화면에서는 그대로', () => {
+    expect(clickerStep({ view: 'detail', video: false }, 1)).toEqual({ view: 'detail', video: false });
+    expect(clickerStep({ view: 'summary', video: true }, -1)).toEqual({ view: 'summary', video: true });
+  });
+  it('어떤 순서로 눌러도 진행·실시간·영상에서 결과 화면으로 가지 않는다', () => {
+    const starts: ShowMode[] = [live, { view: 'live', video: true }, { view: 'rotate', video: false }, { view: 'rotate', video: true }];
+    for (const s of starts) {
+      let m = s;
+      let seed = 7;
+      for (let i = 0; i < 200; i++) {
+        seed = (seed * 1103515245 + 12345) % 2147483648;
+        m = clickerStep(m, seed % 2 === 0 ? 1 : -1);
+        expect(m.view === 'live' || m.view === 'rotate').toBe(true);
+      }
+    }
   });
 });
 
@@ -202,5 +338,10 @@ describe('parseShowParams', () => {
     expect(parseShowParams('?t=x').minutes).toBeNull();
     expect(parseShowParams('?min=0').minutes).toBeNull();
     expect(parseShowParams('?min=abc').minutes).toBeNull();
+  });
+  it('motion=0 이면 움직임 끔, 그 밖에는 켬', () => {
+    expect(parseShowParams('?t=x').motion).toBe(true);
+    expect(parseShowParams('?motion=0').motion).toBe(false);
+    expect(parseShowParams('?motion=1').motion).toBe(true);
   });
 });
