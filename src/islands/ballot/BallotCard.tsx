@@ -543,7 +543,8 @@ export function ConfirmDialog({
 
 // ── 실명 투표(s28): 조 → 이름 ───────────────────────────────────────
 
-export type VoterDraft = { team: string | null; name: string; manual?: boolean };
+/** confirmed = 이 기기에서 「OOO 님이 맞나요?」에 「네」를 눌렀다(고르는 단추들은 새 객체를 넘기므로 다시 고르면 풀린다). */
+export type VoterDraft = { team: string | null; name: string; manual?: boolean; confirmed?: boolean };
 
 export function VoterPicker({
   teams,
@@ -892,7 +893,7 @@ export default function BallotCard() {
         const draft = loadPagerDraft(pagerStorage, b.id, b.items);
         setAnswers(draft?.answers ?? {});
         setPagerPos(draft?.pos ?? 0);
-        if (draft?.voter) setVoter({ team: draft.voter.team, name: draft.voter.name });
+        if (draft?.voter) setVoter({ team: draft.voter.team, name: draft.voter.name, confirmed: draft.voter.confirmed === true });
         setPagerRestoredFor(b.id);
       }
       setRoster(r);
@@ -932,7 +933,7 @@ export default function BallotCard() {
   // 넘김식 임시 저장 — 누를 때마다(답 · 위치 · 고른 조와 이름). 제출이 끝나면 handleSubmit 이 지운다.
   useEffect(() => {
     if (!ballot || !pagerView || screen !== 'active' || pagerRestoredFor !== ballot.id) return;
-    savePagerDraft(pagerStorage, ballot.id, { answers, pos: pagerPos, voter: voter.team || voter.name ? { team: voter.team, name: voter.name } : null });
+    savePagerDraft(pagerStorage, ballot.id, { answers, pos: pagerPos, voter: voter.team || voter.name ? { team: voter.team, name: voter.name, ...(voter.confirmed ? { confirmed: true } : {}) } : null });
   }, [ballot, pagerView, screen, pagerRestoredFor, answers, pagerPos, voter]);
 
   // published가 되면 결과를 가져온다(p_code 없이 — published일 때만 non-null).
@@ -1167,7 +1168,9 @@ export default function BallotCard() {
           setError(null);
         }}
         onStarted={() => {
-          if (token && voter.team && voter.name) void startBallotNamed(token, getDeviceToken(), voter.team, displayVoterName(voter.name));
+          // 「네」 — 먼저 확인했다고 적고(새로고침해도 다시 묻지 않게), 기록은 실패해도 투표를 막지 않는다.
+          setVoter((v) => (v.confirmed ? v : { ...v, confirmed: true }));
+          if (token && voter.team && voter.name) void startBallotNamed(token, getDeviceToken, voter.team, displayVoterName(voter.name));
         }}
       />
     );

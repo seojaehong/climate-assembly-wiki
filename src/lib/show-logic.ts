@@ -12,11 +12,66 @@ export function passThreshold(present: number): number {
   return Math.ceil((2 * present) / 3);
 }
 
-/** URL present 값(양의 정수)이 있으면 그것, 아니면 명단 인원. */
-export function resolvePresent(raw: string | null | undefined, roster: number): number {
-  const n = Number(raw);
-  if (raw != null && raw.trim() !== '' && Number.isInteger(n) && n > 0) return n;
-  return Math.max(0, roster);
+/**
+ * URL present 값 — 양의 정수(숫자만)일 때만 그 값, 아니면 null.
+ * 명단 수로 조용히 바꾸지 않는다(「174명」 같은 오타가 가결 판정을 바꾸지 않게). null 이면 화면이 빨간 안내를 띄우고 가결 기준·판정을 숨긴다.
+ */
+export function parsePresent(raw: string | null | undefined): number | null {
+  if (raw == null) return null;
+  const s = raw.trim();
+  if (!/^\d+$/.test(s)) return null;
+  const n = Number(s);
+  return Number.isSafeInteger(n) && n > 0 ? n : null;
+}
+
+/** 진행·실시간 화면의 분모 — 출석이 있으면 출석, 없으면 명단(「명단 기준」으로 적는다). */
+export function liveDenominator(present: number | null, roster: number): { n: number; label: string; byRoster: boolean } {
+  if (present != null) return { n: present, label: `참석 ${present}명`, byRoster: false };
+  const r = Math.max(0, roster);
+  return { n: r, label: `명단 ${r}명 기준`, byRoster: true };
+}
+
+/** 제출이 출석보다 많으면 출석 인원을 잘못 넣었을 가능성이 크다. 출석이 없으면 판단하지 않는다. */
+export function submittedExceedsPresent(present: number | null, submitted: ReadonlyArray<number>): boolean {
+  if (present == null) return false;
+  return submitted.some((s) => s > present);
+}
+
+// ── 상태 문구(서버 상태 + 표출 노트북 타이머) ─────────────────────────────
+
+export type BallotStatus = 'draft' | 'open' | 'closed' | 'published';
+
+const STATUS_TEXT: Record<BallotStatus, string> = {
+  draft: '투표 시작 전',
+  open: '투표 진행 중',
+  closed: '투표 마감',
+  published: '결과 공개',
+};
+
+function isBallotStatus(s: string): s is BallotStatus {
+  return s === 'draft' || s === 'open' || s === 'closed' || s === 'published';
+}
+
+/**
+ * 「투표 마감」은 서버 상태가 closed 일 때만. 노트북 타이머가 0 이 되어도 서버가 open 이면 「시간 종료」.
+ * 알 수 없는 상태는 빈 문자열.
+ */
+export function statusText(status: string, timeUp: boolean): string {
+  if (!isBallotStatus(status)) return '';
+  if (status === 'open' && timeUp) return '시간 종료';
+  return STATUS_TEXT[status];
+}
+
+/** QR 은 서버 상태가 open 일 때만 보인다. */
+export function showQr(status: string): boolean {
+  return status === 'open';
+}
+
+/** 시계 칸 — 서버가 마감·공개면 「마감」, 타이머만 0 이면 「시간 종료」, 아니면 mm:ss. */
+export function clockDisplay(status: string, remainingMs: number, durationMs: number): { text: string; ended: boolean } {
+  if (status === 'closed' || status === 'published') return { text: '마감', ended: true };
+  if (remainingMs <= 0 && durationMs > 0) return { text: '시간 종료', ended: true };
+  return { text: clockText(remainingMs), ended: false };
 }
 
 /** 참여율(%) = 제출 / 참석, 반올림. 참석 0 이면 0. */
@@ -105,6 +160,41 @@ export function resetTimer(t: TimerState): TimerState {
   return { ...t, pausedRemainingMs: t.durationMs, runningSince: null };
 }
 
+/**
+ * 타이머 저장(F5 · 새로고침에 살아남게). 저장값의 전체 시간이 지금 계산한 전체 시간과 다르거나(min= 이 바뀜)
+ * maxAgeMs 보다 오래됐으면(리허설 때 남은 값) 버린다.
+ */
+export function serializeTimer(t: TimerState, now: number): string {
+  return JSON.stringify({ v: 1, durationMs: t.durationMs, pausedRemainingMs: t.pausedRemainingMs, runningSince: t.runningSince, savedAt: now });
+}
+
+export const TIMER_MAX_AGE_MS = 3 * 60 * 60 * 1000;
+
+export function restoreTimer(raw: string | null | undefined, durationMs: number, now: number, maxAgeMs = TIMER_MAX_AGE_MS): TimerState | null {
+  if (!raw) return null;
+  let p: unknown;
+  try {
+    p = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+  if (!p || typeof p !== 'object') return null;
+  const o = p as Record<string, unknown>;
+  const num = (v: unknown) => typeof v === 'number' && Number.isFinite(v);
+  if (o.v !== 1 || !num(o.durationMs) || !num(o.pausedRemainingMs) || !num(o.savedAt)) return null;
+  if (o.runningSince !== null && !num(o.runningSince)) return null;
+  if (o.durationMs !== durationMs) return null;
+  if (now - (o.savedAt as number) > maxAgeMs || (o.savedAt as number) > now + 60_000) return null;
+  const paused = Math.max(0, Math.min(o.pausedRemainingMs as number, durationMs * 10));
+  const since = o.runningSince as number | null;
+  if (since != null && since > now) return null;
+  return { durationMs, pausedRemainingMs: paused, runningSince: since };
+}
+
+export function timerStorageKey(tokens: ReadonlyArray<string>): string {
+  return `show_timer_${tokens.join(',')}`;
+}
+
 /** 남은 ms → 「mm:ss」(초는 올림 — 0:00.4 는 00:01). */
 export function clockText(ms: number): string {
   const s = Math.max(0, Math.ceil(ms / 1000));
@@ -114,9 +204,9 @@ export function clockText(ms: number): string {
 
 // ── URL ─────────────────────────────────────────────────────────────
 
-export type ShowParams = { tokens: string[]; present: string | null; minutes: number | null };
+export type ShowParams = { tokens: string[]; present: string | null; minutes: number | null; motion: boolean };
 
-/** /show?t=<토큰>[,<토큰>,<토큰>]&present=<참석>&min=<분>. 토큰은 32자 영숫자만. */
+/** /show?t=<토큰>[,<토큰>,<토큰>]&present=<참석>&min=<분>[&motion=0]. 토큰은 32자 영숫자만. motion=0 = 움직임 끔(저사양 노트북). */
 export function parseShowParams(search: string): ShowParams {
   const q = new URLSearchParams(search);
   const tokens = (q.get('t') ?? '')
@@ -125,7 +215,69 @@ export function parseShowParams(search: string): ShowParams {
     .filter((s) => /^[A-Za-z0-9]{32}$/.test(s));
   const minRaw = Number(q.get('min'));
   const minutes = q.get('min') != null && Number.isFinite(minRaw) && minRaw > 0 ? minRaw : null;
-  return { tokens, present: q.get('present'), minutes };
+  return { tokens, present: q.get('present'), minutes, motion: q.get('motion') !== '0' };
+}
+
+// ── 읽기 실패 ───────────────────────────────────────────────────────
+
+/** 한 번 읽기에 걸 수 있는 최대 시간. 넘으면 실패로 보고 다음 주기로 넘어간다(화면은 마지막 값 유지). */
+export const POLL_TIMEOUT_MS = 8000;
+/** 마지막 성공이 이보다 오래되면 「연결 확인 중 · 마지막 갱신 N초 전」. */
+export const STALE_AFTER_MS = 10000;
+
+export class PollTimeoutError extends Error {
+  constructor() {
+    super('poll timeout');
+    this.name = 'PollTimeoutError';
+  }
+}
+
+export function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const t = setTimeout(() => reject(new PollTimeoutError()), ms);
+    p.then(
+      (v) => {
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        clearTimeout(t);
+        reject(e);
+      },
+    );
+  });
+}
+
+/** 서버가 「없는 토큰」이라고 답한 것과 연결 실패(네트워크 · 시간 초과)를 가른다. */
+export function classifyLoadError(e: unknown): 'not_found' | 'network' {
+  const msg = (e as { message?: unknown } | null)?.message;
+  if (typeof msg === 'string' && /ballot not found|ballot token required/i.test(msg)) return 'not_found';
+  return 'network';
+}
+
+/** 마지막 성공(없으면 읽기 시작 시각)에서 지난 초. STALE_AFTER_MS 를 넘었을 때만 숫자, 아니면 null. */
+export function staleSeconds(lastOk: number | null, startedAt: number, now: number): number | null {
+  const base = Math.max(lastOk ?? 0, startedAt);
+  const age = now - base;
+  return age > STALE_AFTER_MS ? Math.floor(age / 1000) : null;
+}
+
+// ── 무선 프레젠터(PageDown/PageUp) ─────────────────────────────────────
+
+/**
+ * 의제 하나 주소 — PageDown 은 진행(1) → 실시간 순환(4) → 영상(V) → 진행, PageUp 은 거꾸로.
+ * 순환 안에서도 판이 아니라 화면을 바꾼다(판은 8초마다 저절로, 또는 ←/→).
+ * 결과 화면(2·3)에서는 아무것도 하지 않는다 — 프레젠터로는 결과 화면에 들어가지도 나오지도 않는다.
+ */
+export function clickerStep(m: ShowMode, delta: 1 | -1): ShowMode {
+  if (m.view === 'detail' || m.view === 'summary') return m;
+  const order: ShowMode[] = [
+    { view: 'live', video: false },
+    { view: 'rotate', video: m.video },
+    { view: 'live', video: true },
+  ];
+  const at = m.view === 'rotate' ? 1 : m.video ? 2 : 0;
+  return order[(at + delta + order.length) % order.length];
 }
 
 // ── 실시간 순환 화면(투표율만 — 찬반은 결과 발표 때 공개) ─────────────────────

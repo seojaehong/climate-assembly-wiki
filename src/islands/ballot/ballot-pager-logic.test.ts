@@ -188,6 +188,15 @@ describe('임시 저장(새로고침 · 화면 꺼짐)', () => {
     const d = loadPagerDraft(st, 'b-1', list);
     expect(d).toEqual({ answers: { 'item-1': 2, 'item-2': 1 }, pos: 2, voter: { team: '2분과 3조', name: '가나다' } });
   });
+  it('이름 확인(「네」) 여부를 되살린다 — 누르지 않았으면 confirmed 가 없다', () => {
+    const st = new MemStorage();
+    savePagerDraft(st, 'b-1', { answers: {}, pos: 0, voter: { team: '2분과 3조', name: '가나다', confirmed: true } });
+    expect(loadPagerDraft(st, 'b-1', list)?.voter).toEqual({ team: '2분과 3조', name: '가나다', confirmed: true });
+    savePagerDraft(st, 'b-1', { answers: {}, pos: 0, voter: { team: '2분과 3조', name: '가나다' } });
+    expect(loadPagerDraft(st, 'b-1', list)?.voter?.confirmed).toBeUndefined();
+    st.setItem(pagerDraftKey('b-1'), JSON.stringify({ v: 1, answers: {}, pos: 0, voter: { team: '2분과 3조', name: '가나다', confirmed: 'yes' } }));
+    expect(loadPagerDraft(st, 'b-1', list)?.voter?.confirmed).toBeUndefined();
+  });
   it('요약 위치도 되살린다', () => {
     const st = new MemStorage();
     savePagerDraft(st, 'b-1', { answers: { 'item-1': 2 }, pos: 'summary', voter: null });

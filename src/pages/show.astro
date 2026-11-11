@@ -20,6 +20,11 @@ import ShowScreen from '../islands/show/ShowScreen';
     .tr-num { font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
     @keyframes show-panel-in { from { opacity: 0; transform: translateX(48px); } to { opacity: 1; transform: none; } }
     .show-panel-in { animation: show-panel-in .7s ease both; }
+    /* motion=0(저사양 노트북) · 운영체제 「동작 줄이기」 — 넘김은 그대로, 움직임만 끈다. 인라인 transition 도 덮는다. */
+    html[data-motion="0"] *, html[data-motion="0"] *::before, html[data-motion="0"] *::after { animation: none !important; transition: none !important; }
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation: none !important; transition: none !important; }
+    }
   </style>
 </head><body>
   <ShowScreen client:only="react" />

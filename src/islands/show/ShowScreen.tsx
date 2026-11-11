@@ -4,7 +4,12 @@
  * /show?t=<토큰>&present=<참석>&min=<분>      의제 하나: 1 진행 중 · 2 결과 상세 · 3 결과 요약
  * /show?t=<토큰1>,<토큰2>,<토큰3>&present=..  의결 결과 종합(70건 한 화면)
  *
- * 키: Space 시작/일시정지 · R 처음으로 · ↑/↓ ±1분 · 1/2/3 화면 전환.
+ * present= 가 양의 정수가 아니면 빨간 안내를 띄우고 가결 기준 · 판정을 숨긴다(명단 수로 조용히 바꾸지 않는다).
+ *   진행 · 실시간 화면의 참여율은 그때 명단 기준이라고 적는다. motion=0 = 애니메이션 끔(저사양 노트북).
+ * 키: Space(또는 프레젠터 F5 · Shift+F5) 시작/일시정지 — 타이머가 보이는 화면(진행 · 영상 · 실시간)에서만 ·
+ *     Shift+R 처음으로 · ↑/↓ ±1분 · 1/2/3 화면 전환. 타이머는 기기에 저장돼 새로고침에도 이어진다.
+ *     PageDown/PageUp(프레젠터) = 진행 → 실시간 → 영상 차례로(결과 화면 2·3 에는 가지 않고, 2·3 에서는 무시).
+ *       종합 주소에서는 실시간 순환 안에서 판만 넘긴다.
  *     V 영상 모드(왼쪽 16:9 영상 + 오른쪽 띠: 남은 시간 · 제출 · QR) · K 또는 영상 클릭 = 재생/일시정지.
  *       영상은 서버에 올리지 않는다 — 화면에 끌어다 놓거나 「영상 고르기」로 고른 파일을 objectURL 로 튼다.
  *     4 실시간 순환(투표율만, 8초마다 넘김) · ←/→ 수동 넘김 · P 자동 넘김 멈춤/재개. 종합 주소에서도 4, 돌아오기는 1 또는 4.
@@ -25,25 +30,38 @@ import {
 import { parseMotionStatement } from '../../lib/division-ballot-format';
 import {
   AGENDA_FULL_NAMES,
+  POLL_TIMEOUT_MS,
   adjustTimer,
   agendaOutcome,
+  classifyLoadError,
+  clickerStep,
+  clockDisplay,
   clockText,
   defaultDurationSec,
   initialTimer,
   itemOutcome,
+  liveDenominator,
   overallTurnout,
+  parsePresent,
   parseShowParams,
   participationPct,
   passThreshold,
   resetTimer,
-  resolvePresent,
+  restoreTimer,
   rotationPanels,
+  serializeTimer,
   showModeKey,
+  showQr,
+  staleSeconds,
+  statusText,
   stepPanel,
+  submittedExceedsPresent,
   timerRemainingMs,
+  timerStorageKey,
   toggleTimer,
   turnoutBar,
   turnoutPct,
+  withTimeout,
   type RotationPanel,
   type ShowMode,
   type TimerState,
@@ -82,22 +100,45 @@ const CLAMP2: React.CSSProperties = {
 
 // ── 데이터 ─────────────────────────────────────────────────────────
 
-/** 3초마다 다시 읽는다. 겹쳐 부르지 않고, 실패하면 마지막 값을 그대로 둔다(무대 화면이 비지 않게). */
-function usePoll<T>(load: (() => Promise<T>) | null, ms = POLL_MS): { data: T | undefined; failing: boolean } {
+type Poll<T> = {
+  data: T | undefined;
+  failing: boolean;
+  /** 마지막 실패의 종류(성공하면 null). 첫 읽기 실패 문구를 가른다. */
+  errorKind: 'not_found' | 'network' | null;
+  /** 마지막 성공이 10초보다 오래되면 지난 초, 아니면 null. */
+  staleSec: number | null;
+};
+
+/**
+ * 3초마다 다시 읽는다. 겹쳐 부르지 않고, 실패하면 마지막 값을 그대로 둔다(무대 화면이 비지 않게).
+ * 한 번 읽기는 8초에서 끊는다(응답이 오지 않아도 다음 주기가 돈다).
+ */
+function usePoll<T>(load: (() => Promise<T>) | null, ms = POLL_MS): Poll<T> {
   const [data, setData] = useState<T | undefined>(undefined);
   const [failing, setFailing] = useState(false);
+  const [errorKind, setErrorKind] = useState<'not_found' | 'network' | null>(null);
+  const [lastOk, setLastOk] = useState<number | null>(null);
+  const [startedAt, setStartedAt] = useState(() => Date.now());
+  const [tickNow, setTickNow] = useState(() => Date.now());
   useEffect(() => {
     if (!load) return;
     let alive = true;
     let timer: ReturnType<typeof setTimeout> | undefined;
+    setStartedAt(Date.now());
+    const clock = setInterval(() => setTickNow(Date.now()), 1000);
     const tick = async () => {
       try {
-        const v = await load();
+        const v = await withTimeout(load(), POLL_TIMEOUT_MS);
         if (!alive) return;
         setData(v);
         setFailing(false);
-      } catch {
-        if (alive) setFailing(true);
+        setErrorKind(null);
+        setLastOk(Date.now());
+      } catch (e) {
+        if (alive) {
+          setFailing(true);
+          setErrorKind(classifyLoadError(e));
+        }
       }
       if (alive) timer = setTimeout(tick, ms);
     };
@@ -105,9 +146,39 @@ function usePoll<T>(load: (() => Promise<T>) | null, ms = POLL_MS): { data: T | 
     return () => {
       alive = false;
       if (timer) clearTimeout(timer);
+      clearInterval(clock);
     };
   }, [load, ms]);
-  return { data, failing };
+  return { data, failing, errorKind, staleSec: load ? staleSeconds(lastOk, startedAt, tickNow) : null };
+}
+
+/** 첫 읽기 실패 문구 — 없는 토큰과 연결 실패를 가른다. */
+function LoadFailed({ kind }: { kind: 'not_found' | 'network' | null }) {
+  return kind === 'not_found' ? (
+    <Centered title="투표지를 찾을 수 없습니다" sub="링크의 토큰(t=)을 확인해 주세요." />
+  ) : (
+    <Centered title="서버에 연결하지 못했습니다" sub="자동으로 다시 시도합니다." />
+  );
+}
+
+/** 무대 위 안내 — 출석 인원 빠짐(빨강) · 제출이 출석보다 많음(주황). */
+function Alerts({ presentMissing, overflow }: { presentMissing: boolean; overflow: boolean }) {
+  if (!presentMissing && !overflow) return null;
+  return (
+    // 머리 바로 아래 띠(본문을 그만큼 밀어낸다 — 의제 · 상태 글자를 가리지 않게).
+    <div style={{ flex: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, padding: '10px 72px 0' }}>
+      {presentMissing ? (
+        <p data-testid="show-present-missing" style={{ margin: 0, background: '#C62828', color: '#FFFFFF', fontSize: 34, fontWeight: 900, padding: '10px 32px', borderRadius: 10 }}>
+          출석 인원(present=)을 주소에 넣어 주세요
+        </p>
+      ) : null}
+      {overflow ? (
+        <p data-testid="show-overflow" style={{ margin: 0, background: '#3A2410', color: C.orange, border: `2px solid ${C.orange}`, fontSize: 22, fontWeight: 800, padding: '6px 18px', borderRadius: 8 }}>
+          제출 수가 출석보다 많습니다 — 출석 인원 확인
+        </p>
+      ) : null}
+    </div>
+  );
 }
 
 function agendaNo(title: string | null | undefined): 1 | 2 | 3 | null {
@@ -159,7 +230,7 @@ function Stage({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Header({ sub, right, failing }: { sub: string; right: React.ReactNode; failing?: boolean }) {
+function Header({ sub, right, staleSec }: { sub: string; right: React.ReactNode; staleSec?: number | null }) {
   return (
     <header
       style={{
@@ -177,9 +248,9 @@ function Header({ sub, right, failing }: { sub: string; right: React.ReactNode; 
         <span style={{ fontSize: 30, fontWeight: 500, color: C.muted }}>{sub}</span>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 20, fontSize: 30, color: C.muted }}>
-        {failing ? (
-          <span data-testid="show-reconnect" style={{ fontSize: 22, color: C.orange }}>
-            ● 다시 연결 중
+        {staleSec != null ? (
+          <span data-testid="show-reconnect" className="tr-num" style={{ fontSize: 22, color: C.orange }}>
+            ● 연결 확인 중 · 마지막 갱신 {staleSec}초 전
           </span>
         ) : null}
         {right}
@@ -261,13 +332,29 @@ function useQrSrc(token: string): string | null {
   return src;
 }
 
-function QrCard({ token }: { token: string }) {
+/** QR 이 숨은 자리(서버 상태가 open 이 아닐 때). */
+function QrHidden({ size, fontSize }: { size: number; fontSize: number }) {
+  return (
+    <div
+      data-testid="show-qr-hidden"
+      style={{ ...KEEP, width: size, height: size, flex: 'none', boxSizing: 'border-box', border: `3px dashed ${C.dim}`, borderRadius: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: 28, fontSize, fontWeight: 800, color: C.muted, lineHeight: 1.4, alignSelf: 'center' }}
+    >
+      투표가 열리면 QR이 나타납니다
+    </div>
+  );
+}
+
+function QrCard({ token, visible }: { token: string; visible: boolean }) {
   const src = useQrSrc(token);
   return (
     <div style={{ width: 420, flex: 'none', display: 'flex', flexDirection: 'column', gap: 28 }}>
-      <div style={{ background: '#FFFFFF', borderRadius: 28, padding: 26, width: 420, height: 420, boxSizing: 'border-box' }}>
-        {src ? <img data-testid="show-qr" src={src} alt="투표 QR" style={{ width: '100%', height: '100%', display: 'block' }} /> : null}
-      </div>
+      {visible ? (
+        <div style={{ background: '#FFFFFF', borderRadius: 28, padding: 26, width: 420, height: 420, boxSizing: 'border-box' }}>
+          {src ? <img data-testid="show-qr" src={src} alt="투표 QR" style={{ width: '100%', height: '100%', display: 'block' }} /> : null}
+        </div>
+      ) : (
+        <QrHidden size={420} fontSize={36} />
+      )}
       <p style={{ ...KEEP, margin: 0, fontSize: 32, fontWeight: 700, lineHeight: 1.45 }}>
         QR을 비춘 뒤 권고안마다 <span style={{ color: C.blue }}>찬성</span> 또는 <span style={{ color: C.orange }}>반대</span>를 선택해
         주세요.
@@ -279,34 +366,38 @@ function QrCard({ token }: { token: string }) {
   );
 }
 
+type Denom = { n: number; label: string; byRoster: boolean };
+
 function LiveView({
   token,
   live,
-  present,
+  denom,
   timer,
   now,
 }: {
   token: string;
   live: BallotLiveCounts;
-  present: number;
+  denom: Denom;
   timer: TimerState;
   now: number;
 }) {
   const no = agendaNo(live.title);
   const remaining = timerRemainingMs(timer, now);
-  const closed = remaining <= 0 && timer.durationMs > 0;
-  const running = timer.runningSince != null && !closed;
-  const rate = participationPct(live.submitted, present);
+  const timeUp = remaining <= 0 && timer.durationMs > 0;
+  const clock = clockDisplay(live.status, remaining, timer.durationMs);
+  const closed = clock.ended;
+  const running = timer.runningSince != null && !timeUp;
+  const rate = participationPct(live.submitted, denom.n);
   const timeFrac = timer.durationMs > 0 ? Math.min(1, remaining / timer.durationMs) : 0;
-  const statusText = live.status === 'open' ? (closed ? '투표 마감' : '투표 진행 중') : live.status === 'closed' ? '투표 마감' : '결과 공개';
+  const status = statusText(live.status, timeUp);
   return (
     <div style={{ flex: 1, display: 'flex', padding: '44px 72px 36px', gap: 72, minHeight: 0 }}>
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 28 }}>
           <AgendaBadge no={no} />
           <span data-testid="show-status" style={{ fontSize: 40, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 14 }}>
-            <span style={{ width: 22, height: 22, borderRadius: 11, background: statusText === '투표 진행 중' ? C.blue : C.orange }} />
-            {statusText}
+            <span style={{ width: 22, height: 22, borderRadius: 11, background: status === '투표 진행 중' ? C.blue : C.orange }} />
+            {status}
           </span>
         </div>
         <h1
@@ -322,12 +413,12 @@ function LiveView({
             <p
               data-testid="show-clock"
               className="tr-num"
-              style={{ margin: '4px 0 0', fontSize: 176, fontWeight: 900, lineHeight: 1, whiteSpace: 'nowrap', color: closed ? C.orange : C.text }}
+              style={{ margin: '4px 0 0', fontSize: clock.text.length > 2 && closed ? 120 : 176, height: 176, display: 'flex', alignItems: 'flex-end', fontWeight: 900, lineHeight: 1, whiteSpace: 'nowrap', color: closed ? C.orange : C.text }}
             >
-              {closed ? '마감' : clockText(remaining)}
+              {clock.text}
             </p>
             <p style={{ margin: '14px 0 0', fontSize: 28, color: C.muted }}>
-              {running ? '진행 중' : closed ? '투표 시간이 끝났습니다' : remaining === timer.durationMs ? '시작 전' : '일시정지'} · 전체{' '}
+              {running ? '진행 중' : timeUp ? '투표 시간이 끝났습니다' : remaining === timer.durationMs ? '시작 전' : '일시정지'} · 전체{' '}
               {clockText(timer.durationMs)}
             </p>
           </div>
@@ -337,8 +428,8 @@ function LiveView({
               <span data-testid="show-submitted" className="tr-num" style={{ fontSize: 176, fontWeight: 900, color: C.blue, whiteSpace: 'nowrap', flex: 'none' }}>
                 {live.submitted}
               </span>
-              <span className="tr-num" style={{ fontSize: 44, color: C.muted, whiteSpace: 'nowrap' }}>
-                / 참석 {present}명
+              <span className="tr-num" style={{ fontSize: denom.byRoster ? 32 : 44, color: C.muted, whiteSpace: 'nowrap' }}>
+                / {denom.label}
               </span>
             </p>
             <p style={{ margin: '14px 0 0', fontSize: 28, color: C.muted, display: 'flex', gap: 28 }}>
@@ -350,7 +441,7 @@ function LiveView({
                 명
               </span>
               <span>
-                참여율{' '}
+                {denom.byRoster ? '참여율(명단 기준)' : '참여율'}{' '}
                 <b data-testid="show-rate" className="tr-num" style={{ color: C.text, fontSize: 40 }}>
                   {rate}%
                 </b>
@@ -362,7 +453,7 @@ function LiveView({
           <div style={{ width: `${timeFrac * 100}%`, height: '100%', background: closed ? C.orange : C.text, borderRadius: 11 }} />
         </div>
       </div>
-      <QrCard token={token} />
+      <QrCard token={token} visible={showQr(live.status)} />
     </div>
   );
 }
@@ -549,6 +640,7 @@ function VideoView({
   token,
   live,
   present,
+  denom,
   timer,
   now,
   videoUrl,
@@ -558,7 +650,9 @@ function VideoView({
 }: {
   token: string;
   live: BallotLiveCounts;
-  present: number;
+  /** 출석(URL present). null 이면 가결 기준 줄을 숨긴다. */
+  present: number | null;
+  denom: Denom;
   timer: TimerState;
   now: number;
   videoUrl: string | null;
@@ -569,7 +663,11 @@ function VideoView({
   const qr = useQrSrc(token);
   const no = agendaNo(live.title);
   const remaining = timerRemainingMs(timer, now);
-  const closed = remaining <= 0 && timer.durationMs > 0;
+  const timeUp = remaining <= 0 && timer.durationMs > 0;
+  const clock = clockDisplay(live.status, remaining, timer.durationMs);
+  const closed = clock.ended;
+  const status = statusText(live.status, timeUp);
+  const qrOn = showQr(live.status);
   const [playing, setPlaying] = useState(false);
   const [begun, setBegun] = useState(false);
   useEffect(() => {
@@ -639,15 +737,15 @@ function VideoView({
           {no ? (
             <span style={{ background: C.blue, color: '#0B1A2A', fontSize: 30, fontWeight: 800, padding: '4px 18px', borderRadius: 8, lineHeight: 1.2, whiteSpace: 'nowrap' }}>의제 {no}</span>
           ) : null}
-          <span data-testid="show-status" style={{ fontSize: 26, fontWeight: 800, color: closed ? C.orange : C.text }}>
-            {closed ? '투표 마감' : '투표 진행 중'}
+          <span data-testid="show-status" style={{ fontSize: 26, fontWeight: 800, color: status === '투표 진행 중' ? C.text : C.orange }}>
+            {status}
           </span>
         </div>
         <p style={{ ...KEEP, flex: 'none', margin: '10px 0 0', fontSize: 24, fontWeight: 700, lineHeight: 1.3 }}>{no ? AGENDA_NAMES[no] : live.title}</p>
         <div style={{ flex: 'none', marginTop: 18, borderTop: `4px solid ${C.text}`, paddingTop: 8 }}>
           <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: C.muted }}>남은 투표 시간</p>
-          <p data-testid="show-clock" className="tr-num" style={{ margin: 0, fontSize: 84, fontWeight: 900, lineHeight: 1.05, color: closed ? C.orange : C.text }}>
-            {closed ? '마감' : clockText(remaining)}
+          <p data-testid="show-clock" className="tr-num" style={{ margin: 0, fontSize: closed && clock.text.length > 2 ? 60 : 84, height: 88, display: 'flex', alignItems: 'flex-end', fontWeight: 900, lineHeight: 1.05, whiteSpace: 'nowrap', color: closed ? C.orange : C.text }}>
+            {clock.text}
           </p>
         </div>
         <div style={{ flex: 'none', marginTop: 14, borderTop: `4px solid ${C.blue}`, paddingTop: 8 }}>
@@ -656,7 +754,7 @@ function VideoView({
             <span data-testid="show-submitted" className="tr-num" style={{ fontSize: 80, fontWeight: 900, color: C.blue }}>
               {live.submitted}
             </span>
-            <span className="tr-num" style={{ fontSize: 30, color: C.muted, whiteSpace: 'nowrap' }}>/ 참석 {present}명</span>
+            <span className="tr-num" style={{ fontSize: denom.byRoster ? 24 : 30, color: C.muted, whiteSpace: 'nowrap' }}>/ {denom.label}</span>
           </p>
           <p style={{ margin: '4px 0 0', fontSize: 24, color: C.muted }}>
             투표 시작{' '}
@@ -667,13 +765,21 @@ function VideoView({
           </p>
         </div>
         <div style={{ flex: 1 }} />
-        <div style={{ flex: 'none', width: VIDEO_QR, height: VIDEO_QR, background: '#FFFFFF', borderRadius: 18, padding: 14, boxSizing: 'border-box', alignSelf: 'center' }}>
-          {qr ? <img data-testid="show-qr" src={qr} alt="투표 QR" style={{ width: '100%', height: '100%', display: 'block' }} /> : null}
-        </div>
-        <p style={{ ...KEEP, flex: 'none', margin: '10px 0 0', fontSize: 22, fontWeight: 700, textAlign: 'center' }}>휴대폰으로 QR을 비춰 투표해 주세요</p>
-        <p className="tr-num" style={{ ...KEEP, flex: 'none', margin: '8px 0 0', fontSize: 20, color: C.muted, textAlign: 'center' }}>
-          가결 기준 참석자 3분의 2 이상 찬성 ({passThreshold(present)}표 이상)
-        </p>
+        {qrOn ? (
+          <>
+            <div style={{ flex: 'none', width: VIDEO_QR, height: VIDEO_QR, background: '#FFFFFF', borderRadius: 18, padding: 14, boxSizing: 'border-box', alignSelf: 'center' }}>
+              {qr ? <img data-testid="show-qr" src={qr} alt="투표 QR" style={{ width: '100%', height: '100%', display: 'block' }} /> : null}
+            </div>
+            <p style={{ ...KEEP, flex: 'none', margin: '10px 0 0', fontSize: 22, fontWeight: 700, textAlign: 'center' }}>휴대폰으로 QR을 비춰 투표해 주세요</p>
+          </>
+        ) : (
+          <QrHidden size={VIDEO_QR} fontSize={30} />
+        )}
+        {present != null ? (
+          <p className="tr-num" style={{ ...KEEP, flex: 'none', margin: '8px 0 0', fontSize: 20, color: C.muted, textAlign: 'center' }}>
+            가결 기준 참석자 3분의 2 이상 찬성 ({passThreshold(present)}표 이상)
+          </p>
+        ) : null}
       </aside>
     </div>
   );
@@ -722,10 +828,10 @@ function Ring({ pct, size }: { pct: number; size: number }) {
   );
 }
 
-function OverallPanel({ agendas, present }: { agendas: LiveAgenda[]; present: number }) {
+function OverallPanel({ agendas, denom }: { agendas: LiveAgenda[]; denom: Denom }) {
   const o = overallTurnout(
     agendas.map((a) => a.live),
-    present,
+    denom.n,
   );
   const size = 600;
   return (
@@ -740,13 +846,13 @@ function OverallPanel({ agendas, present }: { agendas: LiveAgenda[]; present: nu
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 44, minWidth: 560 }}>
-        <p style={{ margin: 0, fontSize: 64, fontWeight: 900 }}>전체 투표율</p>
+        <p style={{ margin: 0, fontSize: 64, fontWeight: 900 }}>전체 투표율{denom.byRoster ? <span style={{ fontSize: 34, color: C.muted }}> (명단 기준)</span> : null}</p>
         <div style={{ borderTop: `6px solid ${C.blue}`, paddingTop: 14 }}>
           <p style={{ margin: 0, fontSize: 32, fontWeight: 700, color: C.blue }}>제출 완료</p>
           <p className="tr-num" style={{ margin: 0, display: 'flex', alignItems: 'baseline', gap: 16, lineHeight: 1.05 }}>
             <span style={{ fontSize: 120, fontWeight: 900, color: C.blue }}>{o.submitted}</span>
             <span style={{ fontSize: 36, color: C.muted, whiteSpace: 'nowrap' }}>
-              / {agendas.length > 1 ? `참석 ${present}명 × 의제 ${agendas.length}개` : `참석 ${present}명`}
+              / {agendas.length > 1 ? `${denom.label} × 의제 ${agendas.length}개` : denom.label}
             </span>
           </p>
         </div>
@@ -764,13 +870,13 @@ function OverallPanel({ agendas, present }: { agendas: LiveAgenda[]; present: nu
   );
 }
 
-function AgendasPanel({ agendas, present }: { agendas: LiveAgenda[]; present: number }) {
+function AgendasPanel({ agendas, denom }: { agendas: LiveAgenda[]; denom: Denom }) {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 30, padding: '0 20px' }}>
-      <p style={{ margin: 0, fontSize: 52, fontWeight: 900 }}>의제별 투표율</p>
+      <p style={{ margin: 0, fontSize: 52, fontWeight: 900 }}>의제별 투표율{denom.byRoster ? <span style={{ fontSize: 30, color: C.muted }}> (명단 기준)</span> : null}</p>
       {agendas.map((a) => {
-        const b = turnoutBar(a.live.submitted, a.live.started, present);
-        const pct = turnoutPct(a.live.submitted, present);
+        const b = turnoutBar(a.live.submitted, a.live.started, denom.n);
+        const pct = turnoutPct(a.live.submitted, denom.n);
         return (
           <div key={a.live.title} data-testid="rot-agenda-row">
             <p style={{ ...KEEP, margin: '0 0 12px', display: 'flex', alignItems: 'baseline', gap: 20 }}>
@@ -794,7 +900,7 @@ function AgendasPanel({ agendas, present }: { agendas: LiveAgenda[]; present: nu
             </div>
             <p className="tr-num" style={{ margin: '10px 0 0', fontSize: 28, color: C.muted, display: 'flex', gap: 36 }}>
               <span>
-                제출 완료 <b style={{ color: C.text }}>{a.live.submitted}</b> / 참석 {present}명
+                제출 완료 <b style={{ color: C.text }}>{a.live.submitted}</b> / {denom.label}
               </span>
               <span>
                 투표 시작 <b style={{ color: C.orange }}>{a.live.started}</b>명
@@ -810,13 +916,13 @@ function AgendasPanel({ agendas, present }: { agendas: LiveAgenda[]; present: nu
   );
 }
 
-function SinglePanel({ agenda, present, clock }: { agenda: LiveAgenda; present: number; clock: { text: string; closed: boolean } | null }) {
-  const pct = turnoutPct(agenda.live.submitted, present);
-  const cell = (label: string, color: string, value: React.ReactNode, unit: string, testid?: string) => (
+function SinglePanel({ agenda, denom, clock }: { agenda: LiveAgenda; denom: Denom; clock: { text: string; closed: boolean } | null }) {
+  const pct = turnoutPct(agenda.live.submitted, denom.n);
+  const cell = (label: string, color: string, value: React.ReactNode, unit: string, testid?: string, size = 170) => (
     <div style={{ flex: 1, borderTop: `8px solid ${color}`, paddingTop: 18 }}>
       <p style={{ margin: 0, fontSize: 38, fontWeight: 700, color: color === C.text ? C.muted : color }}>{label}</p>
       <p className="tr-num" style={{ margin: '6px 0 0', lineHeight: 1, whiteSpace: 'nowrap' }}>
-        <span data-testid={testid} style={{ fontSize: 170, fontWeight: 900, color: color === C.text ? C.text : color }}>
+        <span data-testid={testid} style={{ fontSize: size, fontWeight: 900, color: color === C.text ? C.text : color }}>
           {value}
         </span>
         {unit ? <span style={{ fontSize: 48, color: C.muted, marginLeft: 10 }}>{unit}</span> : null}
@@ -830,13 +936,13 @@ function SinglePanel({ agenda, present, clock }: { agenda: LiveAgenda; present: 
         <span style={{ ...KEEP, fontSize: 52, fontWeight: 900 }}>{agenda.no ? AGENDA_NAMES[agenda.no] : agenda.live.title}</span>
       </div>
       <div style={{ display: 'flex', gap: 56 }}>
-        {cell('제출 완료', C.blue, agenda.live.submitted, `/ ${present}명`, 'rot-single-submitted')}
-        {cell('투표율', C.blue, pct, '%')}
+        {cell('제출 완료', C.blue, agenda.live.submitted, `/ ${denom.byRoster ? denom.label : `${denom.n}명`}`, 'rot-single-submitted')}
+        {cell(denom.byRoster ? '투표율(명단 기준)' : '투표율', C.blue, pct, '%')}
       </div>
       <div style={{ display: 'flex', gap: 56 }}>
         {cell('투표 시작', C.orange, agenda.live.started, '명')}
         {cell('지금 투표 중', C.text, agenda.live.in_progress, '명')}
-        {clock ? cell('남은 투표 시간', clock.closed ? C.orange : C.text, clock.closed ? '마감' : clock.text, '') : null}
+        {clock ? cell('남은 투표 시간', clock.closed ? C.orange : C.text, clock.text, '', 'rot-single-clock', clock.closed && clock.text.length > 2 ? 96 : 170) : null}
       </div>
     </div>
   );
@@ -844,13 +950,13 @@ function SinglePanel({ agenda, present, clock }: { agenda: LiveAgenda; present: 
 
 function RotateView({
   agendas,
-  present,
+  denom,
   panels,
   index,
   clock,
 }: {
   agendas: LiveAgenda[];
-  present: number;
+  denom: Denom;
   panels: RotationPanel[];
   index: number;
   clock: { text: string; closed: boolean } | null;
@@ -860,29 +966,24 @@ function RotateView({
     <div style={{ flex: 1, minHeight: 0, display: 'flex', padding: '30px 72px', position: 'relative' }}>
       <div key={`${panel}-${index}`} data-testid={`rot-panel-${panel}`} className="show-panel-in" style={{ flex: 1, display: 'flex', minHeight: 0 }}>
         {panel === 'overall' ? (
-          <OverallPanel agendas={agendas} present={present} />
+          <OverallPanel agendas={agendas} denom={denom} />
         ) : panel === 'agendas' ? (
-          <AgendasPanel agendas={agendas} present={present} />
+          <AgendasPanel agendas={agendas} denom={denom} />
         ) : agendas[0] ? (
-          <SinglePanel agenda={agendas[0]} present={present} clock={clock} />
+          <SinglePanel agenda={agendas[0]} denom={denom} clock={clock} />
         ) : null}
       </div>
     </div>
   );
 }
 
-function RotateFooter({ panels, index, paused, failing }: { panels: RotationPanel[]; index: number; paused: boolean; failing: boolean }) {
+function RotateFooter({ panels, index, paused }: { panels: RotationPanel[]; index: number; paused: boolean }) {
   return (
     <Footer>
       <span data-testid="rot-notice" style={{ ...KEEP, color: C.muted }}>
         찬반 결과는 16:30 결과 발표에서 공개합니다
       </span>
       <span style={{ display: 'flex', alignItems: 'center', gap: 22 }}>
-        {failing ? (
-          <span data-testid="rot-reconnect" style={{ fontSize: 22, color: C.orange }}>
-            ● 연결 확인 중
-          </span>
-        ) : null}
         {paused ? <span style={{ fontSize: 22, color: C.dim }}>자동 넘김 멈춤</span> : null}
         <span style={{ display: 'flex', gap: 12 }}>
           {panels.map((p, i) => (
@@ -1013,10 +1114,27 @@ function SingleShow({ token, presentRaw, minutes }: { token: string; presentRaw:
   const timerRef = useRef<TimerState | null>(null);
   timerRef.current = timer;
 
+  // 타이머 — 처음 한 번 정하고, 같은 주소(토큰)로 저장해 두어 F5 · 새로고침에도 이어진다.
+  const storeKey = timerStorageKey([token]);
   useEffect(() => {
     if (timer || !live.data) return;
-    setTimer(initialTimer(minutes != null ? Math.round(minutes * 60) : defaultDurationSec(live.data.items)));
-  }, [live.data, minutes, timer]);
+    const init = initialTimer(minutes != null ? Math.round(minutes * 60) : defaultDurationSec(live.data.items));
+    let saved: string | null = null;
+    try {
+      saved = window.localStorage.getItem(storeKey);
+    } catch {
+      saved = null;
+    }
+    setTimer(restoreTimer(saved, init.durationMs, Date.now()) ?? init);
+  }, [live.data, minutes, timer, storeKey]);
+  useEffect(() => {
+    if (!timer) return;
+    try {
+      window.localStorage.setItem(storeKey, serializeTimer(timer, Date.now()));
+    } catch {
+      // 저장소가 막힌 브라우저 — 화면 메모리로만 돈다.
+    }
+  }, [timer, storeKey]);
 
   const now = useNow(timer?.runningSince != null);
 
@@ -1028,6 +1146,8 @@ function SingleShow({ token, presentRaw, minutes }: { token: string; presentRaw:
     else if (kind === 'reset') setTimer(resetTimer(t));
     else setTimer(adjustTimer(t, kind === 'up' ? 60 : -60, at));
   }, []);
+  // 타이머가 보이는 화면(진행 · 영상 · 실시간 순환)에서만 Space · ↑↓ · F5 가 듣는다. 결과 화면(2·3)에서는 무시.
+  const timerShown = view === 'live' || view === 'rotate';
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -1035,19 +1155,33 @@ function SingleShow({ token, presentRaw, minutes }: { token: string; presentRaw:
       switch (e.code) {
         case 'Space':
           e.preventDefault();
-          act('toggle');
+          if (timerShown) act('toggle');
+          break;
+        case 'F5':
+          // 무선 프레젠터의 재생 단추(F5 · Shift+F5) — 새로고침하지 않고 시작/정지. 정말 새로고침은 Ctrl+F5.
+          e.preventDefault();
+          if (timerShown) act('toggle');
           break;
         case 'KeyR':
+          // 실수로 처음으로 돌리지 않게 Shift+R 만.
+          if (e.shiftKey) {
+            e.preventDefault();
+            act('reset');
+          }
+          break;
+        case 'PageDown':
+        case 'PageUp':
+          // 프레젠터 다음/이전 — 진행 → 실시간 → 영상 사이만. 결과 화면(2·3)에서는 아무것도 하지 않는다.
           e.preventDefault();
-          act('reset');
+          setMode((m) => clickerStep(m, e.code === 'PageDown' ? 1 : -1));
           break;
         case 'ArrowUp':
           e.preventDefault();
-          act('up');
+          if (timerShown) act('up');
           break;
         case 'ArrowDown':
           e.preventDefault();
-          act('down');
+          if (timerShown) act('down');
           break;
         case 'Digit1':
         case 'Numpad1':
@@ -1093,38 +1227,48 @@ function SingleShow({ token, presentRaw, minutes }: { token: string; presentRaw:
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [act, press, showVideo, togglePlay, view, rot.step, rot.togglePause]);
+  }, [act, press, showVideo, togglePlay, view, timerShown, rot.step, rot.togglePause]);
 
   const d = live.data;
-  const present = resolvePresent(presentRaw, d?.roster ?? 0);
+  const present = parsePresent(presentRaw);
+  const denom = liveDenominator(present, d?.roster ?? 0);
   const itemsCount = d?.items ?? res.data?.items.length ?? 0;
   const sub = view === 'live' ? '최종 권고안 의결' : view === 'rotate' ? '실시간 투표 현황' : '의제별 의결 결과';
   const nowMs = Math.max(now, Date.now());
+  const resultView = view === 'detail' || view === 'summary';
+  // 결과 화면은 결과 읽기만 본다(실시간 수 읽기가 실패해도 막히지 않는다).
+  const poll = resultView ? res : live;
 
   let body: React.ReactNode;
-  if (!d) {
-    body = live.failing ? <Centered title="투표지를 찾을 수 없습니다" sub="링크의 토큰(t=)을 확인해 주세요." /> : <Centered title="불러오는 중" />;
+  if (resultView) {
+    if (present == null) {
+      body = <Centered title="출석 인원(present=)을 주소에 넣어 주세요" sub="가결 · 부결 판정은 출석 인원이 있어야 표시합니다." />;
+    } else if (res.data === undefined) {
+      body = res.failing ? <LoadFailed kind={res.errorKind} /> : <Centered title="불러오는 중" />;
+    } else if (res.data === null) {
+      body = <Centered title="집계 확인 중" sub="결과가 공개되면 이 화면에 바로 나타납니다." />;
+    } else if (view === 'detail') {
+      body = <DetailView results={res.data} present={present} />;
+    } else {
+      body = <SummaryView results={res.data} present={present} />;
+    }
+  } else if (!d) {
+    body = live.failing ? <LoadFailed kind={live.errorKind} /> : <Centered title="불러오는 중" />;
   } else if (showVideo) {
     body = null; // 영상 칸은 아래에서 늘 붙어 있다(2·3 에 다녀와도 파일·재생 위치가 남게)
   } else if (view === 'live') {
-    body = timer ? <LiveView token={token} live={d} present={present} timer={timer} now={nowMs} /> : <Centered title="불러오는 중" />;
-  } else if (view === 'rotate') {
-    const rem = timer ? timerRemainingMs(timer, nowMs) : 0;
+    body = timer ? <LiveView token={token} live={d} denom={denom} timer={timer} now={nowMs} /> : <Centered title="불러오는 중" />;
+  } else {
+    const c = timer ? clockDisplay(d.status, timerRemainingMs(timer, nowMs), timer.durationMs) : null;
     body = (
       <RotateView
         agendas={[{ no: agendaNo(d.title), live: d }]}
-        present={present}
+        denom={denom}
         panels={panels}
         index={rot.index}
-        clock={timer ? { text: clockText(rem), closed: rem <= 0 && timer.durationMs > 0 } : null}
+        clock={c ? { text: c.text, closed: c.ended } : null}
       />
     );
-  } else if (!res.data) {
-    body = <Centered title="집계 확인 중" sub="결과가 공개되면 이 화면에 바로 나타납니다." />;
-  } else if (view === 'detail') {
-    body = <DetailView results={res.data} present={present} />;
-  } else {
-    body = <SummaryView results={res.data} present={present} />;
   }
 
   return (
@@ -1132,13 +1276,14 @@ function SingleShow({ token, presentRaw, minutes }: { token: string; presentRaw:
       <Stage>
         <Header
           sub={sub}
-          failing={live.failing && !!d}
+          staleSec={poll.data !== undefined ? poll.staleSec : null}
           right={
             <span>
               권고안 <b className="tr-num" style={{ color: C.text }}>{itemsCount}</b>건
             </span>
           }
         />
+        <Alerts presentMissing={present == null} overflow={!!d && submittedExceedsPresent(present, [d.submitted])} />
         {body}
         {mode.video && d && timer ? (
           <div style={{ display: showVideo ? 'flex' : 'none', flex: 1, minHeight: 0 }}>
@@ -1146,6 +1291,7 @@ function SingleShow({ token, presentRaw, minutes }: { token: string; presentRaw:
               token={token}
               live={d}
               present={present}
+              denom={denom}
               timer={timer}
               now={nowMs}
               videoUrl={videoUrl}
@@ -1156,10 +1302,12 @@ function SingleShow({ token, presentRaw, minutes }: { token: string; presentRaw:
           </div>
         ) : null}
         {showVideo && d ? null : view === 'rotate' && d ? (
-          <RotateFooter panels={panels} index={rot.index} paused={rot.paused} failing={live.failing} />
+          <RotateFooter panels={panels} index={rot.index} paused={rot.paused} />
         ) : (
         <Footer>
-          {view === 'detail' && res.data ? (
+          {present == null ? (
+            <span />
+          ) : view === 'detail' && res.data ? (
             <>
               <span style={{ display: 'flex', alignItems: 'center', gap: 26 }}>
                 <Legend color={C.blue} label="가결" />
@@ -1208,8 +1356,10 @@ function SingleShow({ token, presentRaw, minutes }: { token: string; presentRaw:
                 { label: '자동 넘김', key: 'P', onClick: rot.togglePause },
               ]
             : []),
-          { label: '시작/정지', key: 'Space', onClick: () => act('toggle') },
-          { label: '처음', key: 'R', onClick: () => act('reset') },
+          { label: '이전 화면', key: 'PgUp', onClick: () => setMode((m) => clickerStep(m, -1)) },
+          { label: '다음 화면(진행→실시간→영상)', key: 'PgDn', onClick: () => setMode((m) => clickerStep(m, 1)) },
+          { label: '시작/정지', key: 'Space·F5', onClick: () => act('toggle') },
+          { label: '처음', key: 'Shift+R', onClick: () => act('reset') },
           { label: '+1분', key: '↑', onClick: () => act('up') },
           { label: '−1분', key: '↓', onClick: () => act('down') },
         ]}
@@ -1231,20 +1381,49 @@ function Legend({ color, label }: { color: string; label: string }) {
 
 type AgendaBundle = { live: BallotLiveCounts; results: BallotResults | null };
 
+/** 종합 주소의 투표지 하나 — 이번에 못 읽었으면 failed, value 는 마지막으로 읽은 값(없으면 null). */
+type Slot<T> = { index: number; value: T | null; failed: boolean };
+
+/**
+ * 토큰마다 따로 읽는다 — 하나가 실패해도 나머지는 그린다(실패한 것은 마지막 값을 쓰고 표시).
+ * 전부 실패하면 던져서 화면 전체가 「연결 확인 중」으로 간다.
+ */
+async function settleEach<T>(tokens: string[], fetchOne: (t: string) => Promise<T>, last: { current: Array<T | null> }): Promise<Slot<T>[]> {
+  const errors: unknown[] = [];
+  const slots = await Promise.all(
+    tokens.map(async (t, i): Promise<Slot<T>> => {
+      try {
+        const v = await withTimeout(fetchOne(t), POLL_TIMEOUT_MS - 1000);
+        last.current[i] = v;
+        return { index: i, value: v, failed: false };
+      } catch (e) {
+        errors.push(e);
+        return { index: i, value: last.current[i] ?? null, failed: true };
+      }
+    }),
+  );
+  if (errors.length === tokens.length) throw errors[0];
+  return slots;
+}
+
 function OverviewShow({ tokens, presentRaw }: { tokens: string[]; presentRaw: string | null }) {
+  const lastBundles = useRef<Array<AgendaBundle | null>>([]);
+  const lastLives = useRef<Array<BallotLiveCounts | null>>([]);
   const load = useCallback(
     () =>
-      Promise.all(
-        tokens.map(async (t): Promise<AgendaBundle> => {
+      settleEach(
+        tokens,
+        async (t): Promise<AgendaBundle> => {
           const [live, results] = await Promise.all([fetchBallotLiveCounts(t), fetchBallotResults(t)]);
           return { live, results };
-        }),
+        },
+        lastBundles,
       ),
     [tokens],
   );
   // 4 = 실시간 순환(투표율만), 1 · 다시 4 = 종합으로. 실시간 화면에서는 결과(찬반)를 읽지도 않는다.
   const [view, setView] = useState<'overview' | 'rotate'>('overview');
-  const loadLive = useCallback(() => Promise.all(tokens.map((t) => fetchBallotLiveCounts(t))), [tokens]);
+  const loadLive = useCallback(() => settleEach(tokens, fetchBallotLiveCounts, lastLives), [tokens]);
   const livePoll = usePoll(view === 'rotate' ? loadLive : null);
   const panels = rotationPanels(tokens.length);
   const rot = useRotation(panels.length, view === 'rotate');
@@ -1273,13 +1452,22 @@ function OverviewShow({ tokens, presentRaw }: { tokens: string[]; presentRaw: st
             rot.togglePause();
           }
           break;
+        case 'PageDown':
+        case 'PageUp':
+          // 종합 주소 — 투표 중 화면은 실시간 순환 하나뿐이라 PageDown/PageUp 은 순환 안에서 판만 넘긴다.
+          // 종합(결과) 화면에서는 아무것도 하지 않는다(프레젠터로 결과 화면을 오가지 않게).
+          e.preventDefault();
+          if (view === 'rotate') rot.step(e.code === 'PageUp' ? -1 : 1);
+          break;
         default:
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [view, rot.step, rot.togglePause]);
-  const { data, failing } = usePoll(view === 'overview' ? load : null);
+  const poll = usePoll(view === 'overview' ? load : null);
+  const { data, failing } = poll;
+  const present = parsePresent(presentRaw);
   const controls = (
     <Controls
       buttons={[
@@ -1287,8 +1475,8 @@ function OverviewShow({ tokens, presentRaw }: { tokens: string[]; presentRaw: st
         { label: '실시간', key: '4', onClick: () => setView((v) => (v === 'rotate' ? 'overview' : 'rotate')) },
         ...(view === 'rotate'
           ? [
-              { label: '이전 판', key: '←', onClick: () => rot.step(-1) },
-              { label: '다음 판', key: '→', onClick: () => rot.step(1) },
+              { label: '이전 판', key: '←·PgUp', onClick: () => rot.step(-1) },
+              { label: '다음 판', key: '→·PgDn', onClick: () => rot.step(1) },
               { label: '자동 넘김', key: 'P', onClick: rot.togglePause },
             ]
           : []),
@@ -1297,56 +1485,112 @@ function OverviewShow({ tokens, presentRaw }: { tokens: string[]; presentRaw: st
   );
 
   if (view === 'rotate') {
-    const lives = (livePoll.data ?? []).slice().sort((a, b) => (agendaNo(a.title) ?? 9) - (agendaNo(b.title) ?? 9));
-    const rPresent = resolvePresent(presentRaw, lives[0]?.roster ?? 0);
+    const slots = livePoll.data ?? [];
+    const lives = slots
+      .flatMap((s) => (s.value ? [s.value] : []))
+      .sort((a, b) => (agendaNo(a.title) ?? 9) - (agendaNo(b.title) ?? 9));
+    const rDenom = liveDenominator(present, lives[0]?.roster ?? 0);
+    const failedNames = slots.filter((s) => s.failed).map((s) => slotName(s.value?.title, s.index));
     return (
       <>
         <Stage>
           <Header
             sub="실시간 투표 현황"
+            staleSec={livePoll.data !== undefined ? livePoll.staleSec : null}
             right={
               <span>
                 의제 <b className="tr-num" style={{ color: C.text }}>{tokens.length}</b>개
               </span>
             }
           />
-          {livePoll.data ? (
-            <RotateView agendas={lives.map((l) => ({ no: agendaNo(l.title), live: l }))} present={rPresent} panels={panels} index={rot.index} clock={null} />
+          <Alerts presentMissing={present == null} overflow={submittedExceedsPresent(present, lives.map((l) => l.submitted))} />
+          {lives.length > 0 ? (
+            <RotateView agendas={lives.map((l) => ({ no: agendaNo(l.title), live: l }))} denom={rDenom} panels={panels} index={rot.index} clock={null} />
+          ) : livePoll.failing ? (
+            <LoadFailed kind={livePoll.errorKind} />
           ) : (
-            <Centered title={livePoll.failing ? '투표지를 찾을 수 없습니다' : '불러오는 중'} />
+            <Centered title="불러오는 중" />
           )}
-          <RotateFooter panels={panels} index={rot.index} paused={rot.paused} failing={livePoll.failing && !!livePoll.data} />
+          {failedNames.length > 0 ? <FailedNote names={failedNames} /> : null}
+          <RotateFooter panels={panels} index={rot.index} paused={rot.paused} />
         </Stage>
         {controls}
       </>
     );
   }
 
-  const bundles = (data ?? []).slice().sort((a, b) => (agendaNo(a.live.title) ?? 9) - (agendaNo(b.live.title) ?? 9));
-  const roster = bundles[0]?.live.roster ?? 0;
-  const present = resolvePresent(presentRaw, roster);
+  const slots = data ?? [];
+  const bundles = slots
+    .flatMap((s) => (s.value ? [s.value] : []))
+    .sort((a, b) => (agendaNo(a.live.title) ?? 9) - (agendaNo(b.live.title) ?? 9));
+  const failedNames = slots.filter((s) => s.failed).map((s) => slotName(s.value?.live.title, s.index));
   const totalItems = bundles.reduce((s, b) => s + b.live.items, 0);
-  const published = bundles.filter((b) => b.results);
-  const allDists = published.flatMap((b) => b.results!.items.map((i) => i.dist));
-  const out = agendaOutcome(allDists, present);
-  const allPublished = bundles.length > 0 && published.length === bundles.length;
 
   return (
     <>
     <Stage>
       <Header
         sub="의결 결과 종합 현황"
-        failing={failing && !!data}
+        staleSec={data !== undefined ? poll.staleSec : null}
         right={
           <span>
             권고안 <b className="tr-num" style={{ color: C.text }}>{totalItems}</b>건
           </span>
         }
       />
-      {!data ? (
-        <Centered title={failing ? '투표지를 찾을 수 없습니다' : '불러오는 중'} />
+      <Alerts presentMissing={present == null} overflow={false} />
+      {present == null ? (
+        <Centered title="출석 인원(present=)을 주소에 넣어 주세요" sub="가결 · 부결 판정은 출석 인원이 있어야 표시합니다." />
+      ) : bundles.length === 0 ? (
+        failing ? <LoadFailed kind={poll.errorKind} /> : <Centered title="불러오는 중" />
       ) : (
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '26px 72px 0', minHeight: 0 }}>
+        <OverviewBody bundles={bundles} present={present} failedNames={failedNames} />
+      )}
+      <Footer>
+        {present == null ? (
+          <span />
+        ) : (
+          <>
+            <span style={{ display: 'flex', alignItems: 'center', gap: 26 }}>
+              <Legend color={C.chipBg} label="가결" />
+              <Legend color={C.orange} label="부결" />
+            </span>
+            <span>
+              의결 기준: 참석자 {present}명의 3분의 2 이상 찬성 ({passThreshold(present)}표 이상)
+            </span>
+          </>
+        )}
+      </Footer>
+    </Stage>
+    {controls}
+    </>
+  );
+}
+
+/** 못 읽은 투표지 이름 — 제목을 한 번이라도 읽었으면 「의제 N」, 아니면 주소 속 순서. */
+function slotName(title: string | null | undefined, index: number): string {
+  const no = agendaNo(title);
+  return no ? `의제 ${no}` : `${index + 1}번째 투표지`;
+}
+
+function FailedNote({ names }: { names: string[] }) {
+  return (
+    <p data-testid="show-slot-failed" style={{ position: 'absolute', left: 72, bottom: 96, margin: 0, fontSize: 22, fontWeight: 800, color: C.orange, zIndex: 5 }}>
+      ● {names.join(' · ')} 불러오기 실패 — 마지막 값을 보여 주는 중이거나 비어 있습니다. 자동으로 다시 시도합니다.
+    </p>
+  );
+}
+
+function OverviewBody({ bundles, present, failedNames }: { bundles: AgendaBundle[]; present: number; failedNames: string[] }) {
+  const totalItems = bundles.reduce((s, b) => s + b.live.items, 0);
+  const published = bundles.filter((b) => b.results);
+  const allDists = published.flatMap((b) => b.results!.items.map((i) => i.dist));
+  const out = agendaOutcome(allDists, present);
+  const allPublished = bundles.length > 0 && published.length === bundles.length;
+  return (
+    <>
+      {failedNames.length > 0 ? <FailedNote names={failedNames} /> : null}
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '26px 72px 0', minHeight: 0 }}>
           <div style={{ display: 'flex', gap: 48 }}>
             <OvStat label="전체 권고안" color={C.text} value={totalItems} unit="건" />
             <OvStat label="가결" color={C.blue} value={out.passed} unit="건" />
@@ -1363,19 +1607,7 @@ function OverviewShow({ tokens, presentRaw }: { tokens: string[]; presentRaw: st
               <OverviewRow key={b.live.title} bundle={b} present={present} />
             ))}
           </div>
-        </div>
-      )}
-      <Footer>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 26 }}>
-          <Legend color={C.chipBg} label="가결" />
-          <Legend color={C.orange} label="부결" />
-        </span>
-        <span>
-          의결 기준: 참석자 {present}명의 3분의 2 이상 찬성 ({passThreshold(present)}표 이상)
-        </span>
-      </Footer>
-    </Stage>
-    {controls}
+      </div>
     </>
   );
 }
@@ -1426,13 +1658,28 @@ function OverviewRow({ bundle, present }: { bundle: AgendaBundle; present: numbe
 
 export default function ShowScreen() {
   const [params] = useState(() => parseShowParams(typeof window === 'undefined' ? '' : window.location.search));
+  // motion=0 — 저사양 노트북. 순환 화면 등의 애니메이션 · 전환 효과를 끈다(show.astro 의 [data-motion="0"] 규칙).
+  useEffect(() => {
+    if (!params.motion) document.documentElement.dataset.motion = '0';
+  }, [params.motion]);
+  // 무선 프레젠터의 재생 단추(F5 · Shift+F5)로 무대 화면이 새로고침되지 않게 — 어느 화면(불러오는 중 · 오류 · 종합)에서든.
+  // 정말 새로고침이 필요하면 Ctrl+F5.
+  useEffect(() => {
+    const block = (e: KeyboardEvent) => {
+      if (e.code === 'F5' && !e.ctrlKey && !e.metaKey) e.preventDefault();
+    };
+    window.addEventListener('keydown', block, true);
+    return () => window.removeEventListener('keydown', block, true);
+  }, []);
   if (params.tokens.length === 0) {
     return (
       <Stage>
         <Header sub="표출 화면" right={null} />
         <Centered title="투표지 토큰이 없습니다" sub="주소 예: /show?t=<토큰>&present=174  ·  종합: /show?t=<토큰1>,<토큰2>,<토큰3>" />
         <Footer>
-          <span>Space 시작/정지 · R 처음 · ↑/↓ ±1분 · 1 진행 · 2 결과 상세 · 3 결과 요약 · 4 실시간 · V 영상 · K 재생</span>
+          <span style={{ fontSize: 22 }}>
+            Space·F5 시작/정지 · Shift+R 처음 · ↑/↓ ±1분 · 1 진행 · 2 결과 상세 · 3 결과 요약 · 4 실시간 · V 영상 · K 재생 · PgDn/PgUp 진행→실시간→영상(결과 화면 제외) · motion=0 움직임 끔
+          </span>
           <span />
         </Footer>
       </Stage>

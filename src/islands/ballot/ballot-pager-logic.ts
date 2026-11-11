@@ -155,7 +155,8 @@ export type DraftStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 export type PagerDraft = {
   answers: Record<string, number>;
   pos: PagerPos;
-  voter: { team: string | null; name: string } | null;
+  /** confirmed = 이 기기에서 「OOO 님이 맞나요?」에 「네」를 눌렀다. 아니면 새로고침 뒤 확인 화면부터 다시. */
+  voter: { team: string | null; name: string; confirmed?: boolean } | null;
 };
 
 export function pagerDraftKey(ballotId: string): string {
@@ -205,9 +206,10 @@ export function loadPagerDraft(storage: DraftStorage, ballotId: string, items: r
   if (p.pos === 'summary') pos = 'summary';
   else if (typeof p.pos === 'number' && Number.isInteger(p.pos) && p.pos >= 0 && p.pos < items.length) pos = p.pos;
   let voter: PagerDraft['voter'] = null;
-  const v = p.voter as { team?: unknown; name?: unknown } | null | undefined;
+  const v = p.voter as { team?: unknown; name?: unknown; confirmed?: unknown } | null | undefined;
   if (v && typeof v === 'object' && typeof v.name === 'string' && (typeof v.team === 'string' || v.team === null)) {
     voter = { team: v.team as string | null, name: v.name };
+    if (v.confirmed === true) voter.confirmed = true;
   }
   return { answers, pos, voter };
 }
