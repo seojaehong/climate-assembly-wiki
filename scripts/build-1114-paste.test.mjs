@@ -11,6 +11,7 @@ import {
   Paste1114Error,
   pasteFiles,
   readZipEntry,
+  TITLE_OVERRIDES,
 } from './lib/paste-1114.mjs';
 import {
   MAX_STATEMENT_LENGTH,
@@ -188,14 +189,19 @@ describe('docs/1114-paste — 폼 점검을 그대로 통과한다', () => {
     expect(byNo['2-20']).toBe('개인정보 파기에 대한 신뢰를 높여 폐휴대전화 반납과 자원순환을 촉진한다.');
     expect(byNo['2-21']).toBe('전자제품의 수리와 장기 사용을 지원하여 폐기물 발생을 줄인다.');
     const src = JSON.parse(readCommitted('sources.json'));
-    expect(src.differs_from_cards.map((d) => d.no)).toEqual(['1-3', '1-13', '3-6', '3-19']);
+    expect(src.differs_from_cards.map((d) => d.no)).toEqual(['1-3', '1-5', '1-7', '1-13', '3-6', '3-19']);
     expect(src.counts).toEqual({ 1: 19, 2: 28, 3: 23 });
+    // 11/11 주최 결정 — 1-5 · 1-7 은 권고카드_1109.pdf 문구, 1-3 은 v3(「을」 있음) 그대로
+    expect(src.overrides.map((o) => o.no)).toEqual(['1-5', '1-7']);
+    expect(byNo['1-5']).toBe('제품별 기준 세분화를 통한 저탄소 인증제도의 강화 및 탄소배출량 공개 의무화한다.');
+    expect(byNo['1-7']).toBe('탄소발자국 제도 구체화와 소비자 포인트, 캐시백을 통한 기업의 저탄소 전환을 촉진한다.');
+    expect(byNo['1-3']).toBe('지방자치단체가 공실·유휴건축물을 우선 활용해 불필요한 신규건축을 줄이고, 탄소를 감축하는 제도를 마련해야 한다.');
   });
 });
 
 // ── 원자료에서 다시 만들어 대조(원자료가 있을 때만) ──────────────────
 describe.skipIf(!haveSources)('원자료(cards_1114.json · v3 hwpx)에서 다시 만들면 저장소 파일과 같다', () => {
-  it('v3 와 70건 글자 일치 · cards 와는 정확히 4건만 다르다 · 파일 그대로', () => {
+  it('v3 와 70건 글자 일치(덮어쓴 1-5 · 1-7 제외) · cards 와는 정확히 4건만 다르다 · 파일 그대로', () => {
     const cardsBuf = readFileSync(SRC_CARDS);
     const hwpxBuf = readFileSync(SRC_HWPX);
     const cards = JSON.parse(cardsBuf.toString('utf8'));
@@ -207,6 +213,10 @@ describe.skipIf(!haveSources)('원자료(cards_1114.json · v3 hwpx)에서 다�
       expect(line.slice(no.length + 4)).toBe(v3[no].trim());
     }
     expect(differsFromCards.map((d) => d.no)).toEqual(['1-3', '1-13', '3-6', '3-19']);
+    // 덮어쓰기를 얹으면 그 두 줄만 바뀐다
+    const withO = buildPaste(cards, v3, TITLE_OVERRIDES).agendas;
+    const changed = Object.values(withO).flat().filter((l, i) => l !== Object.values(agendas).flat()[i]);
+    expect(changed.map((l) => l.slice(0, l.indexOf('-안1')))).toEqual(['1-5', '1-7']);
     const files = pasteFiles({ cardsBuf, hwpxBuf, cardsName: 'cards_1114.json', hwpxName: '20261109-권고안_확정_제목_v3.hwpx' });
     for (const [name, text] of Object.entries(files)) expect(readCommitted(name).replace(/\r\n/g, '\n')).toBe(text);
   });
@@ -217,7 +227,7 @@ describe.skipIf(!haveSources)('원자료(cards_1114.json · v3 hwpx)에서 다�
       encoding: 'utf8',
     });
     expect(r.status, r.stderr).toBe(0);
-    expect(readdirSync(out).sort()).toEqual(['agenda1.txt', 'agenda2.txt', 'agenda3.txt', 'sources.json']);
+    expect(readdirSync(out).sort()).toEqual(['agenda1.txt', 'agenda2.txt', 'agenda3.txt', 'all.txt', 'sources.json']);
     for (const name of readdirSync(out)) expect(readFileSync(join(out, name), 'utf8')).toBe(readCommitted(name).replace(/\r\n/g, '\n'));
   });
 });

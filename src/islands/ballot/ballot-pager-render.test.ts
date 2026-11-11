@@ -168,3 +168,120 @@ describe('(11/10 결정 · 기권 불인정) 넘김식 요약 — 미응답 건�
     expect(html).toContain('누르지 않은 건은 기권으로 기록됩니다');
   });
 });
+
+describe('(11/14) 전체회의 의결 의제별 색 띠 · 인사말', () => {
+  it('제목에서 의제 번호와 이름을 읽고, 그 밖 투표지는 null', async () => {
+    const { agendaTheme } = await import('./BallotPager');
+    expect(agendaTheme('전체회의 의결 의제2 일회용품 줄이기 등 자원순환')).toMatchObject({ no: 2, name: '일회용품 줄이기 등 자원순환' });
+    expect(agendaTheme('1분과 의결 3차')).toBeNull();
+    expect(agendaTheme('전체회의 의결 의제 1 띄어씀')).toBeNull();
+  });
+});
+
+describe('(11/11) 한 장 70건 투표지 「전체회의 의결 정책권고안」', () => {
+  const mk = (no: string, i: number): BallotItem =>
+    ({ id: `x${i}`, ordinal: i + 1, statement: `${no}-안1 가상 권고 ${no}`, description: null, scale: 2, required: true }) as BallotItem;
+  const items = [mk('1-1', 0), mk('1-2', 1), mk('2-1', 2), mk('3-1', 3)];
+
+  it('건마다 번호 앞자리로 의제를 정하고 카드 그림을 고른다', async () => {
+    const { itemAgendaTheme, plenaryCardSrc } = await import('./BallotPager');
+    expect(itemAgendaTheme('전체회의 의결 정책권고안', '2-5')).toMatchObject({ no: 2, name: '일회용품 줄이기 등 자원순환' });
+    expect(plenaryCardSrc('전체회의 의결 정책권고안', '3-23')).toBe('/ballot/cards1114/3-23.webp');
+    expect(plenaryCardSrc('전체회의 의결 의제1 가상', '2-5')).toBeNull();
+    expect(itemAgendaTheme('일반 투표', '2-5')).toBeNull();
+  });
+
+  it('넘김 화면 머리에 의제와 그 의제 안 위치, 카드 크게 보기 단추', () => {
+    const html = renderToStaticMarkup(
+      createElement(PagerItemView, {
+        title: '전체회의 의결 정책권고안',
+        subgroup: null,
+        items,
+        pos: 2,
+        answers: {},
+        flashValue: null,
+        disabled: false,
+        onChoose: () => {},
+        onGo: () => {},
+        voterLine: null,
+      }),
+    );
+    expect(html).toContain('data-testid="pager-agenda"');
+    expect(html).toContain('일회용품 줄이기 등 자원순환');
+    expect(html).toContain('의제2 안에서 1 / 1');
+    expect(html).toContain('3 / 4');
+    expect(html).toContain('data-testid="pager-zoom"');
+    expect(html).toContain('/ballot/cards1114/2-1.webp');
+  });
+
+  it('마지막 장(제출 전 확인)에 마무리말', () => {
+    const html = renderToStaticMarkup(
+      createElement(PagerSummaryView, {
+        title: '전체회의 의결 정책권고안',
+        items,
+        answers: {},
+        submitting: false,
+        error: null,
+        onGo: () => {},
+        onSubmit: () => {},
+        voterLine: null,
+        allRequired: true,
+      }),
+    );
+    expect(html).toContain('data-testid="pager-closing"');
+    expect(html).toContain('정책권고안 4건');
+  });
+});
+
+describe('(11/11) 간지 = 의제 확인 화면 — 한 의제를 마친 뒤 다음 의제 첫 건 앞', () => {
+  const mk = (no: string, i: number): BallotItem =>
+    ({ id: `d${i}`, ordinal: i + 1, statement: `${no}-안1 가상 ${no}`, description: null, scale: 2, required: true }) as BallotItem;
+  const items = [mk('1-1', 0), mk('1-2', 1), mk('2-1', 2), mk('2-2', 3), mk('3-1', 4)];
+
+  it('다음 의제 첫 건에서만(첫 의제 앞은 없음), 넘긴 확인 화면은 다시 안 나온다', async () => {
+    const { agendaCheckAt } = await import('./BallotPager');
+    expect(agendaCheckAt(items, 0, new Set())).toBeNull();
+    expect(agendaCheckAt(items, 1, new Set())).toBeNull();
+    expect(agendaCheckAt(items, 2, new Set())).toEqual({ done: 1, next: 2, positions: [0, 1] });
+    expect(agendaCheckAt(items, 2, new Set([2]))).toBeNull();
+    expect(agendaCheckAt(items, 4, new Set())).toEqual({ done: 2, next: 3, positions: [2, 3] });
+  });
+
+  it('확인 화면 — 그 의제의 찬성·반대·미응답과 번호(위치는 투표지 전체 기준)', async () => {
+    const { AgendaCheckView } = await import('./BallotPager');
+    const html = renderToStaticMarkup(
+      createElement(AgendaCheckView, {
+        check: { done: 2, next: 3, positions: [2, 3] },
+        items,
+        answers: { d0: 2, d2: 1 },
+        voterLine: null,
+        onGo: () => {},
+        onNext: () => {},
+      }),
+    );
+    expect(html).toContain('data-testid="pager-agenda-check"');
+    expect(html).toContain('의제2 확인');
+    expect(html).toMatch(/찬성 0.*반대 1.*미응답 1/);
+    expect(html).toContain('data-goto="3"');
+    expect(html).toContain('data-goto="2"');
+    expect(html).toContain('다음 · 의제3 기후시민 의식제고 교육');
+  });
+
+  it('제출 전 확인에 의제별 줄', () => {
+    const html = renderToStaticMarkup(
+      createElement(PagerSummaryView, {
+        title: '전체회의 의결 정책권고안',
+        items,
+        answers: { d0: 2, d1: 2 },
+        submitting: false,
+        error: null,
+        onGo: () => {},
+        onSubmit: () => {},
+        voterLine: null,
+        allRequired: true,
+      }),
+    );
+    expect(html).toContain('data-testid="pager-agenda-tallies"');
+    expect(html).toMatch(/의제1 기업 온실가스 감축 촉진 · 2건/);
+  });
+});

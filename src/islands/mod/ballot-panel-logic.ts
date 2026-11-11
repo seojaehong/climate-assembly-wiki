@@ -8,7 +8,7 @@ import { plenaryAgendaNo } from '../../lib/division-ballot-format';
  */
 
 export const BALLOT_SCALES: readonly BallotScale[] = [2, 4, 5, 7] as const;
-export const MAX_BALLOT_ITEMS = 30; // s31(11/14 의제별 투표지 최대 28건) — 20261110_s31_ballot_limit_30.sql 과 같은 값
+export const MAX_BALLOT_ITEMS = 80; // s33(11/11 주최 결정 — 투표지 1장에 70건) — 20261111_s33_ballot_limit_80.sql 과 같은 값
 export const MAX_STATEMENT_LENGTH = 300;
 export const MAX_TITLE_LENGTH = 200;
 
@@ -197,7 +197,7 @@ export function plenaryFormWarnings(title: string, target: string | null, items:
     if (item.scale !== 2) out.push(`${i + 1}번 문항이 찬반(2점)이 아닙니다.`);
     const m = /^(\d+)-(\d+)-안\d+\s+\S/.exec(item.statement.trim());
     if (!m) out.push(`${i + 1}번 문항이 「${agendaNo}-M-안1 제목」 모양이 아닙니다.`);
-    else if (Number(m[1]) !== agendaNo) out.push(`${i + 1}번 문항 번호 ${m[1]}-${m[2]} 이 의제${agendaNo} 번호가 아닙니다.`);
+    else if (agendaNo === 0 ? !/^[1-9]$/.test(m[1]) : Number(m[1]) !== agendaNo) out.push(`${i + 1}번 문항 번호 ${m[1]}-${m[2]} 이 의제${agendaNo} 번호가 아닙니다.`);
   });
   return out;
 }

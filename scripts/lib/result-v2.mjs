@@ -74,6 +74,16 @@ export function attachRequired(raw, ballotGet) {
 }
 
 /**
+ * 11/11 주최 결정 — 70건을 투표지 1장(제목 「전체회의 의결 정책권고안」)에 담는다. 그 투표지면 의제 번호 앞자리(「2-」)
+ * 문항만 남겨 의제별로 센다(답은 문항 id 로 맞추므로 다른 의제 답은 저절로 빠진다). 의제별 투표지는 손대지 않는다.
+ * 설정 파일은 의제 1·2·3 모두 같은 ballot_id 를 적는다.
+ */
+export function sliceAgendaOfAll(raw, agendaNo) {
+  if (!raw || !/^전체회의 의결 정책권고안(?:\s|$)/.test(String(raw.title ?? '').trim())) return raw;
+  return { ...raw, items: (raw.items ?? []).filter((it) => String(motionNumber(it.statement) ?? '').startsWith(`${agendaNo}-`)) };
+}
+
+/**
  * 투표지 한 장(ballot_named_responses_v2 모양)을 다시 센다.
  * @param raw { id, status, items[{id,ordinal,statement,scale}], roster[{team,name}], responses[...] }
  * @param opts { agendaNo, expectedCount, attendance?: [{team,name}], paper?: { ballots, items: { '1-1': {yes,nay} } }, numberPrefix?: boolean }
@@ -252,7 +262,7 @@ export function buildResultV2(config, raws, { generatedAt }) {
     const p = [];
     checkCounts(label, { present: a.present, enrolled }, p);
     checkConfirmation(label, a, p);
-    const raw = raws?.[a.no];
+    const raw = sliceAgendaOfAll(raws?.[a.no], a.no);
     if (!raw) p.push(`${label}: 투표지 원자료가 없음`);
     else {
       if (a.ballot_id && raw.id !== a.ballot_id) p.push(`${label}: 원자료 투표지 id ${raw.id} ≠ 설정 ballot_id ${a.ballot_id}`);

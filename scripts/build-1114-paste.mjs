@@ -4,7 +4,7 @@
  *
  *   node scripts/build-1114-paste.mjs --cards <cards_1114.json> --hwpx <20261109-권고안_확정_제목_v3.hwpx> [--out docs/1114-paste]
  *
- * 쓰는 파일: agenda1.txt(19줄) · agenda2.txt(28줄) · agenda3.txt(23줄) · sources.json(원자료 이름 · sha256 · cards 와 다른 번호).
+ * 쓰는 파일: agenda1.txt(19줄) · agenda2.txt(28줄) · agenda3.txt(23줄) · all.txt(70줄, 11/11 한 장 투표지) · sources.json(원자료 이름 · sha256 · cards 와 다른 번호).
  * 막히면(번호 누락 · 건수 · 순서 · 300자 초과 · 줄바꿈) 사유를 전부 적고 rc 2, 파일을 하나도 쓰지 않는다.
  * 규칙 = scripts/lib/paste-1114.mjs · 절차 = docs/1114-ballot-setup.md §3.
  */

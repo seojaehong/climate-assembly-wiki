@@ -78,7 +78,17 @@ export function hwpxTitles(xml) {
 }
 
 /** cards(번호 목록) + v3(제목) → 의제별 줄. 막히는 것이 하나라도 있으면 전부 적어 던진다. */
-export function buildPaste(cards, v3) {
+/**
+ * v3 위에 덮어쓰는 제목 — 주최 결정으로만 넣는다(번호마다 근거를 적는다).
+ * 11/11 주최 결정: 투표 화면에 사무국 권고카드(1109 PDF) 그림을 한 장씩 띄우므로 1-5 · 1-7 은 카드 문구에 맞춘다.
+ * (1-3 은 v3 「공실·유휴건축물을」 그대로 두고 카드 그림 쪽에 「을」을 넣었다.)
+ */
+export const TITLE_OVERRIDES = Object.freeze({
+  '1-5': { title: '제품별 기준 세분화를 통한 저탄소 인증제도의 강화 및 탄소배출량 공개 의무화한다.', why: '11/11 주최 결정 — 권고카드_1109.pdf 문구' },
+  '1-7': { title: '탄소발자국 제도 구체화와 소비자 포인트, 캐시백을 통한 기업의 저탄소 전환을 촉진한다.', why: '11/11 주최 결정 — 권고카드_1109.pdf 문구' },
+});
+
+export function buildPaste(cards, v3, overrides = {}) {
   const problems = [];
   const agendas = { 1: [], 2: [], 3: [] };
   const differsFromCards = [];
@@ -101,7 +111,7 @@ export function buildPaste(cards, v3) {
       lines.push(`${no}-안1 (없음)`);
       continue;
     }
-    const title = raw.trim();
+    const title = (overrides[no]?.title ?? raw).trim();
     if (/[\r\n]/.test(title)) problems.push(`${no}: 제목에 줄바꿈이 있음(한 줄 = 한 건이 깨진다)`);
     const line = `${no}-안1 ${title}`;
     if (line.length > MAX_LINE) problems.push(`${no}: 줄이 ${line.length}자 — 폼 한계 ${MAX_LINE}자 초과`);
@@ -127,7 +137,7 @@ const sha256 = (buf) => createHash('sha256').update(buf).digest('hex');
 export function pasteFiles({ cardsBuf, hwpxBuf, cardsName, hwpxName }) {
   const cards = JSON.parse(cardsBuf.toString('utf8'));
   const v3 = hwpxTitles(readZipEntry(hwpxBuf, 'Contents/section0.xml').toString('utf8'));
-  const { agendas, differsFromCards } = buildPaste(cards, v3);
+  const { agendas, differsFromCards } = buildPaste(cards, v3, TITLE_OVERRIDES);
   const sources = {
     made_by: 'scripts/build-1114-paste.mjs',
     line_form: 'N-M-안1 제목 (한 줄 = 한 건)',
@@ -136,11 +146,14 @@ export function pasteFiles({ cardsBuf, hwpxBuf, cardsName, hwpxName }) {
     hwpx: { file: hwpxName, sha256: sha256(hwpxBuf) },
     counts: Object.fromEntries(Object.entries(agendas).map(([n, l]) => [n, l.length])),
     differs_from_cards: differsFromCards,
+    overrides: Object.entries(TITLE_OVERRIDES).map(([no, o]) => ({ no, v3: v3[no]?.trim() ?? null, title: o.title, why: o.why })),
   };
   return {
     'agenda1.txt': pasteText(agendas[1]),
     'agenda2.txt': pasteText(agendas[2]),
     'agenda3.txt': pasteText(agendas[3]),
+    // 11/11 주최 결정 — 투표지 1장(QR 하나)에 70건. 제목 「전체회의 의결 정책권고안」 투표지에 붙여 넣는다.
+    'all.txt': pasteText([...agendas[1], ...agendas[2], ...agendas[3]]),
     'sources.json': `${JSON.stringify(sources, null, 2)}\n`,
   };
 }

@@ -133,13 +133,13 @@ describe('validateBallotForm — 생성 폼 검증', () => {
     expect(validateBallotForm('제목', []).ok).toBe(false);
   });
 
-  it('의제 30개까지는 허용, 31개는 거부한다(s31 — RPC 상한 1..30 과 같은 값)', () => {
-    expect(MAX_BALLOT_ITEMS).toBe(30);
-    const thirty = Array.from({ length: 30 }, (_, i) => item(`의제 ${i + 1}`));
+  it('의제 80개까지는 허용, 81개는 거부한다(s33 — RPC 상한 1..80 과 같은 값)', () => {
+    expect(MAX_BALLOT_ITEMS).toBe(80);
+    const thirty = Array.from({ length: 80 }, (_, i) => item(`의제 ${i + 1}`));
     expect(validateBallotForm('제목', thirty).ok).toBe(true);
     expect(validateBallotForm('제목', [...thirty, item('초과')])).toEqual({
       ok: false,
-      error: '의제는 최대 30개까지 담을 수 있습니다.',
+      error: '의제는 최대 80개까지 담을 수 있습니다.',
     });
   });
 
@@ -148,9 +148,9 @@ describe('validateBallotForm — 생성 폼 검증', () => {
     expect(validateBallotForm('제목', items28).ok).toBe(true);
   });
 
-  it('화면 상한 = ballot_create_v3 최신 마이그레이션의 상한(s31)', () => {
+  it('화면 상한 = ballot_create_v3 최신 마이그레이션의 상한(s33)', () => {
     const sql = readFileSync(
-      new URL('../../../supabase/migrations/20261110_s31_ballot_limit_30.sql', import.meta.url),
+      new URL('../../../supabase/migrations/20261111_s33_ballot_limit_80.sql', import.meta.url),
       'utf8',
     );
     expect(sql).toMatch(/function climate_vote\.ballot_create_v3\(/i);
