@@ -244,6 +244,7 @@
       el('h2', { text: '우리 조 상태' }), el('p', { class: 'msg', id: 'myState' }), el('div', { id: 'myPhotos' })
     ]));
     s.appendChild(el('p', { class: 'help', text: '여기서 올리기가 안 되면: 단체방에 「' + team + '조결과」라고 적고 바로 사진을 올려 주세요.' }));
+    s.appendChild(el('p', { class: 'help' }, [el('a', { href: '../guide/#s2', text: '자세한 안내 보기' })]));
     refreshS2();
   }
 

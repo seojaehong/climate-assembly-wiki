@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>퍼실리테이터 안내 · 100인 공론장</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="../ui.css">
+<style>
+  /* 퍼실리테이터 안내 — 휴대폰으로 읽고, A4로도 인쇄한다 */
+  main { max-width: 680px; margin: 0 auto; padding: 8px 16px 56px; font-size: 17px; line-height: 1.7; word-break: keep-all; overflow-wrap: anywhere; }
+  .jump { display: flex; gap: 8px; margin: 16px 0 4px; }
+  .jump a { flex: 1; text-align: center; padding: 12px 8px; border-radius: var(--r-ctl); background: var(--paper); color: var(--ink);
+            font-weight: 800; text-decoration: none; box-shadow: 0 3px 0 var(--edge); }
+  section { background: var(--paper); border-radius: var(--r-panel); padding: 18px 18px 8px; margin-top: 18px; }
+  section > h2 { margin: 0 0 4px; font-size: 22px; font-weight: 800; }
+  .when { margin: 0 0 12px; color: var(--ink-3); font-size: 15px; }
+  h3 { font-size: 18px; margin: 20px 0 8px; font-weight: 800; }
+  ol.steps { list-style: none; counter-reset: s; padding: 0; margin: 0 0 8px; }
+  ol.steps > li { counter-increment: s; position: relative; padding: 0 0 12px 44px; }
+  ol.steps > li::before { content: counter(s); position: absolute; left: 0; top: 0; width: 30px; height: 30px; border-radius: 8px;
+                          display: grid; place-items: center; font-weight: 800; background: var(--cobalt); color: var(--on-cobalt); }
+  ul { padding-left: 20px; margin: 0 0 8px; }
+  li { margin-bottom: 4px; }
+  b.k { background: var(--cobalt-soft); padding: 1px 6px; border-radius: 6px; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+  .shots { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 8px 0 16px; }
+  .shots figure { margin: 0; }
+  .shots img { width: 100%; display: block; border-radius: 10px; border: 1px solid var(--rule); }
+  .shots figcaption { font-size: 14px; color: var(--ink-3); margin-top: 6px; text-align: center; }
+  table { width: 100%; border-collapse: collapse; margin: 0 0 12px; font-size: 16px; }
+  th, td { text-align: left; vertical-align: top; padding: 10px 8px; border-top: 1px solid var(--rule); }
+  th { width: 42%; font-weight: 700; }
+  .go { display: block; text-align: center; margin: 8px 0 14px; padding: 16px; border-radius: var(--r-ctl); font-weight: 800; font-size: 18px;
+        text-decoration: none; background: var(--cobalt); color: var(--on-cobalt); }
+  .note { font-size: 15px; color: var(--ink-2); }
+  footer { margin-top: 28px; font-size: 13px; color: var(--ink-3); }
+  @media print {
+    .jump, .go { display: none; }
+    section { break-inside: avoid-page; box-shadow: none; border: 1px solid #ccc; }
+    .shots img { max-height: 70mm; width: auto; }
+  }
+</style>
+</head>
+<body>
+<header class="band"><div class="in">
+  <p class="what">일하는 시민 100인 공론장</p>
+  <h1>퍼실리테이터 안내</h1>
+</div></header>
+<main>
+  <div class="jump"><a href="#s1">세션1 질문</a><a href="#s2">세션2 결과 사진</a><a href="#help">안 될 때</a></div>
+
+  <section id="s1">
+    <h2>세션1 · 우리 조 질문 보내기</h2>
+    <p class="when">연구 결과 발표 뒤 분임 토의 시간</p>
+    <ol class="steps">
+      <li>분임에서 도트 스티커로 질문 1개를 고릅니다.</li>
+      <li>단체방에 <b class="k">○조질문_질문 내용</b> 형식으로 올립니다. 예: <b class="k">3조질문_청년 일자리 지원은 언제부터 받을 수 있나요?</b></li>
+      <li>본부가 10개 조 질문을 모아 스크린에 띄웁니다. 비슷한 질문은 묶어서 보여 줍니다.</li>
+    </ol>
+    <p class="note">질문을 고치려면 같은 형식으로 다시 올리면 됩니다. 마지막에 올린 글로 바뀝니다. 단체방이 안 되면 조 화면의 「세션1 · 질문」 탭에 적고 「세션1 질문 제출」을 누릅니다.</p>
+  </section>
+
+  <section id="s2">
+    <h2>세션2 · 결과 사진 올리기</h2>
+    <p class="when">템플릿 두 장(세부과제 우선순위 선정, 정책사업 구체화 아이디어)을 완성한 직후</p>
+    <ol class="steps">
+      <li>우리 조 QR을 찍어 조 화면을 엽니다. 화면 위에 우리 조 번호가 맞게 나오는지 봅니다.</li>
+      <li><b class="k">세션2 · 결과 사진</b> 탭을 누릅니다.</li>
+      <li><b class="k">사진 찍기 · 고르기</b>를 누르고 템플릿을 찍습니다. 두 장을 한 번에 골라도 되고 한 장씩 올려도 됩니다.</li>
+      <li>「2장 올렸습니다」가 나오면 끝입니다. 아래 「우리 조 상태」에서 사진마다 「읽는 중」이 「읽음」으로 바뀝니다(1분 안팎).</li>
+      <li>본부가 사진과 내용을 맞춰 본 뒤 스크린에 띄웁니다. 「본부 확인 완료」가 나오면 발표 준비가 끝난 것입니다.</li>
+    </ol>
+    <div class="shots">
+      <figure><img src="s2_before.jpg" alt="세션2 탭: 사진 찍기·고르기 버튼과 우리 조 상태" loading="lazy"><figcaption>올리기 전</figcaption></figure>
+      <figure><img src="s2_after.jpg" alt="사진 두 장이 올라가 읽음으로 바뀐 화면" loading="lazy"><figcaption>올린 뒤 · 읽음</figcaption></figure>
+    </div>
+    <h3>잘 찍는 법</h3>
+    <ul>
+      <li>종이 한 장이 화면을 꽉 채우게 찍습니다.</li>
+      <li>위에서 정면으로 찍고 그림자나 조명 반사가 글씨를 가리지 않게 합니다.</li>
+      <li>포스트잇이 떨어지거나 겹쳐서 글씨가 가려지지 않았는지 먼저 봅니다.</li>
+    </ul>
+    <h3>잘못 올렸을 때</h3>
+    <ul>
+      <li>사진 옆 <b class="k">지우기</b>를 누르고 다시 올립니다.</li>
+      <li>내용을 고쳤으면 다시 찍어 올립니다. 본부가 새 사진으로 다시 읽고 다시 확인합니다.</li>
+    </ul>
+    <a class="go" href="../t/">조 화면 열기</a>
+  </section>
+
+  <section id="help">
+    <h2>안 될 때</h2>
+    <table>
+      <tr><th>조 코드가 맞지 않습니다</th><td>우리 조 QR을 다시 찍습니다.</td></tr>
+      <tr><th>서버에 연결하지 못했습니다</th><td>와이파이를 끄고 휴대폰 데이터로 다시 올립니다.</td></tr>
+      <tr><th>사진을 열지 못했습니다</th><td>사진첩에서 고르지 말고 카메라로 다시 찍습니다.</td></tr>
+      <tr><th>그래도 안 될 때</th><td>단체방에 <b class="k">○조결과</b>라고 먼저 적고 바로 이어서 사진을 올립니다.</td></tr>
+    </table>
+    <p class="note">사전교육 때 아무 종이나 찍어 한 번 올려 보면 당일에 헤매지 않습니다. 연습 사진은 행사 전에 본부가 모두 지웁니다.</p>
+  </section>
+
+  <footer>운영: (사)한국갈등해결센터</footer>
+</main>
+</body>
+</html>
