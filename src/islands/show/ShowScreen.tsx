@@ -165,7 +165,8 @@ function LoadFailed({ kind }: { kind: 'not_found' | 'network' | null }) {
 function Alerts({ presentMissing, overflow }: { presentMissing: boolean; overflow: boolean }) {
   if (!presentMissing && !overflow) return null;
   return (
-    <div style={{ position: 'absolute', top: 112, left: 0, right: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, zIndex: 5, pointerEvents: 'none' }}>
+    // 머리 바로 아래 띠(본문을 그만큼 밀어낸다 — 의제 · 상태 글자를 가리지 않게).
+    <div style={{ flex: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 16, padding: '10px 72px 0' }}>
       {presentMissing ? (
         <p data-testid="show-present-missing" style={{ margin: 0, background: '#C62828', color: '#FFFFFF', fontSize: 34, fontWeight: 900, padding: '10px 32px', borderRadius: 10 }}>
           출석 인원(present=)을 주소에 넣어 주세요
