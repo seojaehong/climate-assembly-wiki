@@ -45,14 +45,15 @@ export function agendaTheme(title: string | null | undefined): AgendaTheme | nul
   const m = /^전체회의 의결 의제([123])\s*(.*)$/.exec((title ?? '').trim());
   if (!m) return null;
   const no = Number(m[1]) as 1 | 2 | 3;
-  return { no, name: m[2].trim(), ...AGENDA_COLORS[no] };
+  // 이름은 투표지 제목의 줄임말이 아니라 권고카드 머리띠 원문(11/11).
+  return { no, name: AGENDA_NAMES[no], ...AGENDA_COLORS[no] };
 }
 
 /** 11/14 의제 이름(권고카드_1109.pdf 「[의제N]」 · 사무국 안내). 한 장 70건 투표지에서 건마다 의제를 보여 줄 때 쓴다. */
 export const AGENDA_NAMES: Record<1 | 2 | 3, string> = {
-  1: '기업 온실가스 감축 촉진',
-  2: '일회용품 줄이기 등 자원순환',
-  3: '기후시민 의식제고 교육',
+  1: '기업이 온실가스를 감축하도록 촉진하는 방안',
+  2: '일회용품 줄이기 등 자원순환을 강화하는 방안',
+  3: '기후시민 의식제고를 위한 교육 및 참여 활성화 방안',
 };
 
 /**
