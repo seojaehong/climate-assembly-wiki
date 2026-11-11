@@ -8,102 +8,174 @@
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <link rel="stylesheet" href="../ui.css">
 <style>
-  /* 본부 화면 — 1920×1080 투영. 본문 24px 하한, 가는 선 금지, 밝은 바탕 기본(D 로 어둡게).
-     노랑은 조 번호표에만 쓴다. 선택 = 흰 바탕 남색 글자. */
-  :root { --S: #2346b5; --M: #0f7b6c; --LI: #a86b00; --LR: #b3402a; --barText: #ffffff; --ground: #d5dce7; }
-  :root[data-theme="dark"] { --S: #7f9cf5; --M: #3fc2aa; --LI: #e0a83a; --LR: #f08068; --barText: #0c1526; --ground: #0c1526; }
+  /* 본부 화면 — 1920×1080 투영(1280 폭까지 맞춘다). 글자 24px 하한, 선 3px 이상.
+     밝은 판이 기본이고 D 로 어두운 관제판으로 바꾼다(고른 판은 이 기기에 기억한다).
+     색의 뜻: 시안 = 질문, 남보라 = 순위, 초록 = 설문, 앰버 = 조 번호표. */
+  :root { --S: #0b6fa8; --M: #4b3fd0; --LI: #0f766e; --LR: #be3455; --barText: #ffffff; --ground: #dfe5ee; }
+  :root[data-theme="dark"] { --S: #38bdf8; --M: #a5b4fc; --LI: #2dd4bf; --LR: #fb7185; --barText: #06101f; --ground: #070d1a; }
   html, body { height: 100%; }
   body { font-size: 26px; line-height: 1.4; display: flex; flex-direction: column; }
-  header { display: flex; align-items: center; gap: 28px; padding: 0 48px; height: 88px; background: var(--band); color: var(--band-ink); }
-  header h1 { font-size: 36px; margin: 0; flex: 1; min-width: 0; font-weight: 800; letter-spacing: -.02em; }
-  header h1 small { font-size: 26px; font-weight: 500; color: var(--band-ink-2); margin-left: 16px; letter-spacing: 0; white-space: nowrap; }
-  @media (max-width: 1400px) { header h1 small { display: none; } }
-  header h1 { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  nav { display: flex; gap: 6px; }
-  nav button { font-size: 26px; font-weight: 700; padding: 8px 20px; border-radius: 8px; border: 0;
-               background: transparent; color: var(--band-ink-2); cursor: pointer; }
-  nav button[aria-pressed="true"] { background: #ffffff; color: #0f1e36; }
-  .stamp { font-size: 24px; color: var(--band-ink-2); white-space: nowrap; min-width: 130px; text-align: right; }
-  .stamp.err { color: #ffb4a8; font-weight: 700; }
-  #view { flex: 1; min-height: 0; padding: 24px 48px; overflow: hidden; display: flex; flex-direction: column; }
+  /* 어두운 판의 바탕 격자 — 장식이라 흐려도 된다(정보는 싣지 않는다) */
+  :root[data-theme="dark"] body { background-image: linear-gradient(rgba(42, 68, 112, .28) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(42, 68, 112, .28) 2px, transparent 2px); background-size: 96px 96px; }
+
+  header { flex: none; display: flex; align-items: center; gap: 28px; padding: 0 44px; height: 104px; position: relative;
+           background: var(--band); color: var(--band-ink); }
+  header::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 5px; background: var(--accent); }
+  .ttl { flex: 1; min-width: 0; padding-left: 22px; position: relative; }
+  .ttl::before { content: ""; position: absolute; left: 0; top: 6px; bottom: 6px; width: 7px; border-radius: 4px;
+                 background: linear-gradient(#38bdf8, #818cf8); }
+  .ttl .meta { margin: 0; font-size: 24px; font-weight: 700; color: #7dd3fc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ttl h1 { margin: 0; font-size: 38px; line-height: 1.2; font-weight: 900; letter-spacing: -.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  @media (max-width: 1500px) { .ttl .meta { display: none; } }
+  nav { display: flex; gap: 6px; padding: 6px; border-radius: 14px; background: rgba(255, 255, 255, .08); border: 3px solid rgba(185, 198, 218, .22); }
+  nav button { font-size: 26px; font-weight: 800; padding: 8px 22px; border-radius: 9px; border: 0;
+               background: transparent; color: var(--band-ink-2); cursor: pointer; white-space: nowrap; }
+  nav button[aria-pressed="true"] { background: linear-gradient(135deg, #38bdf8, #818cf8); color: #06101f; }
+  .stamp { min-width: 150px; text-align: right; line-height: 1.15; white-space: nowrap; }
+  .stamp b { display: block; font-size: 34px; font-weight: 900; }
+  .stamp span { font-size: 24px; font-weight: 700; color: #6ee7b7; }
+  .stamp.err span { color: #ffb4a8; }
+
+  #view { flex: 1; min-height: 0; padding: 24px 44px 28px; overflow: hidden; display: flex; flex-direction: column; }
   .muted { color: var(--ink-2); }
-  /* 1 현황 */
-  .counters { display: flex; gap: 20px; margin-bottom: 20px; }
-  .counter { flex: 1; background: var(--paper); border-radius: 8px; padding: 22px 30px; }
-  .counter .n { font-size: 112px; font-weight: 800; line-height: 1; letter-spacing: -.03em; }
-  .counter .l { font-size: 32px; color: var(--ink-2); font-weight: 600; margin-top: 10px; }
-  .counter { box-shadow: 0 6px 0 var(--edge); }
-  #view > .hall { flex: 1; min-height: 0; }
-  .hall.fit, .hall.fit * { transition: none !important; }
-  .hall .sign .st { font-size: max(24px, calc(28px * var(--s))); white-space: pre; }
-  .tools { margin-top: 20px; display: none; gap: 12px; flex-wrap: wrap; }
+  .vhead { flex: none; display: flex; justify-content: space-between; align-items: baseline; gap: 24px; margin-bottom: 16px; }
+  .vhead h2 { margin: 0; font-size: 34px; font-weight: 900; letter-spacing: -.01em; white-space: nowrap; }
+  .vhead h2 small { font-size: 28px; font-weight: 800; color: var(--cyan); margin-left: 18px; letter-spacing: 0; }
+  .vhead .wait { font-size: 28px; font-weight: 700; color: var(--ink-2); margin-left: 18px; }
+  .vhead .note { font-size: 24px; font-weight: 700; color: var(--ink-2); white-space: nowrap; }
+
+  /* 1 현황 — 왼쪽 원탁 고리, 오른쪽 숫자 세 칸 */
+  .status { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 500px; gap: 24px; }
+  @media (max-width: 1500px) { .status { grid-template-columns: minmax(0, 1fr) 420px; } }
+  .stage { min-height: 0; padding: 20px 28px; display: flex; flex-direction: column; overflow: hidden; }
+  .stage .vhead { margin-bottom: 8px; }
+  .stage h2 { font-size: 32px; }
+  .key { display: flex; gap: 26px; font-size: 24px; font-weight: 700; color: var(--ink-2); white-space: nowrap; }
+  .key i { display: inline-block; width: 26px; height: 26px; border-radius: 50%; vertical-align: -5px; margin-right: 8px; border: 5px solid; }
+  .stage .fitbox { flex: 1; min-height: 0; display: grid; place-items: center; }
+  .side { min-height: 0; display: flex; flex-direction: column; gap: 18px; }
+  .kpi { flex: 1; min-height: 0; padding: 18px 28px 20px; display: flex; flex-direction: column; justify-content: space-between; overflow: hidden; }
+  .kpi .l { font-size: 28px; font-weight: 800; color: var(--ink-2); }
+  .kpi .n { font-size: min(104px, 9.6vh); font-weight: 900; line-height: 1; letter-spacing: -.04em; color: var(--c); }
+  .kpi .n small { font-size: .42em; color: var(--ink-3); letter-spacing: 0; margin-left: .08em; }
+  .kpi .bar { height: 18px; border-radius: 9px; background: var(--paper-2); border: 3px solid var(--rule); overflow: hidden; }
+  .kpi .bar span { display: block; height: 100%; background: var(--c); border-radius: 6px; transition: width .6s; }
+  .kpi .sub { font-size: 24px; font-weight: 700; color: var(--ink-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .kpi.q { --c: var(--cyan); } .kpi.p { --c: var(--indigo); } .kpi.s { --c: var(--emerald); }
+  :root[data-theme="dark"] .kpi .n { text-shadow: 0 0 36px color-mix(in srgb, var(--c) 40%, transparent); }
+  /* 낮은 화면(1280×720 등): 여백만 줄인다. 글자 하한 24px 은 그대로 */
+  .tools { flex: none; margin-top: 18px; display: none; gap: 12px; flex-wrap: wrap; }
   body.ops .tools { display: flex; }
-  .tools button { font-size: 24px; font-weight: 700; padding: 10px 20px; border-radius: 8px; border: 3px solid var(--field-line);
+  .tools button { font-size: 24px; font-weight: 700; padding: 10px 20px; border-radius: 10px; border: 3px solid var(--field-line);
                   background: var(--paper); color: var(--ink); cursor: pointer; }
+
   /* 2 질문 */
-  .pager { font-size: 32px; color: var(--ink); text-align: right; margin-top: 12px; font-weight: 800; }
+  .pager { flex: none; font-size: 32px; color: var(--ink); text-align: right; margin-top: 12px; font-weight: 800; }
   .cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); grid-auto-rows: minmax(0, 1fr); gap: 14px; flex: 1; min-height: 0; }
-  .card { background: var(--paper); box-shadow: 0 5px 0 var(--edge); margin-bottom: 5px; border-radius: 8px; line-height: 1.36; padding: 14px 22px; overflow: hidden; display: flex; gap: 22px; align-items: flex-start; }
-  .card .no { font-size: max(32px, .82em); flex: 0 0 auto; min-width: 100px; text-align: center; border-radius: 6px; }
+  .card { background: var(--paper); border: 3px solid var(--rule); border-radius: 14px; line-height: 1.34; padding: 14px 22px;
+          overflow: hidden; display: flex; gap: 22px; align-items: flex-start; }
+  .card .no { font-size: max(32px, .82em); flex: 0 0 auto; min-width: 100px; text-align: center; }
   .card .body { min-width: 0; flex: 1; }
-  .card .q { margin: 0; font-weight: 700; letter-spacing: -.01em; }
-  .card .also { margin: 8px 0 0; font-size: max(26px, .78em); color: var(--ink-2); font-weight: 500; padding-left: 16px; box-shadow: inset 4px 0 0 var(--field-line); }
+  .card .q { margin: 0; font-weight: 800; letter-spacing: -.015em; }
+  .card .also { margin: 8px 0 0; font-size: max(26px, .76em); color: var(--ink-2); font-weight: 600; padding-left: 16px; box-shadow: inset 5px 0 0 var(--cyan); }
   .card .ctl { display: none; gap: 10px; align-items: center; font-size: 24px; margin-top: 10px; flex-wrap: wrap; }
   .editing .card .ctl { display: flex; }
-  .cards.editing { grid-auto-rows: auto; overflow: auto; }
+  .cards.editing { grid-auto-rows: auto; overflow: auto; align-content: start; }
   .editing .card { overflow: visible; }
   .editing .card.off { opacity: .45; }
-  .ctl select, .ctl button { font-size: 24px; padding: 4px 12px; border-radius: 6px; border: 2px solid var(--field-line); background: var(--paper); color: var(--ink); }
+  .ctl select, .ctl button { font-size: 24px; padding: 4px 12px; border-radius: 8px; border: 3px solid var(--field-line); background: var(--paper); color: var(--ink); }
   .ctl .sim { color: var(--warn); font-weight: 800; }
-  .qhead { display: flex; justify-content: space-between; align-items: baseline; font-size: 32px; color: var(--ink); margin-bottom: 12px; font-weight: 800; }
-  .qhead .wait { color: var(--ink-2); font-weight: 600; margin-left: 24px; font-size: 30px; }
-  .qhead > span:last-child { font-size: 24px; color: var(--ink-2); font-weight: 600; }
+  .empty { flex: 1; display: grid; place-items: center; text-align: center; font-size: 34px; font-weight: 800; color: var(--ink-2); }
+  .empty small { display: block; font-size: 26px; font-weight: 600; margin-top: 10px; }
+
   /* 3 우선순위 — 호버 없이 과제명을 두 줄까지 보인다 */
-  .legend { display: flex; gap: 28px; font-size: 28px; margin-bottom: 14px; align-items: center; color: var(--ink-2); font-weight: 600; }
-  .legend b { color: var(--ink); font-weight: 800; }
-  .legend i { display: inline-block; width: 28px; height: 28px; border-radius: 6px; vertical-align: -5px; margin-right: 8px; }
-  .prow { display: grid; grid-template-columns: 70px minmax(0, 1.6fr) 130px minmax(0, 1fr); gap: 18px; align-items: center;
-          padding: 6px 14px; border-radius: 6px; overflow: hidden; }
-  #view .prow:nth-child(even) { background: var(--paper); }
-  .prow .rk { font-size: 34px; font-weight: 800; text-align: center; }
-  .prow .t { font-size: 28px; font-weight: 700; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
-  .prow .avg { font-size: 34px; font-weight: 800; text-align: right; }
-  .stack { display: flex; gap: 3px; height: 40px; border-radius: 6px; overflow: hidden; background: var(--rule); }
-  .stack div { display: grid; place-items: center; color: var(--barText); font-size: 24px; font-weight: 800; min-width: 0; }
-  .phead { font-size: 26px; color: var(--ink-2); font-weight: 700; background: none !important; }
-  #view > .legend, #view > .phead { flex-shrink: 0; }
+  .legend { display: flex; gap: 28px; font-size: 26px; align-items: center; color: var(--ink-2); font-weight: 700; white-space: nowrap; }
+  .legend i { display: inline-block; width: 26px; height: 26px; border-radius: 6px; vertical-align: -4px; margin-right: 8px; }
+  .prows { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 6px; }
+  .prow { display: grid; grid-template-columns: 76px minmax(0, 1.6fr) 140px minmax(0, 1fr); gap: 20px; align-items: center;
+          padding: 6px 18px; border-radius: 12px; overflow: hidden; }
+  .prows .prow { background: var(--paper); border: 3px solid var(--rule); }
+  .prows .prow.top { border-color: var(--vest); }
+  .prow .rk { font-size: 36px; font-weight: 900; text-align: center; color: var(--ink-2); }
+  .prow.top .rk { color: var(--edge-vest); }
+  :root[data-theme="dark"] .prow.top .rk { color: var(--vest); }
+  .prow .t { font-size: 28px; font-weight: 800; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .prow .avg { font-size: 36px; font-weight: 900; text-align: right; color: var(--cyan); }
+  .stack { display: flex; gap: 3px; height: min(44px, 80%); border-radius: 9px; overflow: hidden; background: var(--paper-2); border: 3px solid var(--rule); }
+  .stack div { display: grid; place-items: center; color: var(--barText); font-size: 24px; font-weight: 900; min-width: 0; }
+  .phead { flex: none; font-size: 24px; color: var(--ink-2); font-weight: 800; padding-top: 0; padding-bottom: 4px; }
+
   /* 4 설문 — 5칸 같은 폭, 칸을 응답 수만큼 진하게 */
-  .sgrid { display: grid; grid-template-columns: 360px 1fr; gap: 48px; flex: 1; min-height: 0; }
-  .sbig { font-size: 160px; font-weight: 800; line-height: 1; letter-spacing: -.04em; }
-  .srow { margin-bottom: 26px; }
-  .srow .t { font-size: 34px; font-weight: 700; }
-  .srow .v { font-size: 56px; font-weight: 800; margin-left: 16px; }
-  .dist { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; height: 52px; margin-top: 8px; }
-  .dist div { border-radius: 6px; font-size: 26px; font-weight: 700; display: grid; place-items: center; min-width: 0; }
-  .gate { max-width: 720px; margin: 120px auto; text-align: center; }
-  .gate input { font-size: 28px; padding: 14px; width: 100%; border: 3px solid var(--field-line); border-radius: 8px; background: var(--paper); margin-bottom: 16px; }
+  .sgrid { display: grid; grid-template-columns: 400px minmax(0, 1fr); gap: 28px; flex: 1; min-height: 0; }
+  .sbigw { padding: 32px; display: flex; flex-direction: column; justify-content: center; overflow: hidden; }
+  .sbig { font-size: 168px; font-weight: 900; line-height: .95; letter-spacing: -.05em; color: var(--emerald); }
+  :root[data-theme="dark"] .sbig { text-shadow: 0 0 44px rgba(52, 211, 153, .35); }
+  .sbigw .l { font-size: 34px; font-weight: 800; color: var(--ink-2); margin-top: 12px; }
+  .sbigw .l small { display: block; font-size: 26px; font-weight: 700; color: var(--ink-2); margin-top: 4px; }
+  .srows { padding: 24px 32px; display: flex; flex-direction: column; justify-content: space-between; gap: 14px; overflow: hidden; }
+  .srow .h { display: flex; justify-content: space-between; align-items: baseline; }
+  .srow .t { font-size: 34px; font-weight: 900; }
+  .srow .v { font-size: 56px; font-weight: 900; color: var(--cyan); line-height: 1.1; }
+  .dist { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; height: 54px; margin-top: 6px; }
+  .dist div { border-radius: 8px; font-size: 26px; font-weight: 800; display: grid; place-items: center; min-width: 0; border: 3px solid var(--rule); }
+  .again { margin-top: 28px; padding-top: 16px; border-top: 3px solid var(--rule); font-size: 26px; font-weight: 800; color: var(--ink-2); }
+  .again .ag { display: flex; justify-content: space-between; gap: 12px; margin-top: 6px; }
+  .again b { color: var(--ink); font-size: 30px; }
+
+  .gate { max-width: 720px; margin: 120px auto; text-align: center; padding: 40px; }
+  .gate p { margin: 0 0 20px; font-weight: 700; }
+  .gate input { font-size: 28px; padding: 14px; width: 100%; border: 3px solid var(--field-line); border-radius: 10px; background: var(--paper-2); margin-bottom: 16px; }
+  .gate .primary { font-size: 26px; }
+
+  /* 낮은 화면(1280×720 등): 여백만 줄인다. 글자 하한 24px 은 그대로. 위 규칙을 덮어야 하므로 맨 뒤에 둔다 */
+  @media (max-height: 820px) {
+    header { height: 88px; }
+    .ttl h1 { font-size: 34px; }
+    #view { padding: 14px 32px 16px; }
+    .vhead { margin-bottom: 10px; }
+    .status { gap: 16px; }
+    .stage { padding: 12px 20px; }
+    .side { gap: 12px; }
+    .kpi { padding: 8px 20px 10px; }
+    .kpi .l { font-size: 26px; }
+    .kpi .bar { height: 14px; }
+    .sbigw { padding: 20px 24px; }
+    .sbig { font-size: 132px; }
+    .srows { padding: 12px 24px; gap: 6px; }
+    .srow .t { font-size: 30px; }
+    .srow .v { font-size: 44px; }
+    .dist { height: 44px; gap: 6px; }
+    .dist div { font-size: 24px; }
+    .again { margin-top: 14px; padding-top: 10px; }
+  }
   @media print {
+    :root, :root[data-theme="dark"] { --paper: #fff; --ink: #000; --ink-2: #333; --rule: #999; color-scheme: light; }
     header, .tools, .pager { display: none; }
-    body { font-size: 14px; display: block; background: #fff; color: #000; }
+    html, body { height: auto; }
+    body { font-size: 14px; display: block; background: #fff !important; color: #000; }
     #view { overflow: visible; padding: 0; display: block; }
+    .vhead { font-size: 14px; } .vhead h2 { font-size: 16px; } .vhead h2 small, .vhead .wait, .vhead .note { font-size: 13px; color: #333; }
     .cards { display: block; }
-    .card { background: none; box-shadow: none; padding: 0 0 10px; font-size: 14px !important; break-inside: avoid; }
-    .card .no { font-size: 14px; min-width: 64px; }
-    .card .also { font-size: 13px; }
-    .qhead { font-size: 14px; }
+    .card { border: 0; border-bottom: 1px solid #999; border-radius: 0; padding: 6px 0 10px; font-size: 14px !important; break-inside: avoid; }
+    .card .no { font-size: 14px; min-width: 64px; box-shadow: none; background: none; border: 1.2px solid #000; }
+    .card .also { font-size: 13px; box-shadow: none; padding-left: 0; }
   }
 </style>
 </head>
 <body>
 <header>
-  <h1>일하는 시민 100인 공론장<small>부천, 11월 18일</small></h1>
+  <div class="ttl">
+    <p class="meta">부천시 노동정책 연구 · 11월 18일(수) 부천상공회의소 4층 강당</p>
+    <h1>일하는 시민 100인 공론장</h1>
+  </div>
   <nav>
     <button data-v="1">1 현황</button>
     <button data-v="2">2 질문</button>
     <button data-v="3">3 우선순위</button>
     <button data-v="4">4 설문</button>
   </nav>
-  <span class="stamp" id="stamp"></span>
+  <div class="stamp" id="stamp"></div>
 </header>
 <div id="view"></div>
 <script src="../lib.js"></script>
@@ -114,17 +186,26 @@
   var key = params.get('key') || BF.store('bf_hq_key') || '';
   // 인쇄·CSV 같은 운영 버튼은 투영 화면에 안 보이게 숨긴다(T 키 또는 주소에 &ops=1)
   if (params.get('ops') === '1') document.body.classList.add('ops');
+  // 밝은 판이 기본. D 로 바꾼 판은 이 기기에 기억한다(리허설에서 고른 판이 당일에도 유지되게)
+  if (BF.store('bf_hq_theme') === 'dark') document.documentElement.dataset.theme = 'dark';
   var data = null, view = 1, page = 0, failures = 0, editing = false;
   var TERM_COLOR = { S: 'var(--S)', M: 'var(--M)', LI: 'var(--LI)', LR: 'var(--LR)' };
   var TERM_LABEL = { S: '단기', M: '중기', LI: '장기·중요도', LR: '장기·현실제약' };
   var SURVEY_LABEL = { overall: '전반 만족', info: '발표 이해', talk: '의견 발언', reflect: '정책 반영 기대' };
 
   var V = document.getElementById('view');
+  var stamp = document.getElementById('stamp');
+  function setStamp(time, label, err) {
+    stamp.innerHTML = '';
+    stamp.className = 'stamp' + (err ? ' err' : '');
+    stamp.appendChild(el('b', { text: time }));
+    stamp.appendChild(el('span', { text: label }));
+  }
 
   function gate(msg) {
     V.innerHTML = '';
-    var inp = el('input', { type: 'text', placeholder: '본부 키' });
-    V.appendChild(el('div', { class: 'gate' }, [
+    var inp = el('input', { type: 'text', placeholder: '본부 키', 'aria-label': '본부 키' });
+    V.appendChild(el('div', { class: 'gate panel mark' }, [
       el('p', { text: msg || '본부 주소(키)로 들어와 주세요.' }), inp,
       el('button', { class: 'primary', text: '들어가기', onclick: function () { key = inp.value.trim(); load(true); } })
     ]));
@@ -134,65 +215,63 @@
     if (!key) return gate();
     BF.rpc('bucheon_hq', { p_key: key }).then(function (d) {
       data = d; failures = 0; BF.store('bf_hq_key', key);
-      document.getElementById('stamp').textContent = '갱신 ' + BF.hhmm(d.now);
-      document.getElementById('stamp').className = 'stamp';
+      setStamp(BF.hhmm(d.now), '실시간 갱신');
       // 정리 모드에서 목록 상자를 펼친 채로 화면이 다시 그려지면 선택이 끊긴다
       if (!(editing && document.activeElement && document.activeElement.tagName === 'SELECT')) render();
     }).catch(function (e) {
       if (e.raw === 'invalid hq key') { BF.store('bf_hq_key', null); key = ''; return gate(e.message); }
       failures++;
-      var s = document.getElementById('stamp');
-      s.textContent = '연결 끊김 ' + failures + '회 — 마지막 화면 유지 중'; s.className = 'stamp err';
+      setStamp(data ? BF.hhmm(data.now) : '--:--', '연결 끊김 ' + failures + '회', true);
       if (first && !data) gate(e.message);
     });
   }
 
   function byTeam(list) { var m = {}; (list || []).forEach(function (x) { m[x.team_no] = x; }); return m; }
 
-  var hallBox = null, hallUp = {};
-  // 남은 자리에 맞춰 --s 를 정한다(1 = 1920 폭 기준). 팻말 글자 하한 24px 은 CSS 가 지킨다.
-  function fitHall() {
-    // 원근 때문에 크기가 비례하지 않아 두 번 잰다. 바닥 두께(그림자)는 bbox 에 안 잡히므로 따로 더한다.
-    var h = hallBox, s = 1;
-    h.style.marginTop = '0px';
-    h.classList.add('fit');
-    for (var pass = 0; pass < 3; pass++) {
-      h.style.setProperty('--s', s.toFixed(3));
-      var top = h.getBoundingClientRect().top, availH = V.getBoundingClientRect().bottom - top - 28, availW = V.clientWidth - 8;
-      var r = h.querySelector('.floor').getBoundingClientRect(), t = r.top, b = r.bottom + 26 * s, l = r.left, ri = r.right;
-      h.querySelectorAll('.sign').forEach(function (g) { var x = g.getBoundingClientRect(); t = Math.min(t, x.top); l = Math.min(l, x.left); ri = Math.max(ri, x.right); });
-      s = Math.max(.4, Math.min(1.3, s * Math.min(availW / (ri - l), availH / (b - t))));
-    }
-    h.style.setProperty('--s', s.toFixed(3));
-    // 기울인 바닥은 상자 위쪽에 빈자리를 남긴다. 팻말 꼭대기가 상자 위 끝에 오도록 끌어올린다.
-    var tt = h.querySelector('.floor').getBoundingClientRect().top;
-    h.querySelectorAll('.sign').forEach(function (g) { tt = Math.min(tt, g.getBoundingClientRect().top); });
-    var lift = h.getBoundingClientRect().top - tt;
-    h.style.marginTop = lift + 'px';
-    var spare = V.getBoundingClientRect().bottom - 28 - (h.querySelector('.floor').getBoundingClientRect().bottom + 26 * s);
-    if (spare > 0) h.style.marginTop = (lift + spare / 2) + 'px';
-    h.classList.remove('fit');
+  function kpi(cls, label, n, of, sub) {
+    var num = el('div', { class: 'n', text: String(n) });
+    num.appendChild(el('small', { text: of ? '/' + of : '명' }));
+    var fill = el('span'); fill.style.width = (of ? Math.round(n / of * 100) : Math.min(100, n)) + '%';
+    return el('div', { class: 'panel kpi ' + cls }, [el('div', { class: 'l', text: label }), num, el('div', { class: 'bar' }, [fill]),
+      el('div', { class: 'sub', text: sub })]);
+  }
+
+  // 원탁 고리는 상자를 계속 다시 쓴다 — 5초마다 새로 만들면 튀는 움직임이 매번 다시 돈다
+  var ring = null;
+  function fitRing(box) {
+    var d = Math.max(360, Math.floor(Math.min(box.clientWidth, box.clientHeight)));
+    ring.style.setProperty('--d', d + 'px');
+    // 지름 660px 밑이면 자리 안에 「질문·순위」 글자가 안 들어간다 → 색 점으로
+    ring.classList.toggle('compact', d < 660);
+    return d < 660;
   }
 
   function renderStatus() {
     var q = byTeam(data.questions), p = byTeam(data.priorities), n = data.teams.length;
-    V.appendChild(el('div', { class: 'counters' }, [
-      el('div', { class: 'counter' }, [el('div', { class: 'n', text: data.questions.length + '/' + n }), el('div', { class: 'l', text: '세션1 질문 제출' })]),
-      el('div', { class: 'counter' }, [el('div', { class: 'n', text: data.priorities.length + '/' + n }), el('div', { class: 'l', text: '세션2 우선순위 제출' })]),
-      el('div', { class: 'counter' }, [el('div', { class: 'n', text: String(data.surveys.length) }), el('div', { class: 'l', text: '만족도 설문 응답' })])
-    ]));
-    // 회의장: 질문이나 순위를 낸 조의 원탁이 솟는다. 이전 상태로 붙인 뒤 다음 프레임에 바꿔야 솟는 움직임이 보인다.
-    var items = data.teams.map(function (t) {
-      return { no: t, up: !!(q[t] || p[t]), st: [q[t] ? '질문 ✔' : '', p[t] ? '순위 ✔' : ''].filter(Boolean).join('  ') };
-    });
-    var prev = items.map(function (it) { return { no: it.no, up: !!hallUp[it.no], st: it.st }; });
-    hallBox = BF.hall(prev, hallBox);
-    V.appendChild(hallBox);
-    fitHall();
-    requestAnimationFrame(function () { requestAnimationFrame(function () {
-      BF.hall(items, hallBox);
-      items.forEach(function (it) { hallUp[it.no] = it.up; });
-    }); });
+    var waitQ = data.teams.filter(function (t) { return !q[t]; }), waitP = data.teams.filter(function (t) { return !p[t]; });
+    // 가운데 숫자: 세션2 순위가 하나라도 들어오면 순위로 넘어간다(세션1 → 세션2 순서로 진행)
+    var core = data.priorities.length
+      ? { n: data.priorities.length, of: n, label: '우선순위 제출', kind: 'p' }
+      : { n: data.questions.length, of: n, label: '질문 제출', kind: 'q' };
+    var items = data.teams.map(function (t) { return { no: t, q: !!q[t], p: !!p[t] }; });
+    ring = BF.orbit(items, core, ring);
+    var fitbox = el('div', { class: 'fitbox' }, [ring]);
+    var dot = function (c, fill) { var i = el('i'); i.style.borderColor = c; if (fill) i.style.background = c; return i; };
+    var key = el('div', { class: 'key' });
+    var stage = el('div', { class: 'panel mark stage' }, [
+      el('div', { class: 'vhead' }, [el('h2', { text: '조별 진행 · ' + n + '개 원탁' }), key]),
+      fitbox]);
+    var side = el('div', { class: 'side' }, [
+      kpi('q', '세션1 질문 제출', data.questions.length, n, waitQ.length ? '남은 조 ' + waitQ.join('·') : '모든 조 제출'),
+      kpi('p', '세션2 우선순위 제출', data.priorities.length, n, waitP.length ? '남은 조 ' + waitP.join('·') : '모든 조 제출'),
+      kpi('s', '만족도 설문 응답', data.surveys.length, 0, data.survey_open ? '설문 받는 중' : '설문 마감')
+    ]);
+    V.appendChild(el('div', { class: 'status' }, [stage, side]));
+    var compact = fitRing(fitbox);
+    (compact
+      ? [el('span', null, [dot('var(--cyan)', 1), '질문']), el('span', null, [dot('var(--indigo)', 1), '순위']), el('span', null, [dot('var(--vest)'), '모두 제출'])]
+      : [el('span', null, [dot('var(--cyan)'), '하나 제출']), el('span', null, [dot('var(--vest)'), '질문·순위 모두'])]
+    ).forEach(function (s) { key.appendChild(s); });
     V.appendChild(el('div', { class: 'tools' }, [
       el('button', { text: '질문 인쇄', onclick: function () { show(2, -1); setTimeout(function () { window.print(); }, 150); } }),
       el('button', { text: '질문 CSV', onclick: function () { csv('questions'); } }),
@@ -253,16 +332,21 @@
     var pages = Math.max(1, Math.ceil(cards.length / per));
     var slice = page < 0 ? cards : cards.slice(at * per, at * per + per);
     var waiting = data.teams.filter(function (t) { return !data.questions.some(function (x) { return x.team_no === t; }); });
-    V.appendChild(el('div', { class: 'qhead' }, [
-      el('span', null, ['질문 ' + data.questions.length + '/' + data.teams.length + '개 조',
-        waiting.length ? el('span', { class: 'wait', text: '아직 안 온 조 ' + waiting.join(', ') }) : null]),
-      el('span', { text: editing ? '정리 모드 (E 로 끝내기)' : '' })
+    V.appendChild(el('div', { class: 'vhead' }, [
+      el('h2', null, ['세션1 · 조별 질문', el('small', { text: data.questions.length + '/' + data.teams.length + '개 조' }),
+        waiting.length && data.questions.length ? el('span', { class: 'wait', text: '아직 안 온 조 ' + waiting.join('·') }) : null]),
+      el('span', { class: 'note', text: editing ? '정리 모드 · E 로 끝내기' : '' })
     ]));
+    if (!slice.length) {
+      V.appendChild(el('div', { class: 'empty' }, [el('div', null, ['아직 들어온 질문이 없습니다',
+        el('small', { text: '퍼실리테이터가 단체방에 올리면 1~2분 안에 여기에 뜹니다' })])]));
+      return { clipped: false, pages: 1 };
+    }
     var grid = el('div', { class: 'cards' + (editing ? ' editing' : '') });
     if (!editing) grid.style.gridTemplateRows = 'repeat(' + Math.max(1, Math.ceil(slice.length / 2)) + ', minmax(0, 1fr))';
     var others = data.questions.map(function (x) { return x.team_no; }).sort(function (a, b) { return a - b; });
     function controls(x) {
-      var sel = el('select');
+      var sel = el('select', { 'aria-label': x.team_no + '조 묶기' });
       sel.appendChild(el('option', { value: '', text: '묶지 않음' }));
       others.forEach(function (t) { if (t !== x.team_no) sel.appendChild(el('option', { value: String(t), text: t + '조에 묶기' })); });
       sel.value = x.group_lead ? String(x.group_lead) : '';
@@ -280,9 +364,8 @@
       grid.appendChild(el('div', { class: 'card' + (c.lead.hidden ? ' off' : '') }, [
         el('div', { class: 'no tag', text: c.label }), body]));
     });
-    if (!slice.length) grid.appendChild(el('p', { class: 'muted', text: '아직 들어온 질문이 없습니다' }));
     V.appendChild(grid);
-    if (page >= 0 && pages > 1) V.appendChild(el('div', { class: 'pager' }, [el('b', { text: (at + 1) + ' / ' + pages + '쪽' })]));
+    if (page >= 0 && pages > 1) V.appendChild(el('div', { class: 'pager' }, [el('b', { text: (at + 1) + ' / ' + pages + '쪽 · → 로 넘김' })]));
     // 넘치면 글자를 줄이되 min 밑으로는 내리지 않는다. 한 쪽 안의 카드는 같은 크기로 맞춘다
     var clipped = false, cardsOnPage = grid.querySelectorAll('.card'), fit = Q_MAX;
     Array.prototype.forEach.call(cardsOnPage, function (card) {
@@ -315,16 +398,36 @@
 
   function renderPriority() {
     var rows = aggregate(), n = data.priorities.length;
-    var legend = el('div', { class: 'legend' }, [el('b', { text: '제출 ' + n + '/' + data.teams.length + '개 조' })]);
+    var legend = el('div', { class: 'legend' });
     ['S', 'M', 'LI', 'LR'].forEach(function (k) {
       var i = el('i'); i.style.background = TERM_COLOR[k];
       legend.appendChild(el('span', null, [i, TERM_LABEL[k]]));
     });
-    V.appendChild(legend);
-    V.appendChild(el('div', { class: 'prow phead' }, [el('span', { text: '순위' }), el('span', { text: '정책과제' }),
+    V.appendChild(el('div', { class: 'vhead' }, [el('h2', null, ['세션2 · 정책과제 우선순위', el('small', { text: n + '/' + data.teams.length + '개 조 집계' })]), legend]));
+    V.appendChild(el('div', { class: 'prow phead' }, [el('span', { text: '순위', style: 'text-align:center' }), el('span', { text: '정책과제' }),
       el('span', { text: '평균 순위', style: 'text-align:right' }), el('span', { text: '시기 분류 (조 수)' })]));
-    var box = el('div');
-    rows.forEach(function (r, i) {
+    var box = el('div', { class: 'prows' });
+    V.appendChild(box);
+    // 한 행은 56px 밑으로 줄이지 않는다(글자 24px 하한). 안 들어가면 쪽을 나눈다(← → 로 넘김)
+    // 먼저 한 쪽에 다 넣어 본다(행 48px 이상). 과제명이 잘리면 두 줄이 들어가는 72px 행으로 쪽을 나눈다.
+    // 쪽을 나눌 때는 아래 쪽 표시(약 56px) 자리를 빼고 센다.
+    var GAP = 6, avail = box.clientHeight, all = rows.length;
+    var hAll = Math.floor((avail - GAP * (all - 1)) / all);
+    var per = all, pages = 1;
+    if (hAll >= 48) {
+      drawRows(0, all, hAll);
+      var cut = Array.prototype.some.call(box.querySelectorAll('.t'), function (t) { return t.scrollHeight > t.clientHeight + 1 || t.offsetHeight > t.parentNode.clientHeight; });
+      if (!cut) { page = 0; return; }
+      box.innerHTML = '';
+    }
+    per = Math.max(3, Math.floor((avail - 56 + GAP) / (72 + GAP)));
+    pages = Math.ceil(all / per);
+    if (page >= pages || page < 0) page = 0;
+    drawRows(page * per, per, 72);
+    V.appendChild(el('div', { class: 'pager' }, [el('b', { text: (page + 1) + ' / ' + pages + '쪽 · → 로 넘김' })]));
+
+    function drawRows(start, count, h) { rows.slice(start, start + count).forEach(function (r, j) {
+      var i = start + j;
       var stack = el('div', { class: 'stack' });
       ['S', 'M', 'LI', 'LR'].forEach(function (k) {
         if (!r.counts[k]) return;
@@ -332,28 +435,26 @@
         d.style.flex = String(r.counts[k]); d.style.background = TERM_COLOR[k];
         stack.appendChild(d);
       });
-      box.appendChild(el('div', { class: 'prow' }, [
+      var row = el('div', { class: 'prow' + (r.avg !== null && i < 3 ? ' top' : '') }, [
         el('span', { class: 'rk', text: r.avg === null ? '–' : String(i + 1) }),
-        el('span', { class: 't', text: r.title, title: r.title }),
+        el('span', { class: 't', text: r.title }),
         el('span', { class: 'avg' }, [r.avg === null ? '–' : r.avg.toFixed(1)]),
         stack
-      ]));
-    });
-    V.appendChild(box);
-    // 과제가 많으면 행 높이를 화면에 맞춘다
-    var free = V.clientHeight - box.offsetTop + V.offsetTop - 30;
-    if (box.scrollHeight > free) {
-      var h = Math.max(44, Math.floor(free / rows.length));
-      Array.prototype.forEach.call(box.children, function (row) { row.style.padding = '0'; row.style.height = h + 'px'; });
-    }
+      ]);
+      // 행 높이를 정해 두면 과제 수가 바뀌어도 줄 간격이 고르다(최대 96px)
+      row.style.height = Math.min(96, h) + 'px'; row.style.paddingTop = row.style.paddingBottom = '0';
+      box.appendChild(row);
+    }); }
   }
 
   function renderSurvey() {
-    var s = data.surveys, left = el('div'), right = el('div');
-    left.appendChild(el('div', { class: 'sbig', text: String(s.length) }));
-    left.appendChild(el('div', { class: 'muted', text: '명 응답' + (data.survey_open ? '' : ' · 마감') }));
+    var s = data.surveys;
+    var left = el('div', { class: 'panel mark sbigw' }, [el('div', { class: 'sbig', text: String(s.length) }),
+      el('div', { class: 'l' }, ['명 응답', el('small', { text: data.survey_open ? '설문 받는 중 · ' + BF.hhmm(data.now) + ' 기준' : '설문 마감' })])]);
+    var right = el('div', { class: 'panel srows' });
     if (!s.length) {
-      right.appendChild(el('p', { class: 'muted', text: '아직 응답이 없습니다. 휴대폰으로 설문 QR을 찍으면 여기에 모입니다.' }));
+      right.appendChild(el('div', { class: 'empty' }, [el('div', null, ['아직 응답이 없습니다',
+        el('small', { text: '휴대폰으로 설문 QR을 찍으면 여기에 모입니다' })])]));
       V.appendChild(el('div', { class: 'sgrid' }, [left, right]));
       return;
     }
@@ -366,15 +467,17 @@
       [1, 2, 3, 4, 5].forEach(function (v) {
         var c = vals.filter(function (x) { return x === v; }).length, r = max ? c / max : 0;
         var d = el('div', { text: v + '점 ' + c + '명' });
-        d.style.background = 'color-mix(in srgb, var(--cobalt) ' + Math.round(12 + r * 88) + '%, var(--paper))';
-        d.style.color = r > 0.5 ? 'var(--on-cobalt)' : 'var(--ink)';
+        d.style.background = 'color-mix(in srgb, var(--cyan) ' + Math.round(10 + r * 90) + '%, var(--paper))';
+        d.style.color = r > 0.5 ? 'var(--barText)' : 'var(--ink)';
         dist.appendChild(d);
       });
-      right.appendChild(el('div', { class: 'srow' }, [el('span', { class: 't', text: SURVEY_LABEL[k] + '  ' }), el('span', { class: 'v', text: avg }), dist]));
+      right.appendChild(el('div', { class: 'srow' }, [el('div', { class: 'h' }, [el('span', { class: 't', text: SURVEY_LABEL[k] }), el('span', { class: 'v', text: avg })]), dist]));
     });
     var again = {}; s.forEach(function (a) { if (a.again) again[a.again] = (again[a.again] || 0) + 1; });
-    right.appendChild(el('div', { class: 'srow' }, [el('div', { class: 't', text: '다음 참여 의사' }),
-      el('div', { text: Object.keys(again).map(function (k) { return k + ' ' + again[k]; }).join(' · ') || '–' })]));
+    var keys = Object.keys(again).sort(function (a, b) { return again[b] - again[a]; });
+    // 다음 참여 의사는 왼쪽 큰 숫자 아래에 둔다(오른쪽 네 문항이 화면 높이를 다 쓴다)
+    if (keys.length) left.appendChild(el('div', { class: 'again' }, [el('div', { text: '다음 참여 의사' })].concat(
+      keys.map(function (k) { return el('div', { class: 'ag' }, [el('span', { text: k }), el('b', { text: String(again[k]) })]); }))));
     V.appendChild(el('div', { class: 'sgrid' }, [left, right]));
   }
 
@@ -392,6 +495,8 @@
   function toggleTheme() {
     var r = document.documentElement;
     r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark';   // 투영은 밝은 쪽이 기본
+    BF.store('bf_hq_theme', r.dataset.theme);
+    render();
   }
 
   function csv(kind) {
@@ -425,10 +530,10 @@
     b.onclick = function () { show(+b.dataset.v); };
   });
   document.addEventListener('keydown', function (e) {
-    if (e.target.tagName === 'INPUT') return;
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
     if (e.key >= '1' && e.key <= '4') show(+e.key);
-    else if (e.key === 'ArrowRight' && view === 2) { page++; render(); }
-    else if (e.key === 'ArrowLeft' && view === 2) { page = Math.max(0, page - 1); render(); }
+    else if (e.key === 'ArrowRight' && (view === 2 || view === 3)) { page++; render(); }
+    else if (e.key === 'ArrowLeft' && (view === 2 || view === 3)) { page = Math.max(0, page - 1); render(); }
     else if (e.key === 'd' || e.key === 'D') toggleTheme();
     else if (e.key === 't' || e.key === 'T') document.body.classList.toggle('ops');
     else if ((e.key === 'e' || e.key === 'E') && view === 2) { editing = !editing; render(); }

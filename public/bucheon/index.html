@@ -31,7 +31,15 @@
     .band h1 { font-size: 34px; }
     .band .in { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 24px; }
     #hero { display: block; }
-    #hero .hall { --s: .36; --floor: #24375c; --floor-edge: #050c1a; padding-top: 22px; }
+    /* 머리띠 원탁 고리 — 어두운 띠 위에 놓이므로 색을 띠에 맞춰 고정한다 */
+    #hero .orbit { --d: 300px; --paper: #101a2e; --paper-2: #16233b; --rule: #34507e; --field-line: #4f6a96; --cyan: #38bdf8; --ink-2: #cbd5e1; --ink-3: #a3b0c4; }
+    #hero .orbit .seat { --seat: 62px; border-width: 3px; }
+    #hero .orbit .seat.done { border-width: 4px; }
+    #hero .orbit .seat .tag { font-size: 18px; }
+    #hero .orbit .seat .pips { display: none; }
+    #hero .orbit .core { border-width: 3px; }
+    #hero .orbit .core .n small { font-size: .36em; }
+    #hero .orbit .core .l { font-size: 15px; }
     main { max-width: var(--wrap); padding: 8px 24px 48px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 16px; }
     main footer { grid-column: 1 / -1; }
   }
@@ -95,11 +103,12 @@
   render('pro', LINKS.pro);
   render('cit', LINKS.cit);
 
-  // 머리띠 회의장: 원탁 10개가 차례로 한 번 솟는다. 넓은 화면에서만 보인다.
-  var seats = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(function (n) { return { no: n, up: false }; });
-  var hall = BF.hall(seats);
-  document.getElementById('hero').appendChild(hall);
-  seats.forEach(function (it, i) { setTimeout(function () { it.up = true; BF.hall(seats, hall); }, 500 + i * 110); });
+  // 머리띠 원탁 고리: 10개 조가 차례로 한 번 켜진다. 넓은 화면에서만 보인다.
+  var seats = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(function (n) { return { no: n, q: false, p: false }; });
+  var core = { n: 100, label: '시민 · 10개 조' };
+  var ring = BF.orbit(seats, core);
+  document.getElementById('hero').appendChild(ring);
+  seats.forEach(function (it, i) { setTimeout(function () { it.q = true; BF.orbit(seats, core, ring); }, 500 + i * 120); });
 </script>
 </body>
 </html>

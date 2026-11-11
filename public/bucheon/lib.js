@@ -24,6 +24,11 @@
         'Content-Type': 'application/json'
       },
       body: JSON.stringify(args || {})
+    }).catch(function () {
+      // 와이파이가 끊기면 브라우저가 영어 오류(Failed to fetch)를 낸다 — 화면에는 우리말로
+      var err = new Error('서버에 연결하지 못했습니다. 와이파이를 확인하고 다시 눌러 주세요.');
+      err.raw = 'network';
+      throw err;
     }).then(function (res) {
       return res.text().then(function (txt) {
         var body = null;
@@ -106,25 +111,47 @@
     return n ? inter / n : 0;
   }
 
-  // 회의장 3D: items = [{ no, up(솟은 원탁), st(팻말 아래 한 줄) }]. 같은 상자를 다시 그리면 바뀐 원탁만 솟는다.
-  function hall(items, box) {
-    box = box || el('div', { class: 'hall' });
-    var floor = box.querySelector('.floor');
-    if (!floor) { floor = el('div', { class: 'floor' }); box.appendChild(floor); }
+  // 원탁 고리: items = [{ no, q(질문 냄), p(순위 냄) }], core = { n, of, label, kind('q'|'p') } 또는 null.
+  // 같은 상자를 다시 넘기면 자리를 다시 만들지 않는다 — 상태가 바뀐 조만 한 번 튄다(5초 갱신에도 깜빡이지 않게).
+  function orbit(items, core, box) {
+    var first = !box;
+    box = box || el('div', { class: 'orbit' }, [el('div', { class: 'track' })]);
+    var c = box.querySelector('.core');
+    if (core) {
+      if (!c) { c = el('div', { class: 'core' }, [el('div', { class: 'n' }), el('div', { class: 'l' })]); box.appendChild(c); }
+      c.className = 'core ' + (core.kind || 'q');
+      var n = c.querySelector('.n'); n.textContent = String(core.n);
+      if (core.of) n.appendChild(el('small', { text: '/' + core.of }));
+      c.querySelector('.l').textContent = core.label || '';
+    } else if (c) c.remove();
+    var seats = box.querySelectorAll('.seat');
     items.forEach(function (it, i) {
-      var t = floor.children[i];
-      if (!t) {
-        t = el('div', { class: 'tbl' }, [el('div', { class: 'disc base' }), el('div', { class: 'disc side' }), el('div', { class: 'disc top' }),
-          el('div', { class: 'sign' }, [el('span', { class: 'tag' }), el('span', { class: 'st' })])]);
-        floor.appendChild(t);
+      var s = seats[i];
+      if (!s) {
+        s = el('div', { class: 'seat' }, [el('span', { class: 'tag' }), el('div', { class: 'pips' }, [el('b', { class: 'q' }), el('b', { class: 'p' })])]);
+        // 화면을 다시 붙이면 애니메이션이 처음부터 다시 돈다 — 한 번 튀고 나면 표시를 뗀다
+        s.addEventListener('animationend', function () { this.classList.remove('pop'); });
+        box.appendChild(s);
       }
-      t.classList.toggle('up', !!it.up);
-      t.querySelector('.tag').textContent = it.no + '조';
-      t.querySelector('.st').textContent = it.st || '';
+      // 첫 자리를 12시 방향에 두고 시계 방향으로 돈다. 반지름 = 지름의 40%
+      var a = (-90 + i * 360 / items.length) * Math.PI / 180;
+      s.style.left = (50 + 40 * Math.cos(a)).toFixed(2) + '%';
+      s.style.top = (50 + 40 * Math.sin(a)).toFixed(2) + '%';
+      var state = (it.q ? 'q' : '') + (it.p ? 'p' : '');
+      if (!first && s.dataset.state !== undefined && s.dataset.state !== state && state) {
+        s.classList.remove('pop'); void s.offsetWidth; s.classList.add('pop');
+      }
+      s.dataset.state = state;
+      s.classList.toggle('done', !!(it.q || it.p));
+      s.classList.toggle('full', !!(it.q && it.p));
+      s.querySelector('.tag').textContent = it.no + '조';
+      var bq = s.querySelector('b.q'), bp = s.querySelector('b.p');
+      bq.textContent = it.q ? '질문 ✓' : '질문'; bq.classList.toggle('on', !!it.q);
+      bp.textContent = it.p ? '순위 ✓' : '순위'; bp.classList.toggle('on', !!it.p);
     });
-    while (floor.children.length > items.length) floor.lastChild.remove();
+    for (var k = seats.length - 1; k >= items.length; k--) seats[k].remove();
     return box;
   }
 
-  window.BF = { rpc: rpc, store: store, el: el, hhmm: hhmm, TERMS: TERMS, questionCards: questionCards, similarity: similarity, hall: hall };
+  window.BF = { rpc: rpc, store: store, el: el, hhmm: hhmm, TERMS: TERMS, questionCards: questionCards, similarity: similarity, orbit: orbit };
 })();
