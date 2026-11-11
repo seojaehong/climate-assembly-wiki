@@ -1,0 +1,24 @@
+---
+import '../styles/global.css';
+import ShowScreen from '../islands/show/ShowScreen';
+---
+<!doctype html>
+<html lang="ko" class="dark" data-theme="dark"><head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="robots" content="noindex,nofollow" />
+  <meta name="color-scheme" content="dark" />
+  <title>기후시민회의 의결 표출 화면 [/show]</title>
+  <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin="anonymous" />
+  <link
+    rel="stylesheet"
+    href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/packages/pretendard/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
+  />
+  <style is:global>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0D1822; }
+    body { font-family: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont, "Malgun Gothic", sans-serif; }
+    .tr-num { font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+  </style>
+</head><body>
+  <ShowScreen client:only="react" />
+</body></html>
