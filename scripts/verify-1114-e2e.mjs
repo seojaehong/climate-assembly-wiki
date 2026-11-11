@@ -324,7 +324,7 @@ async function openBallot(name, token) {
   for (let attempt = 0; attempt < 3; attempt++) {
     await V.page.goto(`${BASE}/b?t=${token}`, { waitUntil: 'domcontentloaded', timeout: 60000 }).catch(() => undefined);
     const ok = await V.page
-      .locator('[data-testid=pager-start], [data-testid=pager-position]')
+      .locator('[data-testid=pager-start], [data-testid=voter-confirm], [data-testid=pager-position]')
       .or(V.page.getByText('명단이 아직 준비되지 않았습니다'))
       .first()
       .waitFor({ timeout: 40000 })
@@ -346,6 +346,12 @@ async function pickVoter(V, voter, manual = false) {
   }
   const chosen = ((await page.locator('[data-testid=voter-chosen]').innerText().catch(() => '')) ?? '').trim();
   return chosen;
+}
+// PR #49 이후 — 「다음」(pager-start)은 「OOO 님이 맞나요?」 확인 화면을 열 뿐이고, 「네」(pager-confirm-yes)를 눌러야 투표가 시작된다.
+async function startVoting(page) {
+  await page.locator('[data-testid=pager-start]').click();
+  await page.locator('[data-testid=voter-confirm]').waitFor({ timeout: 20000 });
+  await page.locator('[data-testid=pager-confirm-yes]').click();
 }
 const posText = (page) => page.locator('[data-testid=pager-position]').innerText().then((s) => s.trim()).catch(() => null);
 async function waitAdvance(page, prev) {
@@ -453,7 +459,7 @@ async function main() {
     record('a-roster-teams', teams.length === 17 && teams.includes('기획참여단 분과A') && teams.includes('3분과 5조'), `조 단추 ${teams.length}개(1·2·3분과 15 + 기획참여단 2): ${teams.slice(0, 3).join(', ')} … ${teams.slice(-2).join(', ')}`);
     const chosen = await pickVoter(V, VOTER.a);
     await shot(V, 'C_a_00_본인확인.png');
-    await V.page.locator('[data-testid=pager-start]').click();
+    await startVoting(V.page);
     await V.page.locator('[data-testid=pager-position]').waitFor({ timeout: 20000 });
     record('a-first', (await posText(V.page)) === '1 / 28', `첫 화면 ${await posText(V.page)} · 고른 사람 「${chosen}」`);
     await shot(V, 'C_a_01_1of28.png');
@@ -477,7 +483,7 @@ async function main() {
     const V = await openBallot('b', ballots[2].token);
     await pickVoter(V, VOTER.b);
     await shot(V, 'C_b_00_본인확인_기획참여단.png');
-    await V.page.locator('[data-testid=pager-start]').click();
+    await startVoting(V.page);
     await V.page.locator('[data-testid=pager-position]').waitFor({ timeout: 20000 });
     const ans = await answerAll(V, 28, uiChoice);
     await V.page.locator('[data-testid=pager-submit]').click();
@@ -493,7 +499,7 @@ async function main() {
   await phase('c', async () => {
     const V = await openBallot('c', ballots[1].token);
     await pickVoter(V, VOTER.c);
-    await V.page.locator('[data-testid=pager-start]').click();
+    await startVoting(V.page);
     await V.page.locator('[data-testid=pager-position]').waitFor({ timeout: 20000 });
     const ans = await answerAll(V, 19, (k) => (k === 7 ? 'skip' : uiChoice(k)));
     const counts = (await V.page.locator('[data-testid=pager-counts]').innerText()).replace(/\s+/g, ' ');
@@ -531,7 +537,7 @@ async function main() {
   await phase('d', async () => {
     const V = await openBallot('d', ballots[1].token);
     await pickVoter(V, VOTER.c);
-    await V.page.locator('[data-testid=pager-start]').click();
+    await startVoting(V.page);
     await V.page.locator('[data-testid=pager-position]').waitFor({ timeout: 20000 });
     await answerAll(V, 19, () => 'yes');
     await V.page.locator('[data-testid=pager-submit]').click();
@@ -548,7 +554,7 @@ async function main() {
     const V = await openBallot('e', ballots[3].token);
     const chosen = await pickVoter(V, VOTER.e, true);
     await shot(V, 'C_e_00_직접입력.png');
-    await V.page.locator('[data-testid=pager-start]').click();
+    await startVoting(V.page);
     await V.page.locator('[data-testid=pager-position]').waitFor({ timeout: 20000 });
     const ans = await answerAll(V, 23, uiChoice);
     await V.page.locator('[data-testid=pager-submit]').click();
@@ -569,7 +575,7 @@ async function main() {
   await phase('f', async () => {
     const V1 = await openBallot('f1', ballots[3].token);
     await pickVoter(V1, VOTER.f1);
-    await V1.page.locator('[data-testid=pager-start]').click();
+    await startVoting(V1.page);
     await V1.page.locator('[data-testid=pager-position]').waitFor({ timeout: 20000 });
     const ans1 = await answerAll(V1, 23, uiChoice);
     await V1.page.locator('[data-testid=pager-submit]').click();
@@ -580,7 +586,7 @@ async function main() {
     const V2 = await openBallot('f2', ballots[3].token);
     await pickVoter(V2, VOTER.f2);
     await shot(V2, 'C_f_00_동명이인_둘째_본인확인.png');
-    await V2.page.locator('[data-testid=pager-start]').click();
+    await startVoting(V2.page);
     await V2.page.locator('[data-testid=pager-position]').waitFor({ timeout: 20000 });
     const ans2 = await answerAll(V2, 23, uiChoice);
     await V2.page.locator('[data-testid=pager-submit]').click();
@@ -599,7 +605,7 @@ async function main() {
   await phase('h', async () => {
     const V = await openBallot('h', ballots[3].token);
     await pickVoter(V, VOTER.h);
-    await V.page.locator('[data-testid=pager-start]').click();
+    await startVoting(V.page);
     await V.page.locator('[data-testid=pager-position]').waitFor({ timeout: 20000 });
     // 찬성을 한 틱에 두 번 — 1번만 기록되고 2번으로 한 칸만 넘어가야 한다
     await V.page.evaluate(() => {
@@ -639,7 +645,7 @@ async function main() {
     writeFileSync(join(OUT_DIR, 'manifest-1114.json'), JSON.stringify(manifest, null, 2));
     const V = await openBallot('g', gb.token);
     const blocked = await V.page.getByText('명단이 아직 준비되지 않았습니다').first().isVisible().catch(() => false);
-    const start = await V.page.locator('[data-testid=pager-start], [data-testid=pager-position], [data-testid=pager-submit]').count();
+    const start = await V.page.locator('[data-testid=pager-start], [data-testid=voter-confirm], [data-testid=pager-position], [data-testid=pager-submit]').count();
     await shot(V, 'C_g_명단0행_막힘.png');
     // 「다시 확인」을 눌러도 그대로 · 제출 요청 0
     await V.page.getByRole('button', { name: '다시 확인' }).click().catch(() => undefined);
