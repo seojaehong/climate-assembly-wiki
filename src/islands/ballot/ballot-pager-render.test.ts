@@ -331,3 +331,32 @@ describe('11/14 의제별 투표지 — 찬성 · 반대만(11/11 수정 의견)
     expect(h).toContain('data-testid="pager-prev"');
   });
 });
+
+describe('11/14 의제별 투표지 첫 화면 — 의제 간지(11/11 피알원)', () => {
+  const teams = [{ team: '1분과 1조', short: '1조', names: [{ team: '1분과 1조', no: 1, name: '가나다' }] }];
+  const first = (title: string) =>
+    renderToStaticMarkup(
+      createElement(BallotPager, {
+        ballot: { id: 'b-g', title, instructions: '인사말', status: 'open', subgroup: null, items },
+        initialAnswers: {},
+        initialPos: 0,
+        onChange: noop,
+        onSubmit: noop,
+        submitting: false,
+        error: null,
+        teams,
+        voter: { team: null, name: '' },
+        onVoter: noop,
+      }),
+    );
+  it('의제2 투표지는 의제2 간지 그림을 맨 위에 보인다', () => {
+    const h = first('전체회의 의결 의제2 일회용품 줄이기 등 자원순환');
+    expect(h).toContain('data-testid="pager-ganji"');
+    expect(h).toContain('/ballot/ganji/agenda2.jpg');
+    expect(h).toContain('선정배경');
+    expect(h).toContain('먼저 조와 이름을 눌러 주세요');
+  });
+  it('70건 투표지에는 간지가 없다', () => {
+    expect(first('전체회의 의결 정책권고안')).not.toContain('pager-ganji');
+  });
+});
