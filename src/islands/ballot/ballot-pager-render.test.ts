@@ -172,7 +172,7 @@ describe('(11/10 결정 · 기권 불인정) 넘김식 요약 — 미응답 건�
 describe('(11/14) 전체회의 의결 의제별 색 띠 · 인사말', () => {
   it('제목에서 의제 번호와 이름을 읽고, 그 밖 투표지는 null', async () => {
     const { agendaTheme } = await import('./BallotPager');
-    expect(agendaTheme('전체회의 의결 의제2 일회용품 줄이기 등 자원순환')).toMatchObject({ no: 2, name: '일회용품 줄이기 등 자원순환' });
+    expect(agendaTheme('전체회의 의결 의제2 일회용품 줄이기 등 자원순환')).toMatchObject({ no: 2, name: '일회용품 줄이기 등 자원순환을 강화하는 방안' });
     expect(agendaTheme('1분과 의결 3차')).toBeNull();
     expect(agendaTheme('전체회의 의결 의제 1 띄어씀')).toBeNull();
   });
@@ -185,7 +185,7 @@ describe('(11/11) 한 장 70건 투표지 「전체회의 의결 정책권고안
 
   it('건마다 번호 앞자리로 의제를 정하고 카드 그림을 고른다', async () => {
     const { itemAgendaTheme, plenaryCardSrc } = await import('./BallotPager');
-    expect(itemAgendaTheme('전체회의 의결 정책권고안', '2-5')).toMatchObject({ no: 2, name: '일회용품 줄이기 등 자원순환' });
+    expect(itemAgendaTheme('전체회의 의결 정책권고안', '2-5')).toMatchObject({ no: 2, name: '일회용품 줄이기 등 자원순환을 강화하는 방안' });
     expect(plenaryCardSrc('전체회의 의결 정책권고안', '3-23')).toBe('/ballot/cards1114/3-23.webp');
     expect(plenaryCardSrc('전체회의 의결 의제1 가상', '2-5')).toBeNull();
     // 11/11 경량화 — 화면용은 가벼운 판, 「크게 보기」만 원래 해상도
@@ -273,7 +273,7 @@ describe('(11/11) 간지 = 의제 확인 화면 — 한 의제를 마친 뒤 다
     expect(html).toMatch(/찬성 0.*반대 1.*미응답 1/);
     expect(html).toContain('data-goto="3"');
     expect(html).toContain('data-goto="2"');
-    expect(html).toContain('다음 · 의제3 기후시민 의식제고 교육');
+    expect(html).toContain('다음 · 의제3 기후시민 의식제고를 위한 교육 및 참여 활성화 방안');
   });
 
   it('제출 전 확인에 의제별 줄', () => {
@@ -291,7 +291,7 @@ describe('(11/11) 간지 = 의제 확인 화면 — 한 의제를 마친 뒤 다
       }),
     );
     expect(html).toContain('data-testid="pager-agenda-tallies"');
-    expect(html).toMatch(/의제1 기업 온실가스 감축 촉진 · 2건/);
+    expect(html).toMatch(/의제1 기업이 온실가스를 감축하도록 촉진하는 방안 · 2건/);
   });
 });
 
@@ -382,5 +382,15 @@ describe('(11/11 상규 대표님 메일) 이름을 고른 뒤 「OOO 님이 맞
     expect(html).toContain('2분과 4조');
     expect(html).toContain('data-testid="pager-confirm-yes"');
     expect(html).toContain('data-testid="pager-confirm-no"');
+  });
+});
+
+describe('(11/11) 의제 이름 = 권고카드 머리띠 원문(투표지 제목의 줄임말을 쓰지 않는다)', () => {
+  it('의제별 투표지·70건 투표지 모두 카드 원문 이름', async () => {
+    const { agendaTheme, itemAgendaTheme } = await import('./BallotPager');
+    expect(agendaTheme('전체회의 의결 의제1 기업 온실가스 감축 촉진')?.name).toBe('기업이 온실가스를 감축하도록 촉진하는 방안');
+    expect(agendaTheme('전체회의 의결 의제2 일회용품 줄이기 등 자원순환')?.name).toBe('일회용품 줄이기 등 자원순환을 강화하는 방안');
+    expect(agendaTheme('전체회의 의결 의제3 기후시민 의식제고 교육')?.name).toBe('기후시민 의식제고를 위한 교육 및 참여 활성화 방안');
+    expect(itemAgendaTheme('전체회의 의결 정책권고안', '3-1')?.name).toBe('기후시민 의식제고를 위한 교육 및 참여 활성화 방안');
   });
 });
