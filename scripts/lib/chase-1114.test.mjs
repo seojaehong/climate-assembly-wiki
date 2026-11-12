@@ -65,6 +65,29 @@ describe('chaseState', () => {
     expect(chaseText(st, { label: '의제1', now: '2026-11-14T05:00:00Z' })).toContain('불참·서면 등 2명 제외');
   });
 
+  it('제외 「조|이름」은 조의 띄어쓰기가 달라도 맞는다', () => {
+    const st = chaseState({ roster: [{ team: '1분과 1조', name: '이영희' }], responses: [], exclude: ['1분과1조|이영희'] });
+    expect(st.excluded).toBe(1);
+    expect(st.remaining).toBe(0);
+  });
+
+  it('동명이인이 명단에 없는 조로 시작하면 ①에 명단 밖으로 올라온다', () => {
+    const r2 = [
+      { team: '2분과 3조', name: '김민수' },
+      { team: '3분과 3조', name: '김민수' },
+    ];
+    const st = chaseState({
+      roster: r2,
+      responses: [],
+      starts: [{ voter_team: '1분과 1조', voter_name: '김민수', started_at: '2026-11-14T05:10:00Z', answered_count: 10 }],
+      itemCount: 19,
+    });
+    expect(st.waiting).toHaveLength(1);
+    expect(st.waiting[0]).toMatchObject({ team: '1분과 1조', name: '김민수', answered: 10, offRoster: true });
+    expect(st.notStartedCount).toBe(2);
+    expect(chaseText(st, { label: '의제1', now: '2026-11-14T05:20:00Z' })).toContain('김민수 10/19(명단 밖)');
+  });
+
   it('문구에 찬반 낱말이 없다', () => {
     const st = chaseState({ roster, responses: [resp('1분과 1조', '김가나')], starts: [start('1분과 2조', '박마바', '2026-11-14T05:20:00Z')] });
     const text = chaseText(st, { label: '의제1', now: '2026-11-14T05:22:00Z' });

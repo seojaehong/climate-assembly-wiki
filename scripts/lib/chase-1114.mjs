@@ -19,8 +19,9 @@ function normTeam(team) {
   return String(team ?? '').replace(/[\s 　]+/g, ' ').trim();
 }
 
+/** 판정 키 — 조는 공백을 전부 지워 비교한다(「1분과1조」 = 「1분과 1조」). 표시는 normTeam. */
 export function personKey(team, name) {
-  return `${normTeam(team)}|${normName(name)}`;
+  return `${normTeam(team).replace(/\s/g, '')}|${normName(name)}`;
 }
 
 function compareTeam(a, b) {
@@ -149,10 +150,13 @@ export function chaseState({ roster, responses, starts = [], exclude = [], itemC
   }
   // 명단에 없는데 시작만 하고 안 낸 사람(직접 입력) — ①에 덧붙인다.
   const rosterKeys = new Set(roster.map((r) => personKey(r.team, r.name)));
-  const rosterNames = new Set(roster.map((r) => normName(r.name)));
+  // 동명이인(명단에 같은 이름 2명 이상)은 이름만으로 명단 사람에 붙이지 않는다 — 조가 안 맞으면 명단 밖으로 ①에 올린다.
   for (const s of startOf.values()) {
-    if (rosterKeys.has(personKey(s.voter_team, s.voter_name)) || rosterNames.has(normName(s.voter_name))) continue;
-    if (submittedKeys.has(personKey(s.voter_team, s.voter_name)) || submittedNames.has(normName(s.voter_name))) continue;
+    const k = personKey(s.voter_team, s.voter_name);
+    const n = normName(s.voter_name);
+    const nc = nameCount.get(n) ?? 0;
+    if (rosterKeys.has(k) || nc === 1) continue;
+    if (submittedKeys.has(k) || (nc === 0 && submittedNames.has(n))) continue;
     if (isExcluded(s.voter_team, s.voter_name)) continue;
     waiting.push({
       team: normTeam(s.voter_team),
