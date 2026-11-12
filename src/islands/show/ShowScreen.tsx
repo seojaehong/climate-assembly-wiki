@@ -47,7 +47,6 @@ import {
   overallTurnout,
   parsePresent,
   parseShowParams,
-  participationPct,
   passThreshold,
   resetTimer,
   restoreTimer,
@@ -332,12 +331,23 @@ function Centered({ title, sub }: { title: string; sub?: string }) {
 const DEMO_TOKEN = 'demo';
 const DEMO_QR_TEXT = '시연용 QR - 실제 투표지가 아닙니다 (기후시민회의 표출 화면 시연)';
 
+// 1 ↔ 4 를 오갈 때 QR 칸이 새로 그려져도 빈 흰 칸이 깜박이지 않게 토큰별로 한 번 만든 그림을 다시 쓴다.
+const qrCache = new Map<string, string>();
+
 function useQrSrc(token: string): string | null {
-  const [src, setSrc] = useState<string | null>(null);
+  const [src, setSrc] = useState<string | null>(() => qrCache.get(token) ?? null);
   useEffect(() => {
+    const hit = qrCache.get(token);
+    if (hit) {
+      setSrc(hit);
+      return;
+    }
     const payload = token === DEMO_TOKEN ? DEMO_QR_TEXT : `${VOTE_ORIGIN}/b?t=${token}`;
     QRCode.toDataURL(payload, { width: 1000, margin: 1, errorCorrectionLevel: token === DEMO_TOKEN ? 'H' : 'M' })
-      .then(setSrc)
+      .then((url) => {
+        qrCache.set(token, url);
+        setSrc(url);
+      })
       .catch(() => setSrc(null));
   }, [token]);
   return src;
@@ -491,7 +501,8 @@ function LiveView({
   const clock = clockDisplay(live.status, remaining, timer.durationMs);
   const closed = clock.ended;
   const running = timer.runningSince != null && !timeUp;
-  const rate = participationPct(live.submitted, denom.n);
+  // 완료율 · 진행률 모두 100 상한(실시간 화면 4 와 같은 규칙). 제출이 참석보다 많으면 위 빨간 안내가 따로 뜬다.
+  const rate = turnoutPct(live.submitted, denom.n);
   const progressRate = turnoutPct(live.started, denom.n);
   const timeFrac = timer.durationMs > 0 ? Math.min(1, remaining / timer.durationMs) : 0;
   const status = statusText(live.status, timeUp);
@@ -540,28 +551,34 @@ function LiveView({
               </span>
             </p>
             {/* 진행률 = 투표 시작 ÷ 참석(들어온 사람) · 완료율 = 제출 ÷ 참석([제출]까지 누른 사람) */}
-            <p style={{ margin: '14px 0 0', fontSize: 28, color: C.muted, display: 'flex', gap: 24, whiteSpace: 'nowrap' }}>
+            {/* 높이: 이 줄 + 막대가 예전 한 줄(약 82px)보다 낮아야 위 알림 띠 자리가 줄지 않는다(lineHeight 고정). */}
+            <p style={{ margin: '8px 0 0', fontSize: 26, lineHeight: 1.15, color: C.muted, display: 'flex', gap: 20, whiteSpace: 'nowrap' }}>
               <span>
                 투표 시작{' '}
-                <b data-testid="show-started" className="tr-num" style={{ color: C.text, fontSize: 40 }}>
+                <b data-testid="show-started" className="tr-num" style={{ color: C.text, fontSize: 36 }}>
                   {live.started}
                 </b>
                 명
               </span>
               <span>
                 진행률{' '}
-                <b data-testid="show-progress-rate" className="tr-num" style={{ color: C.orange, fontSize: 40 }}>
+                <b data-testid="show-progress-rate" className="tr-num" style={{ color: C.orange, fontSize: 36 }}>
                   {progressRate}%
                 </b>
               </span>
               <span>
                 완료율{' '}
-                <b data-testid="show-rate" className="tr-num" style={{ color: C.blue, fontSize: 40 }}>
+                <b data-testid="show-rate" className="tr-num" style={{ color: C.blue, fontSize: 36 }}>
                   {rate}%
                 </b>
               </span>
-              {denom.byRoster ? <span style={{ fontSize: 22 }}>(명단 기준)</span> : null}
+              {denom.byRoster ? <span style={{ fontSize: 20 }}>(명단 기준)</span> : null}
             </p>
+            {/* 2겹 막대 — 주황(진행률)이 먼저 차고 파랑(완료율)이 뒤따른다. 메인 숫자는 늘 「제출 완료」. */}
+            <div data-testid="show-rate-bar" style={{ position: 'relative', marginTop: 10, height: 14, borderRadius: 7, background: C.line, overflow: 'hidden' }}>
+              <div data-testid="show-rate-bar-progress" style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${progressRate}%`, background: C.orange, borderRadius: 7, transition: 'width .8s ease' }} />
+              <div data-testid="show-rate-bar-done" style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${rate}%`, background: C.blue, borderRadius: 7, transition: 'width .8s ease' }} />
+            </div>
           </div>
         </div>
         <div style={{ marginTop: 30, height: 22, borderRadius: 11, background: C.line, overflow: 'hidden' }}>

@@ -514,10 +514,10 @@ function serve(source) {
       if (lastLocal.ballot) params.set('ballot', lastLocal.ballot);
       if (lastLocal.deadline) params.set('deadline', lastLocal.deadline);
     } else {
-      lastLocal.ballot = params.get('ballot') || lastLocal.ballot;
-      lastLocal.deadline = params.get('deadline') ?? lastLocal.deadline;
+      // 운영 PC 가 마감 칸을 비우면(q() 가 deadline 을 빼면) 송출 쪽도 비운다. 투표지는 아래에서 확정된 id 로만 기록.
+      lastLocal.deadline = params.get('deadline') || '';
     }
-    const out = { ok: true, mode: source.mode, at: new Date().toISOString(), roomReady: !!ROOM, demoRoomOnly: DEMO ? DEMO_ROOM_OK : null, viewOnly, deadline: params.get('deadline') || '' };
+    const out = { ok: true, mode: source.mode, at: new Date().toISOString(), roomReady: !!ROOM, demoRoomOnly: DEMO && !viewOnly ? DEMO_ROOM_OK : null, viewOnly, deadline: params.get('deadline') || '' };
     let ballots = [];
     try {
       ballots = await source.ballots();
@@ -532,7 +532,7 @@ function serve(source) {
     out.ballotId = ballotId;
     if (!viewOnly && ballotId) lastLocal.ballot = ballotId;
     out.exclude = viewOnly ? [] : settings.exclude;
-    out.signed = settings.signed;
+    out.signed = viewOnly ? [] : settings.signed;
     if (!ballotId) return out;
     const c = await fetchBoard(ballotId);
     out.error = c.error;
@@ -543,6 +543,8 @@ function serve(source) {
         out,
         composeView(c.good, { label: labelFor(ballots, ballotId, params.get('label'), c.good), deadline: params.get('deadline'), exclude: settings.exclude, signed: settings.signed }),
       );
+      // 송출 노트북에는 화면에 그리는 것만 — 카톡 문안 · 서명 명단 원문은 보내지 않는다.
+      if (viewOnly && out.chase) out.chase = { ...out.chase, text: '', signedUnmatched: [] };
     }
     return out;
   }
@@ -552,14 +554,14 @@ function serve(source) {
   // --lan: 같은 망(테더링·현장 와이파이)의 다른 노트북이 보기 전용으로 연다. 열쇠(k)가 주소에 있어야 하고 GET 만 받는다.
   // 카톡 보내기 · 서명 명단 · 제외 저장은 이 PC(127.0.0.1)에서만.
   const LAN = has('--lan');
-  const VIEW_KEY = (arg('--view-key') ?? randomBytes(4).toString('hex')).trim();
-  const lanIps = LAN
-    ? Object.values(networkInterfaces())
-        .flat()
-        .filter((n) => n && n.family === 'IPv4' && !n.internal)
-        .map((n) => n.address)
-    : [];
-  for (const ip of lanIps) allowedHosts.add(`${ip}:${PORT}`);
+  const VIEW_KEY = (arg('--view-key') ?? randomBytes(6).toString('hex')).trim();
+  if (LAN && !/^[\w-]{8,}$/.test(VIEW_KEY)) die('--view-key 는 8자 이상(영문 · 숫자 · - · _)이어야 합니다.');
+  // 주소 목록은 안내 출력용. 다른 노트북의 요청은 Host 가 아니라 열쇠(k)로 가른다 — 테더링이 나중에 붙거나 IP 가 바뀌어도 그대로 열린다.
+  const lanIps = () =>
+    Object.values(networkInterfaces())
+      .flat()
+      .filter((n) => n && n.family === 'IPv4' && !n.internal)
+      .map((n) => n.address);
   const isLocalReq = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress ?? '');
 
   function send(res, code, body, type = 'application/json; charset=utf-8') {
@@ -608,9 +610,10 @@ function serve(source) {
 
   const server = createServer(async (req, res) => {
     try {
-      if (!allowedHosts.has(req.headers.host ?? '')) return send(res, 403, { ok: false, error: 'host' });
-      const u = new URL(req.url ?? '/', `http://${req.headers.host}`);
       const local = isLocalReq(req);
+      // 이 PC 에서 온 요청만 Host 를 본다(DNS 리바인딩 차단). 다른 노트북은 아래에서 열쇠로만 통과.
+      if (local && !allowedHosts.has(req.headers.host ?? '')) return send(res, 403, { ok: false, error: 'host' });
+      const u = new URL(req.url ?? '/', 'http://localhost');
       if (!local) {
         // 다른 노트북 — 보기 전용(GET · 열쇠 일치)만.
         if (!LAN || req.method !== 'GET' || u.searchParams.get('k') !== VIEW_KEY) return send(res, 403, { ok: false, error: 'view only' });
@@ -677,7 +680,9 @@ function serve(source) {
       `진행판: http://127.0.0.1:${PORT}/  (${source.mode === 'demo' ? '시연' : '실전'} · 카톡 방 ${ROOM ? '등록됨' : '미등록 — 보내기 비활성'})\n`,
     );
     if (LAN) {
-      for (const ip of lanIps) process.stdout.write(`송출 노트북(보기 전용): http://${ip}:${PORT}/?k=${VIEW_KEY}\n`);
+      const ips = lanIps();
+      if (!ips.length) process.stdout.write('⚠ 지금 잡힌 망 주소가 없습니다 — 테더링·와이파이에 붙은 뒤 `ipconfig` 의 IPv4 주소로 http://<주소>:' + PORT + '/?k=' + VIEW_KEY + ' 를 여세요.\n');
+      for (const ip of ips) process.stdout.write(`송출 노트북(보기 전용): http://${ip}:${PORT}/?k=${VIEW_KEY}\n`);
     }
   });
   return server;
@@ -797,6 +802,8 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude,#s
   let sgDirty = false;
   let last = null, timer = null, previewDirty = false, exDirty = false, autoTimer = null, autoNext = 0, armedUntil = 0;
   let ballot = new URLSearchParams(location.search).get('ballot') || ls.get('chase.ballot') || '';
+  // 보기 전용 주소(?k=)면 첫 응답 전부터 운영 칸을 숨긴다(응답이 실패해도 보이지 않게).
+  if (new URLSearchParams(location.search).get('k')) $('ops').style.display = 'none';
   $('every').value = ls.get('chase.every') || '3000';
 
   function presentFor(id, roster) {
@@ -815,6 +822,7 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude,#s
   async function tick() {
     try {
       const r = await fetch('/api/state?' + q(), { cache: 'no-store' });
+      if (!r.ok) throw new Error('http ' + r.status);
       const s = await r.json();
       render(s);
     } catch (e) {
@@ -847,7 +855,7 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude,#s
     if (s.viewOnly) {
       // 송출 노트북 — 투표지·마감은 운영 PC를 따른다. 카톡·명단 조작은 운영 PC에서만.
       $('ops').style.display = 'none';
-      sel.disabled = true; $('deadline').disabled = true; $('present').disabled = true;
+      sel.disabled = true; $('deadline').disabled = true;
       $('deadline').value = s.deadline || '';
     }
     const b = s.board;
