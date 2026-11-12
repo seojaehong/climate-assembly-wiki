@@ -213,13 +213,21 @@ export const COUNTDOWN_SEC = 10;
 
 export type TimeCue =
   | { kind: 'none' }
-  | { kind: 'notice'; sec: number; text: string }
+  | { kind: 'notice'; sec: number; text: string; sub: string }
   | { kind: 'count'; n: number }
   | { kind: 'ended'; text: string };
 
 function markText(sec: number): string {
   return `남은 시간 ${sec >= 60 ? `${sec / 60}분` : `${sec}초`}`;
 }
+
+/** 알림 띠 둘째 줄 — 투표 독려(11/12 줌 회의: 5·3·1분 안내 + 손 들면 도우미 투입, 제출 안 누르면 기권). */
+export const CUE_SUB: Record<number, string> = {
+  300: '아직 제출하지 않으셨다면 지금 투표해 주세요',
+  180: '어려우시면 손을 들어 주세요 — 도우미가 갑니다',
+  60: '마지막 카드까지 고르고 [제출]을 꼭 눌러 주세요',
+  30: '[제출]을 누르셔야 투표가 인정됩니다',
+};
 
 /**
  * 진행 화면의 알림 — 타이머 상태만으로 정한다(「이미 띄웠음」 같은 기억을 두지 않는다).
@@ -240,7 +248,7 @@ export function timeCue(t: TimerState, now: number, status: string): TimeCue {
   for (const sec of CUE_MARKS_SEC) {
     const mark = sec * 1000;
     if (t.pausedRemainingMs > mark && remaining <= mark && remaining > mark - CUE_SHOW_MS) {
-      return { kind: 'notice', sec, text: markText(sec) };
+      return { kind: 'notice', sec, text: markText(sec), sub: CUE_SUB[sec] ?? '' };
     }
   }
   return { kind: 'none' };

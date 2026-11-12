@@ -39,7 +39,9 @@ const DEMO = has('--demo');
 const ROOM = (arg('--room') ?? '').trim();
 const PORT = Number(arg('--port') ?? 8766);
 const KAKAO_BASE = (process.env.CHASE_KAKAO_BASE ?? 'http://127.0.0.1:8755').replace(/\/$/, '');
-const DEMO_ROOM_OK = 'self-inbox'; // 시연 문구는 본인방 시험 값으로만 보낸다
+// 시연 문구는 본인방으로만 보낸다. 카톡 로컬 API 는 방 이름이 아니라 고정 번호를 받는다(본컴 「나와의 채팅」 = 2, 11/12 실측)
+// — 본인방 번호는 CHASE_SELF_ROOM 으로 준다(저장소에 적지 않는다).
+const DEMO_ROOM_OK = process.env.CHASE_SELF_ROOM?.trim() || 'self-inbox';
 
 function die(msg, code = 2) {
   process.stderr.write(`\n✗ ${msg}\n`);
@@ -398,13 +400,15 @@ async function kakaoPost(path, body, key, timeoutMs) {
       body: JSON.stringify(body),
       signal: ctl.signal,
     });
-    let json = null;
+    let env = null;
     try {
-      json = JSON.parse(await res.text());
+      env = JSON.parse(await res.text());
     } catch {
-      json = null;
+      env = null;
     }
-    return { http: res.status, ok: res.ok, json };
+    // 카톡 로컬 API 봉투 = { ok: true, data: {...} } / 실패 { ok: false, error: { code } } (kakao_client.request 와 같은 해석, 11/12 실측)
+    const good = res.ok && env?.ok === true && env?.data && typeof env.data === 'object';
+    return { http: res.status, ok: !!good, json: good ? env.data : { code: env?.error?.code ?? 'request_rejected' } };
   } finally {
     clearTimeout(timer);
   }
