@@ -16,7 +16,8 @@
  * 제외 목록 · 전송 기록은 저장소 안 .tmp-chase/(스스로 .gitignore 를 둔다, 실명이 들어간다).
  * 카톡 전송은 로컬 kakao-reader API(127.0.0.1:8755)의 outbox 준비 → 발송 두 단계. 재시도하지 않는다.
  */
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
+import { networkInterfaces } from 'node:os';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, join, resolve } from 'node:path';
@@ -505,8 +506,18 @@ function serve(source) {
     return c.inflight;
   }
 
-  async function stateFor(params) {
-    const out = { ok: true, mode: source.mode, at: new Date().toISOString(), roomReady: !!ROOM, demoRoomOnly: DEMO ? DEMO_ROOM_OK : null };
+  // LAN 보기 전용 — 다른 노트북이 따라 보도록 이 PC(운영자)가 마지막으로 고른 투표지 · 마감 시각을 기억한다.
+  const lastLocal = { ballot: '', deadline: '' };
+  async function stateFor(params, viewOnly = false) {
+    if (viewOnly) {
+      params = new URLSearchParams(params);
+      if (lastLocal.ballot) params.set('ballot', lastLocal.ballot);
+      if (lastLocal.deadline) params.set('deadline', lastLocal.deadline);
+    } else {
+      lastLocal.ballot = params.get('ballot') || lastLocal.ballot;
+      lastLocal.deadline = params.get('deadline') ?? lastLocal.deadline;
+    }
+    const out = { ok: true, mode: source.mode, at: new Date().toISOString(), roomReady: !!ROOM, demoRoomOnly: DEMO ? DEMO_ROOM_OK : null, viewOnly, deadline: params.get('deadline') || '' };
     let ballots = [];
     try {
       ballots = await source.ballots();
@@ -519,7 +530,8 @@ function serve(source) {
     const known = !ballots.length || ballots.some((b) => b.id === asked);
     const ballotId = (asked && known ? asked : '') || ballots.find((b) => b.status === 'open')?.id || ballots[0]?.id || '';
     out.ballotId = ballotId;
-    out.exclude = settings.exclude;
+    if (!viewOnly && ballotId) lastLocal.ballot = ballotId;
+    out.exclude = viewOnly ? [] : settings.exclude;
     out.signed = settings.signed;
     if (!ballotId) return out;
     const c = await fetchBoard(ballotId);
@@ -537,6 +549,18 @@ function serve(source) {
 
   const allowedHosts = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`]);
   const allowedOrigins = new Set([`http://127.0.0.1:${PORT}`, `http://localhost:${PORT}`]);
+  // --lan: 같은 망(테더링·현장 와이파이)의 다른 노트북이 보기 전용으로 연다. 열쇠(k)가 주소에 있어야 하고 GET 만 받는다.
+  // 카톡 보내기 · 서명 명단 · 제외 저장은 이 PC(127.0.0.1)에서만.
+  const LAN = has('--lan');
+  const VIEW_KEY = (arg('--view-key') ?? randomBytes(4).toString('hex')).trim();
+  const lanIps = LAN
+    ? Object.values(networkInterfaces())
+        .flat()
+        .filter((n) => n && n.family === 'IPv4' && !n.internal)
+        .map((n) => n.address)
+    : [];
+  for (const ip of lanIps) allowedHosts.add(`${ip}:${PORT}`);
+  const isLocalReq = (req) => ['127.0.0.1', '::1', '::ffff:127.0.0.1'].includes(req.socket.remoteAddress ?? '');
 
   function send(res, code, body, type = 'application/json; charset=utf-8') {
     res.writeHead(code, {
@@ -586,6 +610,14 @@ function serve(source) {
     try {
       if (!allowedHosts.has(req.headers.host ?? '')) return send(res, 403, { ok: false, error: 'host' });
       const u = new URL(req.url ?? '/', `http://${req.headers.host}`);
+      const local = isLocalReq(req);
+      if (!local) {
+        // 다른 노트북 — 보기 전용(GET · 열쇠 일치)만.
+        if (!LAN || req.method !== 'GET' || u.searchParams.get('k') !== VIEW_KEY) return send(res, 403, { ok: false, error: 'view only' });
+        if (u.pathname === '/') return send(res, 200, PAGE_HTML, 'text/html; charset=utf-8');
+        if (u.pathname === '/api/state') return send(res, 200, await stateFor(u.searchParams, true));
+        return send(res, 404, { ok: false, error: 'not found' });
+      }
       if (req.method === 'GET' && u.pathname === '/') return send(res, 200, PAGE_HTML, 'text/html; charset=utf-8');
       if (req.method === 'GET' && u.pathname === '/api/state') return send(res, 200, await stateFor(u.searchParams));
       if (req.method === 'POST') {
@@ -640,10 +672,13 @@ function serve(source) {
       return send(res, 500, { ok: false, error: String(e.message ?? e).slice(0, 200) });
     }
   });
-  server.listen(PORT, '127.0.0.1', () => {
+  server.listen(PORT, LAN ? '0.0.0.0' : '127.0.0.1', () => {
     process.stdout.write(
       `진행판: http://127.0.0.1:${PORT}/  (${source.mode === 'demo' ? '시연' : '실전'} · 카톡 방 ${ROOM ? '등록됨' : '미등록 — 보내기 비활성'})\n`,
     );
+    if (LAN) {
+      for (const ip of lanIps) process.stdout.write(`송출 노트북(보기 전용): http://${ip}:${PORT}/?k=${VIEW_KEY}\n`);
+    }
   });
   return server;
 }
@@ -730,7 +765,7 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude,#s
   <div class="cols">
     <div id="checks" class="checks" style="display:none"></div>
     <section><h2>분과·조별 진행</h2><div id="groups"></div></section>
-    <section>
+    <section id="ops">
       <h2>카톡 독려</h2>
       <div class="row"><span id="room" class="badge"></span><span id="sendStatus" class="muted"></span></div>
       <textarea id="preview" spellcheck="false"></textarea>
@@ -773,6 +808,8 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude,#s
     if (ballot) p.set('ballot', ballot);
     const d = $('deadline').value.trim();
     if (d) p.set('deadline', d);
+    const k = new URLSearchParams(location.search).get('k');
+    if (k) p.set('k', k);
     return p.toString();
   }
   async function tick() {
@@ -805,8 +842,14 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude,#s
     }
     if (s.ballotId && sel.value !== s.ballotId) sel.value = s.ballotId;
     if (s.ballotId && ballot !== s.ballotId) { ballot = s.ballotId; ls.set('chase.ballot', ballot); }
-    $('mode').textContent = s.mode === 'demo' ? '시연 모드' : '실전';
+    $('mode').textContent = (s.mode === 'demo' ? '시연 모드' : '실전') + (s.viewOnly ? ' · 보기 전용(송출)' : '');
     $('mode').className = 'badge ' + (s.mode === 'demo' ? 'warn' : 'ok');
+    if (s.viewOnly) {
+      // 송출 노트북 — 투표지·마감은 운영 PC를 따른다. 카톡·명단 조작은 운영 PC에서만.
+      $('ops').style.display = 'none';
+      sel.disabled = true; $('deadline').disabled = true; $('present').disabled = true;
+      $('deadline').value = s.deadline || '';
+    }
     const b = s.board;
     // 배너
     const ban = $('banners'); ban.replaceChildren();
