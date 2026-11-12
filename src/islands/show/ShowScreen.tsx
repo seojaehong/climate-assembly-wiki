@@ -379,25 +379,26 @@ function DemoTag() {
 // ── 남은 시간 알림 · 10초 카운트다운 · 종료(시안 색 · 글꼴 안에서) ─────────────────
 
 /** 제목과 수 사이 빈자리에 띄우는 띠 — 5분 · 3분 · 1분 · 30초(주황, 잠깐 크게 떴다 줄어듦) · 종료(주황 테두리, 계속). */
-function CueBand({ cue, small = false, hideSub = false }: { cue: TimeCue; small?: boolean; hideSub?: boolean }) {
+function CueBand({ cue, small = false }: { cue: TimeCue; small?: boolean }) {
   const f = small ? 0.84 : 1; // 실시간 순환 · 영상 화면은 조금 작게(빈자리가 좁다)
   if (cue.kind === 'notice') {
     return (
-      <div
+      <p
         key={cue.sec}
         data-testid="show-cue"
         data-kind="notice"
         data-sec={cue.sec}
         className="show-cue-in"
-        style={{ margin: 0, flex: 'none', background: C.orange, color: '#0B1A2A', padding: '8px 52px 12px', borderRadius: 16, textAlign: 'center' }}
+        style={{ margin: 0, flex: 'none', background: C.orange, color: '#0B1A2A', fontSize: 76 * f, fontWeight: 900, lineHeight: 1.15, padding: '8px 52px', borderRadius: 16, whiteSpace: 'nowrap' }}
       >
-        <p style={{ margin: 0, fontSize: 76 * f, fontWeight: 900, lineHeight: 1.15, whiteSpace: 'nowrap' }}>{cue.text}</p>
-        {cue.sub && !hideSub ? (
-          <p data-testid="show-cue-sub" style={{ margin: 0, fontSize: 40 * f, fontWeight: 800, lineHeight: 1.25, whiteSpace: 'nowrap' }}>
+        {cue.text}
+        {/* 독려 문구 — 같은 줄 오른쪽에 작게(띠 높이는 그대로, 11/12 줌 회의 5·3·1분 독려) */}
+        {cue.sub ? (
+          <span data-testid="show-cue-sub" style={{ fontSize: 44 * f, fontWeight: 800, marginLeft: 28 * f }}>
             {cue.sub}
-          </p>
+          </span>
         ) : null}
-      </div>
+      </p>
     );
   }
   if (cue.kind === 'ended') {
@@ -418,25 +419,10 @@ function CueBand({ cue, small = false, hideSub = false }: { cue: TimeCue; small?
 /** 실시간 순환 · 영상 화면 — 띠를 칸 위(top) 또는 아래(bottom) 가운데에 겹쳐 띄운다. */
 function CueFloat({ cue, at }: { cue: TimeCue; at: 'top' | 'bottom' }) {
   if (cue.kind !== 'notice' && cue.kind !== 'ended') return null;
-  // 위에 뜨는 띠(실시간 순환)는 비워 둔 83px 안에 한 줄만 — 독려 둘째 줄은 아래쪽 따로(SubFloat).
   return (
-    <>
-      <div style={{ position: 'absolute', left: 0, right: 0, [at]: at === 'top' ? 12 : 28, display: 'flex', justifyContent: 'center', zIndex: 3, pointerEvents: 'none' }}>
-        <CueBand cue={cue} small hideSub={at === 'top'} />
-      </div>
-      {at === 'top' && cue.kind === 'notice' && cue.sub ? (
-        <div style={{ position: 'absolute', left: 0, right: 0, bottom: 4, display: 'flex', justifyContent: 'center', zIndex: 3, pointerEvents: 'none' }}>
-          <p
-            key={cue.sec}
-            data-testid="show-cue-sub"
-            className="show-cue-in"
-            style={{ margin: 0, background: C.orange, color: '#0B1A2A', fontSize: 34, fontWeight: 800, lineHeight: 1.2, padding: '6px 36px', borderRadius: 12, whiteSpace: 'nowrap' }}
-          >
-            {cue.sub}
-          </p>
-        </div>
-      ) : null}
-    </>
+    <div style={{ position: 'absolute', left: 0, right: 0, [at]: at === 'top' ? 12 : 28, display: 'flex', justifyContent: 'center', zIndex: 3, pointerEvents: 'none' }}>
+      <CueBand cue={cue} small />
+    </div>
   );
 }
 

@@ -358,7 +358,7 @@ describe('timeCue — 남은 시간 알림 · 10초 카운트다운 · 종료', 
   const atRemaining = (t: ReturnType<typeof run>, ms: number) => (t.runningSince ?? 0) + (t.pausedRemainingMs - ms);
   it('5:00 정확히 → 「남은 시간 5분」, 4:59 → 그대로, 6초 뒤 사라짐, 5:01 → 없음', () => {
     const t = run(1000);
-    expect(timeCue(t, atRemaining(t, 300_000), 'open')).toEqual({ kind: 'notice', sec: 300, text: '남은 시간 5분', sub: '아직 제출하지 않으셨다면 지금 투표해 주세요' });
+    expect(timeCue(t, atRemaining(t, 300_000), 'open')).toEqual({ kind: 'notice', sec: 300, text: '남은 시간 5분', sub: '지금 투표해 주세요' });
     expect(timeCue(t, atRemaining(t, 299_000), 'open').kind).toBe('notice');
     expect(timeCue(t, atRemaining(t, 294_000), 'open').kind).toBe('none');
     expect(timeCue(t, atRemaining(t, 301_000), 'open').kind).toBe('none');
