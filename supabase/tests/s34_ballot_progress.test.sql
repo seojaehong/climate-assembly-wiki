@@ -140,6 +140,45 @@ begin
 end $t$;
 reset role;
 
+-- 진행 ∪ 응답이 같은 사람(11/14 제출자 전원의 꼴): 가나다 진행 {1,3} 뒤 제출 → 두 번 세지 않는다
+insert into climate_vote.ballot_response (ballot_id, client_id, answers, org_id, voter_team, voter_name, voter_name_norm, voter_in_roster) values
+ ('34000000-0000-0000-0000-000000000001', 'dev-ganada-01',
+  '{"34000000-0000-0000-0000-0000000000a1":2,"34000000-0000-0000-0000-0000000000a2":2,"34000000-0000-0000-0000-0000000000a3":1}',
+  '91200000-0000-0000-0000-000000000001', '1조', '가나다', climate_vote.voter_name_norm('가나다'), true);
+set role anon;
+do $t$
+declare b jsonb; it jsonb; x jsonb;
+begin
+  b := climate_vote.ballot_progress_board(repeat('a',64), '34000000-0000-0000-0000-000000000001');
+  it := b->'items';
+  -- 1: 가나다·라마바·사아자 3 / 2: 손님·라마바·사아자·가나다 4 / 3: 가나다·라마바·사아자 3
+  if (it->0->>'answered')::int <> 3 or (it->1->>'answered')::int <> 4 or (it->2->>'answered')::int <> 3 then
+    raise exception 'FAIL: overlap per-item %', it; end if;
+  select e into x from jsonb_array_elements(b->'voters') e where e->>'name'='가나다';
+  if (x->>'answered_count')::int <> 3 or not (x->>'submitted')::boolean then raise exception 'FAIL: overlap ganada %', x; end if;
+  if (b->>'started')::int <> 5 or (b->>'submitted')::int <> 3 then raise exception 'FAIL: overlap started/submitted %/%', b->>'started', b->>'submitted'; end if;
+  raise notice 'PASS overlap';
+end $t$;
+reset role;
+
+-- 실명 수집 꺼짐 → 이름을 남기지 않는다(무시 ok)
+update climate_vote.session set config = jsonb_set(coalesce(config,'{}'::jsonb), '{named_vote}', '{"collect": false}')
+ where id = '91200000-0000-0000-0000-000000000003';
+set role anon;
+do $t$
+declare r jsonb;
+begin
+  r := climate_vote.ballot_progress_named(repeat('c',32), 'dev-chakata1', '2조', '차카타', 1);
+  if r->>'ignored' is distinct from 'named_off' then raise exception 'FAIL: named off not ignored %', r; end if;
+  raise notice 'PASS named_off';
+end $t$;
+reset role;
+do $t$
+begin
+  if exists(select 1 from climate_vote.ballot_progress where voter_name='차카타') then raise exception 'FAIL: named off row written'; end if;
+end $t$;
+update climate_vote.session set config = config - 'named_vote' where id = '91200000-0000-0000-0000-000000000003';
+
 -- 마감 투표지 → 기록 안 함
 update climate_vote.ballot set status='closed' where id='34000000-0000-0000-0000-000000000001';
 set role anon;
@@ -170,6 +209,37 @@ begin
   raise notice 'PASS grants';
 end $t$;
 
+-- 규모: 명단 200 · 문항 28 · 진행 150 · 제출 50 에서 보드 1회 시간(3~5초 폴링 대상)
+insert into climate_vote.ballot (id, session_id, org_id, title, status, token)
+values ('34000000-0000-0000-0000-000000000002', '91200000-0000-0000-0000-000000000003',
+        '91200000-0000-0000-0000-000000000001', '규모 시험', 'open', repeat('d', 32));
+insert into climate_vote.ballot_item (ballot_id, ordinal, statement, scale, required)
+select '34000000-0000-0000-0000-000000000002', g, '규모 권고안 ' || g, 2, true from generate_series(1,28) g;
+insert into climate_vote.ballot_roster (session_id, subgroup, team_label, no, name)
+select '91200000-0000-0000-0000-000000000003', '전체', ((g-1)/10+1) || '조규모', g, '규모사람' || g from generate_series(1,200) g;
+insert into climate_vote.ballot_progress (ballot_id, client_id, voter_team, voter_name, voter_name_norm, answered, last_ordinal)
+select '34000000-0000-0000-0000-000000000002', 'dev-scale-' || lpad(g::text,4,'0'), ((g-1)/10+1) || '조규모', '규모사람' || g,
+       climate_vote.voter_name_norm('규모사람' || g), array(select generate_series(1, 1 + g % 28)), 1 + g % 28
+  from generate_series(1,150) g;
+insert into climate_vote.ballot_response (ballot_id, client_id, answers, org_id, voter_team, voter_name, voter_name_norm, voter_in_roster)
+select '34000000-0000-0000-0000-000000000002', 'dev-scale-' || lpad(g::text,4,'0'),
+       (select jsonb_object_agg(bi.id::text, 2) from climate_vote.ballot_item bi where bi.ballot_id='34000000-0000-0000-0000-000000000002'),
+       '91200000-0000-0000-0000-000000000001', ((g-1)/10+1) || '조규모', '규모사람' || g, climate_vote.voter_name_norm('규모사람' || g), true
+  from generate_series(101,150) g;
+do $t$
+declare t0 timestamptz; b jsonb; ms numeric; i int;
+begin
+  perform climate_vote.ballot_progress_board(repeat('a',64), '34000000-0000-0000-0000-000000000002');
+  t0 := clock_timestamp();
+  for i in 1..5 loop
+    b := climate_vote.ballot_progress_board(repeat('a',64), '34000000-0000-0000-0000-000000000002');
+  end loop;
+  ms := extract(epoch from clock_timestamp() - t0) * 1000 / 5;
+  raise notice 'SCALE board avg % ms · voters % · submitted % · roster %', round(ms,1),
+    jsonb_array_length(b->'voters'), b->>'submitted', b->>'roster_count';
+  if (b->>'submitted')::int <> 50 or (b->'items'->27->>'answered')::int < 50 then raise exception 'FAIL: scale counts %', b->'items'->27; end if;
+end $t$;
+
 -- 정리
-delete from climate_vote.ballot_progress where ballot_id='34000000-0000-0000-0000-000000000001';
+delete from climate_vote.ballot_progress where ballot_id in ('34000000-0000-0000-0000-000000000001','34000000-0000-0000-0000-000000000002');
 \echo S34_TEST_DONE

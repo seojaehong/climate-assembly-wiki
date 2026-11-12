@@ -68,6 +68,10 @@ begin
      where bi.ballot_id=v_ballot.id and bi.ordinal=p_ordinal) then
     raise exception 'ballot item ordinal out of range';
   end if;
+  -- 실명 수집이 꺼진 세션이면 이름을 남기지 않는다(ballot_submit_named 의 'named voting off' 와 같은 조건, 여기선 무시).
+  if not coalesce((climate_vote.session_named_vote(v_ballot.session_id)->>'collect')::boolean, true) then
+    return jsonb_build_object('ok',true,'ignored','named_off');
+  end if;
   -- 이미 낸 사람(같은 조·이름) 또는 이미 낸 기기 — 진행 기록은 더 쌓지 않는다.
   if exists(select 1 from climate_vote.ballot_response br
      where br.ballot_id=v_ballot.id
@@ -159,6 +163,8 @@ begin
       from climate_vote.ballot_response br
       join climate_vote.ballot_item bi on bi.ballot_id=br.ballot_id and br.answers ? bi.id::text
      where br.ballot_id=v_ballot.id),
+  per_person as (select team, norm, count(*)::int as n from pairs group by team, norm),
+  per_item as (select ord, count(*)::int as n from pairs group by ord),
   people as (
     (select team, norm from ros
      union select team, norm from st
@@ -170,14 +176,15 @@ begin
            coalesce(ros.name, rs.name, pg.name, st.name) as name,
            (ros.norm is not null) as in_roster,
            st.started_at,
-           (select count(distinct pa.ord) from pairs pa where pa.team=pe.team and pa.norm=pe.norm)::int as answered_count,
+           coalesce(pp.n,0) as answered_count,
            pg.last_ordinal, pg.updated_at,
            (rs.norm is not null) as submitted, rs.submitted_at
       from people pe
       left join ros on ros.team=pe.team and ros.norm=pe.norm
       left join st  on st.team=pe.team and st.norm=pe.norm
       left join pg  on pg.team=pe.team and pg.norm=pe.norm
-      left join rs  on rs.team=pe.team and rs.norm=pe.norm)
+      left join rs  on rs.team=pe.team and rs.norm=pe.norm
+      left join per_person pp on pp.team=pe.team and pp.norm=pe.norm)
   select jsonb_build_object(
     'id',v_ballot.id,'title',v_ballot.title,'status',v_ballot.status,
     'item_count',(select count(*) from climate_vote.ballot_item bi where bi.ballot_id=v_ballot.id),
@@ -186,9 +193,10 @@ begin
     'items',(select coalesce(jsonb_agg(jsonb_build_object(
         'ordinal',bi.ordinal,
         'statement_head',left(bi.statement,40),
-        'answered',(select count(*) from pairs pa where pa.ord=bi.ordinal))
+        'answered',coalesce(pi.n,0))
         order by bi.ordinal),'[]'::jsonb)
-      from climate_vote.ballot_item bi where bi.ballot_id=v_ballot.id),
+      from climate_vote.ballot_item bi left join per_item pi on pi.ord=bi.ordinal
+     where bi.ballot_id=v_ballot.id),
     'voters',(select coalesce(jsonb_agg(jsonb_build_object(
         'team',v.team,'name',v.name,'in_roster',v.in_roster,
         'started_at',v.started_at,'answered_count',v.answered_count,
