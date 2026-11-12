@@ -5,7 +5,7 @@
  * /show?t=<토큰1>,<토큰2>,<토큰3>&present=..  의결 결과 종합(70건 한 화면)
  *
  * present= 가 양의 정수가 아니면 빨간 안내를 띄우고 가결 기준 · 판정을 숨긴다(명단 수로 조용히 바꾸지 않는다).
- *   진행 · 실시간 화면의 참여율은 그때 명단 기준이라고 적는다. motion=0 = 애니메이션 끔(저사양 노트북).
+ *   진행 · 실시간 화면의 완료율(제출 ÷ 참석)은 그때 명단 기준이라고 적는다. motion=0 = 애니메이션 끔(저사양 노트북).
  * 키: Space(또는 프레젠터 F5 · Shift+F5) 시작/일시정지 — 타이머가 보이는 화면(진행 · 영상 · 실시간)에서만 ·
  *     Shift+R 처음으로 · ↑/↓ ±1분 · 1/2/3 화면 전환. 타이머는 기기에 저장돼 새로고침에도 이어진다.
  *     PageDown/PageUp(프레젠터) = 진행 → 실시간 → 영상 차례로(결과 화면 2·3 에는 가지 않고, 2·3 에서는 무시).
@@ -492,6 +492,7 @@ function LiveView({
   const closed = clock.ended;
   const running = timer.runningSince != null && !timeUp;
   const rate = participationPct(live.submitted, denom.n);
+  const progressRate = turnoutPct(live.started, denom.n);
   const timeFrac = timer.durationMs > 0 ? Math.min(1, remaining / timer.durationMs) : 0;
   const status = statusText(live.status, timeUp);
   return (
@@ -538,7 +539,8 @@ function LiveView({
                 / {denom.label}
               </span>
             </p>
-            <p style={{ margin: '14px 0 0', fontSize: 28, color: C.muted, display: 'flex', gap: 28 }}>
+            {/* 진행률 = 투표 시작 ÷ 참석(들어온 사람) · 완료율 = 제출 ÷ 참석([제출]까지 누른 사람) */}
+            <p style={{ margin: '14px 0 0', fontSize: 28, color: C.muted, display: 'flex', gap: 24, whiteSpace: 'nowrap' }}>
               <span>
                 투표 시작{' '}
                 <b data-testid="show-started" className="tr-num" style={{ color: C.text, fontSize: 40 }}>
@@ -547,11 +549,18 @@ function LiveView({
                 명
               </span>
               <span>
-                {denom.byRoster ? '참여율(명단 기준)' : '참여율'}{' '}
-                <b data-testid="show-rate" className="tr-num" style={{ color: C.text, fontSize: 40 }}>
+                진행률{' '}
+                <b data-testid="show-progress-rate" className="tr-num" style={{ color: C.orange, fontSize: 40 }}>
+                  {progressRate}%
+                </b>
+              </span>
+              <span>
+                완료율{' '}
+                <b data-testid="show-rate" className="tr-num" style={{ color: C.blue, fontSize: 40 }}>
                   {rate}%
                 </b>
               </span>
+              {denom.byRoster ? <span style={{ fontSize: 22 }}>(명단 기준)</span> : null}
             </p>
           </div>
         </div>
@@ -939,14 +948,15 @@ function Ring({ pct, size }: { pct: number; size: number }) {
   );
 }
 
-function OverallPanel({ agendas, denom }: { agendas: LiveAgenda[]; denom: Denom }) {
+function OverallPanel({ agendas, denom, compact = false }: { agendas: LiveAgenda[]; denom: Denom; compact?: boolean }) {
   const o = overallTurnout(
     agendas.map((a) => a.live),
     denom.n,
   );
-  const size = 600;
+  // compact = 오른쪽에 QR 이 붙은 판(의제 하나 실시간) — 고리를 줄여 왼쪽 칸 안에 든다.
+  const size = compact ? 500 : 600;
   return (
-    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 110 }}>
+    <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: compact ? 64 : 110 }}>
       <div style={{ position: 'relative', width: size, height: size }}>
         <Ring pct={o.pct} size={size} />
         <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
@@ -956,8 +966,8 @@ function OverallPanel({ agendas, denom }: { agendas: LiveAgenda[]; denom: Denom 
           </span>
         </div>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 44, minWidth: 560 }}>
-        <p style={{ margin: 0, fontSize: 64, fontWeight: 900 }}>전체 투표율{denom.byRoster ? <span style={{ fontSize: 34, color: C.muted }}> (명단 기준)</span> : null}</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 44, minWidth: compact ? 0 : 560 }}>
+        <p style={{ margin: 0, fontSize: 64, fontWeight: 900 }}>전체 완료율{denom.byRoster ? <span style={{ fontSize: 34, color: C.muted }}> (명단 기준)</span> : null}</p>
         <div style={{ borderTop: `6px solid ${C.blue}`, paddingTop: 14 }}>
           <p style={{ margin: 0, fontSize: 32, fontWeight: 700, color: C.blue }}>제출 완료</p>
           <p className="tr-num" style={{ margin: 0, display: 'flex', alignItems: 'baseline', gap: 16, lineHeight: 1.05 }}>
@@ -984,7 +994,7 @@ function OverallPanel({ agendas, denom }: { agendas: LiveAgenda[]; denom: Denom 
 function AgendasPanel({ agendas, denom }: { agendas: LiveAgenda[]; denom: Denom }) {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 30, padding: '0 20px' }}>
-      <p style={{ margin: 0, fontSize: 52, fontWeight: 900 }}>의제별 투표율{denom.byRoster ? <span style={{ fontSize: 30, color: C.muted }}> (명단 기준)</span> : null}</p>
+      <p style={{ margin: 0, fontSize: 52, fontWeight: 900 }}>의제별 완료율{denom.byRoster ? <span style={{ fontSize: 30, color: C.muted }}> (명단 기준)</span> : null}</p>
       {agendas.map((a) => {
         const b = turnoutBar(a.live.submitted, a.live.started, denom.n);
         const pct = turnoutPct(a.live.submitted, denom.n);
@@ -1027,9 +1037,20 @@ function AgendasPanel({ agendas, denom }: { agendas: LiveAgenda[]; denom: Denom 
   );
 }
 
-function SinglePanel({ agenda, denom, clock }: { agenda: LiveAgenda; denom: Denom; clock: { text: string; closed: boolean } | null }) {
+function SinglePanel({
+  agenda,
+  denom,
+  clock,
+  compact = false,
+}: {
+  agenda: LiveAgenda;
+  denom: Denom;
+  clock: { text: string; closed: boolean } | null;
+  compact?: boolean;
+}) {
   const pct = turnoutPct(agenda.live.submitted, denom.n);
-  const cell = (label: string, color: string, value: React.ReactNode, unit: string, testid?: string, size = 170) => (
+  const big = compact ? 132 : 170;
+  const cell = (label: string, color: string, value: React.ReactNode, unit: string, testid?: string, size = big) => (
     <div style={{ flex: 1, borderTop: `8px solid ${color}`, paddingTop: 18 }}>
       <p style={{ margin: 0, fontSize: 38, fontWeight: 700, color: color === C.text ? C.muted : color }}>{label}</p>
       <p className="tr-num" style={{ margin: '6px 0 0', lineHeight: 1, whiteSpace: 'nowrap' }}>
@@ -1045,16 +1066,17 @@ function SinglePanel({ agenda, denom, clock }: { agenda: LiveAgenda; denom: Deno
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 56, padding: '83px 20px 0' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
         <AgendaBadge no={agenda.no} />
-        <span style={{ ...KEEP, fontSize: 52, fontWeight: 900 }}>{agenda.no ? AGENDA_NAMES[agenda.no] : agenda.live.title}</span>
+        <span style={{ ...KEEP, fontSize: compact ? 44 : 52, fontWeight: 900 }}>{agenda.no ? AGENDA_NAMES[agenda.no] : agenda.live.title}</span>
       </div>
-      <div style={{ display: 'flex', gap: 56 }}>
+      <div style={{ display: 'flex', gap: compact ? 40 : 56 }}>
         {cell('제출 완료', C.blue, agenda.live.submitted, `/ ${denom.byRoster ? denom.label : `${denom.n}명`}`, 'rot-single-submitted')}
-        {cell(denom.byRoster ? '투표율(명단 기준)' : '투표율', C.blue, pct, '%')}
+        {cell(denom.byRoster ? '완료율(명단 기준)' : '완료율', C.blue, pct, '%', 'rot-single-rate')}
+        {cell('진행률', C.orange, turnoutPct(agenda.live.started, denom.n), '%', 'rot-single-progress')}
       </div>
-      <div style={{ display: 'flex', gap: 56 }}>
+      <div style={{ display: 'flex', gap: compact ? 40 : 56 }}>
         {cell('투표 시작', C.orange, agenda.live.started, '명')}
         {cell('지금 투표 중', C.text, agenda.live.in_progress, '명')}
-        {clock ? cell('남은 투표 시간', clock.closed ? C.orange : C.text, clock.text, '', 'rot-single-clock', clock.closed && clock.text.length > 2 ? 96 : 170) : null}
+        {clock ? cell('남은 투표 시간', clock.closed ? C.orange : C.text, clock.text, '', 'rot-single-clock', clock.closed && clock.text.length > 2 ? 96 : big) : null}
       </div>
     </div>
   );
@@ -1067,6 +1089,7 @@ function RotateView({
   index,
   clock,
   cue = { kind: 'none' },
+  qr = null,
 }: {
   agendas: LiveAgenda[];
   denom: Denom;
@@ -1075,21 +1098,37 @@ function RotateView({
   clock: { text: string; closed: boolean } | null;
   /** 의제 하나 주소의 남은 시간 알림(종합 주소는 타이머가 없어 none). 판이 넘어가도 그대로 위에 뜬다. */
   cue?: TimeCue;
+  /** 의제 하나 주소 — QR 을 오른쪽에 늘 두고 왼쪽 판만 넘긴다(진행 화면과 같은 자리 · 크기). */
+  qr?: { token: string; visible: boolean } | null;
 }) {
   const panel = panels[index] ?? 'overall';
-  return (
-    <div style={{ flex: 1, minHeight: 0, display: 'flex', padding: '30px 72px', position: 'relative' }}>
+  const compact = qr != null;
+  const panels_ = (
+    <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', position: 'relative' }}>
       <div key={`${panel}-${index}`} data-testid={`rot-panel-${panel}`} className="show-panel-in" style={{ flex: 1, display: 'flex', minHeight: 0 }}>
         {panel === 'overall' ? (
-          <OverallPanel agendas={agendas} denom={denom} />
+          <OverallPanel agendas={agendas} denom={denom} compact={compact} />
         ) : panel === 'agendas' ? (
           <AgendasPanel agendas={agendas} denom={denom} />
         ) : agendas[0] ? (
-          <SinglePanel agenda={agendas[0]} denom={denom} clock={clock} />
+          <SinglePanel agenda={agendas[0]} denom={denom} clock={clock} compact={compact} />
         ) : null}
       </div>
       <CueFloat cue={cue} at="top" />
       {cue.kind === 'count' ? <CountdownCover n={cue.n} /> : null}
+    </div>
+  );
+  if (qr) {
+    return (
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', padding: '44px 72px 36px', gap: 72 }}>
+        {panels_}
+        <QrCard token={qr.token} visible={qr.visible} />
+      </div>
+    );
+  }
+  return (
+    <div style={{ flex: 1, minHeight: 0, display: 'flex', padding: '30px 72px', position: 'relative' }}>
+      {panels_}
     </div>
   );
 }
@@ -1444,6 +1483,7 @@ function SingleShow({
         index={rot.index}
         clock={c ? { text: c.text, closed: c.ended } : null}
         cue={cue}
+        qr={{ token, visible: showQr(d.status) }}
       />
     );
   }
