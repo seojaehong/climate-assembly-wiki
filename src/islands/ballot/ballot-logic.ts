@@ -2,6 +2,26 @@ import type { Ballot, BallotItem, BallotSubmitResult, NamedSubmitResult, RosterR
 import { decisionBallotKind } from '../../lib/division-ballot-format';
 import { createSafeBrowserStorage } from '../../lib/safe-browser-storage';
 
+/**
+ * 대리 입력 모드(11/14 수기 투표지) — `?t=…&proxy=1`. 진행요원 폰 한 대로 여러 사람을 차례로 넣는다.
+ * 사람마다 새 기기 번호(client_id)를 쓰고 'proxy-' 로 시작해 진행판(s35)이 대리 입력을 구분한다.
+ */
+export function isProxyMode(search: string): boolean {
+  const v = new URLSearchParams(search).get('proxy');
+  return v === '1' || v === 'true';
+}
+
+/** 대리 입력 기기 번호 — 'proxy-' + 무작위(서버 조건 8~80자). */
+export function newProxyClientId(rand: () => string = defaultRand): string {
+  return `proxy-${rand()}`;
+}
+
+function defaultRand(): string {
+  const c = (globalThis as { crypto?: Crypto }).crypto;
+  if (c && typeof c.randomUUID === 'function') return c.randomUUID();
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+}
+
 /** URL 쿼리에서 ballot 토큰(`?t=...`)을 파싱한다. 없거나 공백뿐이면 null. */
 export function parseBallotUrl(search: string): { token: string } | null {
   const params = new URLSearchParams(search);

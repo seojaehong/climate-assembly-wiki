@@ -73,8 +73,16 @@ export function excluder(exclude = []) {
  *           starts?: {voter_team:string,voter_name:string,started_at:string}[],
  *           exclude?: string[] }} input
  */
-export function chaseState({ roster, responses, starts = [], exclude = [], itemCount = null }) {
+export function chaseState({ roster, responses, starts = [], exclude = [], itemCount = null, signed = [], checks = [] }) {
   const isExcluded = excluder(exclude);
+  // 의결 서명 명단(현장 마감 명부) — 있으면 그 사람만 독려 대상 · 분모. 없으면 명단 전원(지금과 같음).
+  const signedLines = signed.map((s) => String(s ?? '').trim()).filter(Boolean);
+  const useSigned = signedLines.length > 0;
+  const isSigned = excluder(signedLines);
+  let unsigned = 0;
+  let signedCount = 0;
+  let submittedSigned = 0;
+  const unsignedSubmit = []; // 서명 명단에 없는데 제출 — ③ 로 올린다.
   const nameCount = new Map();
   for (const r of roster) nameCount.set(normName(r.name), (nameCount.get(normName(r.name)) ?? 0) + 1);
 
@@ -123,15 +131,26 @@ export function chaseState({ roster, responses, starts = [], exclude = [], itemC
   for (const r of roster) {
     const g = groupOf(r.team);
     g.total += 1;
+    const signedHere = !useSigned || isSigned(r.team, r.name);
+    if (useSigned && signedHere) signedCount += 1;
     if (didSubmit(r.team, r.name)) {
       g.submitted += 1;
       g.people.push({ name: r.name.trim(), status: 'submitted', answered: itemCount });
+      if (signedHere) submittedSigned += 1;
+      else unsignedSubmit.push({ team: normTeam(r.team), name: r.name.trim(), devices: 0, offRoster: false, submitted: true, proxy: false, unsigned: true });
       continue;
     }
     if (isExcluded(r.team, r.name)) {
       excluded += 1;
       g.excluded += 1;
       g.people.push({ name: r.name.trim(), status: 'excluded', answered: null });
+      continue;
+    }
+    if (!signedHere) {
+      // 의결 서명 안 함(불참 · 마감 뒤 도착) — 독려 대상 아님.
+      unsigned += 1;
+      g.excluded += 1;
+      g.people.push({ name: r.name.trim(), status: 'unsigned', answered: null });
       continue;
     }
     const s = startFor(r.team, r.name);
@@ -175,7 +194,23 @@ export function chaseState({ roster, responses, starts = [], exclude = [], itemC
     }));
   const notStartedCount = teams.reduce((n, t) => n + t.names.length, 0);
   const groups = [...groupMap.values()].sort((a, b) => compareTeam(a.team, b.team));
+  // 서명 명단 줄 중 명단(조·이름)에 안 맞는 줄 — 오타·조 표기 차이. 화면에서 고친다.
+  const rosterNames = new Set(roster.map((r) => normName(r.name)));
+  const signedUnmatched = useSigned
+    ? signedLines.filter((line) => {
+        const i = line.indexOf('|');
+        if (i < 0) return !rosterNames.has(normName(line));
+        return !rosterKeys.has(personKey(line.slice(0, i), line.slice(i + 1)));
+      })
+    : [];
   return {
+    useSigned,
+    signedCount,
+    unsigned,
+    signedUnmatched,
+    // 머리줄 「제출」 — 서명 명단이 있으면 서명한 사람의 제출만(명단 밖 · 서명 안 한 제출은 ③).
+    submittedBase: useSigned ? submittedSigned : submitted,
+    checks: mergeChecks(checks.filter((c) => !isExcluded(c.team, c.name)), unsignedSubmit),
     rosterCount: roster.length,
     itemCount: Number.isFinite(itemCount) ? itemCount : null,
     submitted,
@@ -200,6 +235,21 @@ export function boardToInput(board) {
   const roster = [];
   const responses = [];
   const starts = [];
+  // ③ 이름 확인 — 한 이름에 기기 2대 이상(s35 devices) · 명단 밖 이름으로 제출.
+  const checks = [];
+  for (const v of voters) {
+    const devices = Number(v.devices) || 0;
+    if (devices >= 2 || (!v.in_roster && v.submitted)) {
+      checks.push({
+        team: normTeam(v.team),
+        name: String(v.name ?? '').trim(),
+        devices,
+        offRoster: !v.in_roster,
+        submitted: !!v.submitted,
+        proxy: !!v.proxy,
+      });
+    }
+  }
   for (const v of voters) {
     if (v.in_roster) roster.push({ team: v.team, no: null, name: v.name });
     if (v.submitted) {
@@ -220,12 +270,34 @@ export function boardToInput(board) {
     }
   }
   // 대체 경로(진행 기록 없음)면 n/총건을 쓰지 않는다 — 0/19 로 보이면 오해를 부른다. 시작 시각 문구로 돌아간다.
-  return { roster, responses, starts, itemCount: board?.fallback ? null : Number(board?.item_count) || null };
+  checks.sort((a, b) => compareTeam(a.team, b.team) || a.name.localeCompare(b.name, 'ko'));
+  return { roster, responses, starts, checks, itemCount: board?.fallback ? null : Number(board?.item_count) || null };
 }
 
-/** board 응답으로 바로 상태를 만든다. */
-export function boardChaseState(board, exclude = []) {
-  return chaseState({ ...boardToInput(board), exclude });
+/** board 응답으로 바로 상태를 만든다. signed = 의결 서명 명단(줄마다 「조|이름」 또는 「이름」). */
+export function boardChaseState(board, exclude = [], signed = []) {
+  return chaseState({ ...boardToInput(board), exclude, signed });
+}
+
+/** ③ 합치기 — 같은 (조, 이름)은 한 줄(서명 안 함 표시를 더한다). */
+function mergeChecks(base, extra) {
+  const out = base.map((c) => ({ ...c }));
+  for (const e of extra) {
+    const hit = out.find((c) => personKey(c.team, c.name) === personKey(e.team, e.name));
+    if (hit) hit.unsigned = true;
+    else out.push(e);
+  }
+  return out.sort((a, b) => compareTeam(a.team, b.team) || a.name.localeCompare(b.name, 'ko'));
+}
+
+/** ③ 한 줄 설명. */
+export function checkNote(c) {
+  const parts = [];
+  if (c.unsigned) parts.push('의결 서명 명단에 없음');
+  if (c.devices >= 2) parts.push(`기기 ${c.devices}대`);
+  if (c.offRoster) parts.push('명단 밖 이름');
+  parts.push(c.submitted ? (c.proxy ? '대리 입력으로 제출됨' : '제출됨') : '미제출');
+  return parts.join(', ');
 }
 
 /**
@@ -297,10 +369,19 @@ export function chaseText(st, { label, now = new Date(), remainText = '' }) {
   const lines = [];
   lines.push(`[${label} 투표 독려] ${kstHm(now)} 기준${remainText ? ` · ${remainText}` : ''}`);
   // 머리줄 둘째 줄은 아래 그대로 — 「제출 n / 명단 m · 남은 분 k」.
-  lines.push(`제출 ${st.submitted} / 명단 ${st.rosterCount} · 남은 분 ${st.remaining}${st.excluded ? ` (불참·서면 등 ${st.excluded}명 제외)` : ''}`);
+  const base = st.useSigned ? `의결 서명 ${st.signedCount}` : `명단 ${st.rosterCount}`;
+  lines.push(`제출 ${st.submittedBase ?? st.submitted} / ${base} · 남은 분 ${st.remaining}${st.excluded ? ` (그 밖 제외 ${st.excluded}명)` : ''}`);
+  const checks = st.checks ?? [];
+  const pushChecks = () => {
+    if (!checks.length) return;
+    lines.push('');
+    lines.push(`③ 이름 확인 ${checks.length}명 — 한 이름이 여러 기기에서 쓰였거나, 명단·서명에 없는 이름 (도움 중이면 그대로 두세요)`);
+    for (const c of checks) lines.push(`· ${c.team} ${c.name} (${checkNote(c)})`);
+  };
   if (st.remaining === 0) {
     lines.push('');
-    lines.push('명단 전원 제출했습니다.');
+    lines.push(st.useSigned ? '의결 서명자 전원 제출했습니다.' : '명단 전원 제출했습니다.');
+    pushChecks();
     return lines.join('\n');
   }
   if (st.waiting.length) {
@@ -329,5 +410,6 @@ export function chaseText(st, { label, now = new Date(), remainText = '' }) {
     lines.push(`② 아직 투표 시작 안 함 ${st.notStartedCount}명 — 도착·QR 접속 확인`);
     for (const t of st.teams) lines.push(`· ${t.team}(${t.names.length}): ${t.names.join(', ')}`);
   }
+  pushChecks();
   return lines.join('\n');
 }
