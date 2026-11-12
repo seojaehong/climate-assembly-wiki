@@ -492,6 +492,7 @@ function LiveView({
   const closed = clock.ended;
   const running = timer.runningSince != null && !timeUp;
   const rate = participationPct(live.submitted, denom.n);
+  const progressRate = turnoutPct(live.started, denom.n);
   const timeFrac = timer.durationMs > 0 ? Math.min(1, remaining / timer.durationMs) : 0;
   const status = statusText(live.status, timeUp);
   return (
@@ -538,7 +539,8 @@ function LiveView({
                 / {denom.label}
               </span>
             </p>
-            <p style={{ margin: '14px 0 0', fontSize: 28, color: C.muted, display: 'flex', gap: 28 }}>
+            {/* 진행률 = 투표 시작 ÷ 참석(들어온 사람) · 완료율 = 제출 ÷ 참석([제출]까지 누른 사람) */}
+            <p style={{ margin: '14px 0 0', fontSize: 28, color: C.muted, display: 'flex', gap: 24, whiteSpace: 'nowrap' }}>
               <span>
                 투표 시작{' '}
                 <b data-testid="show-started" className="tr-num" style={{ color: C.text, fontSize: 40 }}>
@@ -547,11 +549,18 @@ function LiveView({
                 명
               </span>
               <span>
-                {denom.byRoster ? '완료율(명단 기준)' : '완료율'}{' '}
-                <b data-testid="show-rate" className="tr-num" style={{ color: C.text, fontSize: 40 }}>
+                진행률{' '}
+                <b data-testid="show-progress-rate" className="tr-num" style={{ color: C.orange, fontSize: 40 }}>
+                  {progressRate}%
+                </b>
+              </span>
+              <span>
+                완료율{' '}
+                <b data-testid="show-rate" className="tr-num" style={{ color: C.blue, fontSize: 40 }}>
                   {rate}%
                 </b>
               </span>
+              {denom.byRoster ? <span style={{ fontSize: 22 }}>(명단 기준)</span> : null}
             </p>
           </div>
         </div>
@@ -958,7 +967,7 @@ function OverallPanel({ agendas, denom, compact = false }: { agendas: LiveAgenda
         </div>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 44, minWidth: compact ? 0 : 560 }}>
-        <p style={{ margin: 0, fontSize: 64, fontWeight: 900 }}>전체 투표율{denom.byRoster ? <span style={{ fontSize: 34, color: C.muted }}> (명단 기준)</span> : null}</p>
+        <p style={{ margin: 0, fontSize: 64, fontWeight: 900 }}>전체 완료율{denom.byRoster ? <span style={{ fontSize: 34, color: C.muted }}> (명단 기준)</span> : null}</p>
         <div style={{ borderTop: `6px solid ${C.blue}`, paddingTop: 14 }}>
           <p style={{ margin: 0, fontSize: 32, fontWeight: 700, color: C.blue }}>제출 완료</p>
           <p className="tr-num" style={{ margin: 0, display: 'flex', alignItems: 'baseline', gap: 16, lineHeight: 1.05 }}>
@@ -985,7 +994,7 @@ function OverallPanel({ agendas, denom, compact = false }: { agendas: LiveAgenda
 function AgendasPanel({ agendas, denom }: { agendas: LiveAgenda[]; denom: Denom }) {
   return (
     <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 30, padding: '0 20px' }}>
-      <p style={{ margin: 0, fontSize: 52, fontWeight: 900 }}>의제별 투표율{denom.byRoster ? <span style={{ fontSize: 30, color: C.muted }}> (명단 기준)</span> : null}</p>
+      <p style={{ margin: 0, fontSize: 52, fontWeight: 900 }}>의제별 완료율{denom.byRoster ? <span style={{ fontSize: 30, color: C.muted }}> (명단 기준)</span> : null}</p>
       {agendas.map((a) => {
         const b = turnoutBar(a.live.submitted, a.live.started, denom.n);
         const pct = turnoutPct(a.live.submitted, denom.n);
@@ -1061,7 +1070,8 @@ function SinglePanel({
       </div>
       <div style={{ display: 'flex', gap: compact ? 40 : 56 }}>
         {cell('제출 완료', C.blue, agenda.live.submitted, `/ ${denom.byRoster ? denom.label : `${denom.n}명`}`, 'rot-single-submitted')}
-        {cell(denom.byRoster ? '투표율(명단 기준)' : '투표율', C.blue, pct, '%')}
+        {cell(denom.byRoster ? '완료율(명단 기준)' : '완료율', C.blue, pct, '%', 'rot-single-rate')}
+        {cell('진행률', C.orange, turnoutPct(agenda.live.started, denom.n), '%', 'rot-single-progress')}
       </div>
       <div style={{ display: 'flex', gap: compact ? 40 : 56 }}>
         {cell('투표 시작', C.orange, agenda.live.started, '명')}
