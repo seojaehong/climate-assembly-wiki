@@ -5,6 +5,7 @@ import {
   fetchBallotRoster,
   submitBallot,
   startBallotNamed,
+  ballotProgressNamed,
   submitBallotNamed,
   type Ballot,
   type RosterRow,
@@ -54,6 +55,7 @@ import {
   clearPagerDraft,
   loadPagerDraft,
   pagerChoiceText,
+  progressOrdinalsToSend,
   savePagerDraft,
   shouldUsePager,
   type PagerPos,
@@ -1155,6 +1157,18 @@ export default function BallotCard() {
         initialAnswers={answers}
         initialPos={pagerPos}
         onChange={(nextAnswers, nextPos) => {
+          // 진행 기록(s34) — 새로 누른 건의 번호만, 보내고 잊는다(실패해도 투표는 그대로). 찬반 값은 보내지 않는다.
+          // 앞 값 = 부모가 들고 있는 답(처음 그릴 때는 되살린 답과 같아 아무것도 안 보낸다).
+          const sendOrdinals = progressOrdinalsToSend(ballot.items, answers, nextAnswers, {
+            named: teams.length > 0,
+            confirmed: voter.confirmed === true && !!voter.team && !!voter.name,
+            submitted: locallySubmitted || submitState !== 'idle' || submitting,
+          });
+          if (token && voter.team) {
+            for (const ordinal of sendOrdinals) {
+              void ballotProgressNamed(token, getDeviceToken, voter.team, displayVoterName(voter.name), ordinal);
+            }
+          }
           setAnswers(nextAnswers);
           setPagerPos(nextPos);
         }}

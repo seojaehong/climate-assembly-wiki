@@ -392,6 +392,12 @@ function CueBand({ cue, small = false }: { cue: TimeCue; small?: boolean }) {
         style={{ margin: 0, flex: 'none', background: C.orange, color: '#0B1A2A', fontSize: 76 * f, fontWeight: 900, lineHeight: 1.15, padding: '8px 52px', borderRadius: 16, whiteSpace: 'nowrap' }}
       >
         {cue.text}
+        {/* 독려 문구 — 같은 줄 오른쪽에 작게(띠 높이는 그대로, 11/12 줌 회의 5·3·1분 독려) */}
+        {cue.sub ? (
+          <span data-testid="show-cue-sub" style={{ fontSize: 44 * f, fontWeight: 800, marginLeft: 28 * f }}>
+            {cue.sub}
+          </span>
+        ) : null}
       </p>
     );
   }

@@ -162,6 +162,54 @@ export async function startBallotNamed(
   }
 }
 
+/** 진행 기록 — 이미 보냈거나 보내는 중인 (토큰·조·이름·문항) 열쇠. 실패하면 지워 다음 누름에 다시 보낸다. */
+const progressSent = new Set<string>();
+/** s34 미적용(PGRST202)이면 이 화면에서는 더 부르지 않는다 — 70건마다 실패 호출을 쌓지 않게. */
+let progressRpcMissing = false;
+
+/** 시험용 — 중복 억제·미적용 걸쇠를 비운다. */
+export function resetBallotProgressForTest(): void {
+  progressSent.clear();
+  progressRpcMissing = false;
+}
+
+/**
+ * 11/12 — 카드 한 장을 눌렀다는 기록(s34 ballot_progress_named). 찬성·반대 값은 보내지 않는다(문항 번호만).
+ * 절대 throw 하지 않는다 — 네트워크 실패 · 함수 없음 · 마감 모두 삼키고 false. 투표 흐름을 막지 않는다.
+ * 같은 (토큰·조·이름·문항)은 한 번만 보낸다(답을 바꿔 다시 눌러도). clientId 는 startBallotNamed 처럼 함수로도 받는다.
+ */
+export async function ballotProgressNamed(
+  token: string,
+  clientId: string | (() => string),
+  voterTeam: string,
+  voterName: string,
+  ordinal: number,
+): Promise<boolean> {
+  if (progressRpcMissing) return false;
+  const key = `${token}\u0000${voterTeam}\u0000${voterName}\u0000${ordinal}`;
+  if (progressSent.has(key)) return false;
+  progressSent.add(key);
+  try {
+    const sb = client();
+    const { error } = await sb.schema('climate_vote').rpc('ballot_progress_named', {
+      p_token: token,
+      p_client_id: typeof clientId === 'function' ? clientId() : clientId,
+      p_voter_team: voterTeam,
+      p_voter_name: voterName,
+      p_ordinal: ordinal,
+    });
+    if (error) {
+      if (isMissingRpc(error)) progressRpcMissing = true;
+      progressSent.delete(key);
+      return false;
+    }
+    return true;
+  } catch {
+    progressSent.delete(key);
+    return false;
+  }
+}
+
 export type BallotLiveCounts = {
   status: string;
   title: string;
