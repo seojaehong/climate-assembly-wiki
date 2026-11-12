@@ -181,6 +181,8 @@ describe('namedToBoard (진행 기록 함수가 없을 때)', () => {
     const st = boardChaseState(b);
     expect(st.submitted).toBe(1);
     expect(st.waiting.map((w) => w.name)).toEqual(['이다라']);
+    expect(st.itemCount).toBeNull(); // 진행 수를 모르니 n/총건 대신 시작 시각
+    expect(chaseText(st, { label: '의제1', now: '2026-11-14T05:05:00Z' })).toContain('· 1분과 1조 이다라 (13:59 시작)');
   });
 });
 

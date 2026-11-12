@@ -174,7 +174,7 @@ function publicBallot(b) {
 
 function liveSource(token) {
   let listCache = { at: 0, rows: null };
-  let progressMissing = false; // s34 미적용이면 대체 경로로
+  let progressMissing = false; // s34 미적용이면 대체 경로로(확인한 시각, ms)
   return {
     mode: 'live',
     async ballots() {
@@ -187,13 +187,16 @@ function liveSource(token) {
       return listCache.rows;
     },
     async board(ballotId) {
-      if (!progressMissing) {
+      // 함수가 없으면 대체 경로로 가되, 서버를 켜 둔 채 s34 를 적용해도 넘어오게 60초마다 다시 본다.
+      if (!progressMissing || Date.now() - progressMissing > 60000) {
         try {
-          return await rpc('ballot_progress_board', { p_token: token, p_ballot_id: ballotId });
+          const b = await rpc('ballot_progress_board', { p_token: token, p_ballot_id: ballotId });
+          progressMissing = false;
+          return b;
         } catch (e) {
           // 함수가 없음(PGRST202 / 404) → 대체 경로. 권한 · 범위 오류는 그대로 올린다.
           if (!(e.code === 'PGRST202' || e.status === 404)) throw e;
-          progressMissing = true;
+          progressMissing = Date.now();
         }
       }
       const named = await rpc('ballot_named_responses_v2', { p_token: token, p_ballot_id: ballotId });
@@ -360,10 +363,14 @@ function composeView(board, { label, deadline, exclude }) {
   };
 }
 
-function labelFor(ballots, ballotId, given) {
+/** 머리줄 이름 — 「전체회의 의결 의제N …」 제목에서 「의제N」. 못 찾으면 제목 앞부분. */
+function labelFor(ballots, ballotId, given, board = null) {
   if (given) return given;
   const b = ballots?.find((x) => x.id === ballotId);
-  return b?.agenda ? `의제${b.agenda}` : '투표';
+  const n = b?.agenda ?? (board ? agendaOf(board) : null);
+  if (n) return `의제${n}`;
+  const head = String(board?.title ?? b?.title ?? '').trim().slice(0, 16);
+  return head || '전체회의';
 }
 
 // ── 카톡(로컬 kakao-reader API) ──────────────────────────────────────
@@ -485,7 +492,10 @@ function serve(source) {
       out.listError = String(e.message ?? e).slice(0, 200);
     }
     out.ballots = ballots;
-    const ballotId = params.get('ballot') || ballots.find((b) => b.status === 'open')?.id || ballots[0]?.id || '';
+    // 화면이 기억한 id 가 지금 목록에 없으면(시연 id 등) 버리고 열린 투표지로.
+    const asked = params.get('ballot') || '';
+    const known = !ballots.length || ballots.some((b) => b.id === asked);
+    const ballotId = (asked && known ? asked : '') || ballots.find((b) => b.status === 'open')?.id || ballots[0]?.id || '';
     out.ballotId = ballotId;
     out.exclude = settings.exclude;
     if (!ballotId) return out;
@@ -496,7 +506,7 @@ function serve(source) {
     if (c.good) {
       Object.assign(
         out,
-        composeView(c.good, { label: labelFor(ballots, ballotId, params.get('label')), deadline: params.get('deadline'), exclude: settings.exclude }),
+        composeView(c.good, { label: labelFor(ballots, ballotId, params.get('label'), c.good), deadline: params.get('deadline'), exclude: settings.exclude }),
       );
     }
     return out;
@@ -585,7 +595,7 @@ function serve(source) {
           if (fresh.error || !fresh.good) return send(res, 200, { ok: false, stage: 'guard', status: 'skipped', code: `최신 값을 못 읽음 — ${fresh.error ?? ''}`.slice(0, 200) });
           if (fresh.good.status !== 'open') return send(res, 200, { ok: false, stage: 'guard', status: 'skipped', code: '투표지가 열림 상태가 아님' });
           const ballots = await source.ballots().catch(() => []);
-          const view = composeView(fresh.good, { label: labelFor(ballots, ballotId, body.label), deadline: body.deadline, exclude: settings.exclude });
+          const view = composeView(fresh.good, { label: labelFor(ballots, ballotId, body.label, fresh.good), deadline: body.deadline, exclude: settings.exclude });
           if (view.chase.remaining === 0) return send(res, 200, { ok: false, stage: 'guard', status: 'skipped', code: '남은 분 0' });
           return send(res, 200, { ...(await doSend(view.chase.text, 'auto')), text: view.chase.text });
         }
@@ -611,7 +621,7 @@ async function onceMode(source) {
   const ballots = await source.ballots().catch(() => []);
   const board = await source.board(ballotId);
   if (!board) die('투표지를 읽지 못했습니다');
-  const view = composeView(board, { label: labelFor(ballots, ballotId, arg('--label')), deadline: arg('--deadline'), exclude: loadSettings().exclude });
+  const view = composeView(board, { label: labelFor(ballots, ballotId, arg('--label'), board), deadline: arg('--deadline'), exclude: loadSettings().exclude });
   if (board.fallback) process.stderr.write('(진행 기록 함수 없음 — 제출 기준만)\n');
   process.stdout.write(`${view.chase.text}\n`);
   if (has('--send')) {
@@ -711,7 +721,7 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude{mi
   const ls = { get(k){try{return localStorage.getItem(k)}catch{return null}}, set(k,v){try{localStorage.setItem(k,v)}catch{}} };
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; };
   let last = null, timer = null, previewDirty = false, exDirty = false, autoTimer = null, autoNext = 0, armedUntil = 0;
-  let ballot = ls.get('chase.ballot') || '';
+  let ballot = new URLSearchParams(location.search).get('ballot') || ls.get('chase.ballot') || '';
   $('every').value = ls.get('chase.every') || '3000';
 
   function presentFor(id, roster) {
@@ -754,7 +764,7 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude{mi
       sel.dataset.ids = ids;
     }
     if (s.ballotId && sel.value !== s.ballotId) sel.value = s.ballotId;
-    if (!ballot && s.ballotId) ballot = s.ballotId;
+    if (s.ballotId && ballot !== s.ballotId) { ballot = s.ballotId; ls.set('chase.ballot', ballot); }
     $('mode').textContent = s.mode === 'demo' ? '시연 모드' : '실전';
     $('mode').className = 'badge ' + (s.mode === 'demo' ? 'warn' : 'ok');
     const b = s.board;
@@ -799,7 +809,8 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude{mi
       const ppl = el('div', 'people');
       const order = { progress: 0, none: 1, submitted: 2, excluded: 3 };
       for (const p of [...g.people].sort((x, y) => order[x.status] - order[y.status])) {
-        const t = p.status === 'progress' ? p.name + ' ' + (p.answered ?? 0) + '/' + c.itemCount : p.status === 'submitted' ? p.name + ' 제출' : p.status === 'excluded' ? p.name : p.name + ' 0/' + c.itemCount;
+        const of = (n) => (c.itemCount ? ' ' + (n ?? 0) + '/' + c.itemCount : '');
+        const t = p.status === 'progress' ? p.name + (c.itemCount ? of(p.answered) : ' 진행 중') : p.status === 'submitted' ? p.name + ' 제출' : p.status === 'excluded' ? p.name : p.name + of(0);
         ppl.append(el('span', 'chip ' + p.status, t));
       }
       d.append(ppl); gs.append(d);
@@ -808,7 +819,7 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude{mi
       const d = el('details'); d.dataset.team = '__off'; if (open.has('__off')) d.open = true;
       d.append(el('summary', null, '명단 밖 이름으로 들어온 사람 ' + c.offRoster.length + '명'));
       const ppl = el('div', 'people');
-      for (const p of c.offRoster) ppl.append(el('span', 'chip progress', p.team + ' ' + p.name + ' ' + (p.answered ?? 0) + '/' + c.itemCount));
+      for (const p of c.offRoster) ppl.append(el('span', 'chip progress', p.team + ' ' + p.name + (c.itemCount ? ' ' + (p.answered ?? 0) + '/' + c.itemCount : '')));
       d.append(ppl); gs.append(d);
     }
     // 카톡

@@ -215,7 +215,8 @@ export function boardToInput(board) {
       });
     }
   }
-  return { roster, responses, starts, itemCount: Number(board?.item_count) || null };
+  // 대체 경로(진행 기록 없음)면 n/총건을 쓰지 않는다 — 0/19 로 보이면 오해를 부른다. 시작 시각 문구로 돌아간다.
+  return { roster, responses, starts, itemCount: board?.fallback ? null : Number(board?.item_count) || null };
 }
 
 /** board 응답으로 바로 상태를 만든다. */
