@@ -38,6 +38,7 @@ import {
   clockDisplay,
   clockText,
   defaultDurationSec,
+  durationLabel,
   initialTimer,
   itemOutcome,
   liveDenominator,
@@ -418,8 +419,7 @@ function LiveView({
               {clock.text}
             </p>
             <p style={{ margin: '14px 0 0', fontSize: 28, color: C.muted }}>
-              {running ? '진행 중' : timeUp ? '투표 시간이 끝났습니다' : remaining === timer.durationMs ? '시작 전' : '일시정지'} · 전체{' '}
-              {clockText(timer.durationMs)}
+              {durationLabel(timer.durationMs, live.items)}
             </p>
           </div>
           <div style={{ flex: 1, borderTop: `6px solid ${C.blue}`, paddingTop: 18 }}>

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  durationLabel,
   adjustTimer,
   agendaOutcome,
   clockText,
@@ -217,6 +218,12 @@ describe('타이머 — 종료 시각 기준(탭이 느려져도 밀리지 않�
   it('기본 = 권고 수 × 90초', () => {
     expect(defaultDurationSec(19)).toBe(28 * 60 + 30);
     expect(defaultDurationSec(28)).toBe(42 * 60);
+  });
+  it('durationLabel = 시안 꼴', () => {
+    expect(durationLabel(defaultDurationSec(19) * 1000, 19)).toBe('전체 28분 30초 · 권고안 19건 × 1분 30초');
+    expect(durationLabel(defaultDurationSec(28) * 1000, 28)).toBe('전체 42분 · 권고안 28건 × 1분 30초');
+    expect(durationLabel(30 * 60 * 1000, 19)).toBe('전체 30분 · 권고안 19건');
+    expect(durationLabel(30 * 60 * 1000, 0)).toBe('전체 30분');
   });
   it('clockText', () => {
     expect(clockText(28 * 60 * 1000 + 30 * 1000)).toBe('28:30');

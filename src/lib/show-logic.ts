@@ -202,6 +202,24 @@ export function clockText(ms: number): string {
   return `${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
+/** 「28분 30초」 꼴. 0초면 「30분」, 1분 미만이면 「45초」. */
+export function minSecText(ms: number): string {
+  const s = Math.max(0, Math.round(ms / 1000));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  if (m === 0) return `${r}초`;
+  return r === 0 ? `${m}분` : `${m}분 ${r}초`;
+}
+
+/** 진행 화면 시간 밑 줄 — 피알원 시안 「전체 28분 30초 · 권고안 19건 × 1분 30초」. 건당 시간이 1초 단위로 안 나뉘면 건당 표기는 뺀다. */
+export function durationLabel(durationMs: number, items: number): string {
+  const total = `전체 ${minSecText(durationMs)}`;
+  if (items <= 0) return total;
+  const per = durationMs / items;
+  if (per <= 0 || per % 1000 !== 0) return `${total} · 권고안 ${items}건`;
+  return `${total} · 권고안 ${items}건 × ${minSecText(per)}`;
+}
+
 // ── URL ─────────────────────────────────────────────────────────────
 
 export type ShowParams = { tokens: string[]; present: string | null; minutes: number | null; motion: boolean };
