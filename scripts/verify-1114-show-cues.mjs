@@ -215,8 +215,8 @@ const PROBE = () => {
     submitted: txt('[data-testid=show-submitted]') ?? txt('[data-testid=rot-single-submitted]'),
   };
 };
-const MARKS = [300, 180, 60, 30];
-const SHOT_KEYS = ['notice-300', 'notice-180', 'notice-60', 'notice-30', 'count-10', 'count-3', 'ended'];
+const MARKS = [600, 300, 180, 60, 30];
+const SHOT_KEYS = ['notice-600', 'notice-300', 'notice-180', 'notice-60', 'notice-30', 'count-10', 'count-3', 'ended'];
 const SHOT_DELAY = { 'count-10': 120, 'count-3': 120 };
 const VIEWS = [
   { L: '1', key: null, expect: 'live', label: '1 진행' },

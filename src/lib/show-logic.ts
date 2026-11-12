@@ -202,10 +202,10 @@ export function clockText(ms: number): string {
   return `${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
-// ── 남은 시간 알림(5분 · 3분 · 1분 · 30초) · 10초 카운트다운 · 종료 ─────────────
+// ── 남은 시간 알림(10분 · 5분 · 3분 · 1분 · 30초) · 10초 카운트다운 · 종료 ─────────────
 
 /** 알림을 띄우는 남은 시간(초). */
-export const CUE_MARKS_SEC = [300, 180, 60, 30] as const;
+export const CUE_MARKS_SEC = [600, 300, 180, 60, 30] as const;
 /** 알림 띠가 보이는 시간(타이머 시간). */
 export const CUE_SHOW_MS = 6000;
 /** 이 초부터 큰 카운트다운. */
@@ -221,8 +221,9 @@ function markText(sec: number): string {
   return `남은 시간 ${sec >= 60 ? `${sec / 60}분` : `${sec}초`}`;
 }
 
-/** 알림 띠 둘째 줄 — 투표 독려(11/12 줌 회의: 5·3·1분 안내 + 손 들면 도우미 투입, 제출 안 누르면 기권). */
+/** 알림 띠 둘째 줄 — 투표 독려(11/12 줌 회의: 10·5·3·1분 안내 + 손 들면 도우미 투입, 제출 안 누르면 기권). */
 export const CUE_SUB: Record<number, string> = {
+  600: '아직이면 QR을 비춰 주세요',
   300: '지금 투표해 주세요',
   180: '어려우면 손을 들어 주세요',
   60: '[제출]을 꼭 눌러 주세요',
@@ -231,7 +232,7 @@ export const CUE_SUB: Record<number, string> = {
 
 /**
  * 진행 화면의 알림 — 타이머 상태만으로 정한다(「이미 띄웠음」 같은 기억을 두지 않는다).
- * · notice: 타이머가 흐르는 중에 남은 시간이 기준(5분 · 3분 · 1분 · 30초)을 「이번에 흐르면서」 지난 뒤 CUE_SHOW_MS 동안.
+ * · notice: 타이머가 흐르는 중에 남은 시간이 기준(10분 · 5분 · 3분 · 1분 · 30초)을 「이번에 흐르면서」 지난 뒤 CUE_SHOW_MS 동안.
  *   일시정지하면 사라지고, 다시 시작해도 이미 지난 기준은 다시 띄우지 않는다(멈춘 시점 남은 시간 > 기준일 때만).
  *   ↓ 로 기준을 건너뛰어도 띄우지 않는다. ↑ 로 기준 위로 되돌렸다가 다시 지나면 그때 다시 띄운다(실제로 다시 지났으므로).
  * · count: 흐르는 중이고 남은 시간이 10초 이하(시계와 같은 올림 — 00:10 일 때 10).
@@ -273,7 +274,7 @@ const DEMO_FINAL: Record<1 | 2 | 3, number> = { 1: 158, 2: 149, 3: 161 };
 /** 1배속으로 보여 줄 구간(남은 시간 ms 기준 [아래, 위]) — 시작 직후 · 알림 앞뒤 · 마지막 33초. */
 export function demoSlowZones(durationMs: number): Array<[number, number]> {
   const z: Array<[number, number]> = [[0, 33_000]];
-  for (const sec of [300, 180, 60]) {
+  for (const sec of [600, 300, 180, 60]) {
     const m = sec * 1000;
     if (m < durationMs) z.push([m - CUE_SHOW_MS - 1000, m + 2000]);
   }

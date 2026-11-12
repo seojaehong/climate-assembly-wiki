@@ -363,8 +363,10 @@ describe('timeCue — 남은 시간 알림 · 10초 카운트다운 · 종료', 
     expect(timeCue(t, atRemaining(t, 294_000), 'open').kind).toBe('none');
     expect(timeCue(t, atRemaining(t, 301_000), 'open').kind).toBe('none');
   });
-  it('3분 · 1분 · 30초 문구', () => {
+  it('10분 · 3분 · 1분 · 30초 문구', () => {
     const t = run(0);
+    expect(timeCue(t, atRemaining(t, 600_000), 'open')).toEqual({ kind: 'notice', sec: 600, text: '남은 시간 10분', sub: '아직이면 QR을 비춰 주세요' });
+    expect(timeCue(t, atRemaining(t, 593_000), 'open').kind).toBe('none');
     expect(timeCue(t, atRemaining(t, 180_000), 'open')).toMatchObject({ text: '남은 시간 3분' });
     expect(timeCue(t, atRemaining(t, 60_000), 'open')).toMatchObject({ text: '남은 시간 1분' });
     expect(timeCue(t, atRemaining(t, 30_000), 'open')).toMatchObject({ text: '남은 시간 30초' });
@@ -440,9 +442,9 @@ describe('시연(demo) — 배속 · 가상 수', () => {
       r -= demoAdvanceMs(r, 50, 100, D);
       wall += 50;
     }
-    // 1배 구간 합 = 3 + 9·3 + 33 = 63초, 나머지 (1710 − 63)/100 = 16.47초 → 약 79.5초
-    expect(wall / 1000).toBeGreaterThan(79);
-    expect(wall / 1000).toBeLessThan(80.1);
+    // 1배 구간 합 = 3 + 9·4 + 33 = 72초, 나머지 (1710 − 72)/100 = 16.38초 → 약 88.4초
+    expect(wall / 1000).toBeGreaterThan(88);
+    expect(wall / 1000).toBeLessThan(89.1);
     expect(demoAdvanceMs(0, 500, 100, D)).toBe(500);
   });
   it('가상 수 — 시작 전 0 · 단조 증가 · 시작 ≥ 제출 · 끝 140~165 · 참석 이하', () => {
