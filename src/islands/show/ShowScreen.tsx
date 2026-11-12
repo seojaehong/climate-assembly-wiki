@@ -388,7 +388,7 @@ function CueBand({ cue }: { cue: TimeCue }) {
         data-kind="notice"
         data-sec={cue.sec}
         className="show-cue-in"
-        style={{ margin: 0, flex: 'none', background: C.orange, color: '#0B1A2A', fontSize: 88, fontWeight: 900, lineHeight: 1.15, padding: '8px 56px', borderRadius: 16, whiteSpace: 'nowrap' }}
+        style={{ margin: 0, flex: 'none', background: C.orange, color: '#0B1A2A', fontSize: 76, fontWeight: 900, lineHeight: 1.15, padding: '8px 52px', borderRadius: 16, whiteSpace: 'nowrap' }}
       >
         {cue.text}
       </p>
@@ -400,7 +400,7 @@ function CueBand({ cue }: { cue: TimeCue }) {
         data-testid="show-cue"
         data-kind="ended"
         className="show-cue-in"
-        style={{ margin: 0, flex: 'none', border: `4px solid ${C.orange}`, color: C.orange, fontSize: 72, fontWeight: 900, lineHeight: 1.15, padding: '8px 48px', borderRadius: 16, whiteSpace: 'nowrap' }}
+        style={{ margin: 0, flex: 'none', border: `4px solid ${C.orange}`, color: C.orange, fontSize: 64, fontWeight: 900, lineHeight: 1.15, padding: '8px 44px', borderRadius: 16, whiteSpace: 'nowrap' }}
       >
         {cue.text}
       </p>
