@@ -1034,8 +1034,9 @@ function SinglePanel({ agenda, denom, clock }: { agenda: LiveAgenda; denom: Deno
       </p>
     </div>
   );
+  // 위 83px 는 남은 시간 띠 자리(RotateView 의 CueFloat 위 12px ~ 약 102px) — 띠가 의제 이름 줄을 덮지 않게 늘 비워 둔다.
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 70, padding: '0 20px' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 56, padding: '83px 20px 0' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
         <AgendaBadge no={agenda.no} />
         <span style={{ ...KEEP, fontSize: 52, fontWeight: 900 }}>{agenda.no ? AGENDA_NAMES[agenda.no] : agenda.live.title}</span>
