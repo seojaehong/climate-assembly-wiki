@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  durationLabel,
   adjustTimer,
   agendaOutcome,
   clockText,
@@ -35,6 +34,7 @@ import {
   turnoutPct,
   yesCount,
   timeCue,
+  screenCue,
   demoAdvanceMs,
   demoLiveCounts,
   DEMO_ITEMS,
@@ -223,12 +223,6 @@ describe('타이머 — 종료 시각 기준(탭이 느려져도 밀리지 않�
   it('기본 = 권고 수 × 90초', () => {
     expect(defaultDurationSec(19)).toBe(28 * 60 + 30);
     expect(defaultDurationSec(28)).toBe(42 * 60);
-  });
-  it('durationLabel = 시안 꼴', () => {
-    expect(durationLabel(defaultDurationSec(19) * 1000, 19)).toBe('전체 28분 30초 · 권고안 19건 × 1분 30초');
-    expect(durationLabel(defaultDurationSec(28) * 1000, 28)).toBe('전체 42분 · 권고안 28건 × 1분 30초');
-    expect(durationLabel(30 * 60 * 1000, 19)).toBe('전체 30분 · 권고안 19건');
-    expect(durationLabel(30 * 60 * 1000, 0)).toBe('전체 30분');
   });
   it('clockText', () => {
     expect(clockText(28 * 60 * 1000 + 30 * 1000)).toBe('28:30');
@@ -475,5 +469,32 @@ describe('시연(demo) — 배속 · 가상 수', () => {
       expect(demoLiveCounts(no, 0.1, true).started).toBeGreaterThan(end.started / 2);
       expect(demoLiveCounts(no, 0.5, true).submitted).toBeLessThan(end.submitted / 2);
     }
+  });
+});
+
+describe('screenCue — 진행 · 실시간(4) · 영상(V) 이 같은 알림, PgDn 으로 오가도 중복 · 누락 없음', () => {
+  const t = toggleTimer(initialTimer(28 * 60 + 30), 0);
+  const at = (ms: number) => t.pausedRemainingMs - ms; // 남은 시간이 ms 가 되는 시각
+  it('PgDn 순서(진행 → 실시간 → 영상 → 진행) 어느 화면이든 같은 시각엔 같은 알림', () => {
+    let m: ShowMode = { view: 'live', video: false };
+    const seen: string[] = [];
+    for (let i = 0; i < 4; i += 1) {
+      const now = at(300_000 - i * 1000); // 5분 알림 창 안에서 1초마다 화면을 넘긴다
+      seen.push(JSON.stringify(screenCue(m, timeCue(t, now, 'open'))));
+      m = clickerStep(m, 1);
+    }
+    expect(new Set(seen).size).toBe(1);
+    expect(JSON.parse(seen[0])).toMatchObject({ kind: 'notice', sec: 300 });
+  });
+  it('화면을 바꿔도 알림 창이 다시 시작되지 않는다(6초 뒤엔 어느 화면이든 없음)', () => {
+    for (const m of [{ view: 'live', video: false }, { view: 'rotate', video: false }, { view: 'live', video: true }] as ShowMode[]) {
+      expect(screenCue(m, timeCue(t, at(294_000), 'open')).kind).toBe('none');
+      expect(screenCue(m, timeCue(t, at(7_000), 'open'))).toEqual({ kind: 'count', n: 7 });
+      expect(screenCue(m, timeCue(t, at(0) + 1, 'open')).kind).toBe('ended');
+    }
+  });
+  it('결과 화면(2 · 3)에는 띄우지 않는다', () => {
+    expect(screenCue({ view: 'detail', video: false }, timeCue(t, at(7_000), 'open')).kind).toBe('none');
+    expect(screenCue({ view: 'summary', video: true }, timeCue(t, at(300_000), 'open')).kind).toBe('none');
   });
 });

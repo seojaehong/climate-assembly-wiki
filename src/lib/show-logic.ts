@@ -202,24 +202,6 @@ export function clockText(ms: number): string {
   return `${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
-/** 「28분 30초」 꼴. 0초면 「30분」, 1분 미만이면 「45초」. */
-export function minSecText(ms: number): string {
-  const s = Math.max(0, Math.round(ms / 1000));
-  const m = Math.floor(s / 60);
-  const r = s % 60;
-  if (m === 0) return `${r}초`;
-  return r === 0 ? `${m}분` : `${m}분 ${r}초`;
-}
-
-/** 진행 화면 시간 밑 줄 — 피알원 시안 「전체 28분 30초 · 권고안 19건 × 1분 30초」. 건당 시간이 1초 단위로 안 나뉘면 건당 표기는 뺀다. */
-export function durationLabel(durationMs: number, items: number): string {
-  const total = `전체 ${minSecText(durationMs)}`;
-  if (items <= 0) return total;
-  const per = durationMs / items;
-  if (per <= 0 || per % 1000 !== 0) return `${total} · 권고안 ${items}건`;
-  return `${total} · 권고안 ${items}건 × ${minSecText(per)}`;
-}
-
 // ── 남은 시간 알림(5분 · 3분 · 1분 · 30초) · 10초 카운트다운 · 종료 ─────────────
 
 /** 알림을 띄우는 남은 시간(초). */
@@ -262,6 +244,14 @@ export function timeCue(t: TimerState, now: number, status: string): TimeCue {
     }
   }
   return { kind: 'none' };
+}
+
+/**
+ * 화면별 알림 — 타이머가 보이는 화면(진행 1 · 영상 V · 실시간 순환 4)은 모두 같은 timeCue 를 그린다.
+ * 화면이 알림을 따로 기억하지 않으므로 PgDn 으로 오가도 같은 시각엔 같은 알림(중복 · 누락 없음). 결과 화면(2 · 3)은 없음.
+ */
+export function screenCue(mode: ShowMode, cue: TimeCue): TimeCue {
+  return mode.view === 'detail' || mode.view === 'summary' ? { kind: 'none' } : cue;
 }
 
 // ── 시연(더미) — /show?demo=1|2|3&speed=<배속>. DB 를 읽지 않는다 ─────────────────

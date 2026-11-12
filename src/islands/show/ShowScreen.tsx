@@ -41,7 +41,6 @@ import {
   defaultDurationSec,
   demoAdvanceMs,
   demoLiveCounts,
-  durationLabel,
   initialTimer,
   itemOutcome,
   liveDenominator,
@@ -59,6 +58,7 @@ import {
   staleSeconds,
   statusText,
   stepPanel,
+  screenCue,
   submittedExceedsPresent,
   timeCue,
   timerRemainingMs,
@@ -379,7 +379,8 @@ function DemoTag() {
 // ── 남은 시간 알림 · 10초 카운트다운 · 종료(시안 색 · 글꼴 안에서) ─────────────────
 
 /** 제목과 수 사이 빈자리에 띄우는 띠 — 5분 · 3분 · 1분 · 30초(주황, 잠깐 크게 떴다 줄어듦) · 종료(주황 테두리, 계속). */
-function CueBand({ cue }: { cue: TimeCue }) {
+function CueBand({ cue, small = false }: { cue: TimeCue; small?: boolean }) {
+  const f = small ? 0.84 : 1; // 실시간 순환 · 영상 화면은 조금 작게(빈자리가 좁다)
   if (cue.kind === 'notice') {
     return (
       <p
@@ -388,7 +389,7 @@ function CueBand({ cue }: { cue: TimeCue }) {
         data-kind="notice"
         data-sec={cue.sec}
         className="show-cue-in"
-        style={{ margin: 0, flex: 'none', background: C.orange, color: '#0B1A2A', fontSize: 76, fontWeight: 900, lineHeight: 1.15, padding: '8px 52px', borderRadius: 16, whiteSpace: 'nowrap' }}
+        style={{ margin: 0, flex: 'none', background: C.orange, color: '#0B1A2A', fontSize: 76 * f, fontWeight: 900, lineHeight: 1.15, padding: '8px 52px', borderRadius: 16, whiteSpace: 'nowrap' }}
       >
         {cue.text}
       </p>
@@ -400,13 +401,23 @@ function CueBand({ cue }: { cue: TimeCue }) {
         data-testid="show-cue"
         data-kind="ended"
         className="show-cue-in"
-        style={{ margin: 0, flex: 'none', border: `4px solid ${C.orange}`, color: C.orange, fontSize: 64, fontWeight: 900, lineHeight: 1.15, padding: '8px 44px', borderRadius: 16, whiteSpace: 'nowrap' }}
+        style={{ margin: 0, flex: 'none', border: `4px solid ${C.orange}`, background: C.bg, color: C.orange, fontSize: 64 * f, fontWeight: 900, lineHeight: 1.15, padding: '8px 44px', borderRadius: 16, whiteSpace: 'nowrap' }}
       >
         {cue.text}
       </p>
     );
   }
   return null;
+}
+
+/** 실시간 순환 · 영상 화면 — 띠를 칸 위(top) 또는 아래(bottom) 가운데에 겹쳐 띄운다. */
+function CueFloat({ cue, at }: { cue: TimeCue; at: 'top' | 'bottom' }) {
+  if (cue.kind !== 'notice' && cue.kind !== 'ended') return null;
+  return (
+    <div style={{ position: 'absolute', left: 0, right: 0, [at]: at === 'top' ? 12 : 28, display: 'flex', justifyContent: 'center', zIndex: 3, pointerEvents: 'none' }}>
+      <CueBand cue={cue} small />
+    </div>
+  );
 }
 
 /** 10→1 — 제목 자리 전체를 덮는 큰 숫자(QR 은 가리지 않는다). */
@@ -458,12 +469,15 @@ function LiveView({
   denom,
   timer,
   now,
+  cue,
 }: {
   token: string;
   live: BallotLiveCounts;
   denom: Denom;
   timer: TimerState;
   now: number;
+  /** 남은 시간 알림(SingleShow 가 screenCue 로 정해 넘긴다 — 영상 · 실시간 화면과 같은 값). */
+  cue: TimeCue;
 }) {
   const no = agendaNo(live.title);
   const remaining = timerRemainingMs(timer, now);
@@ -474,7 +488,6 @@ function LiveView({
   const rate = participationPct(live.submitted, denom.n);
   const timeFrac = timer.durationMs > 0 ? Math.min(1, remaining / timer.durationMs) : 0;
   const status = statusText(live.status, timeUp);
-  const cue = timeCue(timer, now, live.status);
   return (
     <div style={{ flex: 1, display: 'flex', padding: '44px 72px 36px', gap: 72, minHeight: 0 }}>
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
@@ -507,9 +520,6 @@ function LiveView({
               style={{ margin: '4px 0 0', fontSize: clock.text.length > 2 && closed ? 120 : 176, height: 176, display: 'flex', alignItems: 'flex-end', fontWeight: 900, lineHeight: 1, whiteSpace: 'nowrap', color: closed ? C.orange : C.text }}
             >
               {clock.text}
-            </p>
-            <p style={{ margin: '14px 0 0', fontSize: 28, color: C.muted }}>
-              {durationLabel(timer.durationMs, live.items)}
             </p>
           </div>
           <div style={{ flex: 1, borderTop: `6px solid ${C.blue}`, paddingTop: 18 }}>
@@ -737,7 +747,9 @@ function VideoView({
   videoRef,
   onTogglePlay,
   onPick,
+  cue,
 }: {
+  cue: TimeCue;
   token: string;
   live: BallotLiveCounts;
   /** 출석(URL present). null 이면 가결 기준 줄을 숨긴다. */
@@ -820,6 +832,9 @@ function VideoView({
               <p style={{ margin: 0, fontSize: 22, color: C.dim }}>재생·일시정지: 영상 클릭 또는 K · 영상 끄기: V</p>
             </div>
           )}
+          {/* 남은 시간 알림 — 영상 아래쪽 가운데 띠, 10초부터는 영상 칸을 덮는 큰 숫자(오른쪽 띠의 QR 은 그대로). */}
+          <CueFloat cue={cue} at="bottom" />
+          {cue.kind === 'count' ? <CountdownCover n={cue.n} /> : null}
         </div>
       </div>
       <aside data-testid="show-video-strip" style={{ width: STRIP_W, flex: 'none', display: 'flex', flexDirection: 'column', padding: '22px 0 20px', minHeight: 0 }}>
@@ -1044,12 +1059,15 @@ function RotateView({
   panels,
   index,
   clock,
+  cue = { kind: 'none' },
 }: {
   agendas: LiveAgenda[];
   denom: Denom;
   panels: RotationPanel[];
   index: number;
   clock: { text: string; closed: boolean } | null;
+  /** 의제 하나 주소의 남은 시간 알림(종합 주소는 타이머가 없어 none). 판이 넘어가도 그대로 위에 뜬다. */
+  cue?: TimeCue;
 }) {
   const panel = panels[index] ?? 'overall';
   return (
@@ -1063,6 +1081,8 @@ function RotateView({
           <SinglePanel agenda={agendas[0]} denom={denom} clock={clock} />
         ) : null}
       </div>
+      <CueFloat cue={cue} at="top" />
+      {cue.kind === 'count' ? <CountdownCover n={cue.n} /> : null}
     </div>
   );
 }
@@ -1383,6 +1403,8 @@ function SingleShow({
   const resultView = view === 'detail' || view === 'summary';
   // 결과 화면은 결과 읽기만 본다(실시간 수 읽기가 실패해도 막히지 않는다).
   const poll = resultView ? res : live;
+  // 남은 시간 알림 — 진행 · 영상 · 실시간 화면이 같은 값을 쓴다(화면을 오가도 중복 · 누락 없음).
+  const cue: TimeCue = timer && d ? screenCue(mode, timeCue(timer, nowMs, d.status)) : { kind: 'none' };
 
   let body: React.ReactNode;
   if (resultView && demo) {
@@ -1404,7 +1426,7 @@ function SingleShow({
   } else if (showVideo) {
     body = null; // 영상 칸은 아래에서 늘 붙어 있다(2·3 에 다녀와도 파일·재생 위치가 남게)
   } else if (view === 'live') {
-    body = timer ? <LiveView token={token} live={d} denom={denom} timer={timer} now={nowMs} /> : <Centered title="불러오는 중" />;
+    body = timer ? <LiveView token={token} live={d} denom={denom} timer={timer} now={nowMs} cue={cue} /> : <Centered title="불러오는 중" />;
   } else {
     const c = timer ? clockDisplay(d.status, timerRemainingMs(timer, nowMs), timer.durationMs) : null;
     body = (
@@ -1414,6 +1436,7 @@ function SingleShow({
         panels={panels}
         index={rot.index}
         clock={c ? { text: c.text, closed: c.ended } : null}
+        cue={cue}
       />
     );
   }
@@ -1448,6 +1471,7 @@ function SingleShow({
               videoRef={videoRef}
               onTogglePlay={togglePlay}
               onPick={() => fileRef.current?.click()}
+              cue={cue}
             />
           </div>
         ) : null}
