@@ -562,6 +562,11 @@ function LiveView({
               </span>
               {denom.byRoster ? <span style={{ fontSize: 22 }}>(명단 기준)</span> : null}
             </p>
+            {/* 2겹 막대 — 주황(진행률)이 먼저 차고 파랑(완료율)이 뒤따른다. 메인 숫자는 늘 「제출 완료」. */}
+            <div data-testid="show-rate-bar" style={{ position: 'relative', marginTop: 14, height: 18, borderRadius: 9, background: C.line, overflow: 'hidden' }}>
+              <div data-testid="show-rate-bar-progress" style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${progressRate}%`, background: C.orange, borderRadius: 9, transition: 'width .8s ease' }} />
+              <div data-testid="show-rate-bar-done" style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${Math.min(100, rate)}%`, background: C.blue, borderRadius: 9, transition: 'width .8s ease' }} />
+            </div>
           </div>
         </div>
         <div style={{ marginTop: 30, height: 22, borderRadius: 11, background: C.line, overflow: 'hidden' }}>
