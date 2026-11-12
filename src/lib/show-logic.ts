@@ -74,7 +74,7 @@ export function clockDisplay(status: string, remainingMs: number, durationMs: nu
   return { text: clockText(remainingMs), ended: false };
 }
 
-/** 참여율(%) = 제출 / 참석, 반올림. 참석 0 이면 0. */
+/** 완료율(%) = 제출 / 참석, 반올림. 참석 0 이면 0. */
 export function participationPct(submitted: number, present: number): number {
   if (present <= 0) return 0;
   return Math.round((submitted / present) * 100);
