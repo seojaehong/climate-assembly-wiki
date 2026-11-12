@@ -36,8 +36,11 @@ import {
   classifyLoadError,
   clickerStep,
   clockDisplay,
-  clockText,
+  DEMO_ITEMS,
+  DEMO_PRESENT,
   defaultDurationSec,
+  demoAdvanceMs,
+  demoLiveCounts,
   initialTimer,
   itemOutcome,
   liveDenominator,
@@ -55,7 +58,9 @@ import {
   staleSeconds,
   statusText,
   stepPanel,
+  screenCue,
   submittedExceedsPresent,
+  timeCue,
   timerRemainingMs,
   timerStorageKey,
   toggleTimer,
@@ -64,6 +69,7 @@ import {
   withTimeout,
   type RotationPanel,
   type ShowMode,
+  type TimeCue,
   type TimerState,
 } from '../../lib/show-logic';
 import { AGENDA_NAMES, agendaTheme } from '../ballot/BallotPager';
@@ -322,10 +328,15 @@ function Centered({ title, sub }: { title: string; sub?: string }) {
 
 // ── 투표 진행 중(시안 쪽 0) ─────────────────────────────────────────
 
+/** 시연(demo=) 화면의 가짜 토큰 — 32자 영숫자가 아니라 실제 투표지와 겹칠 수 없다. QR 에는 주소가 아니라 안내 글만 넣는다. */
+const DEMO_TOKEN = 'demo';
+const DEMO_QR_TEXT = '시연용 QR - 실제 투표지가 아닙니다 (기후시민회의 표출 화면 시연)';
+
 function useQrSrc(token: string): string | null {
   const [src, setSrc] = useState<string | null>(null);
   useEffect(() => {
-    QRCode.toDataURL(`${VOTE_ORIGIN}/b?t=${token}`, { width: 1000, margin: 1 })
+    const payload = token === DEMO_TOKEN ? DEMO_QR_TEXT : `${VOTE_ORIGIN}/b?t=${token}`;
+    QRCode.toDataURL(payload, { width: 1000, margin: 1, errorCorrectionLevel: token === DEMO_TOKEN ? 'H' : 'M' })
       .then(setSrc)
       .catch(() => setSrc(null));
   }, [token]);
@@ -344,13 +355,97 @@ function QrHidden({ size, fontSize }: { size: number; fontSize: number }) {
   );
 }
 
+/** 시연 QR 가운데 「시연용」 딱지(오류 정정 H 라 가려도 읽힌다 — 읽히는 것은 안내 글뿐). */
+function DemoQrMark() {
+  return (
+    <span
+      data-testid="show-qr-demo"
+      style={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', background: C.bg, color: '#FFFFFF', fontSize: 40, fontWeight: 900, padding: '10px 22px', borderRadius: 12, whiteSpace: 'nowrap' }}
+    >
+      시연용
+    </span>
+  );
+}
+
+/** 시연 화면 표기(머리 오른쪽, 작게). */
+function DemoTag() {
+  return (
+    <span data-testid="show-demo-tag" style={{ fontSize: 22, fontWeight: 700, color: C.orange, border: `2px solid ${C.orange}`, borderRadius: 8, padding: '4px 14px', whiteSpace: 'nowrap' }}>
+      시연 화면 · 숫자는 가상
+    </span>
+  );
+}
+
+// ── 남은 시간 알림 · 10초 카운트다운 · 종료(시안 색 · 글꼴 안에서) ─────────────────
+
+/** 제목과 수 사이 빈자리에 띄우는 띠 — 5분 · 3분 · 1분 · 30초(주황, 잠깐 크게 떴다 줄어듦) · 종료(주황 테두리, 계속). */
+function CueBand({ cue, small = false }: { cue: TimeCue; small?: boolean }) {
+  const f = small ? 0.84 : 1; // 실시간 순환 · 영상 화면은 조금 작게(빈자리가 좁다)
+  if (cue.kind === 'notice') {
+    return (
+      <p
+        key={cue.sec}
+        data-testid="show-cue"
+        data-kind="notice"
+        data-sec={cue.sec}
+        className="show-cue-in"
+        style={{ margin: 0, flex: 'none', background: C.orange, color: '#0B1A2A', fontSize: 76 * f, fontWeight: 900, lineHeight: 1.15, padding: '8px 52px', borderRadius: 16, whiteSpace: 'nowrap' }}
+      >
+        {cue.text}
+      </p>
+    );
+  }
+  if (cue.kind === 'ended') {
+    return (
+      <p
+        data-testid="show-cue"
+        data-kind="ended"
+        className="show-cue-in"
+        style={{ margin: 0, flex: 'none', border: `4px solid ${C.orange}`, background: C.bg, color: C.orange, fontSize: 64 * f, fontWeight: 900, lineHeight: 1.15, padding: '8px 44px', borderRadius: 16, whiteSpace: 'nowrap' }}
+      >
+        {cue.text}
+      </p>
+    );
+  }
+  return null;
+}
+
+/** 실시간 순환 · 영상 화면 — 띠를 칸 위(top) 또는 아래(bottom) 가운데에 겹쳐 띄운다. */
+function CueFloat({ cue, at }: { cue: TimeCue; at: 'top' | 'bottom' }) {
+  if (cue.kind !== 'notice' && cue.kind !== 'ended') return null;
+  return (
+    <div style={{ position: 'absolute', left: 0, right: 0, [at]: at === 'top' ? 12 : 28, display: 'flex', justifyContent: 'center', zIndex: 3, pointerEvents: 'none' }}>
+      <CueBand cue={cue} small />
+    </div>
+  );
+}
+
+/** 10→1 — 제목 자리 전체를 덮는 큰 숫자(QR 은 가리지 않는다). */
+function CountdownCover({ n }: { n: number }) {
+  return (
+    <div
+      data-testid="show-cue"
+      data-kind="count"
+      data-n={n}
+      style={{ position: 'absolute', inset: 0, background: C.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 36, zIndex: 2 }}
+    >
+      <span style={{ fontSize: 56, fontWeight: 800, color: C.muted, whiteSpace: 'nowrap' }}>투표 마감까지</span>
+      <span key={n} className="tr-num show-count-pop" style={{ fontSize: 400, fontWeight: 900, lineHeight: 1, color: n <= 3 ? C.orange : C.text, minWidth: 520, textAlign: 'center' }}>
+        {n}
+      </span>
+      <span style={{ fontSize: 72, fontWeight: 800, color: C.muted }}>초</span>
+    </div>
+  );
+}
+
 function QrCard({ token, visible }: { token: string; visible: boolean }) {
   const src = useQrSrc(token);
   return (
     <div style={{ width: 420, flex: 'none', display: 'flex', flexDirection: 'column', gap: 28 }}>
       {visible ? (
-        <div style={{ background: '#FFFFFF', borderRadius: 28, padding: 26, width: 420, height: 420, boxSizing: 'border-box' }}>
+        <div style={{ position: 'relative', background: '#FFFFFF', borderRadius: 28, padding: 26, width: 420, height: 420, boxSizing: 'border-box' }}>
           {src ? <img data-testid="show-qr" src={src} alt="투표 QR" style={{ width: '100%', height: '100%', display: 'block' }} /> : null}
+          {token === DEMO_TOKEN ? <DemoQrMark /> : null}
         </div>
       ) : (
         <QrHidden size={420} fontSize={36} />
@@ -374,12 +469,15 @@ function LiveView({
   denom,
   timer,
   now,
+  cue,
 }: {
   token: string;
   live: BallotLiveCounts;
   denom: Denom;
   timer: TimerState;
   now: number;
+  /** 남은 시간 알림(SingleShow 가 screenCue 로 정해 넘긴다 — 영상 · 실시간 화면과 같은 값). */
+  cue: TimeCue;
 }) {
   const no = agendaNo(live.title);
   const remaining = timerRemainingMs(timer, now);
@@ -393,6 +491,8 @@ function LiveView({
   return (
     <div style={{ flex: 1, display: 'flex', padding: '44px 72px 36px', gap: 72, minHeight: 0 }}>
       <div style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        {/* 의제 · 제목 · 빈자리 — 알림 띠는 빈자리에, 10초 카운트다운은 이 칸 전체를 덮는다(QR · 수는 그대로). */}
+        <div style={{ flex: 1, minHeight: 0, position: 'relative', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 28 }}>
           <AgendaBadge no={no} />
           <span data-testid="show-status" style={{ fontSize: 40, fontWeight: 800, display: 'flex', alignItems: 'center', gap: 14 }}>
@@ -406,7 +506,11 @@ function LiveView({
         >
           {agendaFullName(live.title)}
         </h1>
-        <div style={{ flex: 1 }} />
+        <div style={{ flex: 1, minHeight: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <CueBand cue={cue} />
+        </div>
+        {cue.kind === 'count' ? <CountdownCover n={cue.n} /> : null}
+        </div>
         <div style={{ display: 'flex', gap: 64 }}>
           <div style={{ flex: 1, borderTop: `6px solid ${C.text}`, paddingTop: 18 }}>
             <p style={{ margin: 0, fontSize: 36, fontWeight: 700, color: C.muted }}>남은 투표 시간</p>
@@ -416,10 +520,6 @@ function LiveView({
               style={{ margin: '4px 0 0', fontSize: clock.text.length > 2 && closed ? 120 : 176, height: 176, display: 'flex', alignItems: 'flex-end', fontWeight: 900, lineHeight: 1, whiteSpace: 'nowrap', color: closed ? C.orange : C.text }}
             >
               {clock.text}
-            </p>
-            <p style={{ margin: '14px 0 0', fontSize: 28, color: C.muted }}>
-              {running ? '진행 중' : timeUp ? '투표 시간이 끝났습니다' : remaining === timer.durationMs ? '시작 전' : '일시정지'} · 전체{' '}
-              {clockText(timer.durationMs)}
             </p>
           </div>
           <div style={{ flex: 1, borderTop: `6px solid ${C.blue}`, paddingTop: 18 }}>
@@ -647,7 +747,9 @@ function VideoView({
   videoRef,
   onTogglePlay,
   onPick,
+  cue,
 }: {
+  cue: TimeCue;
   token: string;
   live: BallotLiveCounts;
   /** 출석(URL present). null 이면 가결 기준 줄을 숨긴다. */
@@ -730,6 +832,9 @@ function VideoView({
               <p style={{ margin: 0, fontSize: 22, color: C.dim }}>재생·일시정지: 영상 클릭 또는 K · 영상 끄기: V</p>
             </div>
           )}
+          {/* 남은 시간 알림 — 영상 아래쪽 가운데 띠, 10초부터는 영상 칸을 덮는 큰 숫자(오른쪽 띠의 QR 은 그대로). */}
+          <CueFloat cue={cue} at="bottom" />
+          {cue.kind === 'count' ? <CountdownCover n={cue.n} /> : null}
         </div>
       </div>
       <aside data-testid="show-video-strip" style={{ width: STRIP_W, flex: 'none', display: 'flex', flexDirection: 'column', padding: '22px 0 20px', minHeight: 0 }}>
@@ -929,8 +1034,9 @@ function SinglePanel({ agenda, denom, clock }: { agenda: LiveAgenda; denom: Deno
       </p>
     </div>
   );
+  // 위 83px 는 남은 시간 띠 자리(RotateView 의 CueFloat 위 12px ~ 약 102px) — 띠가 의제 이름 줄을 덮지 않게 늘 비워 둔다.
   return (
-    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 70, padding: '0 20px' }}>
+    <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 56, padding: '83px 20px 0' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 28 }}>
         <AgendaBadge no={agenda.no} />
         <span style={{ ...KEEP, fontSize: 52, fontWeight: 900 }}>{agenda.no ? AGENDA_NAMES[agenda.no] : agenda.live.title}</span>
@@ -954,12 +1060,15 @@ function RotateView({
   panels,
   index,
   clock,
+  cue = { kind: 'none' },
 }: {
   agendas: LiveAgenda[];
   denom: Denom;
   panels: RotationPanel[];
   index: number;
   clock: { text: string; closed: boolean } | null;
+  /** 의제 하나 주소의 남은 시간 알림(종합 주소는 타이머가 없어 none). 판이 넘어가도 그대로 위에 뜬다. */
+  cue?: TimeCue;
 }) {
   const panel = panels[index] ?? 'overall';
   return (
@@ -973,6 +1082,8 @@ function RotateView({
           <SinglePanel agenda={agendas[0]} denom={denom} clock={clock} />
         ) : null}
       </div>
+      <CueFloat cue={cue} at="top" />
+      {cue.kind === 'count' ? <CountdownCover n={cue.n} /> : null}
     </div>
   );
 }
@@ -1005,6 +1116,35 @@ function useNow(active: boolean): number {
     return () => clearInterval(id);
   }, [active]);
   return now;
+}
+
+/**
+ * 시연 시계 — 벽시계 대신 쓰는 가상 시각. 타이머가 흐르는 동안은 demoAdvanceMs(1배속 구간 밖은 speed 배)로,
+ * 멈춰 있을 때는 1배로 간다. 타이머 함수(toggle · adjust · reset)는 이 시각을 그대로 받는다.
+ */
+function useDemoClock(enabled: boolean, speed: number, timerRef: React.MutableRefObject<TimerState | null>) {
+  const vRef = useRef(Date.now());
+  const [now, setNow] = useState(() => vRef.current);
+  const read = useCallback(() => vRef.current, []);
+  useEffect(() => {
+    if (!enabled) return;
+    let last = performance.now();
+    const id = setInterval(() => {
+      const w = performance.now();
+      const dt = w - last;
+      last = w;
+      const t = timerRef.current;
+      if (t && t.runningSince != null) {
+        const rem = timerRemainingMs(t, vRef.current);
+        vRef.current += rem > 0 ? demoAdvanceMs(rem, dt, speed, t.durationMs) : dt;
+      } else {
+        vRef.current += dt;
+      }
+      setNow(vRef.current);
+    }, 100);
+    return () => clearInterval(id);
+  }, [enabled, speed, timerRef]);
+  return { now, read };
 }
 
 /** 마우스를 움직이면 3초 동안 화면 단추를 보인다(무대에서는 숨김). */
@@ -1058,16 +1198,29 @@ function Controls({ buttons }: { buttons: Array<{ label: string; key: string; on
   );
 }
 
-function SingleShow({ token, presentRaw, minutes }: { token: string; presentRaw: string | null; minutes: number | null }) {
+function SingleShow({
+  token,
+  presentRaw,
+  minutes,
+  demo = null,
+  speed = 1,
+}: {
+  token: string;
+  presentRaw: string | null;
+  minutes: number | null;
+  /** 시연 의제 — 있으면 DB 를 읽지 않고 가상 수로 돈다(타이머 저장도 하지 않는다). */
+  demo?: 1 | 2 | 3 | null;
+  speed?: number;
+}) {
   const [mode, setMode] = useState<ShowMode>({ view: 'live', video: false });
   const view = mode.view;
   const press = useCallback((k: '1' | '2' | '3' | '4' | 'V') => setMode((m) => showModeKey(m, k)), []);
   const loadLive = useCallback(() => fetchBallotLiveCounts(token), [token]);
   const loadResults = useCallback(() => fetchBallotResults(token), [token]);
-  const live = usePoll(loadLive);
+  const live = usePoll(demo ? null : loadLive);
   // 결과는 공개(published) 뒤에만 온다. 결과 화면(2·3)에 있을 때만 읽는다 — 공개되는 순간 「집계 확인 중」에서 넘어간다.
   // 실시간 순환(4)은 수만 쓰므로 결과를 읽지 않는다.
-  const res = usePoll(view === 'detail' || view === 'summary' ? loadResults : null);
+  const res = usePoll(!demo && (view === 'detail' || view === 'summary') ? loadResults : null);
   const panels = rotationPanels(1);
   const rot = useRotation(panels.length, view === 'rotate');
 
@@ -1116,9 +1269,14 @@ function SingleShow({ token, presentRaw, minutes }: { token: string; presentRaw:
 
   // 타이머 — 처음 한 번 정하고, 같은 주소(토큰)로 저장해 두어 F5 · 새로고침에도 이어진다.
   const storeKey = timerStorageKey([token]);
+  const items0 = demo ? DEMO_ITEMS[demo] : live.data?.items;
   useEffect(() => {
-    if (timer || !live.data) return;
-    const init = initialTimer(minutes != null ? Math.round(minutes * 60) : defaultDurationSec(live.data.items));
+    if (timer || items0 == null) return;
+    const init = initialTimer(minutes != null ? Math.round(minutes * 60) : defaultDurationSec(items0));
+    if (demo) {
+      setTimer(init); // 시연은 늘 처음부터(저장값을 읽지 않는다)
+      return;
+    }
     let saved: string | null = null;
     try {
       saved = window.localStorage.getItem(storeKey);
@@ -1126,26 +1284,28 @@ function SingleShow({ token, presentRaw, minutes }: { token: string; presentRaw:
       saved = null;
     }
     setTimer(restoreTimer(saved, init.durationMs, Date.now()) ?? init);
-  }, [live.data, minutes, timer, storeKey]);
+  }, [items0, demo, minutes, timer, storeKey]);
   useEffect(() => {
-    if (!timer) return;
+    if (!timer || demo) return;
     try {
       window.localStorage.setItem(storeKey, serializeTimer(timer, Date.now()));
     } catch {
       // 저장소가 막힌 브라우저 — 화면 메모리로만 돈다.
     }
-  }, [timer, storeKey]);
+  }, [timer, storeKey, demo]);
 
-  const now = useNow(timer?.runningSince != null);
+  const wallNow = useNow(!demo && timer?.runningSince != null);
+  const demoClock = useDemoClock(!!demo, speed, timerRef);
+  const readClock = demo ? demoClock.read : Date.now;
 
   const act = useCallback((kind: 'toggle' | 'reset' | 'up' | 'down') => {
     const t = timerRef.current;
     if (!t) return;
-    const at = Date.now();
+    const at = readClock();
     if (kind === 'toggle') setTimer(toggleTimer(t, at));
     else if (kind === 'reset') setTimer(resetTimer(t));
     else setTimer(adjustTimer(t, kind === 'up' ? 60 : -60, at));
-  }, []);
+  }, [readClock]);
   // 타이머가 보이는 화면(진행 · 영상 · 실시간 순환)에서만 Space · ↑↓ · F5 가 듣는다. 결과 화면(2·3)에서는 무시.
   const timerShown = view === 'live' || view === 'rotate';
 
@@ -1229,18 +1389,28 @@ function SingleShow({ token, presentRaw, minutes }: { token: string; presentRaw:
     return () => window.removeEventListener('keydown', onKey);
   }, [act, press, showVideo, togglePlay, view, timerShown, rot.step, rot.togglePause]);
 
-  const d = live.data;
+  const nowMs = demo ? demoClock.now : Math.max(wallNow, Date.now());
+  // 시연 — 수는 타이머가 흐른 비율로 정한다(처음 시작 전 = 시작 전 · 0명).
+  const demoBegun = !!timer && (timer.runningSince != null || timer.pausedRemainingMs !== timer.durationMs);
+  const d: BallotLiveCounts | undefined = demo
+    ? timer
+      ? demoLiveCounts(demo, timer.durationMs > 0 ? 1 - timerRemainingMs(timer, nowMs) / timer.durationMs : 0, demoBegun, parsePresent(presentRaw) ?? DEMO_PRESENT)
+      : undefined
+    : live.data;
   const present = parsePresent(presentRaw);
   const denom = liveDenominator(present, d?.roster ?? 0);
   const itemsCount = d?.items ?? res.data?.items.length ?? 0;
   const sub = view === 'live' ? '최종 권고안 의결' : view === 'rotate' ? '실시간 투표 현황' : '의제별 의결 결과';
-  const nowMs = Math.max(now, Date.now());
   const resultView = view === 'detail' || view === 'summary';
   // 결과 화면은 결과 읽기만 본다(실시간 수 읽기가 실패해도 막히지 않는다).
   const poll = resultView ? res : live;
+  // 남은 시간 알림 — 진행 · 영상 · 실시간 화면이 같은 값을 쓴다(화면을 오가도 중복 · 누락 없음).
+  const cue: TimeCue = timer && d ? screenCue(mode, timeCue(timer, nowMs, d.status)) : { kind: 'none' };
 
   let body: React.ReactNode;
-  if (resultView) {
+  if (resultView && demo) {
+    body = <Centered title="시연 화면에는 결과가 없습니다" sub="1 을 누르면 진행 화면으로 돌아갑니다." />;
+  } else if (resultView) {
     if (present == null) {
       body = <Centered title="출석 인원(present=)을 주소에 넣어 주세요" sub="가결 · 부결 판정은 출석 인원이 있어야 표시합니다." />;
     } else if (res.data === undefined) {
@@ -1257,7 +1427,7 @@ function SingleShow({ token, presentRaw, minutes }: { token: string; presentRaw:
   } else if (showVideo) {
     body = null; // 영상 칸은 아래에서 늘 붙어 있다(2·3 에 다녀와도 파일·재생 위치가 남게)
   } else if (view === 'live') {
-    body = timer ? <LiveView token={token} live={d} denom={denom} timer={timer} now={nowMs} /> : <Centered title="불러오는 중" />;
+    body = timer ? <LiveView token={token} live={d} denom={denom} timer={timer} now={nowMs} cue={cue} /> : <Centered title="불러오는 중" />;
   } else {
     const c = timer ? clockDisplay(d.status, timerRemainingMs(timer, nowMs), timer.durationMs) : null;
     body = (
@@ -1267,6 +1437,7 @@ function SingleShow({ token, presentRaw, minutes }: { token: string; presentRaw:
         panels={panels}
         index={rot.index}
         clock={c ? { text: c.text, closed: c.ended } : null}
+        cue={cue}
       />
     );
   }
@@ -1278,9 +1449,12 @@ function SingleShow({ token, presentRaw, minutes }: { token: string; presentRaw:
           sub={sub}
           staleSec={poll.data !== undefined ? poll.staleSec : null}
           right={
-            <span>
-              권고안 <b className="tr-num" style={{ color: C.text }}>{itemsCount}</b>건
-            </span>
+            <>
+              {demo ? <DemoTag /> : null}
+              <span>
+                권고안 <b className="tr-num" style={{ color: C.text }}>{itemsCount}</b>건
+              </span>
+            </>
           }
         />
         <Alerts presentMissing={present == null} overflow={!!d && submittedExceedsPresent(present, [d.submitted])} />
@@ -1298,6 +1472,7 @@ function SingleShow({ token, presentRaw, minutes }: { token: string; presentRaw:
               videoRef={videoRef}
               onTogglePlay={togglePlay}
               onPick={() => fileRef.current?.click()}
+              cue={cue}
             />
           </div>
         ) : null}
@@ -1671,6 +1846,9 @@ export default function ShowScreen() {
     window.addEventListener('keydown', block, true);
     return () => window.removeEventListener('keydown', block, true);
   }, []);
+  if (params.demo) {
+    return <SingleShow token={DEMO_TOKEN} presentRaw={params.present ?? String(DEMO_PRESENT)} minutes={params.minutes} demo={params.demo} speed={params.speed} />;
+  }
   if (params.tokens.length === 0) {
     return (
       <Stage>

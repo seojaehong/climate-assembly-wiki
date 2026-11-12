@@ -202,11 +202,153 @@ export function clockText(ms: number): string {
   return `${String(m).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 }
 
+// ── 남은 시간 알림(5분 · 3분 · 1분 · 30초) · 10초 카운트다운 · 종료 ─────────────
+
+/** 알림을 띄우는 남은 시간(초). */
+export const CUE_MARKS_SEC = [300, 180, 60, 30] as const;
+/** 알림 띠가 보이는 시간(타이머 시간). */
+export const CUE_SHOW_MS = 6000;
+/** 이 초부터 큰 카운트다운. */
+export const COUNTDOWN_SEC = 10;
+
+export type TimeCue =
+  | { kind: 'none' }
+  | { kind: 'notice'; sec: number; text: string }
+  | { kind: 'count'; n: number }
+  | { kind: 'ended'; text: string };
+
+function markText(sec: number): string {
+  return `남은 시간 ${sec >= 60 ? `${sec / 60}분` : `${sec}초`}`;
+}
+
+/**
+ * 진행 화면의 알림 — 타이머 상태만으로 정한다(「이미 띄웠음」 같은 기억을 두지 않는다).
+ * · notice: 타이머가 흐르는 중에 남은 시간이 기준(5분 · 3분 · 1분 · 30초)을 「이번에 흐르면서」 지난 뒤 CUE_SHOW_MS 동안.
+ *   일시정지하면 사라지고, 다시 시작해도 이미 지난 기준은 다시 띄우지 않는다(멈춘 시점 남은 시간 > 기준일 때만).
+ *   ↓ 로 기준을 건너뛰어도 띄우지 않는다. ↑ 로 기준 위로 되돌렸다가 다시 지나면 그때 다시 띄운다(실제로 다시 지났으므로).
+ * · count: 흐르는 중이고 남은 시간이 10초 이하(시계와 같은 올림 — 00:10 일 때 10).
+ * · ended: 남은 시간 0(서버가 아직 열려 있음) — 「투표 시간이 끝났습니다」.
+ * 서버가 마감 · 공개면 아무것도 띄우지 않는다(시계가 「마감」).
+ */
+export function timeCue(t: TimerState, now: number, status: string): TimeCue {
+  if (status === 'closed' || status === 'published' || t.durationMs <= 0) return { kind: 'none' };
+  const remaining = timerRemainingMs(t, now);
+  if (remaining <= 0) return { kind: 'ended', text: '투표 시간이 끝났습니다' };
+  const running = t.runningSince != null;
+  if (!running) return { kind: 'none' };
+  if (remaining <= COUNTDOWN_SEC * 1000) return { kind: 'count', n: Math.ceil(remaining / 1000) };
+  for (const sec of CUE_MARKS_SEC) {
+    const mark = sec * 1000;
+    if (t.pausedRemainingMs > mark && remaining <= mark && remaining > mark - CUE_SHOW_MS) {
+      return { kind: 'notice', sec, text: markText(sec) };
+    }
+  }
+  return { kind: 'none' };
+}
+
+/**
+ * 화면별 알림 — 타이머가 보이는 화면(진행 1 · 영상 V · 실시간 순환 4)은 모두 같은 timeCue 를 그린다.
+ * 화면이 알림을 따로 기억하지 않으므로 PgDn 으로 오가도 같은 시각엔 같은 알림(중복 · 누락 없음). 결과 화면(2 · 3)은 없음.
+ */
+export function screenCue(mode: ShowMode, cue: TimeCue): TimeCue {
+  return mode.view === 'detail' || mode.view === 'summary' ? { kind: 'none' } : cue;
+}
+
+// ── 시연(더미) — /show?demo=1|2|3&speed=<배속>. DB 를 읽지 않는다 ─────────────────
+
+/** 시연 의제별 권고안 수(실제와 같게). */
+export const DEMO_ITEMS: Record<1 | 2 | 3, number> = { 1: 19, 2: 28, 3: 23 };
+export const DEMO_PRESENT = 174;
+/** 시연 끝 제출 수(가상). */
+const DEMO_FINAL: Record<1 | 2 | 3, number> = { 1: 158, 2: 149, 3: 161 };
+
+/** 1배속으로 보여 줄 구간(남은 시간 ms 기준 [아래, 위]) — 시작 직후 · 알림 앞뒤 · 마지막 33초. */
+export function demoSlowZones(durationMs: number): Array<[number, number]> {
+  const z: Array<[number, number]> = [[0, 33_000]];
+  for (const sec of [300, 180, 60]) {
+    const m = sec * 1000;
+    if (m < durationMs) z.push([m - CUE_SHOW_MS - 1000, m + 2000]);
+  }
+  z.push([Math.max(0, durationMs - 3000), durationMs]);
+  return z.sort((a, b) => a[0] - b[0]);
+}
+
+/**
+ * 시연 배속 — 벽시계 dt 동안 타이머를 몇 ms 흘릴지. 남은 시간이 1배속 구간 안이면 1배, 밖이면 speed 배.
+ * 구간 경계를 넘을 때는 경계까지 나눠 계산한다(한 틱이 길어도 알림을 건너뛰지 않게). 0 아래(종료 뒤)는 1배.
+ */
+export function demoAdvanceMs(remainingMs: number, dtMs: number, speed: number, durationMs: number): number {
+  if (dtMs <= 0) return 0;
+  const sp = Math.max(1, speed);
+  const zones = demoSlowZones(durationMs);
+  let r = remainingMs;
+  let wall = dtMs;
+  let adv = 0;
+  while (wall > 0 && r > 0) {
+    const slow = zones.some(([lo, hi]) => r > lo && r <= hi);
+    const rate = slow ? 1 : sp;
+    // 다음 경계(현재 r 아래에서 가장 가까운 구간 끝 · 0).
+    let next = 0;
+    for (const [lo, hi] of zones) {
+      if (lo < r && lo > next) next = lo;
+      if (hi < r && hi > next) next = hi;
+    }
+    const need = (r - next) / rate;
+    if (need >= wall) {
+      adv += wall * rate;
+      r -= wall * rate;
+      wall = 0;
+    } else {
+      adv += r - next;
+      r = next;
+      wall -= need;
+    }
+  }
+  return adv + wall; // 0 에 닿은 뒤 남은 벽시계는 1배
+}
+
+export type DemoLive = { status: string; title: string; items: number; started: number; submitted: number; in_progress: number; roster: number; at: string };
+
+function logistic01(p: number, c: number, k: number): number {
+  const f = (x: number) => 1 / (1 + Math.exp(-k * (x - c)));
+  return (f(p) - f(0)) / (f(1) - f(0));
+}
+
+/**
+ * 시연 수 — 진행 비율 p(0~1, 타이머 시간 기준)의 단조 곡선. 투표 시작은 초반에 빠르게, 제출은 막판에 대부분.
+ * 시작 전(begun=false)이면 draft · 0명. 같은 p 면 늘 같은 값(무작위 없음).
+ */
+export function demoLiveCounts(no: 1 | 2 | 3, p: number, begun: boolean, present = DEMO_PRESENT): DemoLive {
+  const items = DEMO_ITEMS[no];
+  const title = `전체회의 의결 의제${no} 시연`;
+  const base = { title, items, roster: present, at: '' };
+  if (!begun) return { ...base, status: 'draft', started: 0, submitted: 0, in_progress: 0 };
+  const x = Math.min(1, Math.max(0, p));
+  const fin = Math.min(present, DEMO_FINAL[no]);
+  const startFin = Math.min(present, fin + 9);
+  // 살짝 고르지 않게(단조 유지: 1 + 0.008·17·cos > 0).
+  const w = x + 0.008 * Math.sin(17 * x);
+  const st = startFin * (1 - Math.exp(-w / 0.07)) / (1 - Math.exp(-1 / 0.07));
+  const subCurve = 0.88 * logistic01(w, 0.5, 9) + 0.12 * Math.max(0, (w - 0.9) / 0.1);
+  const submitted = Math.max(0, Math.min(fin, Math.floor(fin * Math.min(1, subCurve))));
+  const started = Math.max(submitted, Math.min(startFin, Math.floor(st)));
+  return { ...base, status: 'open', started, submitted, in_progress: started - submitted };
+}
+
 // ── URL ─────────────────────────────────────────────────────────────
 
-export type ShowParams = { tokens: string[]; present: string | null; minutes: number | null; motion: boolean };
+export type ShowParams = {
+  tokens: string[];
+  present: string | null;
+  minutes: number | null;
+  motion: boolean;
+  /** 시연 의제(demo=1|2|3) — DB 없이 가상 수로 돈다. 그 밖 값이면 null. */
+  demo: 1 | 2 | 3 | null;
+  /** 시연 배속(1~600, 기본 1). 알림 앞뒤 · 마지막 33초는 늘 1배속. */
+  speed: number;
+};
 
-/** /show?t=<토큰>[,<토큰>,<토큰>]&present=<참석>&min=<분>[&motion=0]. 토큰은 32자 영숫자만. motion=0 = 움직임 끔(저사양 노트북). */
+/** /show?t=<토큰>[,<토큰>,<토큰>]&present=<참석>&min=<분>[&motion=0]. 토큰은 32자 영숫자만. motion=0 = 움직임 끔(저사양 노트북). 시연: /show?demo=1&speed=60 */
 export function parseShowParams(search: string): ShowParams {
   const q = new URLSearchParams(search);
   const tokens = (q.get('t') ?? '')
@@ -215,7 +357,11 @@ export function parseShowParams(search: string): ShowParams {
     .filter((s) => /^[A-Za-z0-9]{32}$/.test(s));
   const minRaw = Number(q.get('min'));
   const minutes = q.get('min') != null && Number.isFinite(minRaw) && minRaw > 0 ? minRaw : null;
-  return { tokens, present: q.get('present'), minutes, motion: q.get('motion') !== '0' };
+  const d = q.get('demo');
+  const demo = d === '1' || d === '2' || d === '3' ? (Number(d) as 1 | 2 | 3) : null;
+  const spRaw = Number(q.get('speed'));
+  const speed = q.get('speed') != null && Number.isFinite(spRaw) && spRaw >= 1 ? Math.min(600, spRaw) : 1;
+  return { tokens, present: q.get('present'), minutes, motion: q.get('motion') !== '0', demo, speed };
 }
 
 // ── 읽기 실패 ───────────────────────────────────────────────────────
