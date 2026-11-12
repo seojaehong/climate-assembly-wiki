@@ -111,7 +111,7 @@ describe('투표지 화면 배선(BallotCard)', () => {
     expect(start).toBeGreaterThan(-1);
     const body = src.slice(start, src.indexOf('setPagerPos(nextPos);', start));
     expect(body).toContain('progressOrdinalsToSend(ballot.items, answers, nextAnswers');
-    expect(body).toMatch(/void ballotProgressNamed\(token, getDeviceToken, voter\.team, displayVoterName\(voter\.name\), ordinal\)/);
+    expect(body).toMatch(/void ballotProgressNamed\(token, clientId, voter\.team, displayVoterName\(voter\.name\), ordinal\)/);
     expect(body).toContain("confirmed: voter.confirmed === true");
     expect(body).toContain("submitted: locallySubmitted || submitState !== 'idle' || submitting");
     expect(body).not.toMatch(/await\s+ballotProgressNamed/);

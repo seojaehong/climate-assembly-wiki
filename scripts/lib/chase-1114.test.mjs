@@ -62,7 +62,7 @@ describe('chaseState', () => {
     const names = st.teams.flatMap((t) => t.names);
     expect(names).not.toContain('박마바');
     expect(names.filter((n) => n === '김민수')).toHaveLength(1);
-    expect(chaseText(st, { label: '의제1', now: '2026-11-14T05:00:00Z' })).toContain('불참·서면 등 2명 제외');
+    expect(chaseText(st, { label: '의제1', now: '2026-11-14T05:00:00Z' })).toContain('그 밖 제외 2명');
   });
 
   it('제외 「조|이름」은 조의 띄어쓰기가 달라도 맞는다', () => {
@@ -214,5 +214,74 @@ describe('remainText', () => {
     expect(remainText('14:40', '2026-11-14T05:30:00Z')).toBe('남은 시간 10분');
     expect(remainText('14:20', '2026-11-14T05:30:00Z')).toBe('마감 시각 지남');
     expect(remainText('', '2026-11-14T05:30:00Z')).toBe('');
+  });
+});
+
+describe('(11/14) 의결 서명 명단 · ③ 이름 확인', () => {
+  const vs = [
+    voter('1분과 1조', '가'),
+    voter('1분과 1조', '나', { started_at: '2026-11-14T05:01:00Z', answered_count: 3 }),
+    voter('1분과 2조', '다', { submitted: true, submitted_at: '2026-11-14T05:02:00Z' }),
+    voter('1분과 2조', '라'),
+  ];
+  it('서명 명단이 있으면 서명한 사람만 ①② · 분모 = 서명 인원 · 서명 안 한 사람은 빠진다', () => {
+    const st = boardChaseState(board(vs), [], ['1분과 1조|나', '다', '라']);
+    expect(st.useSigned).toBe(true);
+    expect(st.signedCount).toBe(3);
+    expect(st.unsigned).toBe(1); // 가
+    expect(st.waiting.map((w) => w.name)).toEqual(['나']);
+    expect(st.teams.flatMap((t) => t.names)).toEqual(['라']);
+    expect(st.remaining).toBe(2);
+    const text = chaseText(st, { label: '의제1', now: '2026-11-14T05:05:00Z' });
+    expect(text).toContain('제출 1 / 의결 서명 3 · 남은 분 2');
+    expect(text).not.toMatch(/[:,] 가( |,|$)/m);
+    expect(text).toContain('· 1분과 1조(1): 나 3/19');
+  });
+  it('서명 명단 줄이 명단에 안 맞으면 따로 알린다(조 표기 띄어쓰기는 무시)', () => {
+    const st = boardChaseState(board(vs), [], ['1분과1조|나', '홍길동', '1분과 2조|가']);
+    expect(st.signedUnmatched).toEqual(['홍길동', '1분과 2조|가']);
+  });
+  it('서명 명단이 비면 명단 전원 기준(지금과 같음)', () => {
+    const st = boardChaseState(board(vs), []);
+    expect(st.useSigned).toBe(false);
+    expect(chaseText(st, { label: '의제1', now: '2026-11-14T05:05:00Z' })).toContain('/ 명단 4 ·');
+  });
+  it('③ 한 이름에 기기 2대 이상 · 명단 밖 이름 제출 · 대리 제출 표시', () => {
+    const st = boardChaseState(
+      board([
+        voter('1분과 1조', '가', { started_at: '2026-11-14T05:01:00Z', devices: 2 }),
+        voter('1분과 2조', '다', { submitted: true, devices: 2, proxy: true }),
+        voter('2분과 1조', '마', { in_roster: false, submitted: true, devices: 1 }),
+        voter('1분과 2조', '라', { devices: 1 }),
+      ]),
+    );
+    expect(st.checks.map((c) => c.name)).toEqual(['가', '다', '마']);
+    const text = chaseText(st, { label: '의제1', now: '2026-11-14T05:05:00Z' });
+    expect(text).toContain('③ 이름 확인 3명');
+    expect(text).toContain('· 1분과 1조 가 (기기 2대, 미제출)');
+    expect(text).toContain('· 1분과 2조 다 (기기 2대, 대리 입력으로 제출됨)');
+    expect(text).toContain('· 2분과 1조 마 (명단 밖 이름, 제출됨)');
+  });
+  it('③ 은 찬반 낱말을 쓰지 않는다', () => {
+    const st = boardChaseState(board([voter('1분과 1조', '가', { submitted: true, devices: 3 })]));
+    expect(chaseText(st, { label: '의제1' })).not.toMatch(/찬성|반대/);
+  });
+});
+
+describe('(11/14) 서명 안 한 사람의 제출', () => {
+  it('머리줄 제출 수에서 빼고 ③ 에 「의결 서명 명단에 없음」으로 올린다', () => {
+    const st = boardChaseState(
+      board([
+        voter('1분과 1조', '가', { submitted: true }),
+        voter('1분과 1조', '나', { submitted: true, devices: 2 }),
+        voter('1분과 2조', '다'),
+      ]),
+      [],
+      ['1분과 1조|가', '다'],
+    );
+    expect(st.submittedBase).toBe(1);
+    const text = chaseText(st, { label: '의제1', now: '2026-11-14T05:05:00Z' });
+    expect(text).toContain('제출 1 / 의결 서명 2 · 남은 분 1');
+    expect(text).toContain('· 1분과 1조 나 (의결 서명 명단에 없음, 기기 2대, 제출됨)');
   });
 });

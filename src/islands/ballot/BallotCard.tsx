@@ -28,6 +28,8 @@ import {
   recordLocalSubmit,
   recordLocalVoter,
   namedDoneText,
+  isProxyMode,
+  newProxyClientId,
   refreshNoticeMessage,
   resolveBallotScreen,
   rosterRequired,
@@ -277,7 +279,10 @@ function DoneScreen({
   refreshNotice,
   voter = null,
   agendaNo = null,
+  onNext,
 }: {
+  /** 대리 입력 모드 — 「다음 사람 입력」 버튼. */
+  onNext?: () => void;
   duplicate: boolean;
   decision: boolean | DecisionBallotKind | null;
   /** 11/14 의제별 투표지 — 「의제N 투표가 제출되었습니다」(11/11 수정 의견). QR 세 장이라 어느 의제를 냈는지 보이게. */
@@ -316,8 +321,18 @@ function DoneScreen({
           {namedDoneText(voter)}
         </p>
       ) : null}
-      {agendaNo ? null : <p className="mt-5 text-[14px] leading-relaxed text-[#5A6B73]">집계는 운영진 확인을 거쳐 공개됩니다.</p>}
-      <RefreshButton onRefresh={onRefresh} refreshing={refreshing} refreshNotice={refreshNotice} />
+      {onNext ? (
+        <button
+          type="button"
+          data-testid="proxy-next"
+          onClick={onNext}
+          className="mt-6 w-full rounded-2xl bg-[#1F4E79] px-5 py-4 text-[22px] font-extrabold text-white"
+        >
+          다음 사람 입력
+        </button>
+      ) : null}
+      {agendaNo || onNext ? null : <p className="mt-5 text-[14px] leading-relaxed text-[#5A6B73]">집계는 운영진 확인을 거쳐 공개됩니다.</p>}
+      {onNext ? null : <RefreshButton onRefresh={onRefresh} refreshing={refreshing} refreshNotice={refreshNotice} />}
     </CenterMessage>
   );
 }
@@ -851,6 +866,15 @@ function ResultsScreen({ results }: { results: BallotResults | null }) {
 export default function BallotCard() {
   const parsed = typeof window !== 'undefined' ? parseBallotUrl(window.location.search) : null;
   const token = parsed?.token ?? null;
+  // 대리 입력 모드(수기 투표지) — 사람마다 새 기기 번호. 임시 저장 · 「이 기기 제출」 기록을 쓰지 않는다.
+  const proxy = typeof window !== 'undefined' && isProxyMode(window.location.search);
+  const proxyIdRef = useRef<string | null>(null);
+  const [proxySeq, setProxySeq] = useState(0);
+  const clientId = (): string => {
+    if (!proxy) return getDeviceToken();
+    if (!proxyIdRef.current) proxyIdRef.current = newProxyClientId();
+    return proxyIdRef.current;
+  };
 
   const [ballot, setBallot] = useState<Ballot | null | undefined>(undefined);
   const [answersState, setAnswers] = useState<Record<string, number>>({});
@@ -892,7 +916,7 @@ export default function BallotCard() {
       if (b && b.id !== pagerRestoredRef.current && shouldUsePager(b, window.location.search)) {
         pagerRestoredRef.current = b.id;
         // 새로고침 · 화면 꺼짐 · QR 다시 찍기 — 같은 투표지면 고른 값과 위치를 되살린다(다른 투표지는 되살리지 않는다).
-        const draft = loadPagerDraft(pagerStorage, b.id, b.items);
+        const draft = proxy ? null : loadPagerDraft(pagerStorage, b.id, b.items);
         setAnswers(draft?.answers ?? {});
         setPagerPos(draft?.pos ?? 0);
         if (draft?.voter) setVoter({ team: draft.voter.team, name: draft.voter.name, confirmed: draft.voter.confirmed === true });
@@ -901,7 +925,7 @@ export default function BallotCard() {
       setRoster(r);
       setBallot(b);
       setBallotLoadError(null);
-      if (b && getLocalSubmit(b.id)) {
+      if (b && !proxy && getLocalSubmit(b.id)) {
         setLocallySubmitted(true);
         setLocalVoter(getLocalVoter(b.id));
       }
@@ -934,7 +958,7 @@ export default function BallotCard() {
 
   // 넘김식 임시 저장 — 누를 때마다(답 · 위치 · 고른 조와 이름). 제출이 끝나면 handleSubmit 이 지운다.
   useEffect(() => {
-    if (!ballot || !pagerView || screen !== 'active' || pagerRestoredFor !== ballot.id) return;
+    if (proxy || !ballot || !pagerView || screen !== 'active' || pagerRestoredFor !== ballot.id) return;
     savePagerDraft(pagerStorage, ballot.id, { answers, pos: pagerPos, voter: voter.team || voter.name ? { team: voter.team, name: voter.name, ...(voter.confirmed ? { confirmed: true } : {}) } : null });
   }, [ballot, pagerView, screen, pagerRestoredFor, answers, pagerPos, voter]);
 
@@ -998,8 +1022,8 @@ export default function BallotCard() {
         named,
         rosterRequired: rosterRequired(ballot),
         fetchRoster: () => fetchBallotRoster(token),
-        submitAnonymous: () => submitBallot(token, getDeviceToken(), answers),
-        submitNamed: () => submitBallotNamed(token, getDeviceToken(), answers, voter.team as string, voterName),
+        submitAnonymous: () => submitBallot(token, clientId(), answers),
+        submitNamed: () => submitBallotNamed(token, clientId(), answers, voter.team as string, voterName),
       });
       if (outcome.kind !== 'sent') {
         setConfirmOpen(false);
@@ -1028,13 +1052,17 @@ export default function BallotCard() {
         // 같은 이름이 이미 제출됨 — 이 기기는 잠그지 않는다(조·이름을 잘못 눌렀을 수 있다).
         setError(NAME_TAKEN_MESSAGE);
       } else if (result === 'ok') {
-        recordLocalSubmit(ballot.id);
-        clearPagerDraft(pagerStorage, ballot.id);
-        if (mine) {
-          recordLocalVoter(ballot.id, mine);
-          setLocalVoter(mine);
+        if (!proxy) {
+          recordLocalSubmit(ballot.id);
+          clearPagerDraft(pagerStorage, ballot.id);
+          if (mine) recordLocalVoter(ballot.id, mine);
         }
+        if (mine) setLocalVoter(mine);
         setSubmitState('submitted');
+      } else if (result === 'duplicate' && proxy) {
+        // 대리 입력 — 기기 번호는 사람마다 새로 만들므로 정상이면 나지 않는다. 다음 사람용 새 번호로 바꾸고 알린다.
+        proxyIdRef.current = newProxyClientId();
+        setError('이 입력은 이미 들어가 있습니다. [다시 제출]하지 말고 진행판에서 이름을 확인해 주세요.');
       } else if (result === 'duplicate') {
         // 이 디바이스의 제출이 이미 존재 — 로컬 기록을 보정하고 완료 화면으로.
         recordLocalSubmit(ballot.id);
@@ -1093,6 +1121,21 @@ export default function BallotCard() {
     }
   };
 
+  /** 대리 입력 — 다음 사람: 새 기기 번호 · 답 · 위치 · 조와 이름을 비우고 넘김식을 처음부터 다시 그린다. */
+  const handleProxyNext = () => {
+    proxyIdRef.current = newProxyClientId();
+    setAnswers({});
+    setPagerPos(0);
+    setVoter({ team: null, name: '' });
+    setLocalVoter(null);
+    setLocallySubmitted(false);
+    setLateClosed(false);
+    setError(null);
+    setSubmitState('idle');
+    setProxySeq((n) => n + 1);
+    if (typeof window !== 'undefined') window.scrollTo(0, 0);
+  };
+
   if (token && ballotLoadError && ballot === undefined) {
     return (
       <LoadErrorScreen
@@ -1141,6 +1184,7 @@ export default function BallotCard() {
         refreshNotice={refreshNotice}
         voter={localVoter}
         agendaNo={agendaTheme(ballot?.title)?.no ?? null}
+        onNext={proxy ? handleProxyNext : undefined}
       />
     );
   }
@@ -1151,8 +1195,12 @@ export default function BallotCard() {
   if (screen === 'active' && ballot && pagerView && pagerRestoredFor === ballot.id) {
     // 11/14 의제별 의결 투표지 — 한 화면에 권고안 1건(넘김식). 요약 화면이 확인창을 대신한다.
     return (
+      <>
+      {proxy ? (
+        <div data-testid="proxy-badge" className="pointer-events-none fixed right-2 top-2 z-50 rounded-full bg-[#8A4B08] px-3 py-1 text-[13px] font-extrabold text-white shadow">대리 입력</div>
+      ) : null}
       <BallotPager
-        key={ballot.id}
+        key={`${ballot.id}:${proxySeq}`}
         ballot={ballot}
         initialAnswers={answers}
         initialPos={pagerPos}
@@ -1166,7 +1214,7 @@ export default function BallotCard() {
           });
           if (token && voter.team) {
             for (const ordinal of sendOrdinals) {
-              void ballotProgressNamed(token, getDeviceToken, voter.team, displayVoterName(voter.name), ordinal);
+              void ballotProgressNamed(token, clientId, voter.team, displayVoterName(voter.name), ordinal);
             }
           }
           setAnswers(nextAnswers);
@@ -1184,9 +1232,10 @@ export default function BallotCard() {
         onStarted={() => {
           // 「네」 — 먼저 확인했다고 적고(새로고침해도 다시 묻지 않게), 기록은 실패해도 투표를 막지 않는다.
           setVoter((v) => (v.confirmed ? v : { ...v, confirmed: true }));
-          if (token && voter.team && voter.name) void startBallotNamed(token, getDeviceToken, voter.team, displayVoterName(voter.name));
+          if (token && voter.team && voter.name) void startBallotNamed(token, clientId, voter.team, displayVoterName(voter.name));
         }}
       />
+      </>
     );
   }
   if (screen === 'active' && ballot) {

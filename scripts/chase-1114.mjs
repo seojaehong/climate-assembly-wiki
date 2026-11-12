@@ -63,9 +63,12 @@ function ensureStateDir() {
 function loadSettings() {
   try {
     const s = JSON.parse(readFileSync(SETTINGS_FILE, 'utf8'));
-    return { exclude: Array.isArray(s.exclude) ? s.exclude.map(String) : [] };
+    return {
+      exclude: Array.isArray(s.exclude) ? s.exclude.map(String) : [],
+      signed: Array.isArray(s.signed) ? s.signed.map(String) : [],
+    };
   } catch {
-    return { exclude: [] };
+    return { exclude: [], signed: [] };
   }
 }
 
@@ -306,6 +309,16 @@ function demoSource() {
             v.submitted_at = iso(doneSec);
           }
           for (let o = 1; o <= k; o += 1) perOrdinal[o] += 1;
+          // 시연 — 멈춘 사람은 진행요원 폰으로 이어 하는 중(기기 2대). 그중 둘에 하나는 대리 입력으로 제출됐다고 본다.
+          v.devices = 1;
+          if (p.stallAt != null && el >= p.startSec + 30) {
+            v.devices = 2;
+            if (p.stallAt % 2 === 0) {
+              v.submitted = true;
+              v.proxy = true;
+              v.submitted_at = iso(p.startSec + 40);
+            }
+          }
         }
         if (v.in_roster || v.started_at) voters.push(v);
       }
@@ -331,8 +344,8 @@ function demoSource() {
 
 // ── 판 만들기(브라우저로 가는 값 — 찬반 · 토큰 없음) ────────────────
 
-function composeView(board, { label, deadline, exclude }) {
-  const st = boardChaseState(board, exclude);
+function composeView(board, { label, deadline, exclude, signed = [] }) {
+  const st = boardChaseState(board, exclude, signed);
   const now = new Date();
   const text = chaseText(st, { label, now, remainText: remainText(deadline, now) });
   return {
@@ -352,7 +365,7 @@ function composeView(board, { label, deadline, exclude }) {
     },
     chase: {
       text,
-      submitted: st.submitted,
+      submitted: st.submittedBase ?? st.submitted,
       rosterCount: st.rosterCount,
       remaining: st.remaining,
       excluded: st.excluded,
@@ -360,6 +373,11 @@ function composeView(board, { label, deadline, exclude }) {
       notStartedCount: st.notStartedCount,
       itemCount: st.itemCount,
       offRoster: st.waiting.filter((w) => w.offRoster).map((w) => ({ team: w.team, name: w.name, answered: w.answered })),
+      useSigned: st.useSigned,
+      signedCount: st.signedCount,
+      unsigned: st.unsigned,
+      signedUnmatched: st.signedUnmatched,
+      checks: st.checks,
     },
     groups: st.groups,
   };
@@ -502,6 +520,7 @@ function serve(source) {
     const ballotId = (asked && known ? asked : '') || ballots.find((b) => b.status === 'open')?.id || ballots[0]?.id || '';
     out.ballotId = ballotId;
     out.exclude = settings.exclude;
+    out.signed = settings.signed;
     if (!ballotId) return out;
     const c = await fetchBoard(ballotId);
     out.error = c.error;
@@ -510,7 +529,7 @@ function serve(source) {
     if (c.good) {
       Object.assign(
         out,
-        composeView(c.good, { label: labelFor(ballots, ballotId, params.get('label'), c.good), deadline: params.get('deadline'), exclude: settings.exclude }),
+        composeView(c.good, { label: labelFor(ballots, ballotId, params.get('label'), c.good), deadline: params.get('deadline'), exclude: settings.exclude, signed: settings.signed }),
       );
     }
     return out;
@@ -585,6 +604,18 @@ function serve(source) {
           cache.forEach((c) => (c.at = 0));
           return send(res, 200, { ok: true, exclude: lines });
         }
+        if (u.pathname === '/api/signed') {
+          // 의결 서명 명단(현장 마감 명부). 비우면 명단 전원 기준으로 돌아간다.
+          const lines = String(body.lines ?? '')
+            .split(/\r?\n/)
+            .map((s) => s.trim())
+            .filter(Boolean)
+            .slice(0, 600);
+          settings.signed = lines;
+          saveSettings(settings);
+          cache.forEach((c) => (c.at = 0));
+          return send(res, 200, { ok: true, signed: lines });
+        }
         if (u.pathname === '/api/send') {
           const text = String(body.text ?? '').slice(0, 8000);
           return send(res, 200, await doSend(text, 'manual'));
@@ -599,7 +630,7 @@ function serve(source) {
           if (fresh.error || !fresh.good) return send(res, 200, { ok: false, stage: 'guard', status: 'skipped', code: `최신 값을 못 읽음 — ${fresh.error ?? ''}`.slice(0, 200) });
           if (fresh.good.status !== 'open') return send(res, 200, { ok: false, stage: 'guard', status: 'skipped', code: '투표지가 열림 상태가 아님' });
           const ballots = await source.ballots().catch(() => []);
-          const view = composeView(fresh.good, { label: labelFor(ballots, ballotId, body.label, fresh.good), deadline: body.deadline, exclude: settings.exclude });
+          const view = composeView(fresh.good, { label: labelFor(ballots, ballotId, body.label, fresh.good), deadline: body.deadline, exclude: settings.exclude, signed: settings.signed });
           if (view.chase.remaining === 0) return send(res, 200, { ok: false, stage: 'guard', status: 'skipped', code: '남은 분 0' });
           return send(res, 200, { ...(await doSend(view.chase.text, 'auto')), text: view.chase.text });
         }
@@ -625,7 +656,7 @@ async function onceMode(source) {
   const ballots = await source.ballots().catch(() => []);
   const board = await source.board(ballotId);
   if (!board) die('투표지를 읽지 못했습니다');
-  const view = composeView(board, { label: labelFor(ballots, ballotId, arg('--label'), board), deadline: arg('--deadline'), exclude: loadSettings().exclude });
+  const view = composeView(board, { label: labelFor(ballots, ballotId, arg('--label'), board), deadline: arg('--deadline'), exclude: loadSettings().exclude, signed: loadSettings().signed });
   if (board.fallback) process.stderr.write('(진행 기록 함수 없음 — 제출 기준만)\n');
   process.stdout.write(`${view.chase.text}\n`);
   if (has('--send')) {
@@ -672,8 +703,8 @@ summary{cursor:pointer;padding:6px 10px;display:flex;gap:10px;flex-wrap:wrap;ali
 summary .t{font-weight:700;min-width:120px}summary .c{font-variant-numeric:tabular-nums;color:var(--muted);font-size:16px}
 summary .c b.s{color:var(--ok)}summary .c b.g{color:var(--warn)}summary .c b.z{color:var(--bad)}
 .people{display:flex;flex-wrap:wrap;gap:6px;padding:4px 10px 10px}.chip{padding:2px 8px;border-radius:12px;font-size:15px;background:#22303d}
-.chip.submitted{background:#173d29;color:#c8f5d8}.chip.progress{background:#5a4718;color:#ffe8b3}.chip.none{background:#5a1f24;color:#ffd5d5}.chip.excluded{background:#2a2f35;color:#7d8790;text-decoration:line-through}
-textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude{min-height:110px}
+.chip.submitted{background:#173d29;color:#c8f5d8}.chip.progress{background:#5a4718;color:#ffe8b3}.chip.none{background:#5a1f24;color:#ffd5d5}.chip.excluded,.chip.unsigned{background:#2a2f35;color:#7d8790;text-decoration:line-through}.checks{border:2px solid #c0392b;border-radius:10px;padding:8px 12px;margin:10px 0;background:#3a1416}.checks b{color:#ffb3b3}
+textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude,#signed{min-height:110px}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}.muted{color:var(--muted);font-size:15px}
 </style></head><body>
 <header>
@@ -692,11 +723,12 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude{mi
     <div class="kpi"><b id="k-rate">-</b><span>제출률(출석 기준)</span></div>
     <div class="kpi"><b id="k-prog">-</b><span>진행 중(들어왔는데 미제출)</span></div>
     <div class="kpi"><b id="k-none">-</b><span>미시작</span></div>
-    <div class="kpi"><b id="k-ex">-</b><span>제외(불참·서면)</span></div>
+    <div class="kpi"><b id="k-ex">-</b><span>제외(서명 안 함·그 밖)</span></div>
   </div>
   <h2>권고안별 투표율 <span class="muted">— 그 건을 누른 인원 / 출석 인원 (찬반은 16:30 전까지 보이지 않음)</span></h2>
   <div id="items" class="items"></div>
   <div class="cols">
+    <div id="checks" class="checks" style="display:none"></div>
     <section><h2>분과·조별 진행</h2><div id="groups"></div></section>
     <section>
       <h2>카톡 독려</h2>
@@ -713,7 +745,10 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude{mi
         <label><select id="autoMin"><option value="2">2분</option><option value="3" selected>3분</option><option value="5">5분</option></select> 마다</label>
         <span id="autoInfo" class="muted"></span>
       </div>
-      <h2>제외(불참·서면) <span class="muted">한 줄 한 명 — 「조|이름」 또는 이름</span></h2>
+      <h2>의결 서명 명단(마감 명부) <span class="muted">한 줄 한 명 — 「조|이름」 또는 이름. 넣으면 이 사람들만 독려 · 분모</span></h2>
+      <textarea id="signed" spellcheck="false"></textarea>
+      <div class="row"><button id="saveSg">서명 명단 저장</button><span id="sgInfo" class="muted"></span></div>
+      <h2>그 밖 제외 <span class="muted">의결권 없는 사람 등 — 「조|이름」 또는 이름</span></h2>
       <textarea id="exclude" spellcheck="false"></textarea>
       <div class="row"><button id="saveEx">제외 저장</button><span id="exInfo" class="muted"></span></div>
     </section>
@@ -724,6 +759,7 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude{mi
   const $ = (id) => document.getElementById(id);
   const ls = { get(k){try{return localStorage.getItem(k)}catch{return null}}, set(k,v){try{localStorage.setItem(k,v)}catch{}} };
   const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = String(text); return e; };
+  let sgDirty = false;
   let last = null, timer = null, previewDirty = false, exDirty = false, autoTimer = null, autoNext = 0, armedUntil = 0;
   let ballot = new URLSearchParams(location.search).get('ballot') || ls.get('chase.ballot') || '';
   $('every').value = ls.get('chase.every') || '3000';
@@ -781,7 +817,7 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude{mi
     $('updated').textContent = '갱신 ' + new Date(s.lastGoodAt || s.at).toLocaleTimeString('ko-KR');
     if (!b) return;
     // 출석 인원
-    if (document.activeElement !== $('present')) $('present').value = presentFor(b.id, b.roster_count);
+    if (s.chase && s.chase.useSigned) { $('present').value = s.chase.signedCount; $('present').disabled = true; } else { $('present').disabled = false; if (document.activeElement !== $('present')) $('present').value = presentFor(b.id, b.roster_count); }
     const present = Math.max(1, Number($('present').value) || b.roster_count || 1);
     if (document.activeElement !== $('deadline') && !$('deadline').value) $('deadline').value = ls.get('chase.deadline.' + b.id) || '';
     const c = s.chase;
@@ -789,7 +825,14 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude{mi
     $('k-rate').textContent = Math.min(100, Math.round((c.submitted / present) * 100)) + '%';
     $('k-prog').textContent = c.waitingCount;
     $('k-none').textContent = c.notStartedCount;
-    $('k-ex').textContent = c.excluded;
+    $('k-ex').textContent = c.excluded + (c.unsigned || 0);
+    const ck = $('checks'); ck.replaceChildren();
+    if (c.checks && c.checks.length) {
+      ck.append(el('b', null, '③ 이름 확인 ' + c.checks.length + '명 — 한 이름이 여러 기기 · 명단 밖 이름'));
+      for (const x of c.checks) ck.append(el('div', null, x.team + ' ' + x.name + ' (' + (x.devices >= 2 ? '기기 ' + x.devices + '대, ' : '') + (x.offRoster ? '명단 밖, ' : '') + (x.unsigned ? '서명 명단에 없음, ' : '') + (x.submitted ? (x.proxy ? '대리 제출' : '제출됨') : '미제출') + ')'));
+      ck.style.display = '';
+    } else ck.style.display = 'none';
+    $('sgInfo').textContent = c.useSigned ? '서명 ' + c.signedCount + '명 기준 · 서명 안 한 명단 ' + (c.unsigned || 0) + '명 제외' + (c.signedUnmatched && c.signedUnmatched.length ? ' · 명단에 안 맞는 줄: ' + c.signedUnmatched.join(', ') : '') : '비어 있음 — 명단 전원 기준';
     // 권고안 막대
     const items = $('items'); items.replaceChildren();
     for (const it of b.items) {
@@ -811,10 +854,10 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude{mi
       cnt.append(el('b', 's', '제출 ' + g.submitted), ' · ', el('b', 'g', '진행 ' + g.inProgress), ' · ', el('b', 'z', '미시작 ' + g.notStarted), ' · 제외 ' + g.excluded + ' / ' + g.total);
       sm.append(cnt); d.append(sm);
       const ppl = el('div', 'people');
-      const order = { progress: 0, none: 1, submitted: 2, excluded: 3 };
+      const order = { progress: 0, none: 1, submitted: 2, excluded: 3, unsigned: 4 };
       for (const p of [...g.people].sort((x, y) => order[x.status] - order[y.status])) {
         const of = (n) => (c.itemCount ? ' ' + (n ?? 0) + '/' + c.itemCount : '');
-        const t = p.status === 'progress' ? p.name + (c.itemCount ? of(p.answered) : ' 진행 중') : p.status === 'submitted' ? p.name + ' 제출' : p.status === 'excluded' ? p.name : p.name + of(0);
+        const t = p.status === 'progress' ? p.name + (c.itemCount ? of(p.answered) : ' 진행 중') : p.status === 'submitted' ? p.name + ' 제출' : p.status === 'excluded' ? p.name : p.status === 'unsigned' ? p.name + ' 서명X' : p.name + of(0);
         ppl.append(el('span', 'chip ' + p.status, t));
       }
       d.append(ppl); gs.append(d);
@@ -830,6 +873,7 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude{mi
     if (!previewDirty) $('preview').value = c.text;
     $('dirty').textContent = previewDirty ? '고친 문구 — 자동 갱신 멈춤' : '';
     if (!exDirty && document.activeElement !== $('exclude')) $('exclude').value = (s.exclude || []).join('\\n');
+    if (!sgDirty && document.activeElement !== $('signed')) $('signed').value = (s.signed || []).join('\\n');
     $('room').textContent = s.roomReady ? '카톡 방 등록됨' + (s.demoRoomOnly ? ' (시연: ' + s.demoRoomOnly + ' 만)' : '') : '스태프 단톡방 미등록 — 보내기 비활성';
     $('room').className = 'badge ' + (s.roomReady ? 'ok' : 'bad');
     $('send').disabled = !s.roomReady;
@@ -889,6 +933,12 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude{mi
       autoTimer = setInterval(autoFire, Number($('autoMin').value) * 60000);
       $('autoInfo').textContent = '다음 자동 전송 ' + new Date(autoNext).toLocaleTimeString('ko-KR');
     } else stopAuto();
+  };
+  $('signed').oninput = () => { sgDirty = true; $('sgInfo').textContent = '저장 안 됨'; };
+  $('saveSg').onclick = async () => {
+    const r = await post('/api/signed', { lines: $('signed').value });
+    sgDirty = false; $('sgInfo').textContent = r.ok ? '저장함(' + r.signed.length + '줄)' : '저장 실패';
+    tick();
   };
   $('exclude').oninput = () => { exDirty = true; $('exInfo').textContent = '저장 안 됨'; };
   $('saveEx').onclick = async () => {
