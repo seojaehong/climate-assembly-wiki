@@ -34,6 +34,11 @@ import {
   turnoutBar,
   turnoutPct,
   yesCount,
+  timeCue,
+  demoAdvanceMs,
+  demoLiveCounts,
+  DEMO_ITEMS,
+  DEMO_PRESENT,
 } from './show-logic';
 
 describe('passThreshold — 참석 P명의 3분의 2 이상(올림)', () => {
@@ -350,5 +355,125 @@ describe('parseShowParams', () => {
     expect(parseShowParams('?t=x').motion).toBe(true);
     expect(parseShowParams('?motion=0').motion).toBe(false);
     expect(parseShowParams('?motion=1').motion).toBe(true);
+  });
+});
+
+describe('timeCue — 남은 시간 알림 · 10초 카운트다운 · 종료', () => {
+  const D = 28 * 60 * 1000 + 30 * 1000;
+  const run = (at: number) => toggleTimer(initialTimer(D / 1000), at); // at 에 시작
+  const atRemaining = (t: ReturnType<typeof run>, ms: number) => (t.runningSince ?? 0) + (t.pausedRemainingMs - ms);
+  it('5:00 정확히 → 「남은 시간 5분」, 4:59 → 그대로, 6초 뒤 사라짐, 5:01 → 없음', () => {
+    const t = run(1000);
+    expect(timeCue(t, atRemaining(t, 300_000), 'open')).toEqual({ kind: 'notice', sec: 300, text: '남은 시간 5분' });
+    expect(timeCue(t, atRemaining(t, 299_000), 'open').kind).toBe('notice');
+    expect(timeCue(t, atRemaining(t, 294_000), 'open').kind).toBe('none');
+    expect(timeCue(t, atRemaining(t, 301_000), 'open').kind).toBe('none');
+  });
+  it('3분 · 1분 · 30초 문구', () => {
+    const t = run(0);
+    expect(timeCue(t, atRemaining(t, 180_000), 'open')).toMatchObject({ text: '남은 시간 3분' });
+    expect(timeCue(t, atRemaining(t, 60_000), 'open')).toMatchObject({ text: '남은 시간 1분' });
+    expect(timeCue(t, atRemaining(t, 30_000), 'open')).toMatchObject({ text: '남은 시간 30초' });
+  });
+  it('일시정지 중에는 띄우지 않고, 다시 시작해도 이미 지난 기준은 다시 띄우지 않는다', () => {
+    const t = run(0);
+    const at = atRemaining(t, 298_000);
+    const paused = toggleTimer(t, at);
+    expect(timeCue(paused, at + 1000, 'open').kind).toBe('none');
+    const resumed = toggleTimer(paused, at + 60_000);
+    expect(timeCue(resumed, at + 60_500, 'open').kind).toBe('none');
+  });
+  it('↓ 로 기준을 건너뛰면 띄우지 않는다 · ↑ 로 위로 갔다가 다시 지나면 다시 띄운다', () => {
+    const t = run(0);
+    const at = atRemaining(t, 330_000);
+    const down = adjustTimer(t, -60, at); // 4:30
+    expect(timeCue(down, at + 100, 'open').kind).toBe('none');
+    const at2 = atRemaining(t, 298_000); // 알림 중
+    const up = adjustTimer(t, 60, at2); // 5:58
+    expect(timeCue(up, at2 + 100, 'open').kind).toBe('none');
+    expect(timeCue(up, at2 + 58_000, 'open')).toMatchObject({ kind: 'notice', sec: 300 });
+  });
+  it('10초 진입 → 10, 9.001초 → 10, 9초 → 9, 0.001초 → 1 · 10.001초 → 카운트다운 아님', () => {
+    const t = run(0);
+    expect(timeCue(t, atRemaining(t, 10_000), 'open')).toEqual({ kind: 'count', n: 10 });
+    expect(timeCue(t, atRemaining(t, 9_001), 'open')).toEqual({ kind: 'count', n: 10 });
+    expect(timeCue(t, atRemaining(t, 9_000), 'open')).toEqual({ kind: 'count', n: 9 });
+    expect(timeCue(t, atRemaining(t, 1), 'open')).toEqual({ kind: 'count', n: 1 });
+    expect(timeCue(t, atRemaining(t, 10_001), 'open').kind).toBe('none');
+    // 멈춰 있으면 카운트다운도 없다(시계만 00:07).
+    expect(timeCue(toggleTimer(t, atRemaining(t, 7_000)), 0, 'open').kind).toBe('none');
+  });
+  it('0 → 「투표 시간이 끝났습니다」, 서버 마감 · 공개면 없음, 시작 전 · 처음으로(R) 뒤엔 없음', () => {
+    const t = run(0);
+    expect(timeCue(t, atRemaining(t, 0) + 5000, 'open')).toEqual({ kind: 'ended', text: '투표 시간이 끝났습니다' });
+    expect(timeCue(t, atRemaining(t, 0) + 5000, 'closed').kind).toBe('none');
+    expect(timeCue(t, atRemaining(t, 10_000), 'published').kind).toBe('none');
+    expect(timeCue(initialTimer(D / 1000), 0, 'open').kind).toBe('none');
+    expect(timeCue(resetTimer(t), atRemaining(t, 5_000), 'open').kind).toBe('none');
+  });
+  it('전체 5분으로 시작하면 시작하자마자 「5분」을 띄우지 않는다', () => {
+    const t = toggleTimer(initialTimer(300), 0);
+    expect(timeCue(t, 0, 'open').kind).toBe('none');
+    expect(timeCue(t, 120_000, 'open')).toMatchObject({ sec: 180 });
+  });
+});
+
+describe('시연(demo) — 배속 · 가상 수', () => {
+  const D = 1710_000;
+  it('parseShowParams demo · speed', () => {
+    expect(parseShowParams('?demo=2&speed=120')).toMatchObject({ demo: 2, speed: 120, tokens: [] });
+    expect(parseShowParams('?demo=4').demo).toBeNull();
+    expect(parseShowParams('?demo=yes').demo).toBeNull();
+    expect(parseShowParams('?t=x').demo).toBeNull();
+    expect(parseShowParams('?demo=1').speed).toBe(1);
+    expect(parseShowParams('?demo=1&speed=0.5').speed).toBe(1);
+    expect(parseShowParams('?demo=1&speed=9999').speed).toBe(600);
+  });
+  it('1배속 구간(시작 직후 · 알림 앞뒤 · 마지막 33초)은 1배, 밖은 speed 배', () => {
+    expect(demoAdvanceMs(D, 1000, 100, D)).toBe(1000);
+    expect(demoAdvanceMs(1_000_000, 100, 100, D)).toBe(10_000);
+    expect(demoAdvanceMs(301_000, 1000, 100, D)).toBe(1000);
+    expect(demoAdvanceMs(20_000, 1000, 100, D)).toBe(1000);
+  });
+  it('경계를 넘는 긴 틱도 알림 구간을 건너뛰지 않는다', () => {
+    // 5분 구간 위 끝 302초 — 310초에서 1초 틱(100배) = 8초를 빠르게 + 나머지 0.92초는 1배.
+    expect(demoAdvanceMs(310_000, 1000, 100, D)).toBeCloseTo(8000 + 920, 6);
+  });
+  it('끝까지 흘리면 벽시계 합이 예상과 같고, 0 뒤는 1배', () => {
+    let r = D;
+    let wall = 0;
+    while (r > 0) {
+      r -= demoAdvanceMs(r, 50, 100, D);
+      wall += 50;
+    }
+    // 1배 구간 합 = 3 + 9·3 + 33 = 63초, 나머지 (1710 − 63)/100 = 16.47초 → 약 79.5초
+    expect(wall / 1000).toBeGreaterThan(79);
+    expect(wall / 1000).toBeLessThan(80.1);
+    expect(demoAdvanceMs(0, 500, 100, D)).toBe(500);
+  });
+  it('가상 수 — 시작 전 0 · 단조 증가 · 시작 ≥ 제출 · 끝 140~165 · 참석 이하', () => {
+    for (const no of [1, 2, 3] as const) {
+      expect(demoLiveCounts(no, 0, false)).toMatchObject({ status: 'draft', started: 0, submitted: 0 });
+      let ps = -1;
+      let pst = -1;
+      for (let i = 0; i <= 1000; i += 1) {
+        const c = demoLiveCounts(no, i / 1000, true);
+        expect(c.submitted).toBeGreaterThanOrEqual(ps);
+        expect(c.started).toBeGreaterThanOrEqual(pst);
+        expect(c.started).toBeGreaterThanOrEqual(c.submitted);
+        expect(c.started).toBeLessThanOrEqual(DEMO_PRESENT);
+        expect(c.in_progress).toBe(c.started - c.submitted);
+        ps = c.submitted;
+        pst = c.started;
+      }
+      const end = demoLiveCounts(no, 1, true);
+      expect(end.submitted).toBeGreaterThanOrEqual(140);
+      expect(end.submitted).toBeLessThanOrEqual(165);
+      expect(end.items).toBe(DEMO_ITEMS[no]);
+      expect(end.title.startsWith(`전체회의 의결 의제${no}`)).toBe(true);
+      // 초반 빠르게(10% 시점에 시작 절반 이상), 막판 대부분 제출(절반 시점 제출 < 끝의 절반)
+      expect(demoLiveCounts(no, 0.1, true).started).toBeGreaterThan(end.started / 2);
+      expect(demoLiveCounts(no, 0.5, true).submitted).toBeLessThan(end.submitted / 2);
+    }
   });
 });
