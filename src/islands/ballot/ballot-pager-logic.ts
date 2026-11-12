@@ -213,3 +213,23 @@ export function loadPagerDraft(storage: DraftStorage, ballotId: string, items: r
   }
   return { answers, pos, voter };
 }
+
+/**
+ * 11/12 — 진행 기록(s34)으로 보낼 문항 번호. 넘김식 onChange 의 앞뒤 답을 비교해 값이 새로 생겼거나 바뀐 건만.
+ * 이름 확인(「네」) 전 · 실명 아님 · 제출 뒤에는 빈 배열. 찬반 값은 돌려주지 않는다(번호만).
+ * 처음 그릴 때 되살린 답으로 onChange 가 한 번 불려도 앞뒤가 같으므로 아무것도 보내지 않는다.
+ */
+export function progressOrdinalsToSend(
+  items: readonly Pick<BallotItem, 'id' | 'ordinal'>[],
+  prev: Record<string, number>,
+  next: Record<string, number>,
+  gate: { named: boolean; confirmed: boolean; submitted: boolean },
+): number[] {
+  if (!gate.named || !gate.confirmed || gate.submitted) return [];
+  const out: number[] = [];
+  for (const it of items) {
+    const v = next[it.id];
+    if (typeof v === 'number' && v !== prev[it.id]) out.push(it.ordinal);
+  }
+  return out;
+}
