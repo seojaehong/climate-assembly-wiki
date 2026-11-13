@@ -38,6 +38,10 @@ import {
   clockDisplay,
   DEMO_ITEMS,
   DEMO_PRESENT,
+  AUTO_SWITCH_MS,
+  autoNextView,
+  autoStartNow,
+  pickAutoAgenda,
   defaultDurationSec,
   demoAdvanceMs,
   demoLiveCounts,
@@ -965,13 +969,26 @@ function Ring({ pct, size }: { pct: number; size: number }) {
   );
 }
 
-function OverallPanel({ agendas, denom, compact = false }: { agendas: LiveAgenda[]; denom: Denom; compact?: boolean }) {
+function OverallPanel({
+  agendas,
+  denom,
+  compact = false,
+  clock = null,
+}: {
+  agendas: LiveAgenda[];
+  denom: Denom;
+  compact?: boolean;
+  /** 의제 하나 주소 — 판이 넘어가도 남은 투표 시간이 늘 보이게(모든 화면 타이머 유지, 11/13 지시). */
+  clock?: { text: string; closed: boolean } | null;
+}) {
   const o = overallTurnout(
     agendas.map((a) => a.live),
     denom.n,
   );
   // compact = 오른쪽에 QR 이 붙은 판(의제 하나 실시간) — 고리를 줄여 왼쪽 칸 안에 든다.
   const size = compact ? 500 : 600;
+  // 남은 시간까지 세 칸이면 위 83px(알림 띠 자리)를 비우고 숫자를 줄여 한 칸에 든다.
+  const num = clock ? 96 : 120;
   return (
     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: compact ? 64 : 110 }}>
       <div style={{ position: 'relative', width: size, height: size }}>
@@ -983,12 +1000,12 @@ function OverallPanel({ agendas, denom, compact = false }: { agendas: LiveAgenda
           </span>
         </div>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 44, minWidth: compact ? 0 : 560 }}>
-        <p style={{ margin: 0, fontSize: 64, fontWeight: 900 }}>전체 완료율{denom.byRoster ? <span style={{ fontSize: 34, color: C.muted }}> (명단 기준)</span> : null}</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: clock ? 22 : 44, minWidth: compact ? 0 : 560, paddingTop: clock ? 83 : 0 }}>
+        <p style={{ margin: 0, fontSize: clock ? 56 : 64, fontWeight: 900 }}>전체 완료율{denom.byRoster ? <span style={{ fontSize: 34, color: C.muted }}> (명단 기준)</span> : null}</p>
         <div style={{ borderTop: `6px solid ${C.blue}`, paddingTop: 14 }}>
           <p style={{ margin: 0, fontSize: 32, fontWeight: 700, color: C.blue }}>제출 완료</p>
           <p className="tr-num" style={{ margin: 0, display: 'flex', alignItems: 'baseline', gap: 16, lineHeight: 1.05 }}>
-            <span style={{ fontSize: 120, fontWeight: 900, color: C.blue }}>{o.submitted}</span>
+            <span style={{ fontSize: num, fontWeight: 900, color: C.blue }}>{o.submitted}</span>
             <span style={{ fontSize: 36, color: C.muted, whiteSpace: 'nowrap' }}>
               / {agendas.length > 1 ? `${denom.label} × 의제 ${agendas.length}개` : denom.label}
             </span>
@@ -997,12 +1014,24 @@ function OverallPanel({ agendas, denom, compact = false }: { agendas: LiveAgenda
         <div style={{ borderTop: `6px solid ${C.text}`, paddingTop: 14 }}>
           <p style={{ margin: 0, fontSize: 32, fontWeight: 700, color: C.muted }}>지금 투표 중</p>
           <p className="tr-num" style={{ margin: 0, lineHeight: 1.05 }}>
-            <span data-testid="rot-inprogress" style={{ fontSize: 120, fontWeight: 900 }}>
+            <span data-testid="rot-inprogress" style={{ fontSize: num, fontWeight: 900 }}>
               {o.inProgress}
             </span>
             <span style={{ fontSize: 44, color: C.muted, marginLeft: 10 }}>명</span>
           </p>
         </div>
+        {clock ? (
+          <div style={{ borderTop: `6px solid ${clock.closed ? C.orange : C.text}`, paddingTop: 14 }}>
+            <p style={{ margin: 0, fontSize: 32, fontWeight: 700, color: clock.closed ? C.orange : C.muted }}>남은 투표 시간</p>
+            <p
+              data-testid="rot-overall-clock"
+              className="tr-num"
+              style={{ margin: 0, lineHeight: 1.05, whiteSpace: 'nowrap', fontSize: clock.closed && clock.text.length > 2 ? 72 : num, fontWeight: 900, color: clock.closed ? C.orange : C.text }}
+            >
+              {clock.text}
+            </p>
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -1124,7 +1153,7 @@ function RotateView({
     <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', position: 'relative' }}>
       <div key={`${panel}-${index}`} data-testid={`rot-panel-${panel}`} className="show-panel-in" style={{ flex: 1, display: 'flex', minHeight: 0 }}>
         {panel === 'overall' ? (
-          <OverallPanel agendas={agendas} denom={denom} compact={compact} />
+          <OverallPanel agendas={agendas} denom={denom} compact={compact} clock={compact ? clock : null} />
         ) : panel === 'agendas' ? (
           <AgendasPanel agendas={agendas} denom={denom} />
         ) : agendas[0] ? (
@@ -1266,6 +1295,8 @@ function SingleShow({
   minutes,
   demo = null,
   speed = 1,
+  auto = false,
+  seedPrevStatus,
 }: {
   token: string;
   presentRaw: string | null;
@@ -1273,6 +1304,10 @@ function SingleShow({
   /** 시연 의제 — 있으면 DB 를 읽지 않고 가상 수로 돈다(타이머 저장도 하지 않는다). */
   demo?: 1 | 2 | 3 | null;
   speed?: number;
+  /** auto=1 — 진행 ↔ 실시간 30초 자동 전환, 시작 전 → 진행 바뀜을 보면 타이머 자동 시작. */
+  auto?: boolean;
+  /** 자동 의제 고르기가 이 의제로 넘어오기 직전에 본 상태(넘어오자마자 열린 경우에도 자동 시작하도록). */
+  seedPrevStatus?: string;
 }) {
   const [mode, setMode] = useState<ShowMode>({ view: 'live', video: false });
   const view = mode.view;
@@ -1450,6 +1485,34 @@ function SingleShow({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [act, press, showVideo, togglePlay, view, timerShown, rot.step, rot.togglePause]);
+
+  // 자동 진행 — 타이머 자동 시작(시작 전 → 진행 바뀜을 이 화면이 본 때만). 시연은 상태가 타이머에서 나오므로 열자마자 시작.
+  const liveStatus = demo ? undefined : live.data?.status;
+  const prevStatusRef = useRef<string | undefined>(seedPrevStatus);
+  useEffect(() => {
+    if (!auto || !timer) return;
+    if (demo) {
+      if (timer.runningSince == null && timer.pausedRemainingMs === timer.durationMs) act('toggle');
+      return;
+    }
+    if (liveStatus == null) return;
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = liveStatus;
+    if (autoStartNow(prev, liveStatus, timer)) act('toggle');
+  }, [auto, demo, liveStatus, timer, act]);
+  // 자동 진행 — 진행(1) ↔ 실시간(4) 30초마다. 투표 중이 아니면 진행 화면에 머문다.
+  const autoStatus = demo ? (timer && (timer.runningSince != null || timer.pausedRemainingMs !== timer.durationMs) ? 'open' : 'draft') : liveStatus;
+  useEffect(() => {
+    if (!auto || autoStatus == null) return;
+    const now = autoNextView(mode, autoStatus);
+    if (now && autoStatus !== 'open') {
+      setMode(now);
+      return;
+    }
+    if (!now) return;
+    const t = setTimeout(() => setMode((m) => autoNextView(m, autoStatus) ?? m), AUTO_SWITCH_MS);
+    return () => clearTimeout(t);
+  }, [auto, autoStatus, mode]);
 
   const nowMs = demo ? demoClock.now : Math.max(wallNow, Date.now());
   // 시연 — 수는 타이머가 흐른 비율로 정한다(처음 시작 전 = 시작 전 · 0명).
@@ -1892,6 +1955,47 @@ function OverviewRow({ bundle, present }: { bundle: AgendaBundle; present: numbe
   );
 }
 
+// ── 자동 의제 고르기(t=의제1,의제2,의제3&auto=1) ─────────────────────────────
+
+function AutoAgendaShow({ tokens, presentRaw, minutesList }: { tokens: string[]; presentRaw: string | null; minutesList: Array<number | null> }) {
+  const lastLives = useRef<Array<BallotLiveCounts | null>>([]);
+  const load = useCallback(() => settleEach(tokens, fetchBallotLiveCounts, lastLives), [tokens]);
+  const poll = usePoll(load);
+  const statuses = tokens.map((_, i) => poll.data?.find((s) => s.index === i)?.value?.status ?? null);
+  const want = pickAutoAgenda(statuses);
+  // 바뀌기 직전에 본 상태를 넘겨, 넘어오자마자 열린 의제도 타이머가 자동으로 시작되게 한다.
+  const prevStatuses = useRef<Array<string | null>>([]);
+  const [cur, setCur] = useState<{ index: number; seed: string | undefined } | null>(null);
+  useEffect(() => {
+    if (poll.data === undefined) return;
+    if (!cur || cur.index !== want) setCur({ index: want, seed: prevStatuses.current[want] ?? undefined });
+    prevStatuses.current = statuses;
+  }, [poll.data, want, cur, statuses]);
+  if (!cur) {
+    return (
+      <Stage>
+        <Header sub="표출 화면" right={null} />
+        {poll.failing ? <LoadFailed kind={poll.errorKind} /> : <Centered title="불러오는 중" />}
+        <Footer>
+          <span />
+          <span />
+        </Footer>
+      </Stage>
+    );
+  }
+  const i = cur.index;
+  return (
+    <SingleShow
+      key={tokens[i]}
+      token={tokens[i]}
+      presentRaw={presentRaw}
+      minutes={minutesList.length === 1 ? minutesList[0] : (minutesList[i] ?? null)}
+      auto
+      seedPrevStatus={cur.seed}
+    />
+  );
+}
+
 // ── 진입 ──────────────────────────────────────────────────────────
 
 export default function ShowScreen() {
@@ -1910,7 +2014,7 @@ export default function ShowScreen() {
     return () => window.removeEventListener('keydown', block, true);
   }, []);
   if (params.demo) {
-    return <SingleShow token={DEMO_TOKEN} presentRaw={params.present ?? String(DEMO_PRESENT)} minutes={params.minutes} demo={params.demo} speed={params.speed} />;
+    return <SingleShow token={DEMO_TOKEN} presentRaw={params.present ?? String(DEMO_PRESENT)} minutes={params.minutes} demo={params.demo} speed={params.speed} auto={params.auto} />;
   }
   if (params.tokens.length === 0) {
     return (
@@ -1926,6 +2030,7 @@ export default function ShowScreen() {
       </Stage>
     );
   }
+  if (params.tokens.length > 1 && params.auto) return <AutoAgendaShow tokens={params.tokens} presentRaw={params.present} minutesList={params.minutesList} />;
   if (params.tokens.length > 1) return <OverviewShow tokens={params.tokens} presentRaw={params.present} />;
-  return <SingleShow token={params.tokens[0]} presentRaw={params.present} minutes={params.minutes} />;
+  return <SingleShow token={params.tokens[0]} presentRaw={params.present} minutes={params.minutes} auto={params.auto} />;
 }
