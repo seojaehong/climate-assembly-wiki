@@ -1014,6 +1014,12 @@ function HomeScreen({
   );
   // 이 세션에 없는 탭(10/17 세션의 옛 탭)이 저장돼 있으면 첫 탭으로.
   const tab: ModTabId = tabs.some((item) => item.id === storedTab) ? storedTab : tabs[0].id;
+  // 한 번 연 투표 패널은 다른 탭에서도 숨긴 채 살려 둔다 — [투표 마감] 15초 대기 중에 탭을 옮기면
+  // 패널이 내려가며 마감이 조용히 취소되던 것(11/13 미리보기 실측)을 막는다.
+  const [voteMounted, setVoteMounted] = useState(tab === 'vote');
+  useEffect(() => {
+    if (tab === 'vote') setVoteMounted(true);
+  }, [tab]);
   const sessionState = useWorkshopSessionState({ access });
   const selectTab = (next: ModTabId) => {
     setTab(next);
@@ -1242,7 +1248,11 @@ function HomeScreen({
           {tab === 'attendance' && (
             <AttendancePanel teamId={teamId} teamName={teamName} accessToken={access?.accessToken} />
           )}
-          {tab === 'vote' && <BallotPanel access={access} subgroup={subgroup ?? null} />}
+          {(tab === 'vote' || voteMounted) && (
+            <div hidden={tab !== 'vote'} className={tab === 'vote' ? 'contents' : undefined}>
+              <BallotPanel access={access} subgroup={subgroup ?? null} />
+            </div>
+          )}
           {tab === 'decision' &&
             (isPresentWindow() ? (
               <DivisionPresentScreen scope={teamId} access={access} />
