@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { boardChaseState, chaseState, chaseText, kstHm, namedToBoard, remainText } from './chase-1114.mjs';
+import { boardChaseState, chaseState, chaseText, kstHm, namedToBoard, parseKakaoText, remainText } from './chase-1114.mjs';
 
 const roster = [
   { team: '1분과 1조', no: 1, name: '김가나' },
@@ -283,5 +283,165 @@ describe('(11/14) 서명 안 한 사람의 제출', () => {
     const text = chaseText(st, { label: '의제1', now: '2026-11-14T05:05:00Z' });
     expect(text).toContain('제출 1 / 의결 서명 2 · 남은 분 1');
     expect(text).toContain('· 1분과 1조 나 (의결 서명 명단에 없음, 기기 2대, 제출됨)');
+  });
+});
+
+describe('(11/14) 수정 표 「이름(수정)」 — 같은 조 원래 사람에 붙인다', () => {
+  const T = '2026-11-14T05:';
+  it('원래 + 수정(같은 조) → 제출 1 · ③ 0 · corrections 1(원래 표 있음)', () => {
+    const st = boardChaseState(
+      board([
+        voter('1분과 1조', '가', { submitted: true, submitted_at: `${T}01:00Z`, devices: 1 }),
+        voter('1분과 1조', '가(수정)', { in_roster: false, submitted: true, submitted_at: `${T}09:00Z`, devices: 1, proxy: true }),
+        voter('1분과 1조', '나'),
+      ]),
+    );
+    expect(st.submitted).toBe(1);
+    expect(st.submittedBase).toBe(1);
+    expect(st.remaining).toBe(1);
+    expect(st.checks).toEqual([]);
+    expect(st.corrections).toEqual([
+      { team: '1분과 1조', name: '가', submitted_at: `${T}09:00Z`, hadOriginal: true, count: 1, needsCheck: false, note: '' },
+    ]);
+    const text = chaseText(st, { label: '의제1', now: `${T}10:00Z` });
+    expect(text).toContain('제출 1 / 명단 2 · 남은 분 1');
+    expect(text).not.toContain('③');
+    expect(text).not.toContain('수정');
+  });
+  it('원래 표 없이 수정만 → 그 사람 제출 1 · 확인 필요(원래 표 없음)', () => {
+    const st = boardChaseState(
+      board([
+        voter('1분과 1조', '가', { started_at: `${T}01:00Z`, answered_count: 4 }),
+        voter('1분과 1조', '가 （수정）', { in_roster: false, submitted: true, submitted_at: `${T}09:00Z`, proxy: true }),
+      ]),
+    );
+    expect(st.submitted).toBe(1);
+    expect(st.remaining).toBe(0);
+    expect(st.waiting).toEqual([]);
+    expect(st.checks).toEqual([]);
+    expect(st.corrections[0]).toMatchObject({ name: '가', hadOriginal: false, needsCheck: true, note: '원래 표 없음' });
+  });
+  it('같은 이름 수정 2건 — namedToBoard 경로(건수) · 보드 경로(기기 2대) 둘 다 확인 필요', () => {
+    const named = {
+      items: [{ id: 'i1', ordinal: 1, statement: 's' }],
+      roster: [{ team: '1분과 1조', name: '가' }],
+      responses: [
+        { voter_team: '1분과 1조', voter_name: '가', answers: { i1: 2 }, submitted_at: `${T}01:00Z` },
+        { voter_team: '1분과 1조', voter_name: '가(수정)', answers: { i1: 1 }, submitted_at: `${T}05:00Z` },
+        { voter_team: '1분과 1조', voter_name: '가 (수정)', answers: { i1: 2 }, submitted_at: `${T}07:00Z` },
+      ],
+    };
+    const st1 = boardChaseState(namedToBoard(named));
+    expect(st1.submitted).toBe(1);
+    expect(st1.checks).toEqual([]);
+    expect(st1.corrections).toHaveLength(1);
+    expect(st1.corrections[0]).toMatchObject({ name: '가', hadOriginal: true, count: 2, needsCheck: true, note: '수정 2건' });
+    // 운영 보드(s35)는 같은 (조, 이름)을 한 줄로 묶는다 — 대리 입력 기기마다 client_id 가 새로 생기므로 기기 수로 알아본다.
+    const st2 = boardChaseState(
+      board([
+        voter('1분과 1조', '가', { submitted: true }),
+        voter('1분과 1조', '가(수정)', { in_roster: false, submitted: true, devices: 2, proxy: true }),
+      ]),
+    );
+    expect(st2.submitted).toBe(1);
+    expect(st2.checks).toEqual([]);
+    expect(st2.corrections[0]).toMatchObject({ count: 1, needsCheck: true, note: '수정 기기 2대' });
+    // chaseState 직접 — 응답 줄 수로 센다.
+    const st3 = chaseState({
+      roster,
+      responses: [resp('1분과 1조', '김가나'), resp('1분과 1조', '김가나(수정)'), resp('1분과 1조', '김가나(수정)')],
+    });
+    expect(st3.submitted).toBe(1);
+    expect(st3.corrections[0]).toMatchObject({ name: '김가나', count: 2, needsCheck: true });
+  });
+  it('다른 조 (수정)은 원래 사람에 붙이지 않고 ③ 확인 필요(제출은 명단 밖 제출처럼 1)', () => {
+    const st = boardChaseState(
+      board([
+        voter('1분과 1조', '가'),
+        voter('1분과 2조', '나'),
+        voter('1분과 2조', '가(수정)', { in_roster: false, submitted: true, devices: 1, proxy: true }),
+      ]),
+    );
+    expect(st.corrections).toEqual([]);
+    expect(st.submitted).toBe(1);
+    expect(st.groups.flatMap((g) => g.people).find((p) => p.name === '가').status).toBe('none'); // 원래 사람은 아직 미제출
+    expect(st.checks).toHaveLength(1);
+    expect(st.checks[0]).toMatchObject({ team: '1분과 2조', name: '가(수정)', correction: true });
+    const text = chaseText(st, { label: '의제1', now: `${T}10:00Z` });
+    expect(text).toContain('· 1분과 2조 가(수정) ((수정) 표인데 같은 조에 원래 사람 없음 — 확인 필요, 대리 입력으로 제출됨)');
+    expect(text).not.toContain('명단 밖 이름');
+  });
+  it('진행 중 (수정) 행은 원래 사람의 진행으로 합친다(명단 밖 ① 없음 · 누른 건수는 큰 쪽)', () => {
+    const st = boardChaseState(
+      board([
+        voter('1분과 1조', '가', { started_at: `${T}01:00Z`, answered_count: 3 }),
+        voter('1분과 1조', '가(수정)', { in_roster: false, started_at: `${T}06:00Z`, answered_count: 12, devices: 1 }),
+        voter('1분과 1조', '나', { started_at: `${T}02:00Z`, answered_count: 1 }),
+      ]),
+    );
+    expect(st.waiting).toHaveLength(2);
+    expect(st.waiting.find((w) => w.name === '가')).toMatchObject({ started_at: `${T}01:00Z`, answered: 12 });
+    expect(st.waiting.some((w) => w.offRoster)).toBe(false);
+    expect(st.checks).toEqual([]);
+    expect(st.corrections).toEqual([]);
+    expect(st.remaining).toBe(2);
+    // 원래 사람이 이미 냈으면 진행 중 (수정)은 아무 데도 안 뜬다(제출 그대로 1).
+    const st2 = boardChaseState(
+      board([
+        voter('1분과 1조', '가', { submitted: true }),
+        voter('1분과 1조', '가(수정)', { in_roster: false, started_at: `${T}06:00Z`, answered_count: 5, devices: 1 }),
+      ]),
+    );
+    expect(st2.submitted).toBe(1);
+    expect(st2.waiting).toEqual([]);
+    expect(st2.checks).toEqual([]);
+  });
+  it('(수정) 없는 일반 대리 제출 · 명단 밖 제출은 그대로', () => {
+    const st = boardChaseState(
+      board([
+        voter('1분과 2조', '다', { submitted: true, devices: 2, proxy: true }),
+        voter('2분과 1조', '마', { in_roster: false, submitted: true, devices: 1, proxy: true }),
+        voter('1분과 2조', '라'),
+      ]),
+    );
+    expect(st.submitted).toBe(2);
+    expect(st.corrections).toEqual([]);
+    const text = chaseText(st, { label: '의제1', now: `${T}10:00Z` });
+    expect(text).toContain('· 1분과 2조 다 (기기 2대, 대리 입력으로 제출됨)');
+    expect(text).toContain('· 2분과 1조 마 (명단 밖 이름, 대리 입력으로 제출됨)');
+  });
+  it('서명 명단 기준에서도 수정 표는 원래 사람 제출로만 센다', () => {
+    const st = boardChaseState(
+      board([voter('1분과 1조', '가', { submitted: true }), voter('1분과 1조', '가(수정)', { in_roster: false, submitted: true }), voter('1분과 1조', '나')]),
+      [],
+      ['1분과 1조|가', '나'],
+    );
+    expect(st.submittedBase).toBe(1);
+    expect(st.checks).toEqual([]);
+  });
+});
+
+describe('parseKakaoText (카톡 읽기 칸)', () => {
+  it('머리말은 건너뛰고 [시각 | 해시 | 가린 이름] + 본문, 시스템 알림은 닉네임만', () => {
+    const text = [
+      '# 머리말',
+      '',
+      '안내: 2026-11-13T13:00:00+09:00',
+      '설명 줄',
+      '',
+      '[2026-11-13T13:05:00+09:00 | abc123 | participant_0a1b2c3d]',
+      '첫 줄',
+      '둘째 줄',
+      '',
+      '[2026-11-13T13:06:00+09:00 | def456 | participant_99]',
+      '{"feedType":4,"members":[{"userId":<masked_x_1>,"nickName":"진행/홍"}]}',
+      '',
+    ].join('\n');
+    const ms = parseKakaoText(text);
+    expect(ms).toEqual([
+      { at: '2026-11-13T13:05:00+09:00', hm: '13:05', sender: 'participant_0a1b2c3d', text: '첫 줄\n둘째 줄' },
+      { at: '2026-11-13T13:06:00+09:00', hm: '13:06', sender: 'participant_99', text: '(알림) 진행/홍' },
+    ]);
+    expect(parseKakaoText('')).toEqual([]);
   });
 });

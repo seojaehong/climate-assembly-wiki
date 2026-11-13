@@ -4,6 +4,7 @@
  *
  *   # 진행판(브라우저 http://127.0.0.1:8766/)
  *   node scripts/chase-1114.mjs --serve [--port 8766] [--token-file <파일>] [--room <카톡 방번호>]
+ *     [--ballot-token 의제1=<투표지토큰>,의제2=…]   (ballot_list_v2 가 토큰을 못 줄 때만 — 대리 입력 화면 링크용)
  *   # 시연(Supabase 없이 가짜 명단 174명 · 진행이 시간에 따라 오른다)
  *   node scripts/chase-1114.mjs --serve --demo [--room self-inbox]
  *   # 한 번만 문구 만들기(stdout) · --send 면 --room 방으로 보냄
@@ -15,6 +16,9 @@
  * 운영자 접속 토큰은 CV_ACCESS_TOKEN 또는 --token-file. 화면 · 로그 · 응답에 내보내지 않는다.
  * 제외 목록 · 전송 기록은 저장소 안 .tmp-chase/(스스로 .gitignore 를 둔다, 실명이 들어간다).
  * 카톡 전송은 로컬 kakao-reader API(127.0.0.1:8755)의 outbox 준비 → 발송 두 단계. 재시도하지 않는다.
+ * 카톡 읽기는 같은 API 의 GET /v1/messages/{방}?since=today 를 10초 캐시로(최근 30건, 메모리에만 — 파일 · 로그에 남기지 않는다).
+ *   --lan 보기 전용 화면 · --demo 에는 내보내지 않는다.
+ * 대리 입력 화면 링크(/b?t=<투표지토큰>&proxy=1)는 이 PC 화면에만. 투표지 토큰은 서버 안에만 들고 투표지 목록 응답에는 넣지 않는다.
  */
 import { createHash, randomBytes } from 'node:crypto';
 import { networkInterfaces } from 'node:os';
@@ -22,7 +26,7 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import { createServer } from 'node:http';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { boardChaseState, chaseText, namedToBoard, remainText } from './lib/chase-1114.mjs';
+import { boardChaseState, chaseText, checkNote, namedToBoard, parseKakaoText, remainText } from './lib/chase-1114.mjs';
 
 const REPO = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const STATE_DIR = join(REPO, '.tmp-chase');
@@ -43,6 +47,14 @@ const KAKAO_BASE = (process.env.CHASE_KAKAO_BASE ?? 'http://127.0.0.1:8755').rep
 // 시연 문구는 본인방으로만 보낸다. 카톡 로컬 API 는 방 이름이 아니라 고정 번호를 받는다(본컴 「나와의 채팅」 = 2, 11/12 실측)
 // — 본인방 번호는 CHASE_SELF_ROOM 으로 준다(저장소에 적지 않는다).
 const DEMO_ROOM_OK = process.env.CHASE_SELF_ROOM?.trim() || 'self-inbox';
+const SITE = 'https://climate-assembly.org';
+const TOKEN_RE = /^[A-Za-z0-9_-]{4,200}$/;
+// --ballot-token 의제1=<토큰>,의제2=<토큰> — 의제 번호 → 투표지 토큰(목록에서 토큰을 못 얻을 때만 쓴다).
+const ARG_TOKENS = new Map();
+for (const part of String(arg('--ballot-token') ?? '').split(',')) {
+  const m = /^\s*의제\s*([1-9])\s*=\s*(\S+)\s*$/.exec(part);
+  if (m && TOKEN_RE.test(m[2])) ARG_TOKENS.set(Number(m[1]), m[2]);
+}
 
 function die(msg, code = 2) {
   process.stderr.write(`\n✗ ${msg}\n`);
@@ -181,16 +193,19 @@ function publicBallot(b) {
 function liveSource(token) {
   let listCache = { at: 0, rows: null };
   let progressMissing = false; // s34 미적용이면 대체 경로로(확인한 시각, ms)
+  const ballotTokens = new Map(); // 투표지 id → 투표지 토큰(ballot_list_v2.token). 서버 안에만 — 대리 입력 링크용
   return {
     mode: 'live',
     async ballots() {
       if (listCache.rows && Date.now() - listCache.at < 15000) return listCache.rows;
       const rows = await rpc('ballot_list_v2', { p_token: token }, 6000);
-      listCache = {
-        at: Date.now(),
-        rows: (rows ?? []).filter((b) => b.status === 'open' || b.status === 'closed').map(publicBallot),
-      };
+      const kept = (rows ?? []).filter((b) => b.status === 'open' || b.status === 'closed');
+      for (const b of kept) if (typeof b.token === 'string' && TOKEN_RE.test(b.token)) ballotTokens.set(b.id, b.token);
+      listCache = { at: Date.now(), rows: kept.map(publicBallot) };
       return listCache.rows;
+    },
+    tokenOf(ballotId) {
+      return ballotTokens.get(ballotId) ?? null;
     },
     async board(ballotId) {
       // 함수가 없으면 대체 경로로 가되, 서버를 켜 둔 채 s34 를 적용해도 넘어오게 60초마다 다시 본다.
@@ -277,6 +292,9 @@ function demoSource() {
     async ballots() {
       return ballots;
     },
+    tokenOf() {
+      return null; // 시연 투표지는 실제 화면이 없다 — --ballot-token 을 주면 그것만 쓴다
+    },
     async board(ballotId) {
       const b = ballots.find((x) => x.id === ballotId);
       if (!b) throw new RpcError('ballot not in authorization scope');
@@ -323,6 +341,16 @@ function demoSource() {
         }
         if (v.in_roster || v.started_at) voters.push(v);
       }
+      // 시연 — 맨 먼저 낸 명단 사람 한 명이 20초 뒤 진행요원 대리 입력으로 「이름(수정)」을 다시 냈다(11/13 수정 표 규칙).
+      const first = voters
+        .filter((v) => v.in_roster && v.submitted && !v.proxy)
+        .sort((a, b) => (a.submitted_at < b.submitted_at ? -1 : a.submitted_at > b.submitted_at ? 1 : 0))[0];
+      if (first && Date.now() >= Date.parse(first.submitted_at) + 20000) {
+        const at = new Date(Date.parse(first.submitted_at) + 20000).toISOString();
+        voters.push({ team: first.team, name: `${first.name}(수정)`, in_roster: false, started_at: at, answered_count: n, last_ordinal: n,
+          updated_at: at, submitted: true, submitted_at: at, devices: 1, proxy: true });
+        for (let o = 1; o <= n; o += 1) perOrdinal[o] += 1;
+      }
       return {
         id: b.id,
         title: b.title,
@@ -349,6 +377,9 @@ function composeView(board, { label, deadline, exclude, signed = [] }) {
   const st = boardChaseState(board, exclude, signed);
   const now = new Date();
   const text = chaseText(st, { label, now, remainText: remainText(deadline, now) });
+  // 원래 표 + 「이름(수정)」 표가 둘 다 제출됐으면 건별 막대가 그 사람을 두 번 센다(보드는 (조, 이름)마다 따로 센다) — 한 번 뺀다.
+  // 원래 사람이 진행 중일 때 겹친 건은 이 응답으로 알 수 없다(남은 위험).
+  const dupAnswered = st.corrections.filter((c) => c.hadOriginal).length;
   return {
     board: {
       id: board.id,
@@ -360,7 +391,7 @@ function composeView(board, { label, deadline, exclude, signed = [] }) {
       items: (board.items ?? []).map((it) => ({
         ordinal: it.ordinal,
         statement_head: String(it.statement_head ?? '').slice(0, 40),
-        answered: Number(it.answered) || 0,
+        answered: Math.max(0, (Number(it.answered) || 0) - dupAnswered),
       })),
       fallback: board.fallback ?? null,
     },
@@ -378,7 +409,8 @@ function composeView(board, { label, deadline, exclude, signed = [] }) {
       signedCount: st.signedCount,
       unsigned: st.unsigned,
       signedUnmatched: st.signedUnmatched,
-      checks: st.checks,
+      checks: st.checks.map((c) => ({ ...c, note: checkNote(c) })),
+      corrections: st.corrections,
     },
     groups: st.groups,
   };
@@ -472,6 +504,26 @@ async function kakaoSend(room, rawText) {
   return { ok: sent.ok && /^sent/.test(status), stage: 'send', status, http: sent.http, id, code: codeOf(sent.json) };
 }
 
+// ── 카톡 읽기(같은 로컬 API, GET — 쓰기 없음) ──────────────────────────
+
+async function kakaoGet(path, timeoutMs) {
+  const ctl = new AbortController();
+  const timer = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const res = await fetch(`${KAKAO_BASE}${path}`, { headers: { Authorization: `Bearer ${kakaoToken()}` }, signal: ctl.signal });
+    let env = null;
+    try {
+      env = JSON.parse(await res.text());
+    } catch {
+      env = null;
+    }
+    const good = res.ok && env?.ok === true && env?.data && typeof env.data === 'object';
+    return { http: res.status, ok: !!good, data: good ? env.data : null, code: good ? '' : codeOf(env?.error ?? {}) || `http_${res.status}` };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ── 서버 ─────────────────────────────────────────────────────────────
 
 function serve(source) {
@@ -479,6 +531,42 @@ function serve(source) {
   const settings = loadSettings();
   const cache = new Map(); // ballotId → { at, inflight, good, goodAt, error }
   let sending = false;
+
+  // 카톡 읽기 — /api/state 를 막지 않는다. 마지막 값을 돌려주고, 앞 읽기가 끝난 지 10초가 지났으면 뒤에서 새로 읽는다.
+  // 11/13 실측: 이 GET 은 한 번에 8~11초 걸리고, 이어 부르면 status 가 'cached'(같은 수집본) — ready · cached 만 읽은 것으로 본다.
+  // 보내기가 진행 중이면 읽기를 미룬다(같은 로컬 API — 발송을 늦추지 않게).
+  const kakao = { at: 0, inflight: null, view: null };
+  function kakaoRefresh() {
+    if (kakao.inflight || sending || Date.now() - kakao.at < 10000) return;
+    kakao.inflight = (async () => {
+      let view;
+      try {
+        if (!kakaoToken()) view = { ok: false, code: 'no_kakao_token' };
+        else {
+          const r = await kakaoGet(`/v1/messages/${encodeURIComponent(ROOM)}?since=today`, 20000);
+          if (!r.ok) view = { ok: false, code: r.code };
+          else if (r.data.status !== 'ready' && r.data.status !== 'cached') view = { ok: false, code: `status_${String(r.data.status ?? '').slice(0, 40)}` };
+          else view = { ok: true, observedAt: String(r.data.observed_at_kst ?? '').slice(0, 40), messages: parseKakaoText(r.data.text).slice(-30) };
+        }
+      } catch (e) {
+        view = { ok: false, code: e.name === 'AbortError' ? 'timeout' : 'network' };
+      }
+      kakao.view = view; // 오류면 옛 글은 버린다(코드만)
+      kakao.at = Date.now();
+      kakao.inflight = null;
+    })();
+  }
+  function kakaoView() {
+    if (DEMO) return { ok: false, room: ROOM, code: 'demo', note: '시연: 카톡 읽기 꺼짐', messages: [] };
+    if (!ROOM) return { ok: false, room: '', code: 'no_room', messages: [] };
+    kakaoRefresh();
+    return { room: ROOM, messages: [], ...(kakao.view ?? { ok: false, code: 'loading' }) };
+  }
+  function proxyUrlFor(ballots, ballotId) {
+    const b = ballots.find((x) => x.id === ballotId);
+    const t = source.tokenOf?.(ballotId) || (b?.agenda ? ARG_TOKENS.get(b.agenda) : null) || null;
+    return t ? `${SITE}/b?t=${encodeURIComponent(t)}&proxy=1` : null;
+  }
 
   async function fetchBoard(ballotId) {
     let c = cache.get(ballotId);
@@ -533,6 +621,11 @@ function serve(source) {
     if (!viewOnly && ballotId) lastLocal.ballot = ballotId;
     out.exclude = viewOnly ? [] : settings.exclude;
     out.signed = viewOnly ? [] : settings.signed;
+    if (!viewOnly) {
+      // 이 PC 화면에만 — 송출(보기 전용) 응답에는 칸 자체가 없다.
+      out.kakao = kakaoView();
+      out.proxyUrl = ballotId ? proxyUrlFor(ballots, ballotId) : null;
+    }
     if (!ballotId) return out;
     const c = await fetchBoard(ballotId);
     out.error = c.error;
@@ -746,6 +839,11 @@ summary .c b.s{color:var(--ok)}summary .c b.g{color:var(--warn)}summary .c b.z{c
 .chip.submitted{background:#173d29;color:#c8f5d8}.chip.progress{background:#5a4718;color:#ffe8b3}.chip.none{background:#5a1f24;color:#ffd5d5}.chip.excluded,.chip.unsigned{background:#2a2f35;color:#7d8790;text-decoration:line-through}.checks{align-self:start;border:2px solid #c0392b;border-radius:10px;padding:8px 12px;margin:10px 0;background:#3a1416}.checks b{color:#ffb3b3}
 textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude,#signed{min-height:110px}
 .row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:6px 0}.muted{color:var(--muted);font-size:15px}
+a.btn{color:var(--fg);background:#22303d;border:1px solid var(--line);border-radius:6px;padding:4px 10px;text-decoration:none}a.btn:hover{border-color:var(--accent)}
+.corr{border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin:10px 0;background:var(--panel)}.corr .need{color:var(--warn)}
+.kk{max-height:240px;overflow:auto;background:#0b1015;border:1px solid var(--line);border-radius:6px 6px 0 0;padding:6px 10px;font-size:15px}
+.kk div{padding:2px 0;border-bottom:1px solid var(--line);white-space:pre-wrap;word-break:break-all}.kk time,.kk span{color:var(--muted);margin-right:6px}
+.kk + #preview{border-top:0;border-radius:0 0 6px 6px}
 </style></head><body>
 <header>
   <h1>투표 진행판</h1>
@@ -753,6 +851,7 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude,#s
   <label>새로고침 <select id="every"><option value="3000">3초</option><option value="5000">5초</option></select></label>
   <label>출석(서명) 인원 <input id="present" type="number" min="1" step="1"></label>
   <label>마감 시각 <input id="deadline" class="hm" placeholder="14:40"></label>
+  <span id="proxyBox" style="display:none"><a id="proxy" class="btn" target="_blank" rel="noopener noreferrer">대리 입력 화면 열기</a> <span class="muted">대리 입력 안내: 고칠 때는 같은 조·이름(수정)</span></span>
   <span id="mode" class="badge"></span>
   <span id="updated" class="badge"></span>
 </header>
@@ -769,10 +868,11 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude,#s
   <div id="items" class="items"></div>
   <div class="cols">
     <div id="checks" class="checks" style="display:none"></div>
-    <section><h2>분과·조별 진행</h2><div id="groups"></div></section>
+    <section><div id="corr" class="corr" style="display:none"></div><h2>분과·조별 진행</h2><div id="groups"></div></section>
     <section id="ops">
-      <h2>카톡 독려</h2>
+      <h2 id="kkTitle">카톡</h2>
       <div class="row"><span id="room" class="badge"></span><span id="sendStatus" class="muted"></span></div>
+      <div id="kk" class="kk"></div>
       <textarea id="preview" spellcheck="false"></textarea>
       <div class="row">
         <button id="regen">최신 값으로 다시 만들기</button>
@@ -866,6 +966,9 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude,#s
     if (b && b.fallback) ban.append(el('div', 'banner', '진행 기록 함수(s34)가 아직 운영 DB에 없습니다 — 제출한 사람만 셉니다. 「진행 중」 건수는 0으로 보입니다.'));
     $('updated').className = 'badge ' + (s.error ? 'bad' : 'ok');
     $('updated').textContent = '갱신 ' + new Date(s.lastGoodAt || s.at).toLocaleTimeString('ko-KR');
+    // 대리 입력 화면 바로가기(이 PC 만 — 송출 응답에는 proxyUrl 이 없다)
+    if (s.proxyUrl && !s.viewOnly) { $('proxy').href = s.proxyUrl; $('proxyBox').style.display = ''; } else { $('proxy').removeAttribute('href'); $('proxyBox').style.display = 'none'; }
+    if (!s.viewOnly && s.kakao) renderKakao(s.kakao);
     if (!b) return;
     // 출석 인원
     if (s.chase && s.chase.useSigned) { $('present').value = s.chase.signedCount; $('present').disabled = true; } else { $('present').disabled = false; if (document.activeElement !== $('present')) $('present').value = presentFor(b.id, b.roster_count); }
@@ -880,9 +983,18 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude,#s
     const ck = $('checks'); ck.replaceChildren();
     if (c.checks && c.checks.length) {
       ck.append(el('b', null, '③ 이름 확인 ' + c.checks.length + '명 — 한 이름이 여러 기기 · 명단 밖 이름'));
-      for (const x of c.checks) ck.append(el('div', null, x.team + ' ' + x.name + ' (' + (x.devices >= 2 ? '기기 ' + x.devices + '대, ' : '') + (x.offRoster ? '명단 밖, ' : '') + (x.unsigned ? '서명 명단에 없음, ' : '') + (x.submitted ? (x.proxy ? '대리 제출' : '제출됨') : '미제출') + ')'));
+      for (const x of c.checks) ck.append(el('div', null, x.team + ' ' + x.name + ' (' + (x.note || ((x.devices >= 2 ? '기기 ' + x.devices + '대, ' : '') + (x.offRoster ? '명단 밖, ' : '') + (x.unsigned ? '서명 명단에 없음, ' : '') + (x.submitted ? (x.proxy ? '대리 제출' : '제출됨') : '미제출'))) + ')'));
       ck.style.display = '';
     } else ck.style.display = 'none';
+    // 수정 표(「이름(수정)」 대리 입력) — 원래 사람에 붙여 한 번만 센다. 확인 필요는 노란 글씨.
+    const co = $('corr'); co.replaceChildren();
+    const cs = c.corrections || [];
+    if (cs.length) {
+      const need = cs.filter((x) => x.needsCheck).length;
+      co.append(el('b', null, '수정 표 ' + cs.length + '건' + (need ? ' · 확인 필요 ' + need : '') + ' — 원래 사람 제출로 한 번만 셈'));
+      for (const x of cs) co.append(el('div', x.needsCheck ? 'need' : null, x.team + ' ' + x.name + ' · ' + (x.submitted_at ? new Date(x.submitted_at).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }) : '') + ' · ' + (x.hadOriginal ? '원래 표 있음' : '원래 표 없음') + (x.needsCheck ? ' · 확인 필요(' + x.note + ')' : '')));
+      co.style.display = '';
+    } else co.style.display = 'none';
     $('sgInfo').textContent = c.useSigned ? '서명 ' + c.signedCount + '명 기준 · 서명 안 한 명단 ' + (c.unsigned || 0) + '명 제외' + (c.signedUnmatched && c.signedUnmatched.length ? ' · 명단에 안 맞는 줄: ' + c.signedUnmatched.join(', ') : '') : '비어 있음 — 명단 전원 기준';
     // 권고안 막대
     const items = $('items'); items.replaceChildren();
@@ -929,6 +1041,20 @@ textarea{width:100%;min-height:260px;font-size:15px;line-height:1.45}#exclude,#s
     $('room').className = 'badge ' + (s.roomReady ? 'ok' : 'bad');
     $('send').disabled = !s.roomReady;
     $('auto').disabled = !s.roomReady;
+  }
+  let kkSig = '';
+  function renderKakao(k) {
+    $('kkTitle').textContent = '카톡' + (k.room ? ' (방 ' + k.room + ')' : '') + ' — 읽기 · 보내기';
+    const box = $('kk');
+    const sig = JSON.stringify([k.ok, k.code, (k.messages || []).map((m) => m.at + m.text)]);
+    if (sig === kkSig) return;
+    kkSig = sig;
+    const atBottom = box.scrollHeight - box.scrollTop - box.clientHeight < 30;
+    box.replaceChildren();
+    if (!k.ok) box.append(el('div', 'muted', k.note || ('카톡 읽기 안 됨: ' + (k.code || '알 수 없음'))));
+    else if (!(k.messages || []).length) box.append(el('div', 'muted', '오늘 글 없음'));
+    else for (const m of k.messages) { const d = el('div'); d.append(el('time', null, m.hm), el('span', null, m.sender), document.createTextNode(m.text)); box.append(d); }
+    if (atBottom || box.dataset.first !== '1') { box.scrollTop = box.scrollHeight; box.dataset.first = '1'; }
   }
   async function post(path, body) {
     const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });

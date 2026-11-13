@@ -8,7 +8,10 @@
  *   명단에 하나뿐인 이름은 조를 다르게 골라 냈어도 낸 것으로 본다.
  * 출력 층 ① 투표 시작했는데 아직 안 냄(오래된 순) ② 아직 시작 안 함(조별).
  * 「뺄 사람」(불참 확인 · 서면 투표 · 태블릿 대리 등)은 exclude 로 받아 목록에서 뺀다.
+ * ★ 수정 표(11/13 결정) — 진행요원이 대리 입력으로 낸 「이름(수정)」은 같은 조의 원래 사람에 붙인다
+ *   (제출 1번 · 명단 밖 · 기기 경고 없음). 같은 조에 원래 사람이 없으면 ③ 「확인 필요」로 띄운다.
  */
+import { correctionBase } from './result-v2.mjs';
 
 /** 공백 정리 + 소문자(영문) — 이름 비교용. */
 export function normName(name) {
@@ -85,11 +88,23 @@ export function chaseState({ roster, responses, starts = [], exclude = [], itemC
   const unsignedSubmit = []; // 서명 명단에 없는데 제출 — ③ 로 올린다.
   const nameCount = new Map();
   for (const r of roster) nameCount.set(normName(r.name), (nameCount.get(normName(r.name)) ?? 0) + 1);
+  const rosterKeys = new Set(roster.map((r) => personKey(r.team, r.name)));
+  const rosterNameOf = new Map(roster.map((r) => [personKey(r.team, r.name), String(r.name).trim()]));
+
+  // 수정 표(「이름(수정)」)를 따로 가른다. 원래 사람 = 같은 조에 명단 줄이 있거나, (수정) 아닌 시작·제출 줄이 있는 (조, 기준 이름).
+  const isCorr = (name) => !!normName(name) && correctionBase(name) != null;
+  const plainResponses = responses.filter((r) => !isCorr(r.voter_name));
+  const corrResponses = responses.filter((r) => isCorr(r.voter_name));
+  const plainStarts = starts.filter((s) => !isCorr(s.voter_name));
+  const corrStarts = starts.filter((s) => isCorr(s.voter_name));
+  const ownKeys = new Set(rosterKeys);
+  for (const r of plainResponses) if (normName(r.voter_name)) ownKeys.add(personKey(r.voter_team, r.voter_name));
+  for (const s of plainStarts) ownKeys.add(personKey(s.voter_team, s.voter_name));
 
   const submittedKeys = new Set();
   const submittedNames = new Set();
   let submitted = 0;
-  for (const r of responses) {
+  for (const r of plainResponses) {
     if (!normName(r.voter_name)) continue; // 이름 없는 제출은 사람에 못 붙인다
     submitted += 1;
     submittedKeys.add(personKey(r.voter_team, r.voter_name));
@@ -98,12 +113,67 @@ export function chaseState({ roster, responses, starts = [], exclude = [], itemC
   const didSubmit = (team, name) =>
     submittedKeys.has(personKey(team, name)) || (nameCount.get(normName(name)) === 1 && submittedNames.has(normName(name)));
 
-  // 시작 기록: (조, 이름)별 가장 이른 시각.
+  // 수정 표 제출 — 같은 조 원래 사람에 붙인다(원래 표가 있으면 제출 수 그대로, 없으면 그 사람 1번).
+  const corrMap = new Map(); // 원래 사람 키 → 수정 표 요약
+  const corrChecks = []; // 같은 조에 원래 사람이 없는 (수정) — 붙이지 않고 ③ 확인 필요
+  const corrRawSeen = new Set(); // 제출된 (수정) 줄(조, 원래 이름 그대로) — 같은 줄의 시작 기록은 다시 보지 않는다
+  for (const r of corrResponses) {
+    const base = correctionBase(r.voter_name);
+    const k = personKey(r.voter_team, base);
+    corrRawSeen.add(personKey(r.voter_team, r.voter_name));
+    if (!ownKeys.has(k)) {
+      submitted += 1; // 지금처럼 제출 1(명단 밖 제출과 같다) — 사람에는 안 붙인다
+      corrChecks.push({ team: normTeam(r.voter_team), name: String(r.voter_name).trim(), devices: 0, offRoster: false, submitted: true, proxy: !!r.proxy, correction: true });
+      continue;
+    }
+    let c = corrMap.get(k);
+    if (!c) {
+      c = { key: k, team: normTeam(r.voter_team), name: rosterNameOf.get(k) ?? base, submitted_at: null, count: 0, devices: 0, hadOriginal: didSubmit(r.voter_team, base) };
+      corrMap.set(k, c);
+    }
+    c.count += Math.max(1, Number(r.correction_count) || 1);
+    c.devices = Math.max(c.devices, Number(r.devices) || 0);
+    if (r.submitted_at && (!c.submitted_at || r.submitted_at > c.submitted_at)) c.submitted_at = r.submitted_at;
+  }
+  for (const c of corrMap.values()) {
+    if (c.hadOriginal) continue;
+    submitted += 1; // 원래 표 없이 수정 표만 — 그 사람을 한 번 센다
+    submittedKeys.add(c.key);
+  }
+  const corrections = [...corrMap.values()]
+    .map((c) => {
+      const why = [];
+      if (!c.hadOriginal) why.push('원래 표 없음');
+      if (c.count >= 2) why.push(`수정 ${c.count}건`);
+      if (c.devices >= 2) why.push(`수정 기기 ${c.devices}대`);
+      return { team: c.team, name: c.name, submitted_at: c.submitted_at, hadOriginal: c.hadOriginal, count: c.count, needsCheck: why.length > 0, note: why.join(', ') };
+    })
+    .sort((a, b) => compareTeam(a.team, b.team) || a.name.localeCompare(b.name, 'ko'));
+
+  // 수정 표 진행 중(아직 미제출) — 같은 조 원래 사람의 시작으로 합친다. 원래 사람이 없으면 ③.
+  const mergedStarts = [...plainStarts];
+  for (const s of corrStarts) {
+    if (corrRawSeen.has(personKey(s.voter_team, s.voter_name))) continue;
+    const base = correctionBase(s.voter_name);
+    const k = personKey(s.voter_team, base);
+    if (!ownKeys.has(k)) {
+      corrChecks.push({ team: normTeam(s.voter_team), name: String(s.voter_name).trim(), devices: 0, offRoster: false, submitted: false, proxy: false, correction: true });
+      continue;
+    }
+    mergedStarts.push({ ...s, voter_name: rosterNameOf.get(k) ?? base, voter_in_roster: rosterKeys.has(k) });
+  }
+
+  // 시작 기록: (조, 이름)별 가장 이른 시각(누른 건수는 큰 쪽 — 원래 기기와 대리 입력을 합친다).
   const startOf = new Map();
-  for (const s of starts) {
+  for (const s of mergedStarts) {
     const k = personKey(s.voter_team, s.voter_name);
     const prev = startOf.get(k);
-    if (!prev || s.started_at < prev.started_at) startOf.set(k, s);
+    if (!prev) startOf.set(k, s);
+    else {
+      const first = s.started_at < prev.started_at ? s : prev;
+      const a = Math.max(Number(prev.answered_count) || 0, Number(s.answered_count) || 0);
+      startOf.set(k, Number.isFinite(first.answered_count) || a ? { ...first, answered_count: a } : first);
+    }
   }
   const startedByName = new Map();
   for (const s of startOf.values()) {
@@ -168,7 +238,6 @@ export function chaseState({ roster, responses, starts = [], exclude = [], itemC
     }
   }
   // 명단에 없는데 시작만 하고 안 낸 사람(직접 입력) — ①에 덧붙인다.
-  const rosterKeys = new Set(roster.map((r) => personKey(r.team, r.name)));
   // 동명이인(명단에 같은 이름 2명 이상)은 이름만으로 명단 사람에 붙이지 않는다 — 조가 안 맞으면 명단 밖으로 ①에 올린다.
   for (const s of startOf.values()) {
     const k = personKey(s.voter_team, s.voter_name);
@@ -210,7 +279,8 @@ export function chaseState({ roster, responses, starts = [], exclude = [], itemC
     signedUnmatched,
     // 머리줄 「제출」 — 서명 명단이 있으면 서명한 사람의 제출만(명단 밖 · 서명 안 한 제출은 ③).
     submittedBase: useSigned ? submittedSigned : submitted,
-    checks: mergeChecks(checks.filter((c) => !isExcluded(c.team, c.name)), unsignedSubmit),
+    checks: mergeChecks([...checks.filter((c) => !isExcluded(c.team, c.name)), ...corrChecks], unsignedSubmit),
+    corrections,
     rosterCount: roster.length,
     itemCount: Number.isFinite(itemCount) ? itemCount : null,
     submitted,
@@ -239,6 +309,8 @@ export function boardToInput(board) {
   const checks = [];
   for (const v of voters) {
     const devices = Number(v.devices) || 0;
+    // 「이름(수정)」 줄은 여기서 ③ 에 올리지 않는다 — chaseState 가 원래 사람에 붙이거나 「확인 필요」로 따로 올린다.
+    if (normName(v.name) && correctionBase(v.name) != null) continue;
     if (devices >= 2 || (!v.in_roster && v.submitted)) {
       checks.push({
         team: normTeam(v.team),
@@ -253,7 +325,9 @@ export function boardToInput(board) {
   for (const v of voters) {
     if (v.in_roster) roster.push({ team: v.team, no: null, name: v.name });
     if (v.submitted) {
-      responses.push({ voter_team: v.team, voter_name: v.name, submitted_at: v.submitted_at ?? null });
+      // devices · proxy · correction_count 는 수정 표 판정에만 쓴다(같은 (조, 이름)의 제출이 몇 건인지 — namedToBoard 만 안다).
+      responses.push({ voter_team: v.team, voter_name: v.name, submitted_at: v.submitted_at ?? null,
+        devices: Number(v.devices) || 0, proxy: !!v.proxy, correction_count: Number(v.response_count) || 1 });
       continue;
     }
     const answered = Number(v.answered_count) || 0;
@@ -293,6 +367,7 @@ function mergeChecks(base, extra) {
 /** ③ 한 줄 설명. */
 export function checkNote(c) {
   const parts = [];
+  if (c.correction) parts.push('(수정) 표인데 같은 조에 원래 사람 없음 — 확인 필요');
   if (c.unsigned) parts.push('의결 서명 명단에 없음');
   if (c.devices >= 2) parts.push(`기기 ${c.devices}대`);
   if (c.offRoster) parts.push('명단 밖 이름');
@@ -332,6 +407,7 @@ export function namedToBoard(named, at = new Date().toISOString()) {
     const v = get(r.voter_team, r.voter_name, false);
     v.submitted = true;
     v.submitted_at = r.submitted_at ?? null;
+    v.response_count = (v.response_count ?? 0) + 1; // 같은 (조, 이름) 제출 건수 — 「이름(수정)」 2건 이상을 알아보려고
     const ords = new Set();
     for (const key of Object.keys(r.answers ?? {})) {
       const o = idToOrdinal.get(String(key));
@@ -412,4 +488,30 @@ export function chaseText(st, { label, now = new Date(), remainText = '' }) {
   }
   pushChecks();
   return lines.join('\n');
+}
+
+/**
+ * 카톡 로컬 API GET /v1/messages/{방} 의 data.text(11/13 실측) → [{ at, hm, sender, text }].
+ *   머리말 뒤에 메시지마다 「[2026-11-13T13:01:02+09:00 | <메시지 해시> | participant_xxxxxxxx]」 한 줄 + 본문 줄 + 빈 줄.
+ *   보낸 사람은 가린 이름(participant_…)뿐이다(masked). 입장 등 시스템 알림 본문은 {"feedType":…,"members":[{"userId":…,"nickName":…}]}
+ *   — JSON 으로 풀지 않고(userId 자리가 따옴표 없는 <…>) 닉네임만 꺼내 「(알림)」 한 줄로 바꾼다.
+ */
+export function parseKakaoText(text) {
+  const out = [];
+  let cur = null;
+  for (const line of String(text ?? '').split(/\r?\n/)) {
+    const m = /^\[(\d{4}-\d{2}-\d{2}T[^\s|\]]+)\s*\|\s*([^|\]]*?)\s*(?:\|\s*([^\]]*?)\s*)?\]\s*$/.exec(line);
+    if (m) {
+      cur = { at: m[1], sender: (m[3] ?? '').slice(0, 40), lines: [] };
+      out.push(cur);
+    } else if (cur) cur.lines.push(line);
+  }
+  return out.map((x) => {
+    let body = x.lines.join('\n').trim();
+    if (/^\{\s*"feedType"/.test(body)) {
+      const nicks = [...body.matchAll(/"nickName"\s*:\s*"([^"]*)"/g)].map((n) => n[1]);
+      body = `(알림)${nicks.length ? ` ${nicks.join(', ')}` : ''}`;
+    }
+    return { at: x.at, hm: kstHm(x.at), sender: x.sender, text: body.slice(0, 300) };
+  });
 }
