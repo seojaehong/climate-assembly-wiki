@@ -496,19 +496,7 @@ export function PagerSummaryView({
           </section>
         ) : null}
 
-        <div className="mt-6">
-          <p className="text-[17px] font-semibold text-[#5A6B73] mb-2" style={KEEP}>
-            처음부터 다시 보려면
-          </p>
-          <button
-            type="button"
-            onClick={() => onGo(0)}
-            className="min-h-[56px] w-full rounded-2xl border-2 border-[#C4D8E4] bg-white text-[19px] font-bold text-[#1F4E79]"
-          >
-            첫 건으로 돌아가기
-          </button>
-        </div>
-
+        {/* 「첫 건으로 돌아가기」는 뺐다(11/13 주최 결정) — 고칠 일이 생기면 진행요원이 대리 입력으로 「이름(수정)」을 따로 낸다. */}
         {error ? (
           <p role="alert" className="mt-6 rounded-2xl border-2 border-[#B91C1C] bg-[#FEF2F2] px-4 py-3 text-[19px] font-extrabold text-[#B91C1C]" style={KEEP}>
             {error}

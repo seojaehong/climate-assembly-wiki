@@ -587,3 +587,45 @@ describe('(11/11) 한 장 70건 투표지를 의제별로 나눠 센다', () => 
     expect(sliceAgendaOfAll(a, 2)).toBe(a);
   });
 });
+
+describe('(11/13 결정) 수정 표 「이름(수정)」 — 진행요원 대리 입력이 원래 표를 대신한다', () => {
+  const ans = (a, b) => ({ [itemId(1, 1)]: a, [itemId(1, 2)]: b });
+  test('원래 표는 「수정으로 대체」로 빠지고 수정 표가 그 이름으로 센다 — 이중 집계 없음', () => {
+    const raw = rawAgenda(1, 2, [
+      { answers: ans(1, 1) }, // 가상1 원래 표(반대 · 반대)
+      { answers: ans(2, 2) }, // 가상2
+      { name: '가상1(수정)', team: '1분과 1조', at: '2026-11-14T05:50:00Z', answers: ans(2, 1) },
+    ]);
+    const r = recountAgenda(raw, { agendaNo: 1, expectedCount: 2, attendance: [
+      { team: '1분과 1조', name: '가상1' },
+      { team: '1분과 2조', name: '가상2' },
+    ] });
+    expect(r.phoneValid).toBe(2);
+    expect(r.excluded.map((e) => [e.name, e.reason])).toEqual([['가상1', '수정으로 대체']]);
+    expect(r.corrected).toEqual([{ team: '1분과 1조', name: '가상1', submitted_at: '2026-11-14T05:50:00Z' }]);
+    expect(r.manual).toEqual([]); // 기준 이름이 명단에 있으니 직접 입력이 아니다
+    expect(r.items[0]).toMatchObject({ yes: 2, nay: 0 });
+    expect(r.items[1]).toMatchObject({ yes: 1, nay: 1 });
+  });
+  test('수정이 둘이면 마지막 것만 · 전각 괄호 · 공백도 받는다 · 다른 조의 같은 이름은 대체하지 않는다', () => {
+    const raw = rawAgenda(1, 2, [
+      { answers: ans(1, 1) }, // 가상1(1분과 1조)
+      { name: '가상1 (수정)', team: '1분과 1조', at: '2026-11-14T05:50:00Z', answers: ans(2, 2) },
+      { name: '가상1（수정）', team: '1분과 1조', at: '2026-11-14T05:55:00Z', answers: ans(1, 2) },
+    ]);
+    const r = recountAgenda(raw, { agendaNo: 1, expectedCount: 2, attendance: [{ team: '1분과 1조', name: '가상1' }] });
+    expect(r.phoneValid).toBe(1);
+    expect(r.excluded.map((e) => e.reason)).toEqual(['수정으로 대체', '앞선 수정(마지막 수정만 셈)']);
+    expect(r.items[0]).toMatchObject({ yes: 0, nay: 1 });
+    expect(r.items[1]).toMatchObject({ yes: 1, nay: 0 });
+  });
+  test('원래 표가 없어도 수정 표는 그 이름으로 센다(출석부 대조는 기준 이름)', () => {
+    const raw = rawAgenda(1, 2, [{ name: '가상1(수정)', team: '1분과 1조', answers: ans(2, 2) }], {
+      roster: [{ team: '1분과 1조', no: 1, name: '가상1' }],
+    });
+    const ok = recountAgenda(raw, { agendaNo: 1, expectedCount: 2, attendance: [{ team: '1분과 1조', name: '가상1' }] });
+    expect(ok.phoneValid).toBe(1);
+    const no = recountAgenda(raw, { agendaNo: 1, expectedCount: 2, attendance: [{ team: '1분과 1조', name: '다른사람' }] });
+    expect(no.excluded.map((e) => e.reason)).toEqual(['출석부 없음']);
+  });
+});

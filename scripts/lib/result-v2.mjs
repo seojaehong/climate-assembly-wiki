@@ -153,13 +153,29 @@ export function recountAgenda(raw, { agendaNo, expectedCount, attendance = null,
   const responses = [...(raw.responses ?? [])].sort(
     (a, b) => String(a.submitted_at).localeCompare(String(b.submitted_at)) || String(a.id).localeCompare(String(b.id)),
   );
+  // 수정 표(11/13 주최 결정) — 「첫 건으로 돌아가기」를 뺀 대신, 고칠 사람은 진행요원이 대리 입력으로 「이름(수정)」을 따로 낸다.
+  //   같은 조 · 이름의 「(수정)」 표가 있으면 원래 표는 빼고(「수정으로 대체」) 수정 표를 그 사람 이름으로 센다.
+  //   「(수정)」이 여럿이면 마지막에 낸 것만 센다. 원래 표가 없어도 수정 표는 그 이름으로 센다(본인이 못 낸 경우).
+  const latestCorrection = new Map(); // `${조}\0${기준 이름}` → 응답 id
+  for (const r of responses) {
+    const base = correctionBase(r.voter_name);
+    if (base != null) latestCorrection.set(`${String(r.voter_team ?? '').trim()}\u0000${normName(base)}`, r.id);
+  }
   const usedNames = new Set();
   const excluded = [];
   const manual = [];
   const incomplete = [];
+  const corrected = [];
   let phoneValid = 0;
   const byId = new Map(out.map((x) => [x.id, x]));
-  for (const r of responses) {
+  for (const r0 of responses) {
+    const base = correctionBase(r0.voter_name);
+    const pairOf = (name) => `${String(r0.voter_team ?? '').trim()}\u0000${normName(name)}`;
+    const replaced = base == null && latestCorrection.has(pairOf(r0.voter_name));
+    const staleCorrection = base != null && latestCorrection.get(pairOf(base)) !== r0.id;
+    if (base != null && !staleCorrection) corrected.push({ team: String(r0.voter_team ?? '').trim() || null, name: base, submitted_at: r0.submitted_at ?? null });
+    // 수정 표는 기준 이름으로 대조한다(명단 · 출석부 · 중복).
+    const r = base != null ? { ...r0, voter_name: base } : r0;
     const answers = r.answers && typeof r.answers === 'object' ? r.answers : {};
     for (const [id, v] of Object.entries(answers)) {
       const row = byId.get(id);
@@ -169,12 +185,14 @@ export function recountAgenda(raw, { agendaNo, expectedCount, attendance = null,
     }
     const key = normName(r.voter_name);
     const team = String(r.voter_team ?? '').trim();
-    const tag = { reason: '', team: team || null, name: r.voter_name ?? null, submitted_at: r.submitted_at ?? null };
+    const tag = { reason: '', team: team || null, name: r0.voter_name ?? null, submitted_at: r.submitted_at ?? null };
     const missing = out.filter((row) => answers[row.id] !== YES && answers[row.id] !== NAY).map((row) => row.no);
     if (missing.length) incomplete.push({ ...tag, missing });
     const isManual = !!key && !rosterPairs.has(`${team}\u0000${key}`);
     let reason = null;
     if (!key) reason = '이름 없음';
+    else if (replaced) reason = '수정으로 대체';
+    else if (staleCorrection) reason = '앞선 수정(마지막 수정만 셈)';
     else if (usedNames.has(key)) reason = '중복';
     else {
       usedNames.add(key);
@@ -203,7 +221,13 @@ export function recountAgenda(raw, { agendaNo, expectedCount, attendance = null,
       ...(incomplete.length > 20 ? [`  … 외 ${incomplete.length - 20}건`] : []),
     ]);
   }
-  return { agendaNo, ballotId: raw.id, ballotStatus: raw.status, items: out, phoneValid, paperBallots, excluded, manual, systemResponses: responses.length };
+  return { agendaNo, ballotId: raw.id, ballotStatus: raw.status, items: out, phoneValid, paperBallots, excluded, manual, corrected, systemResponses: responses.length };
+}
+
+/** 「홍길동(수정)」 → 「홍길동」. 수정 표가 아니면 null. 괄호 앞뒤 공백 · 전각 괄호도 받는다. */
+export function correctionBase(name) {
+  const m = /^(.*?)\s*[(（]\s*수정\s*[)）]\s*$/.exec(String(name ?? ''));
+  return m && m[1].trim() ? m[1].trim() : null;
 }
 
 function verdictOf({ confirmed, established, yes, threshold }) {
@@ -507,6 +531,9 @@ export function summaryText(doc, recounts, sha256) {
       for (const x of rc.excluded) {
         L.push(`    - 뺀 표: ${x.reason} · ${x.team ?? '(조 없음)'} ${x.name ?? '(이름 없음)'} · ${x.submitted_at ?? ''}`);
       }
+      // 11/13 결정: 「이름(수정)」 대리 입력 — 원래 표 대신 센다. 검증자가 한 줄씩 보도록 늘 적는다(0건이어도).
+      L.push(`  수정 표(이름(수정)) ${(rc.corrected ?? []).length}건 — 원래 표 대신 셈`);
+      for (const c of rc.corrected ?? []) L.push(`    - 수정: ${c.team ?? '(조 없음)'} ${c.name} · ${c.submitted_at ?? ''}`);
       // 11/10 결정 + 방어선 B①: 직접 입력(명단에 없는 조·이름)은 출석부와 맞을 때만 센다. 검증자가 한 줄씩 확인하도록 늘 적는다(0건이어도).
       // 「확인 목록」 = 세지 않은 직접 입력(출석부와 안 맞음 · 출석부 파일 없음 · 중복) — 사람이 보고 출석부를 고쳐 다시 돌릴지 정한다.
       const mc = rc.manual.filter((m) => m.counted).length;
