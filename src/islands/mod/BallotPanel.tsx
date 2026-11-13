@@ -58,6 +58,9 @@ import {
 import { useModalDialog } from './use-modal-dialog';
 
 const DIST_COLORS = ['#23B2C3', '#2E75B6', '#4F9D3A', '#F5A623', '#135C73', '#1F4E79', '#B5651D'];
+/** [마감]을 누른 뒤 실제로 닫기까지 기다리는 시간(11/14 — 막판 제출이 마감과 겹치지 않게). */
+export const CLOSE_GRACE_MS = 15_000;
+const CLOSE_MAX_ATTEMPTS = 3;
 
 function Eyebrow({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
@@ -909,6 +912,10 @@ export default function BallotPanel({
   const [submitting, setSubmitting] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [confirmAction, setConfirmAction] = useState<{ ballot: BallotListRow; action: BallotAction } | null>(null);
+  // 11/14 — [마감]을 눌러도 바로 닫지 않고 CLOSE_GRACE_MS 기다린 뒤 닫는다. 누르는 순간 날아오던 제출이
+  // 마감과 겹쳐 「반영되지 않았습니다」로 떨어지는 것을 막는다(11/13 부하 시험에서 재현). 기다리는 동안 들어온 제출은 반영된다.
+  const [pendingClose, setPendingClose] = useState<{ ballot: BallotListRow; until: number } | null>(null);
+  const [closeNow, setCloseNow] = useState(() => Date.now());
   // 풀스크린은 id만 들고 목록 폴링분에서 최신 행을 찾는다 — 제출 수가 3초마다 살아 움직인다.
   const [qrId, setQrId] = useState<string | null>(null);
   const [resultsId, setResultsId] = useState<string | null>(null);
@@ -1041,6 +1048,40 @@ export default function BallotPanel({
     }
   };
 
+  // 마감 대기 — 남은 시간이 0이 되면 상태 변경을 보낸다. 목록 폴링이 실패 중이어도 보낸다(닫는 쪽은 서버가 상태를 확인한다).
+  // 실패하면 2초 간격으로 3번까지 다시 보낸다.
+  const closingRef = useRef(false);
+  useEffect(() => {
+    if (!pendingClose) return;
+    const id = setInterval(() => setCloseNow(Date.now()), 250);
+    return () => clearInterval(id);
+  }, [pendingClose]);
+  useEffect(() => {
+    if (!pendingClose || !access || closingRef.current || closeNow < pendingClose.until) return;
+    closingRef.current = true;
+    const { ballot } = pendingClose;
+    setBusyId(ballot.id);
+    void (async () => {
+      let lastError: unknown = null;
+      for (let attempt = 1; attempt <= CLOSE_MAX_ATTEMPTS; attempt++) {
+        try {
+          await ballotSetStatus(access, ballot.id, 'closed');
+          lastError = null;
+          break;
+        } catch (error: unknown) {
+          lastError = error;
+          console.error(`[ballot] close attempt ${attempt} failed`, error);
+          if (attempt < CLOSE_MAX_ATTEMPTS) await new Promise((r) => setTimeout(r, 2000));
+        }
+      }
+      setToast(lastError ? '마감에 실패했습니다 — 네트워크를 확인하고 [마감]을 다시 눌러 주세요.' : '투표가 마감되었습니다.');
+      setPendingClose(null);
+      setBusyId(null);
+      closingRef.current = false;
+      await refresh();
+    })();
+  }, [pendingClose, closeNow, access, refresh]);
+
   const qrBallot = qrId ? (visibleBallots ?? []).find((b) => b.id === qrId) ?? null : null;
   const resultsBallot = resultsId ? (visibleBallots ?? []).find((b) => b.id === resultsId) ?? null : null;
 
@@ -1154,10 +1195,40 @@ export default function BallotPanel({
                         결과 크게 보기
                       </button>
                     ) : null}
-                    {action ? (
+                    {pendingClose?.ballot.id === ballot.id ? (
+                      <div
+                        data-testid="ballot-close-pending"
+                        role="status"
+                        className="flex w-full flex-wrap items-center gap-3 rounded-xl border-2 border-[#DC2626] bg-[#FEF2F2] px-4 py-3"
+                      >
+                        <span className="text-[18px] font-extrabold text-[#B91C1C] tr-num">
+                          ⏳ {Math.max(0, Math.ceil((pendingClose.until - closeNow) / 1000))}초 뒤 마감
+                        </span>
+                        <span className="text-[15px] text-[#7F1D1D]">이 사이에 들어오는 제출은 반영됩니다.</span>
+                        <span className="ml-auto flex gap-2">
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => setPendingClose({ ballot, until: Date.now() })}
+                            className="h-11 rounded-xl bg-[#DC2626] px-4 text-[15px] font-bold text-white disabled:opacity-50"
+                          >
+                            지금 마감
+                          </button>
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => setPendingClose(null)}
+                            className="h-11 rounded-xl border border-[#C4D8E4] bg-white px-4 text-[15px] font-bold text-[#1F4E79] disabled:opacity-50"
+                          >
+                            취소
+                          </button>
+                        </span>
+                      </div>
+                    ) : null}
+                    {action && pendingClose?.ballot.id !== ballot.id ? (
                       <button
                         type="button"
-                        disabled={busy || refreshState.failed || refreshState.lastSuccessAt === null}
+                        disabled={busy || (action.to !== 'closed' && (refreshState.failed || refreshState.lastSuccessAt === null))}
                         onClick={() => setConfirmAction({ ballot, action })}
                         className={`h-12 rounded-xl px-4 text-[16px] font-bold disabled:opacity-50 ${
                           action.to === 'closed'
@@ -1255,10 +1326,15 @@ export default function BallotPanel({
               </button>
               <button
                 type="button"
-                disabled={refreshState.failed || refreshState.lastSuccessAt === null}
+                disabled={confirmAction.action.to !== 'closed' && (refreshState.failed || refreshState.lastSuccessAt === null)}
                 onClick={() => {
                   const { ballot, action } = confirmAction;
                   setConfirmAction(null);
+                  if (action.to === 'closed') {
+                    setCloseNow(Date.now());
+                    setPendingClose({ ballot, until: Date.now() + CLOSE_GRACE_MS });
+                    return;
+                  }
                   void runTransition(ballot, action);
                 }}
                 className={`h-[56px] rounded-2xl text-white text-[19px] font-bold shadow-sm ${

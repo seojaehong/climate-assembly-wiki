@@ -56,7 +56,7 @@ export function primaryAction(status: BallotStatus): BallotAction | null {
     return {
       to: 'closed',
       label: '투표 마감',
-      confirm: '투표를 마감할까요? 마감 후 재개할 수 없습니다.',
+      confirm: '투표를 마감할까요? 누르고 15초 뒤에 닫힙니다(그 사이 들어오는 제출은 반영). 마감 후 재개할 수 없습니다.',
     };
   }
   if (status === 'closed') {
