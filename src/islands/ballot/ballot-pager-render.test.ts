@@ -223,6 +223,33 @@ describe('(11/11) 한 장 70건 투표지 「전체회의 의결 정책권고안
     expect(html).toContain('/ballot/cards1114/2-1.webp');
   });
 
+  it('카드 그림을 받기 전에는 제목 글자를 카드 위에 보인다(빈 칸만 보이지 않게)', () => {
+    const html = renderToStaticMarkup(
+      createElement(PagerItemView, {
+        title: '전체회의 의결 정책권고안',
+        subgroup: null,
+        items,
+        pos: 2,
+        answers: {},
+        flashValue: null,
+        disabled: false,
+        onChoose: () => {},
+        onGo: () => {},
+        voterLine: null,
+      }),
+    );
+    const loadingAt = html.indexOf('data-testid="pager-title-loading"');
+    expect(loadingAt).toBeGreaterThan(-1);
+    // 처음 그릴 때(onLoad 전) 빈 칸 위에 번호·제목을 겹쳐 보인다 — 그림과 같은 relative 단추 안이라 받은 뒤 자리가 움직이지 않는다.
+    expect(html.slice(loadingAt)).toMatch(/권고안 2-1[\s\S]*가상 권고 2-1/);
+    expect(loadingAt).toBeLessThan(html.indexOf('<img src="/ballot/cards1114/2-1.webp"'));
+    expect(html.slice(html.lastIndexOf('<button', loadingAt), loadingAt)).toContain('relative');
+    // 화면 읽기용 제목은 하나, 그대로 sr-only.
+    const titleAt = html.indexOf('data-testid="pager-title"');
+    expect(html.slice(titleAt - 40, titleAt + 40)).toContain('sr-only');
+    expect(html.match(/data-testid="pager-title"/g)).toHaveLength(1);
+  });
+
   it('마지막 장(제출 전 확인)에 마무리말', () => {
     const html = renderToStaticMarkup(
       createElement(PagerSummaryView, {

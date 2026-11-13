@@ -51,6 +51,41 @@ describe('public vote device identity migration', () => {
       vi.unstubAllGlobals();
     }
   });
+
+  it('crypto.randomUUID 가 없는 옛 브라우저(iOS 15.4 미만)에서도 기기 번호를 만들고 저장한다', () => {
+    const values = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key),
+    });
+    vi.stubGlobal('crypto', { getRandomValues: (a: Uint8Array) => a });
+    try {
+      const token = getDeviceToken();
+      // 서버 ballot_submit(_named) 조건: client_id 8~80자.
+      expect(token.length).toBeGreaterThanOrEqual(8);
+      expect(token.length).toBeLessThanOrEqual(80);
+      expect(values.get('cv_device')).toBe(token);
+      expect(getDeviceToken()).toBe(token);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('crypto.randomUUID 가 있으면 그대로 쓴다', () => {
+    const values = new Map<string, string>();
+    vi.stubGlobal('localStorage', {
+      getItem: (key: string) => values.get(key) ?? null,
+      setItem: (key: string, value: string) => values.set(key, value),
+      removeItem: (key: string) => values.delete(key),
+    });
+    vi.stubGlobal('crypto', { randomUUID: () => '11111111-2222-4333-8444-555555555555' });
+    try {
+      expect(getDeviceToken()).toBe('11111111-2222-4333-8444-555555555555');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
 });
 describe('tallyVotes', () => {
   const round: Round = { id: 'r', title: 't', type: 'RADIO', options: ['A', 'B'], status: 'active', team_id: null };

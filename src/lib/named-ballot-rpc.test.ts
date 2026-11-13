@@ -7,7 +7,11 @@ import { ballotNamedResponses, namedVoteSettings, setNamedVoteSettings } from '.
 vi.mock('./supabase', () => ({ getSupabase: vi.fn() }));
 
 function mockRpc(results: Array<{ data: unknown; error: unknown }>) {
-  const rpc = vi.fn(() => Promise.resolve(results.shift() ?? { data: null, error: null }));
+  // 실제 PostgREST 빌더처럼 .abortSignal() 을 받는다(투표 화면 RPC 는 제한 시간을 건다).
+  const rpc = vi.fn(() => {
+    const p = Promise.resolve(results.shift() ?? { data: null, error: null });
+    return Object.assign(p, { abortSignal: () => p });
+  });
   const schema = vi.fn(() => ({ rpc }));
   vi.mocked(getSupabase).mockReturnValue({ schema } as never);
   return rpc;

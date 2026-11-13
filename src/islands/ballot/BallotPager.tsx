@@ -239,6 +239,9 @@ export function PagerItemView({
   // 11/14 의제별 투표지(11/11 수정 의견) — 찬성 · 반대만. 이전 · 다음 건 단추를 두지 않는다.
   const choiceOnly = !all && !!agendaTheme(title);
   const [cardFailed, setCardFailed] = useState(false);
+  // 그림이 다 받아진 카드 주소. 받기 전에는 빈 칸만 보이므로 제목 글자를 위에 보인다(받으면 화면 읽기용으로 숨긴다).
+  const [loadedCard, setLoadedCard] = useState<string | null>(null);
+  const cardLoaded = !!card && loadedCard === card;
   const [zoom, setZoom] = useState(false);
   useEffect(() => {
     setCardFailed(false);
@@ -263,11 +266,25 @@ export function PagerItemView({
               </span>
             </span>
           ) : (
-            <span className="text-[17px] font-extrabold text-[#135C73]" style={theme ? { ...KEEP, color: theme.accent } : KEEP}>
+            // 머리 제목은 두 줄까지만 — 긴 투표지 제목이 세 줄로 꺾여 찬성·반대 단추를 화면 아래로 밀던 것(11/13 실측 의제2 아래 끝 929px)을 막는다.
+            // 의제 이름 전체는 카드 그림 머리띠에 그대로 있다.
+            <span
+              data-testid="pager-title"
+              title={title}
+              className="min-w-0 text-[17px] font-extrabold text-[#135C73]"
+              style={{ ...KEEP, ...(theme ? { color: theme.accent } : {}), display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+            >
               {title}
             </span>
           )}
-          <span data-testid="pager-position" className="shrink-0 whitespace-nowrap text-[26px] font-black text-[#1F4E79] tr-num" role="status" aria-live="polite">
+          {/* 폭을 「28 / 28」 자리로 미리 잡는다 — 9→10번째에서 자리 수가 늘며 제목이 한 줄 더 꺾여 단추가 밀리던 것(11/13 미리보기 실측 28px)을 막는다. */}
+          <span
+            data-testid="pager-position"
+            className="shrink-0 whitespace-nowrap text-right text-[26px] font-black text-[#1F4E79] tr-num"
+            style={{ minWidth: `${String(total).length * 2 + 3}ch` }}
+            role="status"
+            aria-live="polite"
+          >
             {pos + 1} / {total}
           </span>
         </div>
@@ -285,13 +302,29 @@ export function PagerItemView({
         {card && !cardFailed ? (
           // 11/14 — 사무국 권고카드 한 장 = 투표용지 한 장. 글자는 카드 그림 안에 있고, 같은 문구를 화면 읽기용으로 둔다.
           <div data-testid="pager-card">
-            <button type="button" onClick={() => setZoom(true)} aria-label={`권고안 ${number} 권고카드 크게 보기`} className="block w-full">
+            <h2 data-testid="pager-title" className="sr-only">
+              권고안 {number} {itemTitle(item)}
+            </h2>
+            <button type="button" onClick={() => setZoom(true)} aria-label={`권고안 ${number} 권고카드 크게 보기`} className="relative block w-full">
+              {cardLoaded ? null : (
+                // 그림을 받기 전 빈 칸 위에 번호 · 제목을 겹쳐 보인다. 칸 크기는 그림 width/height 로 미리 잡혀 있어 받은 뒤에도 단추가 움직이지 않는다.
+                <div
+                  data-testid="pager-title-loading"
+                  aria-hidden="true"
+                  className="absolute inset-0 flex flex-col items-start justify-start gap-2 p-5 text-left text-[24px] font-extrabold leading-[1.45] text-[#1F2933] whitespace-pre-line"
+                  style={KEEP}
+                >
+                  <span className="text-[#1F4E79] tr-num">권고안 {number}</span>
+                  <span>{itemTitle(item)}</span>
+                </div>
+              )}
               <img
                 key={card}
                 src={card}
                 alt=""
                 width={1080}
                 height={1440}
+                onLoad={() => setLoadedCard(card)}
                 onError={() => setCardFailed(true)}
                 className="block w-full h-auto rounded-2xl border border-[#DCE7EE]"
               />
@@ -305,9 +338,6 @@ export function PagerItemView({
               🔍 카드 크게 보기
             </button>
             {zoom ? <CardZoom src={card} hdSrc={plenaryCardSrc(title, number, true)} label={`권고안 ${number}`} onClose={() => setZoom(false)} /> : null}
-            <h2 data-testid="pager-title" className="sr-only">
-              권고안 {number} {itemTitle(item)}
-            </h2>
           </div>
         ) : (
           <>

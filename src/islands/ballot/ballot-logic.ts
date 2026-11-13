@@ -1,5 +1,6 @@
 import type { Ballot, BallotItem, BallotSubmitResult, NamedSubmitResult, RosterRow } from '../../lib/ballot';
 import { decisionBallotKind } from '../../lib/division-ballot-format';
+import { randomId } from '../../lib/random-id';
 import { createSafeBrowserStorage } from '../../lib/safe-browser-storage';
 
 /**
@@ -12,14 +13,8 @@ export function isProxyMode(search: string): boolean {
 }
 
 /** 대리 입력 기기 번호 — 'proxy-' + 무작위(서버 조건 8~80자). */
-export function newProxyClientId(rand: () => string = defaultRand): string {
+export function newProxyClientId(rand: () => string = randomId): string {
   return `proxy-${rand()}`;
-}
-
-function defaultRand(): string {
-  const c = (globalThis as { crypto?: Crypto }).crypto;
-  if (c && typeof c.randomUUID === 'function') return c.randomUUID();
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
 }
 
 /** URL 쿼리에서 ballot 토큰(`?t=...`)을 파싱한다. 없거나 공백뿐이면 null. */
