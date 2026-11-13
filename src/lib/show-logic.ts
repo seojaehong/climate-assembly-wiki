@@ -344,12 +344,48 @@ export function demoLiveCounts(no: 1 | 2 | 3, p: number, begun: boolean, present
   return { ...base, status: 'open', started, submitted, in_progress: started - submitted };
 }
 
+// ── 자동 진행(auto=1) — 송출 노트북에서 손대지 않고 돈다 ──────────────────────
+
+/** 자동 진행에서 진행(1) ↔ 실시간(4) 을 바꾸는 간격. 실시간 안에서는 판이 8초마다 넘어간다. */
+export const AUTO_SWITCH_MS = 30_000;
+
+/**
+ * 자동 시작 — 이 화면이 「시작 전(draft) → 진행(open)」 바뀜을 직접 본 때만, 그리고 타이머가 한 번도 흐르지 않았을 때만.
+ * 이미 열린 뒤에 화면을 처음 연 경우(저장된 타이머도 없음)는 처음부터 흘리지 않는다 — 실제 남은 시간과 어긋나므로 Space 로.
+ */
+export function autoStartNow(prevStatus: string | undefined, status: string, t: TimerState): boolean {
+  return prevStatus === 'draft' && status === 'open' && t.runningSince == null && t.pausedRemainingMs === t.durationMs;
+}
+
+/** 자동 화면 전환 — 진행 중(open)이면 진행 ↔ 실시간을 번갈아, 그 밖이면 진행 화면에 둔다. 결과(2·3) · 영상이면 건드리지 않는다. */
+export function autoNextView(mode: ShowMode, status: string): ShowMode | null {
+  if (mode.video || (mode.view !== 'live' && mode.view !== 'rotate')) return null;
+  if (status !== 'open') return mode.view === 'rotate' ? { view: 'live', video: false } : null;
+  return { view: mode.view === 'live' ? 'rotate' : 'live', video: false };
+}
+
+/**
+ * 자동 의제 고르기(t=의제1,의제2,의제3&auto=1) — 진행 중인 것 중 가장 뒤 번호, 없으면 아직 시작 전인 것 중 가장 앞 번호,
+ * 그것도 없으면(전부 마감·공개) 마지막. 상태를 아직 못 읽은 칸(null)은 건너뛴다. 하나도 못 읽었으면 0.
+ */
+export function pickAutoAgenda(statuses: Array<string | null>): number {
+  for (let i = statuses.length - 1; i >= 0; i--) if (statuses[i] === 'open') return i;
+  const draft = statuses.findIndex((s) => s === 'draft');
+  if (draft >= 0) return draft;
+  for (let i = statuses.length - 1; i >= 0; i--) if (statuses[i] != null) return i;
+  return 0;
+}
+
 // ── URL ─────────────────────────────────────────────────────────────
 
 export type ShowParams = {
   tokens: string[];
   present: string | null;
   minutes: number | null;
+  /** min=25,35,30 처럼 의제별로 줄 때(자동 진행). 하나만 주면 길이 1. 빈칸·잘못된 값은 null(그 의제는 기본 시간). */
+  minutesList: Array<number | null>;
+  /** auto=1 — 진행 ↔ 실시간 자동 전환 · 투표가 열리면 타이머 자동 시작 · 토큰 3개면 진행 중인 의제를 스스로 고른다. */
+  auto: boolean;
   motion: boolean;
   /** 시연 의제(demo=1|2|3) — DB 없이 가상 수로 돈다. 그 밖 값이면 null. */
   demo: 1 | 2 | 3 | null;
@@ -364,13 +400,17 @@ export function parseShowParams(search: string): ShowParams {
     .split(',')
     .map((s) => s.trim())
     .filter((s) => /^[A-Za-z0-9]{32}$/.test(s));
-  const minRaw = Number(q.get('min'));
-  const minutes = q.get('min') != null && Number.isFinite(minRaw) && minRaw > 0 ? minRaw : null;
+  // 자리를 지킨다 — min=20,,25 면 의제2 는 null(기본 시간), 의제3 은 25.
+  const minutesList = q.get('min') == null ? [] : (q.get('min') ?? '').split(',').map((s) => {
+    const n = s.trim() === '' ? NaN : Number(s);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  });
+  const minutes = minutesList.find((n) => n != null) ?? null;
   const d = q.get('demo');
   const demo = d === '1' || d === '2' || d === '3' ? (Number(d) as 1 | 2 | 3) : null;
   const spRaw = Number(q.get('speed'));
   const speed = q.get('speed') != null && Number.isFinite(spRaw) && spRaw >= 1 ? Math.min(600, spRaw) : 1;
-  return { tokens, present: q.get('present'), minutes, motion: q.get('motion') !== '0', demo, speed };
+  return { tokens, present: q.get('present'), minutes, minutesList, auto: q.get('auto') === '1', motion: q.get('motion') !== '0', demo, speed };
 }
 
 // ── 읽기 실패 ───────────────────────────────────────────────────────

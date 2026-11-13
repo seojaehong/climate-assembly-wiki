@@ -38,6 +38,10 @@ import {
   clockDisplay,
   DEMO_ITEMS,
   DEMO_PRESENT,
+  AUTO_SWITCH_MS,
+  autoNextView,
+  autoStartNow,
+  pickAutoAgenda,
   defaultDurationSec,
   demoAdvanceMs,
   demoLiveCounts,
@@ -1266,6 +1270,8 @@ function SingleShow({
   minutes,
   demo = null,
   speed = 1,
+  auto = false,
+  seedPrevStatus,
 }: {
   token: string;
   presentRaw: string | null;
@@ -1273,6 +1279,10 @@ function SingleShow({
   /** 시연 의제 — 있으면 DB 를 읽지 않고 가상 수로 돈다(타이머 저장도 하지 않는다). */
   demo?: 1 | 2 | 3 | null;
   speed?: number;
+  /** auto=1 — 진행 ↔ 실시간 30초 자동 전환, 시작 전 → 진행 바뀜을 보면 타이머 자동 시작. */
+  auto?: boolean;
+  /** 자동 의제 고르기가 이 의제로 넘어오기 직전에 본 상태(넘어오자마자 열린 경우에도 자동 시작하도록). */
+  seedPrevStatus?: string;
 }) {
   const [mode, setMode] = useState<ShowMode>({ view: 'live', video: false });
   const view = mode.view;
@@ -1450,6 +1460,34 @@ function SingleShow({
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [act, press, showVideo, togglePlay, view, timerShown, rot.step, rot.togglePause]);
+
+  // 자동 진행 — 타이머 자동 시작(시작 전 → 진행 바뀜을 이 화면이 본 때만). 시연은 상태가 타이머에서 나오므로 열자마자 시작.
+  const liveStatus = demo ? undefined : live.data?.status;
+  const prevStatusRef = useRef<string | undefined>(seedPrevStatus);
+  useEffect(() => {
+    if (!auto || !timer) return;
+    if (demo) {
+      if (timer.runningSince == null && timer.pausedRemainingMs === timer.durationMs) act('toggle');
+      return;
+    }
+    if (liveStatus == null) return;
+    const prev = prevStatusRef.current;
+    prevStatusRef.current = liveStatus;
+    if (autoStartNow(prev, liveStatus, timer)) act('toggle');
+  }, [auto, demo, liveStatus, timer, act]);
+  // 자동 진행 — 진행(1) ↔ 실시간(4) 30초마다. 투표 중이 아니면 진행 화면에 머문다.
+  const autoStatus = demo ? (timer && (timer.runningSince != null || timer.pausedRemainingMs !== timer.durationMs) ? 'open' : 'draft') : liveStatus;
+  useEffect(() => {
+    if (!auto || autoStatus == null) return;
+    const now = autoNextView(mode, autoStatus);
+    if (now && autoStatus !== 'open') {
+      setMode(now);
+      return;
+    }
+    if (!now) return;
+    const t = setTimeout(() => setMode((m) => autoNextView(m, autoStatus) ?? m), AUTO_SWITCH_MS);
+    return () => clearTimeout(t);
+  }, [auto, autoStatus, mode]);
 
   const nowMs = demo ? demoClock.now : Math.max(wallNow, Date.now());
   // 시연 — 수는 타이머가 흐른 비율로 정한다(처음 시작 전 = 시작 전 · 0명).
@@ -1892,6 +1930,47 @@ function OverviewRow({ bundle, present }: { bundle: AgendaBundle; present: numbe
   );
 }
 
+// ── 자동 의제 고르기(t=의제1,의제2,의제3&auto=1) ─────────────────────────────
+
+function AutoAgendaShow({ tokens, presentRaw, minutesList }: { tokens: string[]; presentRaw: string | null; minutesList: Array<number | null> }) {
+  const lastLives = useRef<Array<BallotLiveCounts | null>>([]);
+  const load = useCallback(() => settleEach(tokens, fetchBallotLiveCounts, lastLives), [tokens]);
+  const poll = usePoll(load);
+  const statuses = tokens.map((_, i) => poll.data?.find((s) => s.index === i)?.value?.status ?? null);
+  const want = pickAutoAgenda(statuses);
+  // 바뀌기 직전에 본 상태를 넘겨, 넘어오자마자 열린 의제도 타이머가 자동으로 시작되게 한다.
+  const prevStatuses = useRef<Array<string | null>>([]);
+  const [cur, setCur] = useState<{ index: number; seed: string | undefined } | null>(null);
+  useEffect(() => {
+    if (poll.data === undefined) return;
+    if (!cur || cur.index !== want) setCur({ index: want, seed: prevStatuses.current[want] ?? undefined });
+    prevStatuses.current = statuses;
+  }, [poll.data, want, cur, statuses]);
+  if (!cur) {
+    return (
+      <Stage>
+        <Header sub="표출 화면" right={null} />
+        {poll.failing ? <LoadFailed kind={poll.errorKind} /> : <Centered title="불러오는 중" />}
+        <Footer>
+          <span />
+          <span />
+        </Footer>
+      </Stage>
+    );
+  }
+  const i = cur.index;
+  return (
+    <SingleShow
+      key={tokens[i]}
+      token={tokens[i]}
+      presentRaw={presentRaw}
+      minutes={minutesList.length === 1 ? minutesList[0] : (minutesList[i] ?? null)}
+      auto
+      seedPrevStatus={cur.seed}
+    />
+  );
+}
+
 // ── 진입 ──────────────────────────────────────────────────────────
 
 export default function ShowScreen() {
@@ -1910,7 +1989,7 @@ export default function ShowScreen() {
     return () => window.removeEventListener('keydown', block, true);
   }, []);
   if (params.demo) {
-    return <SingleShow token={DEMO_TOKEN} presentRaw={params.present ?? String(DEMO_PRESENT)} minutes={params.minutes} demo={params.demo} speed={params.speed} />;
+    return <SingleShow token={DEMO_TOKEN} presentRaw={params.present ?? String(DEMO_PRESENT)} minutes={params.minutes} demo={params.demo} speed={params.speed} auto={params.auto} />;
   }
   if (params.tokens.length === 0) {
     return (
@@ -1926,6 +2005,7 @@ export default function ShowScreen() {
       </Stage>
     );
   }
+  if (params.tokens.length > 1 && params.auto) return <AutoAgendaShow tokens={params.tokens} presentRaw={params.present} minutesList={params.minutesList} />;
   if (params.tokens.length > 1) return <OverviewShow tokens={params.tokens} presentRaw={params.present} />;
-  return <SingleShow token={params.tokens[0]} presentRaw={params.present} minutes={params.minutes} />;
+  return <SingleShow token={params.tokens[0]} presentRaw={params.present} minutes={params.minutes} auto={params.auto} />;
 }

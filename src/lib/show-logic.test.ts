@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  autoNextView,
+  autoStartNow,
+  pickAutoAgenda,
   adjustTimer,
   agendaOutcome,
   clockText,
@@ -498,5 +501,43 @@ describe('screenCue — 진행 · 실시간(4) · 영상(V) 이 같은 알림, P
   it('결과 화면(2 · 3)에는 띄우지 않는다', () => {
     expect(screenCue({ view: 'detail', video: false }, timeCue(t, at(7_000), 'open')).kind).toBe('none');
     expect(screenCue({ view: 'summary', video: true }, timeCue(t, at(300_000), 'open')).kind).toBe('none');
+  });
+});
+
+describe('자동 진행(auto=1)', () => {
+  const fresh = initialTimer(600);
+  it('시작 전 → 진행을 본 때만, 한 번도 안 흐른 타이머만 자동 시작', () => {
+    expect(autoStartNow('draft', 'open', fresh)).toBe(true);
+    expect(autoStartNow(undefined, 'open', fresh)).toBe(false); // 이미 열린 뒤 처음 연 화면
+    expect(autoStartNow('open', 'open', fresh)).toBe(false);
+    expect(autoStartNow('draft', 'draft', fresh)).toBe(false);
+    expect(autoStartNow('draft', 'open', toggleTimer(fresh, 0))).toBe(false); // 이미 흐르는 중
+    expect(autoStartNow('draft', 'open', toggleTimer(toggleTimer(fresh, 0), 5000))).toBe(false); // 멈춘 적 있음
+  });
+  it('진행 중이면 진행 ↔ 실시간, 아니면 진행 화면, 결과 · 영상은 그대로', () => {
+    expect(autoNextView({ view: 'live', video: false }, 'open')).toEqual({ view: 'rotate', video: false });
+    expect(autoNextView({ view: 'rotate', video: false }, 'open')).toEqual({ view: 'live', video: false });
+    expect(autoNextView({ view: 'rotate', video: false }, 'closed')).toEqual({ view: 'live', video: false });
+    expect(autoNextView({ view: 'live', video: false }, 'draft')).toBeNull();
+    expect(autoNextView({ view: 'detail', video: false }, 'open')).toBeNull();
+    expect(autoNextView({ view: 'live', video: true }, 'open')).toBeNull();
+  });
+  it('의제 고르기 — 진행 중 뒤 번호 > 시작 전 앞 번호 > 마지막', () => {
+    expect(pickAutoAgenda(['draft', 'draft', 'draft'])).toBe(0);
+    expect(pickAutoAgenda(['open', 'draft', 'draft'])).toBe(0);
+    expect(pickAutoAgenda(['closed', 'draft', 'draft'])).toBe(1);
+    expect(pickAutoAgenda(['open', 'open', 'draft'])).toBe(1);
+    expect(pickAutoAgenda(['published', 'closed', 'closed'])).toBe(2);
+    expect(pickAutoAgenda([null, null, null])).toBe(0);
+    expect(pickAutoAgenda(['closed', null, null])).toBe(0);
+  });
+  it('주소 — auto=1 · 의제별 분(min=25,35,30)', () => {
+    const p = parseShowParams('?t=a4cc141045e5bf384714cf17c3a9cd37&auto=1&min=25,35,30');
+    expect(p.auto).toBe(true);
+    expect(p.minutesList).toEqual([25, 35, 30]);
+    expect(p.minutes).toBe(25);
+    expect(parseShowParams('?t=a4cc141045e5bf384714cf17c3a9cd37').auto).toBe(false);
+    expect(parseShowParams('?min=20,,25').minutesList).toEqual([20, null, 25]);
+    expect(parseShowParams('?min=,30').minutes).toBe(30);
   });
 });
