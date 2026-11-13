@@ -69,7 +69,7 @@ describe('parsePresent — 양의 정수만, 아니면 null(명단 수로 조용
 });
 
 describe('liveDenominator — 진행·실시간 분모(출석 없으면 명단 기준이라고 적는다)', () => {
-  it('출석이 있으면 출석', () => expect(liveDenominator(174, 180)).toEqual({ n: 174, label: '참석 174명', byRoster: false }));
+  it('출석이 있으면 출석', () => expect(liveDenominator(174, 180)).toEqual({ n: 174, label: '출석 174명', byRoster: false }));
   it('출석이 없으면 명단 + 「명단 기준」', () => expect(liveDenominator(null, 180)).toEqual({ n: 180, label: '명단 180명 기준', byRoster: true }));
 });
 

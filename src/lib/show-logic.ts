@@ -26,7 +26,7 @@ export function parsePresent(raw: string | null | undefined): number | null {
 
 /** 진행·실시간 화면의 분모 — 출석이 있으면 출석, 없으면 명단(「명단 기준」으로 적는다). */
 export function liveDenominator(present: number | null, roster: number): { n: number; label: string; byRoster: boolean } {
-  if (present != null) return { n: present, label: `참석 ${present}명`, byRoster: false };
+  if (present != null) return { n: present, label: `출석 ${present}명`, byRoster: false };
   const r = Math.max(0, roster);
   return { n: r, label: `명단 ${r}명 기준`, byRoster: true };
 }

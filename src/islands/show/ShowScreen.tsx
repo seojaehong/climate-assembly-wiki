@@ -293,7 +293,7 @@ function CriteriaLine({ present }: { present: number }) {
     <span>
       의결 기준&nbsp;&nbsp;
       <b style={{ color: C.text, fontWeight: 700 }}>
-        참석자 {present}명의 3분의 2 이상 찬성 ({passThreshold(present)}표 이상)
+        출석자 {present}명의 3분의 2 이상 찬성 ({passThreshold(present)}표 이상)
       </b>
     </span>
   );
@@ -918,7 +918,7 @@ function VideoView({
         )}
         {present != null ? (
           <p className="tr-num" style={{ ...KEEP, flex: 'none', margin: '8px 0 0', fontSize: 20, color: C.muted, textAlign: 'center' }}>
-            가결 기준 참석자 3분의 2 이상 찬성 ({passThreshold(present)}표 이상)
+            가결 기준 출석자 3분의 2 이상 찬성 ({passThreshold(present)}표 이상)
           </p>
         ) : null}
       </aside>
@@ -1618,7 +1618,7 @@ function SingleShow({
                   가결선 {passThreshold(present)}표 (3분의 2)
                 </span>
               </span>
-              <span>막대 길이와 숫자는 찬성률 · 참석자 {present}명 기준</span>
+              <span>막대 길이와 숫자는 찬성률 · 출석자 {present}명 기준</span>
             </>
           ) : (
             <>
@@ -1857,7 +1857,7 @@ function OverviewShow({ tokens, presentRaw }: { tokens: string[]; presentRaw: st
               <Legend color={C.orange} label="부결" />
             </span>
             <span>
-              의결 기준: 참석자 {present}명의 3분의 2 이상 찬성 ({passThreshold(present)}표 이상)
+              의결 기준: 출석자 {present}명의 3분의 2 이상 찬성 ({passThreshold(present)}표 이상)
             </span>
           </>
         )}
