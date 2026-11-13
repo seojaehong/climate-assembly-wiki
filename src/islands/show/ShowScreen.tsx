@@ -969,13 +969,26 @@ function Ring({ pct, size }: { pct: number; size: number }) {
   );
 }
 
-function OverallPanel({ agendas, denom, compact = false }: { agendas: LiveAgenda[]; denom: Denom; compact?: boolean }) {
+function OverallPanel({
+  agendas,
+  denom,
+  compact = false,
+  clock = null,
+}: {
+  agendas: LiveAgenda[];
+  denom: Denom;
+  compact?: boolean;
+  /** 의제 하나 주소 — 판이 넘어가도 남은 투표 시간이 늘 보이게(모든 화면 타이머 유지, 11/13 지시). */
+  clock?: { text: string; closed: boolean } | null;
+}) {
   const o = overallTurnout(
     agendas.map((a) => a.live),
     denom.n,
   );
   // compact = 오른쪽에 QR 이 붙은 판(의제 하나 실시간) — 고리를 줄여 왼쪽 칸 안에 든다.
   const size = compact ? 500 : 600;
+  // 남은 시간까지 세 칸이면 위 83px(알림 띠 자리)를 비우고 숫자를 줄여 한 칸에 든다.
+  const num = clock ? 96 : 120;
   return (
     <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: compact ? 64 : 110 }}>
       <div style={{ position: 'relative', width: size, height: size }}>
@@ -987,12 +1000,12 @@ function OverallPanel({ agendas, denom, compact = false }: { agendas: LiveAgenda
           </span>
         </div>
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 44, minWidth: compact ? 0 : 560 }}>
-        <p style={{ margin: 0, fontSize: 64, fontWeight: 900 }}>전체 완료율{denom.byRoster ? <span style={{ fontSize: 34, color: C.muted }}> (명단 기준)</span> : null}</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: clock ? 22 : 44, minWidth: compact ? 0 : 560, paddingTop: clock ? 83 : 0 }}>
+        <p style={{ margin: 0, fontSize: clock ? 56 : 64, fontWeight: 900 }}>전체 완료율{denom.byRoster ? <span style={{ fontSize: 34, color: C.muted }}> (명단 기준)</span> : null}</p>
         <div style={{ borderTop: `6px solid ${C.blue}`, paddingTop: 14 }}>
           <p style={{ margin: 0, fontSize: 32, fontWeight: 700, color: C.blue }}>제출 완료</p>
           <p className="tr-num" style={{ margin: 0, display: 'flex', alignItems: 'baseline', gap: 16, lineHeight: 1.05 }}>
-            <span style={{ fontSize: 120, fontWeight: 900, color: C.blue }}>{o.submitted}</span>
+            <span style={{ fontSize: num, fontWeight: 900, color: C.blue }}>{o.submitted}</span>
             <span style={{ fontSize: 36, color: C.muted, whiteSpace: 'nowrap' }}>
               / {agendas.length > 1 ? `${denom.label} × 의제 ${agendas.length}개` : denom.label}
             </span>
@@ -1001,12 +1014,24 @@ function OverallPanel({ agendas, denom, compact = false }: { agendas: LiveAgenda
         <div style={{ borderTop: `6px solid ${C.text}`, paddingTop: 14 }}>
           <p style={{ margin: 0, fontSize: 32, fontWeight: 700, color: C.muted }}>지금 투표 중</p>
           <p className="tr-num" style={{ margin: 0, lineHeight: 1.05 }}>
-            <span data-testid="rot-inprogress" style={{ fontSize: 120, fontWeight: 900 }}>
+            <span data-testid="rot-inprogress" style={{ fontSize: num, fontWeight: 900 }}>
               {o.inProgress}
             </span>
             <span style={{ fontSize: 44, color: C.muted, marginLeft: 10 }}>명</span>
           </p>
         </div>
+        {clock ? (
+          <div style={{ borderTop: `6px solid ${clock.closed ? C.orange : C.text}`, paddingTop: 14 }}>
+            <p style={{ margin: 0, fontSize: 32, fontWeight: 700, color: clock.closed ? C.orange : C.muted }}>남은 투표 시간</p>
+            <p
+              data-testid="rot-overall-clock"
+              className="tr-num"
+              style={{ margin: 0, lineHeight: 1.05, whiteSpace: 'nowrap', fontSize: clock.closed && clock.text.length > 2 ? 72 : num, fontWeight: 900, color: clock.closed ? C.orange : C.text }}
+            >
+              {clock.text}
+            </p>
+          </div>
+        ) : null}
       </div>
     </div>
   );
@@ -1128,7 +1153,7 @@ function RotateView({
     <div style={{ flex: 1, minWidth: 0, minHeight: 0, display: 'flex', position: 'relative' }}>
       <div key={`${panel}-${index}`} data-testid={`rot-panel-${panel}`} className="show-panel-in" style={{ flex: 1, display: 'flex', minHeight: 0 }}>
         {panel === 'overall' ? (
-          <OverallPanel agendas={agendas} denom={denom} compact={compact} />
+          <OverallPanel agendas={agendas} denom={denom} compact={compact} clock={compact ? clock : null} />
         ) : panel === 'agendas' ? (
           <AgendasPanel agendas={agendas} denom={denom} />
         ) : agendas[0] ? (
