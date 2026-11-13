@@ -53,7 +53,7 @@ export function agendaTheme(title: string | null | undefined): AgendaTheme | nul
 export const AGENDA_NAMES: Record<1 | 2 | 3, string> = {
   1: '기업이 온실가스를 감축하도록 촉진하는 방안',
   2: '일회용품 줄이기 등 자원순환을 강화하는 방안',
-  3: '기후시민 의식제고를 위한 교육과 참여를 활성화하는 방안',
+  3: '기후시민 의식제고를 위한 교육 및 참여 활성화 방안',
 };
 
 /**
