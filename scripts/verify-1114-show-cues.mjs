@@ -1,6 +1,6 @@
 /**
  * 11/14 표출 화면 알림 리허설 — 미리보기 배포 + 운영 DB 드라이런 세션(zz-dryrun-1114-…-s)에서
- * 남은 시간 띠(5분 · 3분 · 1분 · 30초) · 10→1 카운트다운 · 종료 띠가 진행(1) · 실시간 순환(4) · 영상(V) 화면에
+ * 남은 시간 띠(10분 · 5분 · 3분 · 1분 · 30초) · 10→1 카운트다운 · 종료 띠가 진행(1) · 실시간 순환(4) · 영상(V) 화면에
  * 뜨는지, PageDown 으로 화면을 오가도 띠가 겹치거나 빠지거나 다시 뜨지 않는지 실제 데이터 경로로 본다.
  *
  * 사용:
@@ -388,7 +388,7 @@ async function main() {
     const maxN = Math.max(0, ...P.map((p) => p.n));
     const views = [...new Set(P.map((p) => p.view))];
     record(`${W.L}-one`, maxN <= 1 && (!W.expect || (views.length === 1 && views[0] === W.expect)), `${W.label}: 폴 ${P.length}회 · 한 번에 뜬 띠 최대 ${maxN}개 · 화면 ${views.join('/')}`);
-    for (const m of MARKS) {
+    for (const m of MARKS.filter((s) => SMOKE || s < MIN * 60)) {
       const k = `notice-${m}`;
       const ep = episodes(P, k);
       const f = W.first[k];
@@ -417,7 +417,7 @@ async function main() {
     }
     record(`${W.L}-overlap`, settled.length === 0, `${W.label} 띠가 글자·QR 을 덮은 폴(자리 잡은 뒤) ${settled.length}회${settled.length ? ` — ${[...new Set(settled)].slice(0, 4).join(' | ')}` : ''}`);
     if (entering.length) note(`${W.L}-overlap-entering`, `${W.label} 등장 움직임 1.5초 안 겹침 ${entering.length}회 — ${[...new Set(entering)].slice(0, 3).join(' | ')}`);
-    const extra = Object.keys(W.first).filter((k) => !/^notice-(300|180|60|30)$|^count-([1-9]|10)$|^ended$/.test(k));
+    const extra = Object.keys(W.first).filter((k) => !/^notice-(600|300|180|60|30)$|^count-([1-9]|10)$|^ended$/.test(k));
     record(`${W.L}-no-extra`, extra.length === 0, `${W.label} 그 밖의 띠 ${extra.length ? extra.join(',') : '없음'}`);
   }
   const t300 = ['1', '4', 'V'].map((L) => watchers[L].first['notice-300']?.t ?? NaN);
@@ -428,6 +428,7 @@ async function main() {
 
 async function contactSheet() {
   const rows = [
+    ['notice-600', '10분 띠'],
     ['notice-300', '5분 띠'],
     ['notice-180', '3분 띠'],
     ['notice-60', '1분 띠'],
