@@ -266,7 +266,14 @@ export function PagerItemView({
               </span>
             </span>
           ) : (
-            <span className="text-[17px] font-extrabold text-[#135C73]" style={theme ? { ...KEEP, color: theme.accent } : KEEP}>
+            // 머리 제목은 두 줄까지만 — 긴 투표지 제목이 세 줄로 꺾여 찬성·반대 단추를 화면 아래로 밀던 것(11/13 실측 의제2 아래 끝 929px)을 막는다.
+            // 의제 이름 전체는 카드 그림 머리띠에 그대로 있다.
+            <span
+              data-testid="pager-title"
+              title={title}
+              className="min-w-0 text-[17px] font-extrabold text-[#135C73]"
+              style={{ ...KEEP, ...(theme ? { color: theme.accent } : {}), display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+            >
               {title}
             </span>
           )}
