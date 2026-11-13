@@ -95,3 +95,15 @@ describe('visibleTabs — 10/17 세션은 의결 탭만', () => {
     expect(tabAfterKey('decision', 'Home', only)).toBe('decision');
   });
 });
+
+describe('visibleTabs — 11/14 세션은 투표 탭만', () => {
+  it('keeps only 투표 for 1114 sessions (real, dry-run)', () => {
+    for (const slug of ['1114-plenary-vote', 'zz-dryrun-1114-20261111t1217', 'zz-dryrun-1114-load-20261113t1240']) {
+      expect(visibleTabs(slug).map((t) => t.id)).toEqual(['vote']);
+    }
+  });
+  it('does not touch 1017 or other sessions', () => {
+    expect(visibleTabs('1017-division-vote').map((t) => t.id)).toEqual(['decision']);
+    for (const slug of ['0912-deliberation', 'zz-x-11140', null]) expect(visibleTabs(slug)).toBe(MOD_TABS);
+  });
+});
