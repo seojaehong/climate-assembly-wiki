@@ -36,8 +36,18 @@ export function isDecisionOnlySession(sessionSlug: string | null | undefined): b
   return typeof sessionSlug === 'string' && /(^|-)1017(-|$)/.test(sessionSlug);
 }
 
+/**
+ * 11/14 전체회의 의결 세션(실세션 `1114-plenary-vote` · 드라이런 — 슬러그에 「1114」 마디)은 「투표」 탭만 보인다.
+ * 11/13 사용자 「투표만 남기면 되어요」 — 다른 탭이 운영 콘솔을 헷갈리게 한다.
+ */
+export function isVoteOnlySession(sessionSlug: string | null | undefined): boolean {
+  return typeof sessionSlug === 'string' && /(^|-)1114(-|$)/.test(sessionSlug);
+}
+
 export function visibleTabs(sessionSlug: string | null | undefined): readonly ModTab[] {
-  return isDecisionOnlySession(sessionSlug) ? MOD_TABS.filter((tab) => tab.id === 'decision') : MOD_TABS;
+  if (isDecisionOnlySession(sessionSlug)) return MOD_TABS.filter((tab) => tab.id === 'decision');
+  if (isVoteOnlySession(sessionSlug)) return MOD_TABS.filter((tab) => tab.id === 'vote');
+  return MOD_TABS;
 }
 
 /** 아무 것도 고르지 않았을 때 열리는 탭. */
