@@ -238,14 +238,15 @@ describe('(11/11) 한 장 70건 투표지 「전체회의 의결 정책권고안
         voterLine: null,
       }),
     );
+    const loadingAt = html.indexOf('data-testid="pager-title-loading"');
+    expect(loadingAt).toBeGreaterThan(-1);
+    // 처음 그릴 때(onLoad 전) 빈 칸 위에 번호·제목을 겹쳐 보인다 — 그림과 같은 relative 단추 안이라 받은 뒤 자리가 움직이지 않는다.
+    expect(html.slice(loadingAt)).toMatch(/권고안 2-1[\s\S]*가상 권고 2-1/);
+    expect(loadingAt).toBeLessThan(html.indexOf('<img src="/ballot/cards1114/2-1.webp"'));
+    expect(html.slice(html.lastIndexOf('<button', loadingAt), loadingAt)).toContain('relative');
+    // 화면 읽기용 제목은 하나, 그대로 sr-only.
     const titleAt = html.indexOf('data-testid="pager-title"');
-    expect(titleAt).toBeGreaterThan(-1);
-    // 처음 그릴 때(onLoad 전) 화면 읽기 전용(sr-only)이 아니다.
-    const tag = html.slice(html.lastIndexOf('<h2', titleAt), html.indexOf('>', titleAt));
-    expect(tag).not.toContain('sr-only');
-    expect(html.slice(titleAt)).toMatch(/권고안 2-1[\s\S]*가상 권고 2-1/);
-    // 제목이 카드 그림보다 위에 있다.
-    expect(titleAt).toBeLessThan(html.indexOf('<img src="/ballot/cards1114/2-1.webp"'));
+    expect(html.slice(titleAt - 40, titleAt + 40)).toContain('sr-only');
     expect(html.match(/data-testid="pager-title"/g)).toHaveLength(1);
   });
 

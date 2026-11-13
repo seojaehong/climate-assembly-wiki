@@ -288,14 +288,22 @@ export function PagerItemView({
         {card && !cardFailed ? (
           // 11/14 — 사무국 권고카드 한 장 = 투표용지 한 장. 글자는 카드 그림 안에 있고, 같은 문구를 화면 읽기용으로 둔다.
           <div data-testid="pager-card">
-            <h2
-              data-testid="pager-title"
-              className={cardLoaded ? 'sr-only' : 'mb-3 px-2 text-[24px] font-extrabold leading-[1.45] text-[#1F2933] whitespace-pre-line'}
-              style={cardLoaded ? undefined : KEEP}
-            >
-              <span className={cardLoaded ? undefined : 'block text-[#1F4E79] tr-num'}>권고안 {number}</span> {itemTitle(item)}
+            <h2 data-testid="pager-title" className="sr-only">
+              권고안 {number} {itemTitle(item)}
             </h2>
-            <button type="button" onClick={() => setZoom(true)} aria-label={`권고안 ${number} 권고카드 크게 보기`} className="block w-full">
+            <button type="button" onClick={() => setZoom(true)} aria-label={`권고안 ${number} 권고카드 크게 보기`} className="relative block w-full">
+              {cardLoaded ? null : (
+                // 그림을 받기 전 빈 칸 위에 번호 · 제목을 겹쳐 보인다. 칸 크기는 그림 width/height 로 미리 잡혀 있어 받은 뒤에도 단추가 움직이지 않는다.
+                <div
+                  data-testid="pager-title-loading"
+                  aria-hidden="true"
+                  className="absolute inset-0 flex flex-col items-start justify-start gap-2 p-5 text-left text-[24px] font-extrabold leading-[1.45] text-[#1F2933] whitespace-pre-line"
+                  style={KEEP}
+                >
+                  <span className="text-[#1F4E79] tr-num">권고안 {number}</span>
+                  <span>{itemTitle(item)}</span>
+                </div>
+              )}
               <img
                 key={card}
                 src={card}
