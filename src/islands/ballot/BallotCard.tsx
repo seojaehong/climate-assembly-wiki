@@ -245,32 +245,6 @@ export function RosterMissingScreen({ onRetry, retrying }: { onRetry: () => void
   );
 }
 
-function RefreshButton({
-  onRefresh,
-  refreshing,
-  refreshNotice,
-}: {
-  onRefresh: () => void;
-  refreshing: boolean;
-  refreshNotice: string | null;
-}) {
-  return (
-    <>
-      <button
-        type="button"
-        onClick={onRefresh}
-        disabled={refreshing}
-        className="mt-5 w-full h-14 rounded-2xl border border-[#C4D8E4] bg-white text-[#1F4E79] text-[17px] font-bold disabled:opacity-50"
-      >
-        {refreshing ? '공개 여부 확인 중…' : '결과 공개 여부 확인'}
-      </button>
-      <p className="min-h-6 mt-3 text-[14px] leading-relaxed text-[#5A6B73]" role="status" aria-live="polite">
-        {refreshNotice}
-      </p>
-    </>
-  );
-}
-
 function DoneScreen({
   duplicate,
   decision,
@@ -332,7 +306,6 @@ function DoneScreen({
         </button>
       ) : null}
       {agendaNo || onNext ? null : <p className="mt-5 text-[14px] leading-relaxed text-[#5A6B73]">집계는 운영진 확인을 거쳐 공개됩니다.</p>}
-      {onNext ? null : <RefreshButton onRefresh={onRefresh} refreshing={refreshing} refreshNotice={refreshNotice} />}
     </CenterMessage>
   );
 }
@@ -376,7 +349,6 @@ export function ClosedScreen({
           마감 뒤에 제출되어 이 표는 반영되지 않았습니다. 손을 들어 알려 주십시오.
         </p>
       ) : null}
-      <RefreshButton onRefresh={onRefresh} refreshing={refreshing} refreshNotice={refreshNotice} />
     </CenterMessage>
   );
 }

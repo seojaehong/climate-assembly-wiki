@@ -109,7 +109,7 @@ export type VoterCopy = {
 export const SURVEY_EVIDENCE_BOUNDARY =
   '이름·개인정보는 저장하지 않으며, 브라우저 기기 식별값으로 중복을 줄이는 비구속 현장 의견조사입니다. 공식 의사결정이나 참여 인원 산정의 단독 근거로 사용할 수 없습니다.';
 export const DECISION_EVIDENCE_BOUNDARY =
-  '운영규정에 따라 참석자 3분의 2 이상 찬성하면 가결됩니다. 부결되면 다시 투표합니다.';
+  '운영규정에 따라 출석자 3분의 2 이상 찬성하면 가결됩니다. 부결되면 다시 투표합니다.';
 
 /** 11/14 전체회의 의결 — 분과 이름도, 「부결되면 다시 투표합니다」도 내지 않는다(20_투표_최종안 329행). */
 export const PLENARY_EVIDENCE_BOUNDARY = '출석자 3분의 2 이상이 찬성하면 가결됩니다.';
