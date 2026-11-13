@@ -270,7 +270,14 @@ export function PagerItemView({
               {title}
             </span>
           )}
-          <span data-testid="pager-position" className="shrink-0 whitespace-nowrap text-[26px] font-black text-[#1F4E79] tr-num" role="status" aria-live="polite">
+          {/* 폭을 「28 / 28」 자리로 미리 잡는다 — 9→10번째에서 자리 수가 늘며 제목이 한 줄 더 꺾여 단추가 밀리던 것(11/13 미리보기 실측 28px)을 막는다. */}
+          <span
+            data-testid="pager-position"
+            className="shrink-0 whitespace-nowrap text-right text-[26px] font-black text-[#1F4E79] tr-num"
+            style={{ minWidth: `${String(total).length * 2 + 3}ch` }}
+            role="status"
+            aria-live="polite"
+          >
             {pos + 1} / {total}
           </span>
         </div>
