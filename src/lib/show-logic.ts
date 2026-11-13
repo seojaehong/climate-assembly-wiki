@@ -117,7 +117,7 @@ export function agendaOutcome(dists: ReadonlyArray<Record<string, number> | null
 export const AGENDA_FULL_NAMES: Record<1 | 2 | 3, string> = {
   1: '기업이 온실가스를 감축하도록 촉진하는 방안',
   2: '일회용품 줄이기 등 자원순환을 강화하는 방안',
-  3: '기후시민 의식제고를 위한 교육 및 참여 활성화 방안',
+  3: '기후시민 의식제고를 위한 교육과 참여를 활성화하는 방안',
 };
 
 // ── 남은 투표 시간(표출 화면 브라우저 안에서만 돈다) ─────────────────────────

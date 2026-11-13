@@ -300,7 +300,7 @@ describe('(11/11) 간지 = 의제 확인 화면 — 한 의제를 마친 뒤 다
     expect(html).toMatch(/찬성 0.*반대 1.*미응답 1/);
     expect(html).toContain('data-goto="3"');
     expect(html).toContain('data-goto="2"');
-    expect(html).toContain('다음 · 의제3 기후시민 의식제고를 위한 교육 및 참여 활성화 방안');
+    expect(html).toContain('다음 · 의제3 기후시민 의식제고를 위한 교육과 참여를 활성화하는 방안');
   });
 
   it('제출 전 확인에 의제별 줄', () => {
@@ -451,7 +451,7 @@ describe('(11/11) 의제 이름 = 권고카드 머리띠 원문(투표지 제목
     const { agendaTheme, itemAgendaTheme } = await import('./BallotPager');
     expect(agendaTheme('전체회의 의결 의제1 기업 온실가스 감축 촉진')?.name).toBe('기업이 온실가스를 감축하도록 촉진하는 방안');
     expect(agendaTheme('전체회의 의결 의제2 일회용품 줄이기 등 자원순환')?.name).toBe('일회용품 줄이기 등 자원순환을 강화하는 방안');
-    expect(agendaTheme('전체회의 의결 의제3 기후시민 의식제고 교육')?.name).toBe('기후시민 의식제고를 위한 교육 및 참여 활성화 방안');
-    expect(itemAgendaTheme('전체회의 의결 정책권고안', '3-1')?.name).toBe('기후시민 의식제고를 위한 교육 및 참여 활성화 방안');
+    expect(agendaTheme('전체회의 의결 의제3 기후시민 의식제고 교육')?.name).toBe('기후시민 의식제고를 위한 교육과 참여를 활성화하는 방안');
+    expect(itemAgendaTheme('전체회의 의결 정책권고안', '3-1')?.name).toBe('기후시민 의식제고를 위한 교육과 참여를 활성화하는 방안');
   });
 });
