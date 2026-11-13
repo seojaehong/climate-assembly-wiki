@@ -239,6 +239,9 @@ export function PagerItemView({
   // 11/14 의제별 투표지(11/11 수정 의견) — 찬성 · 반대만. 이전 · 다음 건 단추를 두지 않는다.
   const choiceOnly = !all && !!agendaTheme(title);
   const [cardFailed, setCardFailed] = useState(false);
+  // 그림이 다 받아진 카드 주소. 받기 전에는 빈 칸만 보이므로 제목 글자를 위에 보인다(받으면 화면 읽기용으로 숨긴다).
+  const [loadedCard, setLoadedCard] = useState<string | null>(null);
+  const cardLoaded = !!card && loadedCard === card;
   const [zoom, setZoom] = useState(false);
   useEffect(() => {
     setCardFailed(false);
@@ -285,6 +288,13 @@ export function PagerItemView({
         {card && !cardFailed ? (
           // 11/14 — 사무국 권고카드 한 장 = 투표용지 한 장. 글자는 카드 그림 안에 있고, 같은 문구를 화면 읽기용으로 둔다.
           <div data-testid="pager-card">
+            <h2
+              data-testid="pager-title"
+              className={cardLoaded ? 'sr-only' : 'mb-3 px-2 text-[24px] font-extrabold leading-[1.45] text-[#1F2933] whitespace-pre-line'}
+              style={cardLoaded ? undefined : KEEP}
+            >
+              <span className={cardLoaded ? undefined : 'block text-[#1F4E79] tr-num'}>권고안 {number}</span> {itemTitle(item)}
+            </h2>
             <button type="button" onClick={() => setZoom(true)} aria-label={`권고안 ${number} 권고카드 크게 보기`} className="block w-full">
               <img
                 key={card}
@@ -292,6 +302,7 @@ export function PagerItemView({
                 alt=""
                 width={1080}
                 height={1440}
+                onLoad={() => setLoadedCard(card)}
                 onError={() => setCardFailed(true)}
                 className="block w-full h-auto rounded-2xl border border-[#DCE7EE]"
               />
@@ -305,9 +316,6 @@ export function PagerItemView({
               🔍 카드 크게 보기
             </button>
             {zoom ? <CardZoom src={card} hdSrc={plenaryCardSrc(title, number, true)} label={`권고안 ${number}`} onClose={() => setZoom(false)} /> : null}
-            <h2 data-testid="pager-title" className="sr-only">
-              권고안 {number} {itemTitle(item)}
-            </h2>
           </div>
         ) : (
           <>

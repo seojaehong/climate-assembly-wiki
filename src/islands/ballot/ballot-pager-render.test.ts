@@ -223,6 +223,32 @@ describe('(11/11) 한 장 70건 투표지 「전체회의 의결 정책권고안
     expect(html).toContain('/ballot/cards1114/2-1.webp');
   });
 
+  it('카드 그림을 받기 전에는 제목 글자를 카드 위에 보인다(빈 칸만 보이지 않게)', () => {
+    const html = renderToStaticMarkup(
+      createElement(PagerItemView, {
+        title: '전체회의 의결 정책권고안',
+        subgroup: null,
+        items,
+        pos: 2,
+        answers: {},
+        flashValue: null,
+        disabled: false,
+        onChoose: () => {},
+        onGo: () => {},
+        voterLine: null,
+      }),
+    );
+    const titleAt = html.indexOf('data-testid="pager-title"');
+    expect(titleAt).toBeGreaterThan(-1);
+    // 처음 그릴 때(onLoad 전) 화면 읽기 전용(sr-only)이 아니다.
+    const tag = html.slice(html.lastIndexOf('<h2', titleAt), html.indexOf('>', titleAt));
+    expect(tag).not.toContain('sr-only');
+    expect(html.slice(titleAt)).toMatch(/권고안 2-1[\s\S]*가상 권고 2-1/);
+    // 제목이 카드 그림보다 위에 있다.
+    expect(titleAt).toBeLessThan(html.indexOf('<img src="/ballot/cards1114/2-1.webp"'));
+    expect(html.match(/data-testid="pager-title"/g)).toHaveLength(1);
+  });
+
   it('마지막 장(제출 전 확인)에 마무리말', () => {
     const html = renderToStaticMarkup(
       createElement(PagerSummaryView, {

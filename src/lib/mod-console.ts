@@ -1,4 +1,5 @@
 import { getSupabase } from './supabase';
+import { randomId } from './random-id';
 import { createSafeBrowserStorage } from './safe-browser-storage';
 import { sortTeamsStandard } from './team-order';
 import type { WorkshopAccess } from './deliberation';
@@ -102,7 +103,8 @@ export function getDeviceToken(): string {
     }
     return legacy;
   }
-  const token = crypto.randomUUID();
+  // 옛 iOS(15.4 미만)·Chrome(92 미만)은 crypto.randomUUID 가 없다 — 그대로 부르면 제출이 매번 실패한다.
+  const token = randomId();
   publicVoteStorage.setItem('cv_device', token);
   return token;
 }

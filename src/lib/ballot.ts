@@ -61,13 +61,76 @@ function client() {
   return sb;
 }
 
+// ── 제한 시간 · 제출 재시도(11/14 — 폰 180대 동시 접속) ─────────────────
+
+/** 처음 불러오기(투표지 · 명단) 제한 시간. 넘기면 「불러오는 중」에 머물지 않고 「다시 불러오기」 화면으로 간다. */
+export const BALLOT_LOAD_TIMEOUT_MS = 10_000;
+/** 제출 요청 한 번의 제한 시간. */
+export const BALLOT_SUBMIT_TIMEOUT_MS = 12_000;
+/** 제출 시도 횟수 — 처음 1번 + 자동 재시도 2번. */
+export const BALLOT_SUBMIT_MAX_ATTEMPTS = 3;
+
+/** 제한 시간을 넘겨 끊은 요청. */
+export class BallotTimeoutError extends Error {
+  constructor(ms: number) {
+    super(`ballot request timed out after ${ms}ms`);
+    this.name = 'BallotTimeoutError';
+  }
+}
+
+/**
+ * RPC 한 번을 제한 시간 안에 끝낸다. 넘기면 요청을 끊고(AbortController) BallotTimeoutError 로 던진다.
+ * AbortSignal.timeout 은 옛 Safari 에 없어 setTimeout 으로 끊는다.
+ */
+async function rpcWithTimeout<R>(call: (signal: AbortSignal) => PromiseLike<R>, ms: number): Promise<R> {
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => {
+      controller.abort();
+      reject(new BallotTimeoutError(ms));
+    }, ms);
+  });
+  try {
+    return await Promise.race([call(controller.signal), timeout]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * 다시 보내도 되는 일시 장애인가 — 연결 끊김 · 제한 시간 · 서버 5xx(503 · 504 포함) · PGRST003(연결 대기 초과) ·
+ * 57014(statement timeout). status 0 = postgrest-js 가 fetch 실패(네트워크 끊김 · 중단)를 돌려주는 값.
+ * 업무상 거절(마감 · 명단 밖 · 같은 이름 · 입력 검사)은 raise exception(P0001 · 400)이라 다시 보내지 않는다.
+ */
+export function isTransientBallotError(error: unknown, status?: number): boolean {
+  if (error instanceof BallotTimeoutError) return true;
+  const code = (error as { code?: unknown } | null)?.code;
+  if (code === 'P0001') return false;
+  if (status === 0 || (typeof status === 'number' && status >= 500)) return true;
+  return code === 'PGRST003' || code === '57014';
+}
+
+/** 재시도 전 기다림 0.5~1.5초 — 무작위로 흩어 폰 여러 대가 한꺼번에 다시 몰리지 않게. */
+export function ballotRetryDelayMs(random: () => number = Math.random): number {
+  return 500 + Math.floor(random() * 1000);
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * 토큰으로 투표 정의를 조회한다. 없거나 비공개(draft·archived)면 null —
  * RPC가 둘을 구분하지 않으므로 호출부도 동일하게 "유효하지 않음"으로 안내한다.
+ * 10초 안에 답이 없으면 끊고 던진다(화면이 「다시 불러오기」를 띄운다).
  */
 export async function fetchBallot(token: string): Promise<Ballot | null> {
   const sb = client();
-  const { data, error } = await sb.schema('climate_vote').rpc('ballot_get', { p_token: token });
+  const { data, error } = await rpcWithTimeout(
+    (signal) => sb.schema('climate_vote').rpc('ballot_get', { p_token: token }).abortSignal(signal),
+    BALLOT_LOAD_TIMEOUT_MS,
+  );
   if (error) throw error;
   return (data as Ballot | null) ?? null;
 }
@@ -122,11 +185,14 @@ export function isMissingRpc(error: unknown): boolean {
 
 /**
  * 투표 범위의 명단. 명단이 없거나 s28 미적용이면 [] — 그때 화면은 지금처럼 무기명이다.
- * 그 밖의 오류는 throw(화면이 「다시 불러오기」를 띄운다 — 이름을 조용히 빼먹지 않게).
+ * 그 밖의 오류는 throw(화면이 「다시 불러오기」를 띄운다 — 이름을 조용히 빼먹지 않게). 10초 제한 시간도 같다.
  */
 export async function fetchBallotRoster(token: string): Promise<RosterRow[]> {
   const sb = client();
-  const { data, error } = await sb.schema('climate_vote').rpc('ballot_roster_get', { p_token: token });
+  const { data, error } = await rpcWithTimeout(
+    (signal) => sb.schema('climate_vote').rpc('ballot_roster_get', { p_token: token }).abortSignal(signal),
+    BALLOT_LOAD_TIMEOUT_MS,
+  );
   if (error) {
     if (isMissingRpc(error)) return [];
     throw error;
@@ -229,29 +295,51 @@ export async function fetchBallotLiveCounts(token: string): Promise<BallotLiveCo
   return data as BallotLiveCounts;
 }
 
-/** 실명 제출. 같은 이름이 이미 있으면 'name_taken'(이 기기는 잠그지 않는다). */
+/**
+ * 실명 제출. 같은 이름이 이미 있으면 'name_taken'(이 기기는 잠그지 않는다).
+ * 요청 한 번은 12초 제한. 일시 장애(isTransientBallotError)면 0.5~1.5초 쉬고 같은 client_id 로 2번까지 다시 보낸다.
+ * 다시 보내도 안전하다 — 서버(s28 · s32)는 투표 행 잠금 아래에서 같은 client_id 를 이름보다 먼저 보고
+ * 「already submitted」로 막는다(s2 unique(ballot_id, client_id)도 있다). 그래서 다시 보낸 요청의 'duplicate' 는
+ * 앞선 시도가 들어간 것이므로 'ok' 로 돌려준다. 업무상 거절은 다시 보내지 않는다.
+ */
 export async function submitBallotNamed(
   token: string,
   clientId: string,
   answers: Record<string, number>,
   voterTeam: string,
   voterName: string,
+  retry: { sleep?: (ms: number) => Promise<void>; random?: () => number } = {},
 ): Promise<NamedSubmitResult> {
   const sb = client();
-  const { error } = await sb.schema('climate_vote').rpc('ballot_submit_named', {
-    p_token: token,
-    p_client_id: clientId,
-    p_answers: answers,
-    p_voter_team: voterTeam,
-    p_voter_name: voterName,
-  });
-  if (error) {
+  for (let attempt = 1; ; attempt++) {
+    let error: unknown = null;
+    let status: number | undefined;
+    try {
+      ({ error, status } = await rpcWithTimeout(
+        (signal) =>
+          sb
+            .schema('climate_vote')
+            .rpc('ballot_submit_named', {
+              p_token: token,
+              p_client_id: clientId,
+              p_answers: answers,
+              p_voter_team: voterTeam,
+              p_voter_name: voterName,
+            })
+            .abortSignal(signal),
+        BALLOT_SUBMIT_TIMEOUT_MS,
+      ));
+    } catch (thrown: unknown) {
+      error = thrown;
+    }
+    if (!error) return 'ok';
     const message = (error as { message?: string }).message ?? '';
     if (message.includes('name already submitted')) return 'name_taken';
     if (message.includes('named voting off')) return 'named_off';
-    if (message.includes('already submitted')) return 'duplicate';
+    if (message.includes('already submitted')) return attempt > 1 ? 'ok' : 'duplicate';
     if (message.includes('ballot not open')) return 'closed';
-    throw error;
+    if (attempt >= BALLOT_SUBMIT_MAX_ATTEMPTS || !isTransientBallotError(error, status)) throw error;
+    console.warn(`투표 제출 재시도 ${attempt}/${BALLOT_SUBMIT_MAX_ATTEMPTS - 1}`, error);
+    await (retry.sleep ?? sleep)(ballotRetryDelayMs(retry.random));
   }
-  return 'ok';
 }
