@@ -5,6 +5,9 @@
  *   # 진행판(브라우저 http://127.0.0.1:8766/)
  *   node scripts/chase-1114.mjs --serve [--port 8766] [--token-file <파일>] [--room <카톡 방번호>]
  *     [--ballot-token 의제1=<투표지토큰>,의제2=…]   (ballot_list_v2 가 토큰을 못 줄 때만 — 대리 입력 화면 링크용)
+ *     [--close-min 의제1=30,의제2=45,의제3=35]   (자동 마감 분. 없으면 권고 수 × 90초)
+ *   # 리허설 세션에서 자동 마감 시험(세션 slug 가 zz-dryrun- 일 때만 실제로 닫음)
+ *   node scripts/chase-1114.mjs --serve --rehearsal --port 8767 --token-file <리허설 접속 토큰 파일> --close-min 의제1=1
  *   # 시연(Supabase 없이 가짜 명단 174명 · 진행이 시간에 따라 오른다)
  *   node scripts/chase-1114.mjs --serve --demo [--room self-inbox]
  *   # 한 번만 문구 만들기(stdout) · --send 면 --room 방으로 보냄
@@ -1125,7 +1128,12 @@ a.btn{color:var(--fg);background:#22303d;border:1px solid var(--line);border-rad
   // ── 자동 마감 ──
   let acLast = null, acOffset = 0;
   const acEls = new Map();
-  const hms = (ms) => (ms == null ? '-' : new Date(ms).toLocaleTimeString('ko-KR', { hour12: false, timeZone: 'Asia/Seoul' }));
+  const hms = (ms) => {
+    if (ms == null || !Number.isFinite(ms)) return '-';
+    const d = new Date(ms + 9 * 3600000); // KST 「HH:MM:SS」
+    const p2 = (n) => String(n).padStart(2, '0');
+    return p2(d.getUTCHours()) + ':' + p2(d.getUTCMinutes()) + ':' + p2(d.getUTCSeconds());
+  };
   const dur = (ms) => {
     let t = Math.floor(Math.abs(ms) / 1000);
     const h = Math.floor(t / 3600); t -= h * 3600;
