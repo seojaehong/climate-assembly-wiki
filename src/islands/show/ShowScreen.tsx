@@ -875,13 +875,6 @@ function VideoView({
             </span>
             <span className="tr-num" style={{ fontSize: denom.byRoster ? 24 : 30, color: C.muted, whiteSpace: 'nowrap' }}>/ {denom.label}</span>
           </p>
-          <p style={{ margin: '4px 0 0', fontSize: 24, color: C.muted }}>
-            투표 시작{' '}
-            <b data-testid="show-started" className="tr-num" style={{ color: C.text, fontSize: 30 }}>
-              {live.started}
-            </b>
-            명
-          </p>
         </div>
         <div style={{ flex: 1 }} />
         {qrOn ? (
@@ -1048,9 +1041,6 @@ function AgendasPanel({ agendas, denom }: { agendas: LiveAgenda[]; denom: Denom 
                 제출 완료 <b style={{ color: C.text }}>{a.live.submitted}</b> / {denom.label}
               </span>
               <span>
-                투표 시작 <b style={{ color: C.orange }}>{a.live.started}</b>명
-              </span>
-              <span>
                 지금 투표 중 <b style={{ color: C.text }}>{a.live.in_progress}</b>명
               </span>
             </p>
@@ -1094,11 +1084,8 @@ function SinglePanel({
       </div>
       <div style={{ display: 'flex', gap: compact ? 40 : 56 }}>
         {cell('제출 완료', C.blue, agenda.live.submitted, `/ ${denom.byRoster ? denom.label : `${denom.n}명`}`, 'rot-single-submitted')}
-        {cell(denom.byRoster ? '완료율(명단 기준)' : '완료율', C.blue, pct, '%', 'rot-single-rate')}
-        {cell('진행률', C.orange, turnoutPct(agenda.live.started, denom.n), '%', 'rot-single-progress')}
       </div>
       <div style={{ display: 'flex', gap: compact ? 40 : 56 }}>
-        {cell('투표 시작', C.orange, agenda.live.started, '명')}
         {cell('지금 투표 중', C.text, agenda.live.in_progress, '명')}
         {clock ? cell('남은 투표 시간', clock.closed ? C.orange : C.text, clock.text, '', 'rot-single-clock', clock.closed && clock.text.length > 2 ? 96 : big) : null}
       </div>
