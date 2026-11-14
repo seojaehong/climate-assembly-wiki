@@ -556,28 +556,6 @@ function LiveView({
             </p>
             {/* 진행률 = 투표 시작 ÷ 참석(들어온 사람) · 완료율 = 제출 ÷ 참석([제출]까지 누른 사람) */}
             {/* 높이: 이 줄 + 막대가 예전 한 줄(약 82px)보다 낮아야 위 알림 띠 자리가 줄지 않는다(lineHeight 고정). */}
-            <p style={{ margin: '8px 0 0', fontSize: 26, lineHeight: 1.15, color: C.muted, display: 'flex', gap: 20, whiteSpace: 'nowrap' }}>
-              <span>
-                투표 시작{' '}
-                <b data-testid="show-started" className="tr-num" style={{ color: C.text, fontSize: 36 }}>
-                  {live.started}
-                </b>
-                명
-              </span>
-              <span>
-                진행률{' '}
-                <b data-testid="show-progress-rate" className="tr-num" style={{ color: C.orange, fontSize: 36 }}>
-                  {progressRate}%
-                </b>
-              </span>
-              <span>
-                완료율{' '}
-                <b data-testid="show-rate" className="tr-num" style={{ color: C.blue, fontSize: 36 }}>
-                  {rate}%
-                </b>
-              </span>
-              {denom.byRoster ? <span style={{ fontSize: 20 }}>(명단 기준)</span> : null}
-            </p>
             {/* 2겹 막대 — 주황(진행률)이 먼저 차고 파랑(완료율)이 뒤따른다. 메인 숫자는 늘 「제출 완료」. */}
             <div data-testid="show-rate-bar" style={{ position: 'relative', marginTop: 10, height: 14, borderRadius: 7, background: C.line, overflow: 'hidden' }}>
               <div data-testid="show-rate-bar-progress" style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: `${progressRate}%`, background: C.orange, borderRadius: 7, transition: 'width .8s ease' }} />
