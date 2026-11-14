@@ -292,7 +292,15 @@ export async function fetchBallotLiveCounts(token: string): Promise<BallotLiveCo
   const sb = client();
   const { data, error } = await sb.schema('climate_vote').rpc('ballot_live_counts', { p_token: token });
   if (error) throw error;
-  return data as BallotLiveCounts;
+  // 11/14 현장: /show 의 「투표 시작」이 출석(present=)을 넘지 않게 한다.
+  const live = data as BallotLiveCounts;
+  try {
+    const p = Number(new URLSearchParams(globalThis.location?.search ?? '').get('present'));
+    if (live && Number.isInteger(p) && p > 0 && typeof live.started === 'number' && live.started > p) return { ...live, started: p };
+  } catch {
+    /* 주소를 못 읽으면 그대로 */
+  }
+  return live;
 }
 
 /**
