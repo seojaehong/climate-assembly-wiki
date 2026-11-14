@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { GRACE_SEC, createAutoCloser, defaultMinutes, dueAt, kstHms, kstTimeToday, parseCloseMin, pickMinutes } from './autoclose-1114.mjs';
+import { GRACE_SEC, createAutoCloser, defaultMinutes, dueAt, kstHms, kstTimeToday, parseCloseMin, pickMinutes, showUrls } from './autoclose-1114.mjs';
 
 const T0 = Date.parse('2026-11-14T05:10:00Z'); // 14:10:00 KST
 const ballot = (status, extra = {}) => ({ id: 'b1', title: '전체회의 의결 의제1', status, item_count: 19, agenda: 1, ...extra });
@@ -54,6 +54,14 @@ describe('계산', () => {
     expect(pickMinutes({ saved: 25, cli, agenda: 1, itemCount: 19 }).minutes).toBe(25);
     expect(pickMinutes({ saved: null, cli, agenda: 1, itemCount: 19 }).minutes).toBe(30);
     expect(pickMinutes({ saved: null, cli, agenda: 2, itemCount: 28 }).minutes).toBe(42);
+  });
+  it('/show 주소 — 의제 순 · present · min 자리 순서, 토큰이 이상하면 뺀다', () => {
+    const A = 'a'.repeat(32);
+    const B = 'b'.repeat(32);
+    const u = showUrls([{ agenda: 2, token: B, minutes: 42 }, { agenda: 1, token: A, minutes: 28.5 }, { agenda: 3, token: 'x', minutes: 30 }], { site: 'https://s', present: 164 });
+    expect(u.one).toEqual([{ agenda: 1, url: `https://s/show?t=${A}&present=164&min=28.5` }, { agenda: 2, url: `https://s/show?t=${B}&present=164&min=42` }]);
+    expect(u.all).toBe(`https://s/show?t=${A},${B}&present=164&min=28.5,42`);
+    expect(u.allAuto).toBe(`${u.all}&auto=1`);
   });
   it('KST 시각 왕복', () => {
     const ms = kstTimeToday('14:10:05', T0);
@@ -206,6 +214,23 @@ describe('자동 마감', () => {
     r.set(T0 + 80000);
     expect(r.closer.tick()).toHaveLength(0);
     expect(r.closer.view().rows[0].closedBy).toBe('other');
+  });
+
+  it('닫힌 뒤 초안으로 되돌리면(리허설 복원) 지난 기록을 비우고, 다시 열면 다시 닫는다', async () => {
+    const r = rig({ cli: new Map([[1, 1]]) });
+    r.closer.observe([ballot('draft')]);
+    r.closer.observe([ballot('open')]);
+    r.set(T0 + 75000);
+    await Promise.all(r.closer.tick());
+    r.closer.observe([ballot('closed')]);
+    r.set(T0 + 200000);
+    r.closer.observe([ballot('draft')]);
+    expect(r.closer.view().rows[0]).toMatchObject({ openedAt: null, attempted: false, result: null, closedBy: null });
+    r.set(T0 + 201000);
+    r.closer.observe([ballot('open')]);
+    r.set(T0 + 201000 + 75000);
+    await Promise.all(r.closer.tick());
+    expect(r.calls.close).toBe(2);
   });
 
   it('잠자기 등으로 예정보다 60초 넘게 늦게 깨면 자동으로 닫지 않는다', () => {

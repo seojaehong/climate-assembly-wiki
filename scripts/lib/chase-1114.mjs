@@ -18,7 +18,7 @@ export function normName(name) {
   return String(name ?? '').replace(/[\s 　]+/g, '').toLowerCase();
 }
 
-function normTeam(team) {
+export function normTeam(team) {
   return String(team ?? '').replace(/[\s 　]+/g, ' ').trim();
 }
 
@@ -27,7 +27,7 @@ export function personKey(team, name) {
   return `${normTeam(team).replace(/\s/g, '')}|${normName(name)}`;
 }
 
-function compareTeam(a, b) {
+export function compareTeam(a, b) {
   return a.localeCompare(b, 'ko', { numeric: true });
 }
 

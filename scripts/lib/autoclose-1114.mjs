@@ -76,6 +76,23 @@ export function kstHms(ms) {
   return `${p(k.getUTCHours())}:${p(k.getUTCMinutes())}:${p(k.getUTCSeconds())}`;
 }
 
+/** 분을 /show 의 min= 값으로(소수 둘째 자리까지, 끝 0 없앰). */
+function minText(m) {
+  return String(Math.round(Number(m) * 100) / 100);
+}
+
+/**
+ * /show 주소 — 진행판과 같은 분 · present. 의제 순으로 하나씩 + 종합(토큰 여럿, min= 은 자리 순서).
+ * @param rows [{ agenda, token, minutes }]  token 은 32자 영숫자(아니면 그 의제는 뺀다)
+ */
+export function showUrls(rows, { site, present }) {
+  const ok = [...(rows ?? [])].filter((r) => /^[A-Za-z0-9]{32}$/.test(String(r.token ?? ''))).sort((a, b) => (a.agenda ?? 99) - (b.agenda ?? 99));
+  const p = Number(present) > 0 ? `&present=${Math.floor(Number(present))}` : '';
+  const one = ok.map((r) => ({ agenda: r.agenda, url: `${site}/show?t=${r.token}${p}&min=${minText(r.minutes)}` }));
+  const all = ok.length > 1 ? `${site}/show?t=${ok.map((r) => r.token).join(',')}${p}&min=${ok.map((r) => minText(r.minutes)).join(',')}` : null;
+  return { one, all, allAuto: all ? `${all}&auto=1` : null };
+}
+
 /**
  * @param o.mode 'live' | 'test' | 'fake' — fake 면 closeFn 을 부르지 않고 fakeCloseFn 만(시연 · --lan).
  * @param o.closeFn async (ballotId) => 응답   (실전 · 시험: ballot_set_status_v2 'closed')
@@ -130,6 +147,11 @@ export function createAutoCloser(o) {
       const e = entry(b.id);
       const prev = e.status;
       if (b.status === 'draft') {
+        // 리허설 뒤 초안으로 되돌린 투표지 — 지난 회차 기록을 비운다(분 · 조정 · 켜기는 남긴다). 안 비우면 다시 열어도 안 닫는다.
+        if (e.openedAt != null || e.attempted || e.basis || e.result || e.missed || e.closedBy) {
+          Object.assign(e, { openedAt: null, basis: null, uncertaintyMs: null, attempted: false, attemptAt: null, result: null, closedBy: null, missed: false });
+          log({ event: 'reset_to_draft', ballot: b.id, agenda: b.agenda ?? null });
+        }
         e.lastDraftAt = at;
         changed = true; // lastDraftAt 를 저장해 둬야 재시작 뒤에도 오차를 잴 수 있다
       } else if (b.status === 'open' && e.openedAt == null && e.basis !== 'unknown') {
