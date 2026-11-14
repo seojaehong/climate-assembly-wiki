@@ -1622,7 +1622,7 @@ function SingleShow({
             </>
           ) : (
             <>
-              <CriteriaLine present={present} />
+              <span />
               <span>국가기후위기대응위원회</span>
             </>
           )}
