@@ -207,11 +207,20 @@ export function createAutoCloser(o) {
         status = 'unknown';
         error = error ?? `다시 읽기 실패: ${String(err?.message ?? err).slice(0, 160)}`;
       }
-    } else status = e.status ?? 'unknown'; // 안전장치에서 막힘 — 닫기를 부르지 않았다
+    } else {
+      // 안전장치에서 막힘 — 닫기를 부르지 않았다. /mod 가 같은 순간에 닫았을 수 있으니 상태만 다시 읽는다.
+      status = e.status ?? 'unknown';
+      try {
+        status = await o.statusFn(id);
+      } catch {
+        /* 못 읽으면 마지막 상태 */
+      }
+    }
     const ok = status === 'closed' || status === 'published';
-    e.result = { ok, kind, status, error: ok ? null : error, closeError: error, at: now(), fake: o.mode === 'fake', calledRpc: called, lateMs: at - (rowDue(id) ?? at) };
+    const byOther = ok && !called && o.mode !== 'fake';
+    e.result = { ok, kind, status, error: ok ? null : error, closeError: error, at: now(), fake: o.mode === 'fake', calledRpc: called, byOther, lateMs: at - (rowDue(id) ?? at) };
     if (ok) {
-      e.closedBy = kind === 'manual' ? 'manual' : 'auto';
+      e.closedBy = byOther ? 'other' : kind === 'manual' ? 'manual' : 'auto';
       e.status = status;
     }
     persist();

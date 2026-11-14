@@ -147,7 +147,7 @@ describe('자동 마감', () => {
   });
 
   it('안전장치에서 막히면 닫기를 부르지 않는다', async () => {
-    const r = rig({ cli: new Map([[1, 1]]), guardThrows: '세션이 zz-dryrun- 이 아님' });
+    const r = rig({ cli: new Map([[1, 1]]), guardThrows: '세션이 zz-dryrun- 이 아님', closeStatus: 'open' });
     r.closer.observe([ballot('draft')]);
     r.closer.observe([ballot('open')]);
     r.set(T0 + 75000);
@@ -155,6 +155,16 @@ describe('자동 마감', () => {
     expect(r.calls.close).toBe(0);
     expect(r.closer.view().rows[0].result).toMatchObject({ ok: false, calledRpc: false });
     expect(r.closer.view().rows[0].result.error).toContain('zz-dryrun');
+  });
+
+  it('/mod 가 같은 순간에 먼저 닫았으면(안전장치가 「열림 아님」) 실패가 아니라 다른 곳에서 닫힘', async () => {
+    const r = rig({ cli: new Map([[1, 1]]), guardThrows: '지금 열림이 아님(closed)', closeStatus: 'closed' });
+    r.closer.observe([ballot('draft')]);
+    r.closer.observe([ballot('open')]);
+    r.set(T0 + 75000);
+    await Promise.all(r.closer.tick());
+    expect(r.calls.close).toBe(0);
+    expect(r.closer.view().rows[0]).toMatchObject({ closedBy: 'other', result: { ok: true, byOther: true, calledRpc: false } });
   });
 
   it('진행판이 켜지기 전에 이미 열린 투표지는 걸지 않는다 — 연 시각을 넣으면 건다', async () => {

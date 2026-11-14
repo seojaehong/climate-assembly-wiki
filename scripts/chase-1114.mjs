@@ -1112,7 +1112,8 @@ a.btn{color:var(--fg);background:#22303d;border:1px solid var(--line);border-rad
 
   function presentFor(id, roster) {
     const v = Number(ls.get('chase.present.' + id));
-    return v > 0 ? v : roster;
+    const g = Number(ls.get('chase.present.all')); // 투표지를 열기 전(목록이 모두 draft)에 넣은 값 — /show 주소용
+    return v > 0 ? v : g > 0 ? g : roster;
   }
   function q() {
     const p = new URLSearchParams();
@@ -1121,7 +1122,7 @@ a.btn{color:var(--fg);background:#22303d;border:1px solid var(--line);border-rad
     if (d) p.set('deadline', d);
     const k = new URLSearchParams(location.search).get('k');
     if (k) p.set('k', k);
-    const pr = Number($('present').value);
+    const pr = Number($('present').value) || Number(ls.get('chase.present.all'));
     if (pr > 0) p.set('present', String(Math.floor(pr)));
     return p.toString();
   }
@@ -1213,7 +1214,9 @@ a.btn{color:var(--fg);background:#22303d;border:1px solid var(--line);border-rad
       e.due.textContent = r.dueAt ? hms(r.dueAt) : r.status === 'draft' ? '열리면 시작' : '-';
       e.dueSub.textContent = r.openedAt ? '열림 ' + hms(r.openedAt) + ' · ' + basis + ' · 화면 타이머 0 = ' + hms(r.timerEndAt) : basis;
       let cls = '', txt = '';
-      if (r.result && r.result.ok) { cls = 'ok'; txt = (r.result.fake ? '시연: 닫은 것으로 표시(실제 DB 는 안 바뀜) ' : '닫힘 확인(' + r.result.status + ') ') + hms(r.result.at) + ' · ' + (r.result.kind === 'manual' ? '「지금 닫기」' : '자동') + (r.result.kind === 'auto' && r.result.lateMs != null ? ' · 예정보다 ' + (r.result.lateMs / 1000).toFixed(1) + '초 뒤 시도' : ''); }
+      if (r.result && r.result.ok && r.result.byOther) { cls = 'ok'; txt = '이미 닫혀 있음(/mod 등 다른 곳에서 닫힘) 확인 ' + hms(r.result.at); }
+      else if (r.result && !r.result.ok && (r.status === 'closed' || r.status === 'published')) { cls = 'ok'; txt = '지금 상태 = ' + r.status + ' (자동 마감 시도는 실패했지만 닫혀 있음)'; }
+      else if (r.result && r.result.ok) { cls = 'ok'; txt = (r.result.fake ? '시연: 닫은 것으로 표시(실제 DB 는 안 바뀜) ' : '닫힘 확인(' + r.result.status + ') ') + hms(r.result.at) + ' · ' + (r.result.kind === 'manual' ? '「지금 닫기」' : '자동') + (r.result.kind === 'auto' && r.result.lateMs != null ? ' · 예정보다 ' + (r.result.lateMs / 1000).toFixed(1) + '초 뒤 시도' : ''); }
       else if (r.result && !r.result.ok) { cls = 'bad'; txt = '닫기 실패 — ' + (r.result.error || r.result.status) + ' → 「지금 닫기」 또는 /mod 에서 바로 닫으세요'; }
       else if (r.closedBy === 'other') { cls = 'ok'; txt = '다른 곳(/mod)에서 닫힘 — 자동 마감은 부르지 않음'; }
       else if (r.missed) { cls = 'bad'; txt = '예정 시각이 지났는데 자동으로 닫지 않았습니다(진행판이 늦게 켜짐 · 잠자기 · 조정으로 이미 지남) → 「지금 닫기」 또는 /mod'; }
@@ -1445,7 +1448,8 @@ a.btn{color:var(--fg);background:#22303d;border:1px solid var(--line);border-rad
   }
   $('ballot').onchange = (e) => { ballot = e.target.value; ls.set('chase.ballot', ballot); previewDirty = false; $('deadline').value = ''; tick(); };
   $('every').onchange = (e) => { ls.set('chase.every', e.target.value); schedule(); };
-  $('present').onchange = () => { if (last && last.board) ls.set('chase.present.' + last.board.id, $('present').value); tick(); };
+  $('present').onchange = () => { ls.set('chase.present.all', $('present').value); if (last && last.board) ls.set('chase.present.' + last.board.id, $('present').value); tick(); };
+  if (!$('present').value && ls.get('chase.present.all')) $('present').value = ls.get('chase.present.all');
   $('deadline').onchange = () => { if (last && last.board) ls.set('chase.deadline.' + last.board.id, $('deadline').value.trim()); tick(); };
   $('preview').oninput = () => { previewDirty = true; };
   $('regen').onclick = () => { previewDirty = false; tick(); };
