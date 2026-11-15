@@ -4,7 +4,6 @@
 
 export const PUBLIC_VOTE_SUPABASE_URL = 'https://pleyuknjnprsckssxvrh.supabase.co';
 export const PUBLIC_VOTE_SUPABASE_KEY = 'sb_publishable_OVwo9zs5i6xl5iFykM6zJQ_GWFcf5zn';
-export const ADMIN_PASSPHRASE = 'climate2026';
 
 export const ROUND_IDS = [
   'R1', 'R2', 'R3', 'R4', 'R5', 'R6',
