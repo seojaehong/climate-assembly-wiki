@@ -2,7 +2,7 @@
   "scope": "0704 participant dashboard readiness",
   "status": "ready_with_agenda_vote_form_and_scores_sheet",
   "created_at": "2026-07-03",
-  "operator_password": "climate2026",
+  "operator_password": "__REDACTED_ROTATED_20261115__",
   "public_paths": {
     "admin": "/0704-admin/index.html",
     "ontology": "/workshop-graph-0704/index.html?source=participant-open-questions&mode=showcase&count=50&edgeLabels=on&theme=light&tone=calm",

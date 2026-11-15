@@ -6,7 +6,7 @@
 
 - 관리자 메뉴: https://climate-assembly.org/0704-admin/
 - 현장 매뉴얼: https://climate-assembly.org/0704-admin/operator-manual
-- 비밀번호: `climate2026`
+- 비밀번호: `__REDACTED_ROTATED_20261115__`
 
 ## 1. 시트입력
 

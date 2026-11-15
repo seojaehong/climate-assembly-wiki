@@ -59,7 +59,7 @@ Use these when a URL needs to be pasted into KakaoTalk or a slide. The admin pag
 Admin password:
 
 ```text
-climate2026
+__REDACTED_ROTATED_20261115__
 ```
 
 ## What Changed From 0628
