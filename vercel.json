@@ -1,0 +1,25 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "redirects": [
+    {
+      "source": "/t/:path*",
+      "destination": "/bucheon/t/:path*",
+      "permanent": false
+    },
+    {
+      "source": "/q/:path*",
+      "destination": "/bucheon/q/:path*",
+      "permanent": false
+    },
+    {
+      "source": "/s/:path*",
+      "destination": "/bucheon/s/:path*",
+      "permanent": false
+    },
+    {
+      "source": "/hq/:path*",
+      "destination": "/bucheon/hq/:path*",
+      "permanent": false
+    }
+  ]
+}
